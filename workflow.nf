@@ -137,26 +137,26 @@ process KRAKEN {
         '''
         # Define input/output
         db=!{projectDir}/!{db_path}
-        out_unmerged_noribo=!{sample}_unmerged_noribo.output
-        out_unmerged_ribo=!{sample}_unmerged_ribo.output
-        out_merged_noribo=!{sample}_merged_noribo.output
-        out_merged_ribo=!{sample}_merged_ribo.output
-        io_unmerged_noribo="--paired --output ${out_unmerged_noribo} !{unmerged_noribo_1} !{unmerged_noribo_2}"
-        io_unmerged_ribo="--paired --output ${out_unmerged_ribo} !{unmerged_ribo_1} !{unmerged_ribo_2}"
-        io_merged_noribo="--paired --output ${out_merged_noribo} !{merged_noribo}
-        io_merged_ribo="--paired --output ${out_merged_ribo} !{merged_ribo}
+        out_unmerged_noribo=!{sample}_unmerged_noribo.output.gz
+        out_unmerged_ribo=!{sample}_unmerged_ribo.output.gz
+        out_merged_noribo=!{sample}_merged_noribo.output.gz
+        out_merged_ribo=!{sample}_merged_ribo.output.gz
+        io_unmerged_noribo="--paired !{unmerged_noribo_1} !{unmerged_noribo_2}"
+        io_unmerged_ribo="--paired !{unmerged_ribo_1} !{unmerged_ribo_2}"
+        io_merged_noribo="!{merged_noribo}"
+        io_merged_ribo="!{merged_ribo}"
         # Define parameters
-        par="--db ${db} --use-names --threads !{task.cps}"
+        par="--db ${db} --use-names --threads !{task.cpus}"
         # Run Kraken
-        kraken2 ${par} ${io_unmerged_noribo}
-        kraken2 ${par} ${io_unmerged_ribo}
-        kraken2 ${par} ${io_merged_noribo}
-        kraken2 ${par} ${io_merged_ribo}
+        kraken2 ${par} ${io_unmerged_noribo} | gzip > ${out_unmerged_noribo}
+        kraken2 ${par} ${io_unmerged_ribo} | gzip > ${out_unmerged_ribo}
+        kraken2 ${par} ${io_merged_noribo} | gzip > ${out_merged_noribo}
+        kraken2 ${par} ${io_merged_ribo} | gzip > ${out_merged_ribo}
         # Concatenate
         out_noribo=!{sample}_noribo.output.gz
         out_ribo=!{sample}_ribo.output.gz
-        cat ${out_unmerged_noribo} ${out_merged_noribo} | gzip > ${out_noribo}
-        cat ${out_unmerged_ribo} ${out_merged_ribo} | gzip > ${out_ribo}
+        cat ${out_unmerged_noribo} ${out_merged_noribo} > ${out_noribo}
+        cat ${out_unmerged_ribo} ${out_merged_ribo} > ${out_ribo}
         # Cleanup
         rm ${out_unmerged_noribo} ${out_unmerged_ribo} ${out_merged_noribo} ${out_merged_ribo}
         '''
