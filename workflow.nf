@@ -113,9 +113,9 @@ process DEDUP_CLUMPIFY_PRE {
         io_unmerged_noribo="in=!{unmerged_noribo_1} in2=!{unmerged_noribo_2} out=${op1} out2=${op2}"
         io_unmerged_ribo="in=!{unmerged_ribo_1} in2=!{unmerged_ribo_2} out=${of1} out2=${of2}"
         io_merged_noribo="in=!{merged_noribo} out=${opm}"
-        io_merged_ribo="in=!{merged_ribo}, out=${ofm}"
+        io_merged_ribo="in=!{merged_ribo} out=${ofm}"
         # Define parameters
-        par="reorder dedup containment t=!{task.cpus}"
+        par="reorder dedupe containment t=!{task.cpus}"
         # Execute
         clumpify.sh ${io_unmerged_noribo} ${par}
         clumpify.sh ${io_unmerged_ribo} ${par}
