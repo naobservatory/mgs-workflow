@@ -347,12 +347,15 @@ process BBMAP_INDEX_HOST {
     publishDir "${projectDir}/output/host/index", mode: "symlink"
     errorStrategy "finish"
     input:
-        path(reference)
+        val(reference)
     output:
-        tuple path("host_ref.fasta.gz"), path("genome"), path("index")
+        path("ref_index")
     shell:
         '''
-        cp !{reference} host_ref.fasta.gz
+        mkdir ref_index
+        ref=!{projectDir}/!{reference}
+        cp ${ref} ref_index/host_ref.fasta.gz
+        cd ref_index
         bbmap.sh ref=host_ref.fasta.gz -Xmx23g
         '''
 }
@@ -364,7 +367,7 @@ process BBMAP_HOST_DEPLETION {
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
-        tuple path(index_fasta), path(index_genome), path(index_index)
+        path(index_ref_dir)
     output:
         tuple val(sample), path("${sample}_bbmap_nohost_{unmerged_1,unmerged_2,merged}.fastq.gz"), path("${sample}_bbmap_host_{unmerged_1,unmerged_2,merged}.fastq.gz"), path("${sample}_bbmap_{merged,unmerged}.stats.txt")
     shell:
@@ -379,10 +382,10 @@ process BBMAP_HOST_DEPLETION {
         of1=!{sample}_bbmap_host_unmerged_1.fastq.gz
         of2=!{sample}_bbmap_host_unmerged_2.fastq.gz
         ofm=!{sample}_bbmap_host_merged.fastq.gz
-        stats_unmerged=!{sample}_bbmap_unmerged_stats.txt
-        stats_merged=!{sample}_bbmap_merged_stats.txt
-        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} refstats=${stats_unmerged} path=!{index_fasta}"
-        io_merged="in=${merged} outu=${opm} outm=${ofm} refstats=${stats_merged} path=!{index_fasta}"
+        stats_unmerged=!{sample}_bbmap_unmerged.stats.txt
+        stats_merged=!{sample}_bbmap_merged.stats.txt
+        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats_unmerged} path=!{index_ref_dir}"
+        io_merged="in=${merged} outu=${opm} outm=${ofm} statsfile=${stats_merged} path=!{index_ref_dir}"
         # Define parameters (copied from Brian Bushnell)
         par="minid=0.95 maxindel=3 bwr=0.16 bw=12 quickmatch fast minhits=2 qtrim=rl trimq=10 untrim -Xmx23g t=!{task.cpus}"
         # Execute
@@ -443,7 +446,7 @@ workflow {
     CLEAN_READS(HANDLE_RAW_READS.out.data)
     DEDUP_READS(CLEAN_READS.out.data)
     REMOVE_RIBO_INITIAL(DEDUP_READS.out.data)
-    //REMOVE_HOST(REMOVE_RIBO_INITIAL.out.data)
+    REMOVE_HOST(REMOVE_RIBO_INITIAL.out.data)
     // TODO: Collate QC
 }
 
