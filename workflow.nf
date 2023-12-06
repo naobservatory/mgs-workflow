@@ -51,7 +51,6 @@ process FASTQC_CONCAT {
         tuple val(sample), path(read1), path(read2)
     output:
         path("${sample}_{1,2}_fastqc.{zip,html}")
-        // tuple val(sample), path("${sample}_1_fastqc.zip"), path("${sample}_1_fastqc.html"), path("${sample}_2_fastqc.zip"), path("${sample}_2_fastqc.html")
     shell:
         '''
         fastqc -t !{task.cpus} !{read1} !{read2}
@@ -109,7 +108,7 @@ process PREPROCESS_FASTP {
         tuple val(sample), path(read1), path(read2)
         val adapters
     output:
-        tuple val(sample), path("${sample}_fastp_unmerged_{1,2}.fastq.gz"), path("${sample}_fastp_{merged,failed}.fastq.gz"), path("${sample}_fastp.{json,html}")
+        tuple val(sample), path("${sample}_fastp_{merged,unmerged_1,unmerged_2}.fastq.gz"), path("${sample}_fastp_failed.fastq.gz"), path("${sample}_fastp.{json,html}")
     shell:
         '''
         # Define paths and subcommands
@@ -133,12 +132,12 @@ process FASTQC_CLEANED {
     publishDir "${projectDir}/output/qc/fastqc/cleaned", mode: "symlink"
     errorStrategy "finish"
     input:
-        tuple val(sample), path(unmerged1), path(unmerged2), path(merged), path(failed), path(json), path(html)
+        tuple val(sample), path(reads), path(failed), path(reports)
     output:
-        path("${sample}_fastp_{unmerged_1,unmerged_2,merged}_fastqc.{zip.html}")
+        path("${sample}_fastp_{merged,unmerged_1,unmerged_2}_fastqc.{zip,html}")
     shell:
         '''
-        fastqc -t !{task.cpus} !{unmerged1} !{unmerged2} !{merged}
+        fastqc -t !{task.cpus} !{reads}
         '''
 }
 
@@ -184,17 +183,20 @@ process DEDUP_CLUMPIFY {
     publishDir "${projectDir}/output/dedup", mode: "symlink"
     errorStrategy "finish"
     input:
-        tuple val(sample), path(unmerged1), path(unmerged2), path(merged), path(failed), path(json), path(html)
+        tuple val(sample), path(reads), path(failed), path(reports)
     output:
         tuple val(sample), path("${sample}_dedup_{unmerged_1,unmerged_2,merged}.fastq.gz")
     shell:
         '''
         # Define input/output
+        merged=!{reads[0]}
+        unmerged1=!{reads[1]}
+        unmerged2=!{reads[2]}
         op1=!{sample}_dedup_unmerged_1.fastq.gz
         op2=!{sample}_dedup_unmerged_2.fastq.gz
         opm=!{sample}_dedup_merged.fastq.gz
-        io_unmerged="in=!{unmerged1} in2=!{unmerged2} out=${op1} out2=${op2}"
-        io_merged="in=!{merged} out=${opm}"
+        io_unmerged="in=${unmerged1} in2=${unmerged2} out=${op1} out2=${op2}"
+        io_merged="in=${merged} out=${opm}"
         # Define parameters
         par="reorder dedupe containment t=!{task.cpus}"
         # Execute
@@ -209,12 +211,12 @@ process FASTQC_DEDUP {
     publishDir "${projectDir}/output/qc/fastqc/dedup", mode: "symlink"
     errorStrategy "finish"
     input:
-        tuple val(sample), path(unmerged1), path(unmerged2), path(merged)
+        tuple val(sample), path(reads)
     output:
-        path("${sample}_dedup_{unmerged_1,unmerged_2,merged}_fastqc.{zip.html}")
+        path("${sample}_dedup_{unmerged_1,unmerged_2,merged}_fastqc.{zip,html}")
     shell:
         '''
-        fastqc -t !{task.cpus} !{unmerged1} !{unmerged2} !{merged}
+        fastqc -t !{task.cpus} !{reads}
         '''
 }
 
@@ -239,7 +241,7 @@ workflow DEDUP_READS {
         clean_ch
     main:
         dedup_ch = DEDUP_CLUMPIFY(clean_ch)
-        fastqc_dedup_ch = FASTQC_DEDUP(clean_ch)
+        fastqc_dedup_ch = FASTQC_DEDUP(dedup_ch)
         multiqc_dedup_ch = MULTIQC_DEDUP(fastqc_dedup_ch.collect().ifEmpty([]))
     emit:
         data = dedup_ch
@@ -248,26 +250,96 @@ workflow DEDUP_READS {
         multiqc_data = multiqc_dedup_ch[1]
 }
 
-workflow {
-    HANDLE_RAW_READS(libraries_ch)
-    CLEAN_READS(HANDLE_RAW_READS.out.data)
-    DEDUP_READS(CLEAN_READS.out.data)
+/***************************
+| 4. INITIAL RIBODEPLETION |
+***************************/
+
+// 4.1. Initial detection and removal of ribosomal reads
+// NB: Using quite stringent parameters here to reduce false positives
+process BBDUK_RIBO_INITIAL {
+    cpus 16
+    publishDir "${projectDir}/ribo_initial", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(reads)
+        val ribo_ref
+    output:
+        tuple val(sample), path("${sample}_bbduk_noribo_{unmerged_1,unmerged_2,merged}.fastq.gz"), path("${sample}_bbduk_ribo_{unmerged_1,unmerged_2,merged}.fastq.gz"), path("${sample}_bbduk_{merged,unmerged}.stats.txt")
+    shell:
+        '''
+        # Define input/output
+        merged=!{reads[0]}
+        unmerged1=!{reads[1]}
+        unmerged2=!{reads[2]}
+        op1=!{sample}_bbduk_noribo_unmerged_1.fastq.gz
+        op2=!{sample}_bbduk_noribo_unmerged_2.fastq.gz
+        opm=!{sample}_bbduk_noribo_merged.fastq.gz
+        of1=!{sample}_bbduk_ribo_unmerged_1.fastq.gz
+        of2=!{sample}_bbduk_ribo_unmerged_2.fastq.gz
+        ofm=!{sample}_bbduk_ribo_merged.fastq.gz
+        stats_unmerged=!{sample}_bbduk_unmerged.stats.txt
+        stats_merged=!{sample}_bbduk_merged.stats.txt
+        ref=!{projectDir}/!{ribo_ref}
+        io_unmerged="in=${unmerged1} in2=${unmerged2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats_unmerged}"
+        io_merged="in=${merged} ref=${ref} out=${opm} outm=${ofm} stats=${stats_merged}"
+        # Define parameters
+        par="minkmerfraction=0.5 k=43 t=!{task.cpus}"
+        # Execute
+        bbduk.sh ${io_unmerged} ${par}
+        bbduk.sh ${io_merged} ${par}
+        '''
 }
 
-//workflow {
-//    ribo_ch = RIBO_BBDUK(preproc_ch, params.ribo_ref)
-//    // 3. Kraken taxonomic assignment + processing
-//    kraken_ch = KRAKEN(dedup_pre_ch, params.kraken_db)
-//    filter_ch = EXTRACT_VIRAL_HITS(kraken_ch, params.script_dir, params.virus_db)
-//    // X. QC
-//    qc_ribo_ch = FASTQC_RIBO(ribo_ch)
-//}
+// 4.2. FASTQC
+process FASTQC_RIBO_INITIAL {
+    cpus 3
+    publishDir "${projectDir}/output/qc/fastqc/ribo_initial", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
+    output:
+        path("${sample}_bbduk_noribo_{unmerged_1,unmerged_2,merged}_fastqc.{zip,html}")
+    shell:
+        '''
+        fastqc -t !{task.cpus} !{reads_noribo}
+        '''
+}
+
+// 4.3. MultiQC
+// TODO: Customize output for later aggregation
+process MULTIQC_RIBO_INITIAL {
+    publishDir "${projectDir}/output/qc/multiqc/ribo_initial", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        path("*")
+    output:
+        path("multiqc_report.html")
+        path("multiqc_data")
+    shell:
+        '''
+        multiqc .
+        '''
+}
+
+workflow REMOVE_RIBO_INITIAL {
+    take:
+        dedup_ch
+    main:
+        ribo_ch = BBDUK_RIBO_INITIAL(dedup_ch, params.ribo_ref)
+        fastqc_ribo_ch = FASTQC_RIBO_INITIAL(ribo_ch)
+        multiqc_ribo_ch = MULTIQC_RIBO_INITIAL(fastqc_ribo_ch.collect().ifEmpty([]))
+    emit:
+        data = ribo_ch
+        fastqc = fastqc_ribo_ch
+        multiqc_report = multiqc_ribo_ch[0]
+        multiqc_data = multiqc_ribo_ch[1]
+}
 
 /********************
-| 4. HOST DEPLETION |
+| 5. HOST DEPLETION |
 ********************/
 
-// 4.1. Build human index from reference genome
+// 5.1. Build human index from reference genome
 // NB: Currently uses a masked reference from 2014 from JGI
 // TODO: Replace with updated masked human genome
 process BBMAP_INDEX_HOST {
@@ -280,23 +352,27 @@ process BBMAP_INDEX_HOST {
         tuple path("host_ref.fasta.gz"), path("genome"), path("index")
     shell:
         '''
-        bbmap.sh ref=!{reference} -Xmx23g
+        cp !{reference} host_ref.fasta.gz
+        bbmap.sh ref=host_ref.fasta.gz -Xmx23g
         '''
 }
 
-// 4.2. Segregate human reads with bbmap
+// 5.2. Segregate human reads with bbmap
 process BBMAP_HOST_DEPLETION {
     cpus 16
     publishDir "${projectDir}/output/host", mode: "symlink"
     errorStrategy "finish"
     input:
-        tuple val(sample), path(unmerged1), path(unmerged2), path(merged)
+        tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
         tuple path(index_fasta), path(index_genome), path(index_index)
     output:
         tuple val(sample), path("${sample}_bbmap_nohost_{unmerged_1,unmerged_2,merged}.fastq.gz"), path("${sample}_bbmap_host_{unmerged_1,unmerged_2,merged}.fastq.gz"), path("${sample}_bbmap_{merged,unmerged}.stats.txt")
     shell:
         '''
         # Define input/output
+        merged=!{reads_noribo[0]}
+        unmerged1=!{reads_noribo[1]}
+        unmerged2=!{reads_noribo[2]}
         op1=!{sample}_bbmap_nohost_unmerged_1.fastq.gz
         op2=!{sample}_bbmap_nohost_unmerged_2.fastq.gz
         opm=!{sample}_bbmap_nohost_merged.fastq.gz
@@ -305,9 +381,8 @@ process BBMAP_HOST_DEPLETION {
         ofm=!{sample}_bbmap_host_merged.fastq.gz
         stats_unmerged=!{sample}_bbmap_unmerged_stats.txt
         stats_merged=!{sample}_bbmap_merged_stats.txt
-        ref=!{projectDir}/!{host_ref}
-        io_unmerged="in=!{unmerged1} in2=!{unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} refstats=${stats_unmerged} path=!{index_fasta}"
-        io_merged="in=!{merged} outu=${opm} outm=${ofm} refstats=${stats_merged} path=!{index_fasta}"
+        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} refstats=${stats_unmerged} path=!{index_fasta}"
+        io_merged="in=${merged} outu=${opm} outm=${ofm} refstats=${stats_merged} path=!{index_fasta}"
         # Define parameters (copied from Brian Bushnell)
         par="minid=0.95 maxindel=3 bwr=0.16 bw=12 quickmatch fast minhits=2 qtrim=rl trimq=10 untrim -Xmx23g t=!{task.cpus}"
         # Execute
@@ -316,41 +391,72 @@ process BBMAP_HOST_DEPLETION {
         '''
 }
 
-/*****************
-| CORE PROCESSES |
-*****************/
-
-process RIBO_BBDUK {
-    cpus 16
-    publishDir "${projectDir}/ribo", mode: "symlink"
+// 5.3. FASTQC
+process FASTQC_HOST {
+    cpus 3
+    publishDir "${projectDir}/output/qc/fastqc/host", mode: "symlink"
     errorStrategy "finish"
     input:
-        tuple val(sample), path(unmerged1), path(unmerged2), path(merged), path(failed), path(json), path(html)
-        val ribo_ref
+        tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
     output:
-        tuple val(sample), path("${sample}_bbduk_unmerged_noribo_1.fastq.gz"), path("${sample}_bbduk_unmerged_noribo_2.fastq.gz"), path("${sample}_bbduk_merged_noribo.fastq.gz"), path("${sample}_bbduk_unmerged_ribo_1.fastq.gz"), path("${sample}_bbduk_unmerged_ribo_2.fastq.gz"), path("${sample}_bbduk_merged_ribo.fastq.gz"), path("${sample}_bbduk_unmerged_stats.txt"), path("${sample}_bbduk_merged_stats.txt")
+        path("${sample}_bbmap_nohost_{unmerged_1,unmerged_2,merged}_fastqc.{zip,html}")
     shell:
         '''
-        # Define input/output
-        op1=!{sample}_bbduk_unmerged_noribo_1.fastq.gz
-        op2=!{sample}_bbduk_unmerged_noribo_2.fastq.gz
-        opm=!{sample}_bbduk_merged_noribo.fastq.gz
-        of1=!{sample}_bbduk_unmerged_ribo_1.fastq.gz
-        of2=!{sample}_bbduk_unmerged_ribo_2.fastq.gz
-        ofm=!{sample}_bbduk_merged_ribo.fastq.gz
-        stats_unmerged=!{sample}_bbduk_unmerged_stats.txt
-        stats_merged=!{sample}_bbduk_merged_stats.txt
-        ref=!{projectDir}/!{ribo_ref}
-        io_unmerged="in=!{unmerged1} in2=!{unmerged2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats_unmerged}"
-        io_merged="in=!{merged} ref=${ref} out=${opm} outm=${ofm} stats=${stats_merged}"
-        # Define parameters
-        par="k=33 t=!{task.cpus}"
-        # Execute
-        bbduk.sh ${io_unmerged} ${par}
-        bbduk.sh ${io_merged} ${par}
+        fastqc -t !{task.cpus} !{reads_nohost}
         '''
 }
 
+// 5.4. MultiQC
+// TODO: Customize output for later aggregation
+process MULTIQC_HOST {
+    publishDir "${projectDir}/output/qc/multiqc/host", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        path("*")
+    output:
+        path("multiqc_report.html")
+        path("multiqc_data")
+    shell:
+        '''
+        multiqc .
+        '''
+}
+
+workflow REMOVE_HOST {
+    take:
+        ribo_ch
+    main:
+        index_ch = BBMAP_INDEX_HOST(params.host_ref)
+        host_ch = BBMAP_HOST_DEPLETION(ribo_ch, index_ch)
+        fastqc_host_ch = FASTQC_HOST(host_ch)
+        multiqc_host_ch = MULTIQC_HOST(fastqc_host_ch.collect().ifEmpty([]))
+    emit:
+        data = host_ch
+        fastqc = fastqc_host_ch
+        multiqc_report = multiqc_host_ch[0]
+        multiqc_data = multiqc_host_ch[1]
+}
+
+workflow {
+    // Core pipeline
+    HANDLE_RAW_READS(libraries_ch)
+    CLEAN_READS(HANDLE_RAW_READS.out.data)
+    DEDUP_READS(CLEAN_READS.out.data)
+    REMOVE_RIBO_INITIAL(DEDUP_READS.out.data)
+    //REMOVE_HOST(REMOVE_RIBO_INITIAL.out.data)
+    // TODO: Collate QC
+}
+
+/***************************************
+| EXTRA PROCESSES, NOT YET IN PIPELINE |
+***************************************/
+
+//workflow {
+//    // 3. Kraken taxonomic assignment + processing
+//    kraken_ch = KRAKEN(dedup_pre_ch, params.kraken_db)
+//    filter_ch = EXTRACT_VIRAL_HITS(kraken_ch, params.script_dir, params.virus_db)
+//    // X. QC
+//}
 
 process KRAKEN {
     cpus 16
@@ -487,26 +593,3 @@ process EXTRACT_VIRAL_READS {
         filterbyname.sh ${io_merged_ribo} ${par}
         '''
 }
-        
-
-/***************
-| QC PROCESSES |
-***************/
-
-process FASTQC_RIBO {
-    cpus 6
-    publishDir "${projectDir}/qc", mode: "symlink"
-    errorStrategy "finish"
-    input:
-        tuple val(sample), path(unmerged_noribo_1), path(unmerged_noribo_2), path(merged_noribo), path(unmerged_ribo_1), path(unmerged_ribo_2), path(merged_ribo), path(unmerged_stats), path(merged_stats)
-    output:
-        tuple val(sample), path("${sample}_bbduk_unmerged_noribo_1_fastqc.zip"), path("${sample}_bbduk_unmerged_noribo_1_fastqc.html"), path("${sample}_bbduk_unmerged_noribo_2_fastqc.zip"), path("${sample}_bbduk_unmerged_noribo_2_fastqc.html"), path("${sample}_bbduk_merged_noribo_fastqc.zip"), path("${sample}_bbduk_merged_noribo_fastqc.html"), path("${sample}_bbduk_unmerged_ribo_1_fastqc.zip"), path("${sample}_bbduk_unmerged_ribo_1_fastqc.html"), path("${sample}_bbduk_unmerged_ribo_2_fastqc.zip"), path("${sample}_bbduk_unmerged_ribo_2_fastqc.html"), path("${sample}_bbduk_merged_ribo_fastqc.zip"), path("${sample}_bbduk_merged_ribo_fastqc.html")
-    shell:
-        '''
-        fastqc -t !{task.cpus} !{unmerged_noribo_1} !{unmerged_noribo_2} !{merged_noribo} !{unmerged_ribo_1} !{unmerged_ribo_2} !{merged_ribo}
-        '''
-}
-
-/***********
-| WORKFLOW |
-***********/
