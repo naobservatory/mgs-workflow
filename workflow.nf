@@ -60,6 +60,7 @@ process FASTQC_CONCAT {
 // 1.3. MultiQC
 // TODO: Customize output for later aggregation
 process MULTIQC_CONCAT {
+    cpus 1
     publishDir "${projectDir}/output/qc/multiqc/raw_concat", mode: "symlink"
     errorStrategy "finish"
     input:
@@ -128,7 +129,7 @@ process PREPROCESS_FASTP {
 
 // 2.2. FASTQC
 process FASTQC_CLEANED {
-    cpus 3
+    cpus 2
     publishDir "${projectDir}/output/qc/fastqc/cleaned", mode: "symlink"
     errorStrategy "finish"
     input:
@@ -144,6 +145,7 @@ process FASTQC_CLEANED {
 // 2.3. MultiQC
 // TODO: Customize output for later aggregation
 process MULTIQC_CLEANED {
+    cpus 1
     publishDir "${projectDir}/output/qc/multiqc/cleaned", mode: "symlink"
     errorStrategy "finish"
     input:
@@ -203,7 +205,7 @@ process DEDUP_CLUMPIFY {
 
 // 3.2. FASTQC
 process FASTQC_DEDUP {
-    cpus 3
+    cpus 2
     publishDir "${projectDir}/output/qc/fastqc/dedup", mode: "symlink"
     errorStrategy "finish"
     input:
@@ -219,6 +221,7 @@ process FASTQC_DEDUP {
 // 3.3. MultiQC
 // TODO: Customize output for later aggregation
 process MULTIQC_DEDUP {
+    cpus 1
     publishDir "${projectDir}/output/qc/multiqc/dedup", mode: "symlink"
     errorStrategy "finish"
     input:
@@ -282,7 +285,7 @@ process BBDUK_RIBO_INITIAL {
 
 // 4.2. FASTQC
 process FASTQC_RIBO_INITIAL {
-    cpus 3
+    cpus 2
     publishDir "${projectDir}/output/qc/fastqc/ribo_initial", mode: "symlink"
     errorStrategy "finish"
     input:
@@ -298,6 +301,7 @@ process FASTQC_RIBO_INITIAL {
 // 4.3. MultiQC
 // TODO: Customize output for later aggregation
 process MULTIQC_RIBO_INITIAL {
+    cpus 1
     publishDir "${projectDir}/output/qc/multiqc/ribo_initial", mode: "symlink"
     errorStrategy "finish"
     input:
@@ -346,7 +350,7 @@ process BBMAP_INDEX_HOST {
         ref=!{projectDir}/!{reference}
         cp ${ref} ref_index/host_ref.fasta.gz
         cd ref_index
-        bbmap.sh ref=host_ref.fasta.gz -Xmx23g
+        bbmap.sh ref=host_ref.fasta.gz -Xmx23g t=!{task.cpus}
         '''
 }
 
@@ -381,7 +385,7 @@ process BBMAP_HOST_DEPLETION {
 
 // 5.3. FASTQC
 process FASTQC_HOST {
-    cpus 3
+    cpus 2
     publishDir "${projectDir}/output/qc/fastqc/host", mode: "symlink"
     errorStrategy "finish"
     input:
@@ -397,6 +401,7 @@ process FASTQC_HOST {
 // 5.4. MultiQC
 // TODO: Customize output for later aggregation
 process MULTIQC_HOST {
+    cpus 1
     publishDir "${projectDir}/output/qc/multiqc/host", mode: "symlink"
     errorStrategy "finish"
     input:
@@ -435,6 +440,171 @@ workflow {
     // TODO: Collate QC
 }
 
+/****************************************
+| 6. HUMAN VIRUS DETECTION WITH BOWTIE2 |
+****************************************/
+
+// TODO: Write processes for Bowtie2 index construction, alignment, data parsing
+// TODO: Write workflow
+
+//workflow MAP_HUMAN_VIRUSES {
+//    take:
+//        host_ch
+//    main:
+//        ...
+//    emit:
+//        data_virus = bowtie2_ch[0]
+//        data_novirus = bowtie2_ch[1]
+//        fastqc = fastqc_virus_ch
+//        multiqc_report = multiqc_virus_ch[0]
+//        multiqc_data = multiqc_virus_ch[1]
+//}
+
+/*****************************
+| 7. SECONDARY RIBODEPLETION |
+*****************************/
+
+// 7.1. Secondary detection and removal of ribosomal reads
+// NB: Using more liberal parameters here since very high specificity less important
+// TODO: Adjust input structure after writing section 6
+process BBDUK_RIBO_SECONDARY {
+    cpus 16
+    publishDir "${projectDir}/ribo_secondary", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(reads)
+        val ribo_ref
+    output:
+        tuple val(sample), path("${sample}_bbduk_noribo_{1,2}.fastq.gz"), path("${sample}_bbduk_ribo_{1,2}.fastq.gz"), path("${sample}_bbduk.stats.txt")
+    shell:
+        '''
+        # Define input/output
+        in1=!{reads[0]}
+        in2=!{reads[1]}
+        op1=!{sample}_bbduk_noribo_1.fastq.gz
+        op2=!{sample}_bbduk_noribo_2.fastq.gz
+        of1=!{sample}_bbduk_ribo_1.fastq.gz
+        of2=!{sample}_bbduk_ribo_2.fastq.gz
+        stats=!{sample}_bbduk.stats.txt
+        ref=!{projectDir}/!{ribo_ref}
+        io="in=${in1} in2=${in2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats}"
+        # Define parameters
+        par="minkmerfraction=0.4 k=27 t=!{task.cpus}"
+        # Execute
+        bbduk.sh ${io} ${par}
+        '''
+}
+
+// 7.2. FASTQC
+process FASTQC_RIBO_SECONDARY {
+    cpus 2
+    publishDir "${projectDir}/output/qc/fastqc/ribo_secondary", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
+    output:
+        path("${sample}_bbduk_noribo_{1,2}_fastqc.{zip,html}")
+    shell:
+        '''
+        fastqc -t !{task.cpus} !{reads_noribo}
+        '''
+}
+
+// 7.3. MultiQC
+// TODO: Customize output for later aggregation
+process MULTIQC_RIBO_SECONDARY {
+    cpus 1
+    publishDir "${projectDir}/output/qc/multiqc/ribo_secondary", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        path("*")
+    output:
+        path("multiqc_report.html")
+        path("multiqc_data")
+    shell:
+        '''
+        multiqc .
+        '''
+}
+
+workflow REMOVE_RIBO_SECONDARY {
+    take:
+        novirus_ch
+    main:
+        ribo_ch = BBDUK_RIBO_SECONDARY(novirus_ch, params.ribo_ref)
+        fastqc_ribo_ch = FASTQC_RIBO_SECONDARY(ribo_ch)
+        multiqc_ribo_ch = MULTIQC_RIBO_SECONDARY(fastqc_ribo_ch.collect().ifEmpty([]))
+    emit:
+        data = ribo_ch
+        fastqc = fastqc_ribo_ch
+        multiqc_report = multiqc_ribo_ch[0]
+        multiqc_data = multiqc_ribo_ch[1]
+}
+
+/**************************************
+| 8. TAXONOMIC ASSIGNMENT WITH KRAKEN |
+**************************************/
+
+// 8.1. Merge overlapping read pairs with BBMerge
+// TODO: Consider enabling trimming
+process MERGE_READS {
+    cpus 16
+    publishDir "${projectDir}/merged", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
+    output:
+        tuple val(sample), path("${sample}_bbmerge_{merged,unmerged_1,unmerged_2}.fastq.gz"), path("${sample}_bbmerge_stats.txt")
+    shell:
+        '''
+        # Define input/output
+        in1=!{reads_noribo[0]}
+        in2=!{reads_noribo[1]}
+        ou1=!{sample}_bbmerge_unmerged_1.fastq.gz
+        ou2=!{sample}_bbmerge_unmerged_2.fastq.gz
+        om=!{sample}_bbmerge_merged.fastq.gz
+        stats=!{sample}_bbmerge_stats.txt
+        io="in=${in1} in2=${in2} out=${om} outu=${ou1} outu21=${ou2} ihist=${stats}"
+        # Define parameters
+        # Execute
+        bbduk.sh ${io} ${par}
+        '''
+}
+
+// 8.2. Perform taxonomic assignment with Kraken2
+// TODO: Check & update unclassified_out file configuration
+process KRAKEN {
+    cpus 16
+    publishDir "${projectDir}/kraken", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(reads), path(stats)
+        val db_path
+    output:
+        tuple val(sample), path("{sample}_{merged,unmerged}.output"), path("${sample}_{merged,unmerged}.report"), path("${sample}_{merged,unmerged}_unclassified.fastq.gz")
+    shell:
+        '''
+        # Define input/output
+        db=!{projectDir}/!{db_path}
+        in_merged=!{reads[0]}
+        in_unmerged_1=!{reads[1]}
+        in_unmerged_2=!{reads[2]}
+        out_unmerged=!{sample}_unmerged.output
+        out_merged=!{sample}_merged.output
+        report_unmerged=!{sample}_unmerged.report
+        report_merged=!{sample}_merged.report
+        unc_unmerged=!{sample}_unmerged_unclassified.fastq.gz
+        unc_merged=!{sample}_merged_unclassified.fastq.gz
+        io_merged="--output ${out_merged} --report ${report_merged} --unclassified-out ${unc_merged} ${in_merged}"
+        io_unmerged="--output ${out_unmerged} --report ${report_unmerged} --unclassified-out ${unc_unmerged} --paired ${in_unmerged_1} ${in_unmerged_2}"
+        # Define parameters
+        par="--db ${db} --use-names --threads !{task.cpus}"
+        # Run Kraken
+        kraken2 ${par} ${io_merged}
+        kraken2 ${par} ${io_unmerged}
+        '''
+}
+
 /***************************************
 | EXTRA PROCESSES, NOT YET IN PIPELINE |
 ***************************************/
@@ -444,81 +614,6 @@ workflow {
 //    kraken_ch = KRAKEN(dedup_pre_ch, params.kraken_db)
 //    filter_ch = EXTRACT_VIRAL_HITS(kraken_ch, params.script_dir, params.virus_db)
 //    // X. QC
-//}
-
-process KRAKEN {
-    cpus 16
-    publishDir "${projectDir}/kraken", mode: "symlink"
-    errorStrategy "finish"
-    input:
-        tuple val(sample), path(unmerged_noribo_1), path(unmerged_noribo_2), path(unmerged_ribo_1), path(unmerged_ribo_2), path(merged_noribo), path(merged_ribo)
-        val db_path
-    output:
-        tuple val(sample), path("${sample}_ribo.output"), path("${sample}_noribo.output")
-    shell:
-        '''
-        # Define input/output
-        db=!{projectDir}/!{db_path}
-        out_unmerged_noribo=!{sample}_unmerged_noribo.output
-        out_unmerged_ribo=!{sample}_unmerged_ribo.output
-        out_merged_noribo=!{sample}_merged_noribo.output
-        out_merged_ribo=!{sample}_merged_ribo.output
-        io_unmerged_noribo="--paired !{unmerged_noribo_1} !{unmerged_noribo_2}"
-        io_unmerged_ribo="--paired !{unmerged_ribo_1} !{unmerged_ribo_2}"
-        io_merged_noribo="!{merged_noribo}"
-        io_merged_ribo="!{merged_ribo}"
-        # Define parameters
-        par="--db ${db} --use-names --threads !{task.cpus}"
-        # Run Kraken
-        kraken2 ${par} ${io_unmerged_noribo} > ${out_unmerged_noribo}
-        kraken2 ${par} ${io_unmerged_ribo} > ${out_unmerged_ribo}
-        kraken2 ${par} ${io_merged_noribo} > ${out_merged_noribo}
-        kraken2 ${par} ${io_merged_ribo} > ${out_merged_ribo}
-        # Concatenate
-        out_noribo=!{sample}_noribo.output
-        out_ribo=!{sample}_ribo.output
-        cat ${out_unmerged_noribo} ${out_merged_noribo} > ${out_noribo}
-        cat ${out_unmerged_ribo} ${out_merged_ribo} > ${out_ribo}
-        # Cleanup
-        rm ${out_unmerged_noribo} ${out_unmerged_ribo} ${out_merged_noribo} ${out_merged_ribo}
-        '''
-}
-//process KRAKEN {
-//    cpus 16
-//    publishDir "${projectDir}/kraken", mode: "symlink"
-//    errorStrategy "finish"
-//    input:
-//        tuple val(sample), path(unmerged_noribo_1), path(unmerged_noribo_2), path(unmerged_ribo_1), path(unmerged_ribo_2), path(merged_noribo), path(merged_ribo)
-//        val db_path
-//    output:
-//        tuple val(sample), path("${sample}_ribo.output.gz"), path("${sample}_noribo.output.gz")
-//    shell:
-//        '''
-//        # Define input/output
-//        db=!{projectDir}/!{db_path}
-//        out_unmerged_noribo=!{sample}_unmerged_noribo.output.gz
-//        out_unmerged_ribo=!{sample}_unmerged_ribo.output.gz
-//        out_merged_noribo=!{sample}_merged_noribo.output.gz
-//        out_merged_ribo=!{sample}_merged_ribo.output.gz
-//        io_unmerged_noribo="--paired !{unmerged_noribo_1} !{unmerged_noribo_2}"
-//        io_unmerged_ribo="--paired !{unmerged_ribo_1} !{unmerged_ribo_2}"
-//        io_merged_noribo="!{merged_noribo}"
-//        io_merged_ribo="!{merged_ribo}"
-//        # Define parameters
-//        par="--db ${db} --use-names --threads !{task.cpus}"
-//        # Run Kraken
-//        kraken2 ${par} ${io_unmerged_noribo} | gzip > ${out_unmerged_noribo}
-//        kraken2 ${par} ${io_unmerged_ribo} | gzip > ${out_unmerged_ribo}
-//        kraken2 ${par} ${io_merged_noribo} | gzip > ${out_merged_noribo}
-//        kraken2 ${par} ${io_merged_ribo} | gzip > ${out_merged_ribo}
-//        # Concatenate
-//        out_noribo=!{sample}_noribo.output.gz
-//        out_ribo=!{sample}_ribo.output.gz
-//        cat ${out_unmerged_noribo} ${out_merged_noribo} > ${out_noribo}
-//        cat ${out_unmerged_ribo} ${out_merged_ribo} > ${out_ribo}
-//        # Cleanup
-//        rm ${out_unmerged_noribo} ${out_unmerged_ribo} ${out_merged_noribo} ${out_merged_ribo}
-//        '''
 //}
 
 /* TOO SLOW - NEED TO OPTIMIZE */
