@@ -1,0 +1,12 @@
+name: bowtie-env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - perl>=5.32
+  - ete3
+  - bowtie2
+  - ncbi-genome-download
+  - blast
+  - biopython

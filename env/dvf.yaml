@@ -1,0 +1,8 @@
+name: dvf-env
+channels:
+  - HCC
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - deepvirfinder

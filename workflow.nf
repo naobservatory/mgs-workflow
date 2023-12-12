@@ -257,7 +257,7 @@ workflow DEDUP_READS {
 // NB: Using quite stringent parameters here to reduce false positives
 process BBDUK_RIBO_INITIAL {
     cpus 16
-    publishDir "${projectDir}/ribo_initial", mode: "symlink"
+    publishDir "${projectDir}/output/ribo_initial", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads)
@@ -277,7 +277,7 @@ process BBDUK_RIBO_INITIAL {
         ref=!{projectDir}/!{ribo_ref}
         io_unmerged="in=${unmerged1} in2=${unmerged2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats_unmerged}"
         # Define parameters
-        par="minkmerfraction=0.5 k=43 t=!{task.cpus}"
+        par="minkmerfraction=0.6 k=43 t=!{task.cpus}"
         # Execute
         bbduk.sh ${io_unmerged} ${par}
         '''
@@ -368,8 +368,8 @@ process BBMAP_HOST_DEPLETION {
     shell:
         '''
         # Define input/output
-        unmerged1=!{reads_noribo[1]}
-        unmerged2=!{reads_noribo[2]}
+        unmerged1=!{reads_noribo[0]}
+        unmerged2=!{reads_noribo[1]}
         op1=!{sample}_bbmap_nohost_1.fastq.gz
         op2=!{sample}_bbmap_nohost_2.fastq.gz
         of1=!{sample}_bbmap_host_1.fastq.gz
@@ -430,16 +430,6 @@ workflow REMOVE_HOST {
         multiqc_data = multiqc_host_ch[1]
 }
 
-workflow {
-    // Core pipeline
-    HANDLE_RAW_READS(libraries_ch)
-    CLEAN_READS(HANDLE_RAW_READS.out.data)
-    DEDUP_READS(CLEAN_READS.out.data)
-    //REMOVE_RIBO_INITIAL(DEDUP_READS.out.data)
-    //REMOVE_HOST(REMOVE_RIBO_INITIAL.out.data)
-    // TODO: Collate QC
-}
-
 /****************************************
 | 6. HUMAN VIRUS DETECTION WITH BOWTIE2 |
 ****************************************/
@@ -447,18 +437,78 @@ workflow {
 // TODO: Write processes for Bowtie2 index construction, alignment, data parsing
 // TODO: Write workflow
 
-//workflow MAP_HUMAN_VIRUSES {
-//    take:
-//        host_ch
-//    main:
-//        ...
-//    emit:
-//        data_virus = bowtie2_ch[0]
-//        data_novirus = bowtie2_ch[1]
-//        fastqc = fastqc_virus_ch
-//        multiqc_report = multiqc_virus_ch[0]
-//        multiqc_data = multiqc_virus_ch[1]
-//}
+// 6.1. Mask collated virus genomes
+process MASK_HV_GENOMES {
+    conda "${projectDir}/${params.env_dir}/bowtie.yaml"
+    cpus 1
+    publishDir "${projectDir}/output/hviral/index", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        path(collected_genomes)
+    output:
+        path("masked_genomes.fasta.gz")
+    shell:
+        '''
+        zcat -f !{collected_genomes} | dustmasker -out "masked_genomes.fasta" -outfmt fasta
+        sed -i '/^>/!s/[a-z]/x/g' masked_genomes.fasta
+        gzip masked_genomes.fasta
+        '''
+}
+
+// 6.2. Build Bowtie2 index from masked genomes
+process BUILD_BOWTIE2_DB {
+    conda "${projectDir}/${params.env_dir}/bowtie.yaml"
+    cpus 16
+    publishDir "${projectDir}/output/hviral/index", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        path(masked_genomes)
+    output:
+        path("bt2_hv_index") // Output directory for index files
+    shell:
+        '''
+        mkdir bt2_hv_index
+        bowtie2-build -f --threads !{task.cpus} !{masked_genomes} bt2_hv_index/hv_index
+        '''
+}
+
+// 6.3. Run Bowtie2 and return mapped HV reads
+// TODO: Return unmapped reads for downstream processing? Currently assuming these are rare enough not to matter.
+// TODO: If return unmapped reads, add FASTQC/MultiQC processes
+process RUN_BOWTIE2 {
+    conda "${projectDir}/${params.env_dir}/bowtie.yaml"
+    cpus 16
+    publishDir "${projectDir}/output/hviral", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
+        path(index_dir)
+    output:
+        tuple val(sample), path("${sample}_bowtie2_mapped.sam"), path("${sample}_bowtie2_mapped_{1,2}.fastq.gz")
+    shell:
+        '''
+        in1=!{reads_nohost[0]}
+        in2=!{reads_nohost[1]}
+        idx="!{index_dir}/hv_index"
+        sam="!{sample}_bowtie2_mapped.sam"
+        alc="!{sample}_bowtie2_mapped_%.fastq.gz"
+        io="-1 ${in1} -2 ${in2} -x ${idx} -S ${sam} --al-conc-gz ${alc}"
+        par="--threads !{task.cpus} --no-unal --no-sq --local --very-sensitive-local --score-min G,1,0 --mp 4,1"
+        bowtie2 ${par} ${io}
+        '''
+}
+
+workflow MAP_HUMAN_VIRUSES {
+    take:
+        host_ch
+    main:
+        mask_ch = MASK_HV_GENOMES("${projectDir}/${params.hv_genomes}")
+        index_ch = BUILD_BOWTIE2_DB(mask_ch)
+        bowtie2_ch = RUN_BOWTIE2(host_ch, index_ch)
+        // TODO: Add SAM output processing
+    emit:
+        data = bowtie2_ch
+}
 
 /*****************************
 | 7. SECONDARY RIBODEPLETION |
@@ -469,18 +519,18 @@ workflow {
 // TODO: Adjust input structure after writing section 6
 process BBDUK_RIBO_SECONDARY {
     cpus 16
-    publishDir "${projectDir}/ribo_secondary", mode: "symlink"
+    publishDir "${projectDir}/output/ribo_secondary", mode: "symlink"
     errorStrategy "finish"
     input:
-        tuple val(sample), path(reads)
+        tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
         val ribo_ref
     output:
         tuple val(sample), path("${sample}_bbduk_noribo_{1,2}.fastq.gz"), path("${sample}_bbduk_ribo_{1,2}.fastq.gz"), path("${sample}_bbduk.stats.txt")
     shell:
         '''
         # Define input/output
-        in1=!{reads[0]}
-        in2=!{reads[1]}
+        in1=!{reads_nohost[0]}
+        in2=!{reads_nohost[1]}
         op1=!{sample}_bbduk_noribo_1.fastq.gz
         op2=!{sample}_bbduk_noribo_2.fastq.gz
         of1=!{sample}_bbduk_ribo_1.fastq.gz
@@ -549,7 +599,7 @@ workflow REMOVE_RIBO_SECONDARY {
 // TODO: Consider enabling trimming
 process MERGE_READS {
     cpus 16
-    publishDir "${projectDir}/merged", mode: "symlink"
+    publishDir "${projectDir}/output/merged", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
@@ -564,10 +614,10 @@ process MERGE_READS {
         ou2=!{sample}_bbmerge_unmerged_2.fastq.gz
         om=!{sample}_bbmerge_merged.fastq.gz
         stats=!{sample}_bbmerge_stats.txt
-        io="in=${in1} in2=${in2} out=${om} outu=${ou1} outu21=${ou2} ihist=${stats}"
+        io="in=${in1} in2=${in2} out=${om} outu=${ou1} outu2=${ou2} ihist=${stats}"
         # Define parameters
         # Execute
-        bbduk.sh ${io} ${par}
+        bbmerge.sh ${io}
         '''
 }
 
@@ -575,13 +625,13 @@ process MERGE_READS {
 // TODO: Check & update unclassified_out file configuration
 process KRAKEN {
     cpus 16
-    publishDir "${projectDir}/kraken", mode: "symlink"
+    publishDir "${projectDir}/output/kraken", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads), path(stats)
         val db_path
     output:
-        tuple val(sample), path("{sample}_{merged,unmerged}.output"), path("${sample}_{merged,unmerged}.report"), path("${sample}_{merged,unmerged}_unclassified.fastq.gz")
+        tuple val(sample), path("${sample}_{merged,unmerged}.output"), path("${sample}_{merged,unmerged}.report"), path("${sample}_merged_unclassified.fastq.gz"), path("${sample}_unmerged_unclassified_{1,2}.fastq.gz")
     shell:
         '''
         # Define input/output
@@ -593,7 +643,7 @@ process KRAKEN {
         out_merged=!{sample}_merged.output
         report_unmerged=!{sample}_unmerged.report
         report_merged=!{sample}_merged.report
-        unc_unmerged=!{sample}_unmerged_unclassified.fastq.gz
+        unc_unmerged=!{sample}_unmerged_unclassified#.fastq.gz
         unc_merged=!{sample}_merged_unclassified.fastq.gz
         io_merged="--output ${out_merged} --report ${report_merged} --unclassified-out ${unc_merged} ${in_merged}"
         io_unmerged="--output ${out_unmerged} --report ${report_unmerged} --unclassified-out ${unc_unmerged} --paired ${in_unmerged_1} ${in_unmerged_2}"
@@ -603,6 +653,31 @@ process KRAKEN {
         kraken2 ${par} ${io_merged}
         kraken2 ${par} ${io_unmerged}
         '''
+}
+
+workflow CLASSIFY_READS {
+    take:
+        data_ch
+    main:
+        merged_ch = MERGE_READS(data_ch)
+        kraken_ch = KRAKEN(merged_ch, params.kraken_db)
+    emit:
+        data = kraken_ch
+}
+
+workflow {
+    // Preprocessing
+    HANDLE_RAW_READS(libraries_ch)
+    CLEAN_READS(HANDLE_RAW_READS.out.data)
+    DEDUP_READS(CLEAN_READS.out.data)
+    REMOVE_RIBO_INITIAL(DEDUP_READS.out.data)
+    REMOVE_HOST(REMOVE_RIBO_INITIAL.out.data)
+    REMOVE_RIBO_SECONDARY(REMOVE_HOST.out.data)
+    // TODO: Collate QC metrics from preprocessing
+    // Human viral reads
+    MAP_HUMAN_VIRUSES(REMOVE_HOST.out.data)
+    // Broad taxonomic profiling
+    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data)
 }
 
 /***************************************
