@@ -478,7 +478,7 @@ process BUILD_BOWTIE2_DB {
 process RUN_BOWTIE2 {
     conda "${projectDir}/${params.env_dir}/bowtie.yaml"
     cpus 16
-    publishDir "${projectDir}/output/hviral", mode: "symlink"
+    publishDir "${projectDir}/output/hviral/bowtie", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
@@ -498,6 +498,87 @@ process RUN_BOWTIE2 {
         '''
 }
 
+// 6.4. Merge-join deduplicated Bowtie2 output for Kraken processing
+process MERGE_JOIN_BOWTIE {
+    cpus 1
+    publishDir "${projectDir}/output/hviral/merged", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(sam_out), path(reads_out)
+        val scriptDir
+    output:
+        tuple val(sample), path("${sample}_bowtie2_mjc.fastq.gz"), path("${sample}_bowtie2_bbmerge_stats.txt")
+    shell:
+        '''
+        # Prepare input/output for bbmerge
+        in1=!{reads_out[0]}
+        in2=!{reads_out[1]}
+        ou1=!{sample}_bowtie2_bbmerge_unmerged_1.fastq.gz
+        ou2=!{sample}_bowtie2_bbmerge_unmerged_2.fastq.gz
+        om=!{sample}_bowtie2_bbmerge_merged.fastq.gz
+        stats=!{sample}_bowtie2_bbmerge_stats.txt
+        io="in=${in1} in2=${in2} out=${om} outu=${ou1} outu2=${ou2} ihist=${stats}"
+        # Execute bbmerge
+        bbmerge.sh ${io}
+        # Prepare to join unmerged read pairs
+        script_path=!{projectDir}/!{scriptDir}/join_fastq.py
+        oj=!{sample}_bowtie2_bbmerge_unmerged_joined.fastq.gz
+        # Join unmerged read pairs
+        ${script_path} ${ou1} ${ou2} ${oj}
+        # Concatenate single output file
+        oo=!{sample}_bowtie2_mjc.fastq.gz
+        cat ${om} ${oj} > ${oo}
+        '''
+}
+
+// 6.5. Perform taxonomic assignment with Kraken2
+process KRAKEN_BOWTIE {
+    cpus 16
+    publishDir "${projectDir}/output/hviral/kraken", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(reads), path(stats) // Single input file, merged, joined & concatenated
+        val db_path
+    output:
+        tuple val(sample), path("${sample}_bowtie2_kraken.output"), path("${sample}_bowtie2_kraken.report")
+    shell:
+        '''
+        # Define input/output
+        db=!{projectDir}/!{db_path}
+        in=!{reads}
+        out=!{sample}_bowtie2_kraken.output
+        report=!{sample}_bowtie2_kraken.report
+        io="--output ${out} --report ${report} ${in}"
+        # Define parameters
+        par="--db ${db} --use-names --threads !{task.cpus}"
+        # Run Kraken
+        kraken2 ${par} ${io}
+        '''
+}
+
+// 6.6. Process Kraken2 output and identify HV- and non-HV-assigned reads
+process PROCESS_KRAKEN_BOWTIE {
+    cpus 1
+    publishDir "${projectDir}/output/hviral/kraken", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(output), path(report)
+        val scriptDir
+        val nodes_path
+        val hv_path
+    output:
+        tuple val(sample), path("${sample}_bowtie2_kraken_processed.tsv")
+    shell:
+        '''
+        in=!{output}
+        out=!{sample}_bowtie2_kraken_processed.tsv
+        nodes=!{projectDir}/!{nodes_path}
+        hv=!{projectDir}/!{hv_path}
+        script_path=!{projectDir}/!{scriptDir}/process_kraken_hv.py
+        ${script_path} ${in} ${hv} ${nodes} ${out}
+        '''
+}
+
 workflow MAP_HUMAN_VIRUSES {
     take:
         host_ch
@@ -505,6 +586,9 @@ workflow MAP_HUMAN_VIRUSES {
         mask_ch = MASK_HV_GENOMES("${projectDir}/${params.hv_genomes}")
         index_ch = BUILD_BOWTIE2_DB(mask_ch)
         bowtie2_ch = RUN_BOWTIE2(host_ch, index_ch)
+        merge_ch = MERGE_JOIN_BOWTIE(bowtie2_ch, params.script_dir)
+        kraken_ch = KRAKEN_BOWTIE(merge_ch, params.kraken_db)
+        kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, params.script_dir, params.nodes, params.virus_db)
         // TODO: Add SAM output processing
     emit:
         data = bowtie2_ch
@@ -595,19 +679,19 @@ workflow REMOVE_RIBO_SECONDARY {
 | 8. TAXONOMIC ASSIGNMENT WITH KRAKEN |
 **************************************/
 
-// 8.1. Merge overlapping read pairs with BBMerge
-// TODO: Consider enabling trimming
-process MERGE_READS {
-    cpus 16
+// 8.1. Merge-join reads for Kraken processing
+process MERGE_JOIN {
+    cpus 1
     publishDir "${projectDir}/output/merged", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
+        val scriptDir
     output:
-        tuple val(sample), path("${sample}_bbmerge_{merged,unmerged_1,unmerged_2}.fastq.gz"), path("${sample}_bbmerge_stats.txt")
+        tuple val(sample), path("${sample}_mjc.fastq.gz"), path("${sample}_bbmerge_stats.txt")
     shell:
         '''
-        # Define input/output
+        # Prepare input/output for bbmerge
         in1=!{reads_noribo[0]}
         in2=!{reads_noribo[1]}
         ou1=!{sample}_bbmerge_unmerged_1.fastq.gz
@@ -615,9 +699,16 @@ process MERGE_READS {
         om=!{sample}_bbmerge_merged.fastq.gz
         stats=!{sample}_bbmerge_stats.txt
         io="in=${in1} in2=${in2} out=${om} outu=${ou1} outu2=${ou2} ihist=${stats}"
-        # Define parameters
-        # Execute
+        # Execute bbmerge
         bbmerge.sh ${io}
+        # Prepare to join unmerged read pairs
+        script_path=!{projectDir}/!{scriptDir}/join_fastq.py
+        oj=!{sample}_bbmerge_unmerged_joined.fastq.gz
+        # Join unmerged read pairs
+        ${script_path} ${ou1} ${ou2} ${oj}
+        # Concatenate single output file
+        oo=!{sample}_mjc.fastq.gz
+        cat ${om} ${oj} > ${oo}
         '''
 }
 
@@ -631,27 +722,46 @@ process KRAKEN {
         tuple val(sample), path(reads), path(stats)
         val db_path
     output:
-        tuple val(sample), path("${sample}_{merged,unmerged}.output"), path("${sample}_{merged,unmerged}.report"), path("${sample}_merged_unclassified.fastq.gz"), path("${sample}_unmerged_unclassified_{1,2}.fastq.gz")
+        tuple val(sample), path("${sample}.output"), path("${sample}.report"), path("${sample}_unclassified.fastq.gz")
     shell:
         '''
         # Define input/output
         db=!{projectDir}/!{db_path}
-        in_merged=!{reads[0]}
-        in_unmerged_1=!{reads[1]}
-        in_unmerged_2=!{reads[2]}
-        out_unmerged=!{sample}_unmerged.output
-        out_merged=!{sample}_merged.output
-        report_unmerged=!{sample}_unmerged.report
-        report_merged=!{sample}_merged.report
-        unc_unmerged=!{sample}_unmerged_unclassified#.fastq.gz
-        unc_merged=!{sample}_merged_unclassified.fastq.gz
-        io_merged="--output ${out_merged} --report ${report_merged} --unclassified-out ${unc_merged} ${in_merged}"
-        io_unmerged="--output ${out_unmerged} --report ${report_unmerged} --unclassified-out ${unc_unmerged} --paired ${in_unmerged_1} ${in_unmerged_2}"
+        in=!{reads}
+        out=!{sample}.output
+        report=!{sample}.report
+        unc=!{sample}_unclassified.fastq
+        io="--output ${out} --report ${report} --unclassified-out ${unc} ${in}"
         # Define parameters
         par="--db ${db} --use-names --threads !{task.cpus}"
         # Run Kraken
-        kraken2 ${par} ${io_merged}
-        kraken2 ${par} ${io_unmerged}
+        kraken2 ${par} ${io}
+        # Gzip output
+        gzip ${unc}
+        '''
+}
+
+process BRACKEN_DOMAINS {
+    cpus 1
+    conda "${projectDir}/${params.env_dir}/bracken.yaml"
+    publishDir "${projectDir}/output/bracken", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(output), path(report), path(unc_reads)
+        val db_path
+    output:
+        tuple val(sample), path("${sample}.bracken")
+    shell:
+        '''
+        # Define input/output
+        db=!{projectDir}/!{db_path}
+        in=!{report}
+        out=!{sample}.bracken
+        io="-d ${db} -i ${in} -o ${out}"
+        # Define parameters
+        par="-l D"
+        # Run Bracken
+        bracken ${io} ${par}
         '''
 }
 
@@ -659,10 +769,12 @@ workflow CLASSIFY_READS {
     take:
         data_ch
     main:
-        merged_ch = MERGE_READS(data_ch)
+        merged_ch = MERGE_JOIN(data_ch, params.script_dir)
         kraken_ch = KRAKEN(merged_ch, params.kraken_db)
+        bracken_ch = BRACKEN_DOMAINS(kraken_ch, params.kraken_db)
     emit:
-        data = kraken_ch
+        kraken = kraken_ch
+        bracken = bracken_ch
 }
 
 workflow {
