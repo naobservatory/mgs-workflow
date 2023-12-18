@@ -101,7 +101,6 @@ workflow HANDLE_RAW_READS {
 // 2.1. Trim & filter by length & quality
 // NB: Does not include deduplication
 // TODO: Investigate alternative tools & parameter settings
-// TODO: Restore read merging later in pipeline (before Kraken2)
 process PREPROCESS_FASTP {
     cpus 16
     publishDir "${projectDir}/output/cleaned", mode: "symlink"
@@ -121,7 +120,7 @@ process PREPROCESS_FASTP {
         oh=!{sample}_fastp.html
         ad=!{projectDir}/!{adapters}
         io="--in1 !{read1} --in2 !{read2} --out1 ${o1} --out2 ${o2} --failed_out ${of} --html ${oh} --json ${oj} --adapter_fasta ${ad}"
-        par="--cut_front --cut_tail --correction --detect_adapter_for_pe --trim_poly_x --average_qual 20 --verbose --dont_eval_duplication --thread !{task.cpus}"
+        par="--cut_front --cut_tail --correction --detect_adapter_for_pe --trim_poly_x --cut_mean_quality 25 --average_qual 25 --qualified_quality_phred 20 --verbose --dont_eval_duplication --thread !{task.cpus} --low_complexity_filter"
         # Execute
         fastp ${io} ${par}
         '''
@@ -579,6 +578,76 @@ process PROCESS_KRAKEN_BOWTIE {
         '''
 }
 
+// 6.7. Process Bowtie2 SAM output
+// NB: Currently paired, need to update if switch to merged
+process PROCESS_BOWTIE_SAM {
+    cpus 1
+    publishDir "${projectDir}/output/hviral/bowtie", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(sam), path(reads)
+        val scriptDir
+        val genomeid_taxid_map_path
+    output:
+        tuple val(sample), path("${sample}_bowtie2_sam_processed.tsv")
+    shell:
+        '''
+        in=!{sam}
+        out=!{sample}_bowtie2_sam_processed.tsv
+        map=!{projectDir}/!{genomeid_taxid_map_path}
+        script_path=!{projectDir}/!{scriptDir}/process_sam_hv.py
+        ${script_path} ${in} ${map} ${out}
+        '''
+}
+
+// 6.8. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
+process MERGE_SAM_KRAKEN {
+    cpus 1
+    publishDir "${projectDir}/output/hviral/hits", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(kraken_processed), path(sam_processed)
+    output:
+        path("${sample}_hv_hits_putative.tsv")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        sam <- read_tsv("!{sam_processed}", show_col_types = FALSE)
+        krk <- read_tsv("!{kraken_processed}", show_col_types = FALSE)
+        mrg <- sam %>% rename(seq_id = query_name) %>% inner_join(krk, by="seq_id") %>%
+            mutate(adj_score_fwd = best_alignment_score_fwd/log(query_len_fwd),
+                   adj_score_rev = best_alignment_score_rev/log(query_len_rev),
+                   sample="!{sample}")
+        cat(nrow(sam), nrow(krk), nrow(mrg))
+        write_tsv(mrg, "!{sample}_hv_hits_putative.tsv")
+        '''
+}
+
+// 6.9. Collapse outputs from different samples into one TSV
+process MERGE_SAMPLES_HV {
+    cpus 1
+    publishDir "${projectDir}/output/hviral/hits", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        path(tsvs)
+    output:
+        path("hv_hits_putative.tsv")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        in_paths <- str_split("!{tsvs}", " ")[[1]]
+        print(in_paths)
+        tabs <- lapply(in_paths, function(t) read_tsv(t, col_names = TRUE, cols(.default="c")))
+        for (t in tabs) print(dim(t))
+        tab_out <- bind_rows(tabs)
+        print(dim(tab_out))
+        sapply(tabs, nrow) %>% sum %>% print
+        write_tsv(tab_out, "hv_hits_putative.tsv")
+        '''
+}
+
 workflow MAP_HUMAN_VIRUSES {
     take:
         host_ch
@@ -589,7 +658,10 @@ workflow MAP_HUMAN_VIRUSES {
         merge_ch = MERGE_JOIN_BOWTIE(bowtie2_ch, params.script_dir)
         kraken_ch = KRAKEN_BOWTIE(merge_ch, params.kraken_db)
         kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, params.script_dir, params.nodes, params.virus_db)
-        // TODO: Add SAM output processing
+        bowtie2_processed_ch = PROCESS_BOWTIE_SAM(bowtie2_ch, params.script_dir, params.genomeid_map)
+        merged_input_ch = kraken_processed_ch.combine(bowtie2_processed_ch, by: 0)
+        merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
+        merged_ch_2 = MERGE_SAMPLES_HV(merged_ch.collect().ifEmpty([]))
     emit:
         data = bowtie2_ch
 }
