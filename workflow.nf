@@ -62,13 +62,12 @@ process FASTQC_CONCAT {
 process MULTIQC_CONCAT {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/raw_concat", mode: "symlink"
-    publishDir "${projectDir}/output/results/multiqc/raw_concat", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
     output:
         path("multiqc_report.html")
-        path("multiqc_data")
+        tuple val("raw_concat"), path("multiqc_data")
     shell:
         '''
         multiqc .
@@ -147,13 +146,12 @@ process FASTQC_CLEANED {
 process MULTIQC_CLEANED {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/cleaned", mode: "symlink"
-    publishDir "${projectDir}/output/results/multiqc/cleaned", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
     output:
         path("multiqc_report.html")
-        path("multiqc_data")
+        tuple val("cleaned"), path("multiqc_data")
     shell:
         '''
         multiqc .
@@ -224,13 +222,12 @@ process FASTQC_DEDUP {
 process MULTIQC_DEDUP {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/dedup", mode: "symlink"
-    publishDir "${projectDir}/output/results/multiqc/dedup", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
     output:
         path("multiqc_report.html")
-        path("multiqc_data")
+        tuple val("dedup"), path("multiqc_data")
     shell:
         '''
         multiqc .
@@ -305,13 +302,12 @@ process FASTQC_RIBO_INITIAL {
 process MULTIQC_RIBO_INITIAL {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/ribo_initial", mode: "symlink"
-    publishDir "${projectDir}/output/results/multiqc/ribo_initial", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
     output:
         path("multiqc_report.html")
-        path("multiqc_data")
+        tuple val("ribo_initial"), path("multiqc_data")
     shell:
         '''
         multiqc .
@@ -406,13 +402,12 @@ process FASTQC_HOST {
 process MULTIQC_HOST {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/host", mode: "symlink"
-    publishDir "${projectDir}/output/results/multiqc/host", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
     output:
         path("multiqc_report.html")
-        path("multiqc_data")
+        tuple val("host"), path("multiqc_data")
     shell:
         '''
         multiqc .
@@ -727,13 +722,12 @@ process FASTQC_RIBO_SECONDARY {
 process MULTIQC_RIBO_SECONDARY {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/ribo_secondary", mode: "symlink"
-    publishDir "${projectDir}/output/results/multiqc/ribo_secondary", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
     output:
         path("multiqc_report.html")
-        path("multiqc_data")
+        tuple val("ribo_secondary"), path("multiqc_data")
     shell:
         '''
         multiqc .
@@ -903,6 +897,155 @@ workflow CLASSIFY_READS {
         bracken = merged_ch_2
 }
 
+/*********************************
+| 9. COLLATE AND PROCESS RESULTS |
+*********************************/
+
+// 9.1. Extract MultiQC data into more usable forms
+process SUMMARIZE_MULTIQC_SINGLE {
+    cpus 1
+    publishDir "${projectDir}/output/qc/multiqc/summaries", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(stage), path(multiqc_data)
+        val(scriptDir)
+    output:
+        path("${stage}_qc_basic_stats.tsv")
+        path("${stage}_qc_adapter_stats.tsv")
+        path("${stage}_qc_quality_base_stats.tsv")
+        path("${stage}_qc_quality_sequence_stats.tsv")
+    shell:
+        '''
+        script_path=!{projectDir}/!{scriptDir}/summarize-multiqc-single.R
+        ${script_path} -i !{multiqc_data} -s !{stage} -o ${PWD}
+        '''
+}
+
+// 9.2. Combine MultiQC summary files across workflow stages
+process MERGE_MULTIQC {
+    cpus 1
+    publishDir "${projectDir}/output/qc/multiqc/summaries", mode: "symlink"
+    publishDir "${projectDir}/output/results", mode: "copy", overwrite: "true"
+    errorStrategy "finish"
+    input:
+        path(basic_stats_tsvs)
+        path(adapter_tsvs)
+        path(base_quality_tsvs)
+        path(sequence_quality_tsvs)
+    output:
+        path("qc_basic_stats.tsv")
+        path("qc_adapter_stats.tsv")
+        path("qc_quality_base_stats.tsv")
+        path("qc_quality_sequence_stats.tsv")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        # Import data
+        in_paths_basic <- str_split("!{basic_stats_tsvs}", " ")[[1]]
+        in_paths_adapt <- str_split("!{adapter_tsvs}", " ")[[1]]
+        in_paths_qbase <- str_split("!{base_quality_tsvs}", " ")[[1]]
+        in_paths_qseqs <- str_split("!{sequence_quality_tsvs}", " ")[[1]]
+        tabs_basic <- lapply(in_paths_basic, function(t) read_tsv(t, col_names = TRUE, cols(.default="c")))
+        tabs_adapt <- lapply(in_paths_adapt, function(t) read_tsv(t, col_names = TRUE, cols(.default="c")))
+        tabs_qbase <- lapply(in_paths_qbase, function(t) read_tsv(t, col_names = TRUE, cols(.default="c")))
+        tabs_qseqs <- lapply(in_paths_qseqs, function(t) read_tsv(t, col_names = TRUE, cols(.default="c")))
+        # Bind rows
+        tab_basic_out <- bind_rows(tabs_basic)
+        tab_adapt_out <- bind_rows(tabs_adapt)
+        tab_qbase_out <- bind_rows(tabs_qbase)
+        tab_qseqs_out <- bind_rows(tabs_qseqs)
+        # Write output
+        write_tsv(tab_basic_out, "qc_basic_stats.tsv")
+        write_tsv(tab_adapt_out, "qc_adapter_stats.tsv")
+        write_tsv(tab_qbase_out, "qc_quality_base_stats.tsv")
+        write_tsv(tab_qseqs_out, "qc_quality_sequence_stats.tsv")
+        '''
+}
+
+// 9.3. Summarize taxonomic composition from Bracken and MultiQC output
+process SUMMARIZE_COMPOSITION {
+    cpus 1
+    publishDir "${projectDir}/output/taxonomy/results", mode: "symlink"
+    publishDir "${projectDir}/output/results", mode: "copy", overwrite: "true"
+    errorStrategy "finish"
+    input:
+        path(bracken_merged)
+        path(multiqc_basic_merged)
+    output:
+        path("taxonomic_composition.tsv")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        # Import data
+        bracken <- read_tsv("!{bracken_merged}", show_col_types = FALSE)
+        basic   <- read_tsv("!{multiqc_basic_merged}", show_col_types = FALSE)
+        total_assigned <- bracken %>% group_by(sample) %>% summarize(
+          name = "Total",
+          kraken_assigned_reads = sum(kraken_assigned_reads),
+          added_reads = sum(added_reads),
+          new_est_reads = sum(new_est_reads),
+          fraction_total_reads = sum(fraction_total_reads)
+        )
+        bracken_spread <- bracken %>% select(name, sample, new_est_reads) %>%
+          mutate(name = tolower(name)) %>%
+          pivot_wider(id_cols = "sample", names_from = "name", values_from = "new_est_reads")
+        # Count reads
+        read_counts_preproc <- basic %>% select(sample, stage, n_read_pairs) %>%
+          pivot_wider(id_cols = c("sample"), names_from="stage", values_from="n_read_pairs")
+        read_counts <- read_counts_preproc %>%
+          inner_join(total_assigned %>% select(sample, new_est_reads), by = "sample") %>%
+          rename(assigned = new_est_reads) %>%
+          inner_join(bracken_spread, by="sample")
+        # Assess composition
+        read_comp <- transmute(read_counts, sample=sample,
+                               n_filtered = raw_concat-cleaned,
+                               n_duplicate = cleaned-dedup,
+                               n_ribosomal = (dedup-ribo_initial) + (host-ribo_secondary),
+                               n_unassigned = ribo_secondary-assigned,
+                               n_bacterial = bacteria,
+                               n_archaeal = archaea,
+                               n_viral = viruses,
+                               n_human = (ribo_initial-host) + eukaryota)
+        read_comp_long <- pivot_longer(read_comp, -(sample), names_to = "classification",
+                                       names_prefix = "n_", values_to = "n_reads") %>%
+          mutate(classification = fct_inorder(str_to_sentence(classification))) %>%
+          group_by(sample) %>% mutate(p_reads = n_reads/sum(n_reads))
+        # Write output
+        write_tsv(read_comp_long, "taxonomic_composition.tsv")
+        '''
+}
+
+workflow PROCESS_OUTPUT {
+    take:
+        multiqc_data_raw_concat
+        multiqc_data_cleaned
+        multiqc_data_dedup
+        multiqc_data_ribo_initial
+        multiqc_data_host
+        multiqc_data_ribo_secondary
+        bracken_merged
+    main:
+        // Summarize each MultiQC directory separately
+        multiqc_single = multiqc_data_raw_concat.mix(multiqc_data_cleaned, multiqc_data_dedup, multiqc_data_ribo_initial, multiqc_data_host, multiqc_data_ribo_secondary)
+        multiqc_summ   = SUMMARIZE_MULTIQC_SINGLE(multiqc_single, params.script_dir)
+        multiqc_basic = multiqc_summ[0].collect().ifEmpty([])
+        multiqc_adapt = multiqc_summ[1].collect().ifEmpty([])
+        multiqc_qbase = multiqc_summ[2].collect().ifEmpty([])
+        multiqc_qseqs = multiqc_summ[3].collect().ifEmpty([])
+        // Merge MultiQC outputs
+        multiqc_merged = MERGE_MULTIQC(multiqc_basic, multiqc_adapt, multiqc_qbase, multiqc_qseqs)
+        // Summarize taxonomic composition
+        taxo = SUMMARIZE_COMPOSITION(bracken_merged, multiqc_merged[0])
+    emit:
+        basic = multiqc_merged[0]
+        adapt = multiqc_merged[1]
+        qbase = multiqc_merged[2]
+        qseqs = multiqc_merged[3]
+        composition = taxo
+}
+
 workflow {
     // Preprocessing
     HANDLE_RAW_READS(libraries_ch)
@@ -916,4 +1059,6 @@ workflow {
     MAP_HUMAN_VIRUSES(REMOVE_HOST.out.data)
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data)
+    // Process output
+    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HOST.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken)
 }
