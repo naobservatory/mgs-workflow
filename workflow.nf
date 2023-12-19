@@ -62,6 +62,7 @@ process FASTQC_CONCAT {
 process MULTIQC_CONCAT {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/raw_concat", mode: "symlink"
+    publishDir "${projectDir}/output/results/multiqc/raw_concat", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
@@ -103,7 +104,7 @@ workflow HANDLE_RAW_READS {
 // TODO: Investigate alternative tools & parameter settings
 process PREPROCESS_FASTP {
     cpus 16
-    publishDir "${projectDir}/output/cleaned", mode: "symlink"
+    publishDir "${projectDir}/output/preprocess/cleaned", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(read1), path(read2)
@@ -146,6 +147,7 @@ process FASTQC_CLEANED {
 process MULTIQC_CLEANED {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/cleaned", mode: "symlink"
+    publishDir "${projectDir}/output/results/multiqc/cleaned", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
@@ -181,7 +183,7 @@ workflow CLEAN_READS {
 // TODO: Investigate alternative tools & approaches
 process DEDUP_CLUMPIFY {
     cpus 16
-    publishDir "${projectDir}/output/dedup", mode: "symlink"
+    publishDir "${projectDir}/output/preprocess/dedup", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads), path(failed), path(reports)
@@ -222,6 +224,7 @@ process FASTQC_DEDUP {
 process MULTIQC_DEDUP {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/dedup", mode: "symlink"
+    publishDir "${projectDir}/output/results/multiqc/dedup", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
@@ -256,7 +259,7 @@ workflow DEDUP_READS {
 // NB: Using quite stringent parameters here to reduce false positives
 process BBDUK_RIBO_INITIAL {
     cpus 16
-    publishDir "${projectDir}/output/ribo_initial", mode: "symlink"
+    publishDir "${projectDir}/output/preprocess/ribo_initial", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads)
@@ -302,6 +305,7 @@ process FASTQC_RIBO_INITIAL {
 process MULTIQC_RIBO_INITIAL {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/ribo_initial", mode: "symlink"
+    publishDir "${projectDir}/output/results/multiqc/ribo_initial", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
@@ -337,7 +341,7 @@ workflow REMOVE_RIBO_INITIAL {
 // TODO: Replace with updated masked human genome
 process BBMAP_INDEX_HOST {
     cpus 16
-    publishDir "${projectDir}/output/host/index", mode: "symlink"
+    publishDir "${projectDir}/output/preprocess/host/index", mode: "symlink"
     errorStrategy "finish"
     input:
         val(reference)
@@ -357,7 +361,7 @@ process BBMAP_INDEX_HOST {
 // TODO: Consider loosening parameters
 process BBMAP_HOST_DEPLETION {
     cpus 16
-    publishDir "${projectDir}/output/host", mode: "symlink"
+    publishDir "${projectDir}/output/preprocess/host", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
@@ -402,6 +406,7 @@ process FASTQC_HOST {
 process MULTIQC_HOST {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/host", mode: "symlink"
+    publishDir "${projectDir}/output/results/multiqc/host", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
@@ -628,6 +633,7 @@ process MERGE_SAM_KRAKEN {
 process MERGE_SAMPLES_HV {
     cpus 1
     publishDir "${projectDir}/output/hviral/hits", mode: "symlink"
+    publishDir "${projectDir}/output/results", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path(tsvs)
@@ -663,7 +669,7 @@ workflow MAP_HUMAN_VIRUSES {
         merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
         merged_ch_2 = MERGE_SAMPLES_HV(merged_ch.collect().ifEmpty([]))
     emit:
-        data = bowtie2_ch
+        data = merged_ch_2
 }
 
 /*****************************
@@ -675,7 +681,7 @@ workflow MAP_HUMAN_VIRUSES {
 // TODO: Adjust input structure after writing section 6
 process BBDUK_RIBO_SECONDARY {
     cpus 16
-    publishDir "${projectDir}/output/ribo_secondary", mode: "symlink"
+    publishDir "${projectDir}/output/preprocess/ribo_secondary", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
@@ -721,6 +727,7 @@ process FASTQC_RIBO_SECONDARY {
 process MULTIQC_RIBO_SECONDARY {
     cpus 1
     publishDir "${projectDir}/output/qc/multiqc/ribo_secondary", mode: "symlink"
+    publishDir "${projectDir}/output/results/multiqc/ribo_secondary", mode: "copy", overwrite: "true"
     errorStrategy "finish"
     input:
         path("*")
@@ -754,7 +761,7 @@ workflow REMOVE_RIBO_SECONDARY {
 // 8.1. Merge-join reads for Kraken processing
 process MERGE_JOIN {
     cpus 1
-    publishDir "${projectDir}/output/merged", mode: "symlink"
+    publishDir "${projectDir}/output/taxonomy/merged", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
@@ -788,7 +795,7 @@ process MERGE_JOIN {
 // TODO: Check & update unclassified_out file configuration
 process KRAKEN {
     cpus 16
-    publishDir "${projectDir}/output/kraken", mode: "symlink"
+    publishDir "${projectDir}/output/taxonomy/kraken", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(reads), path(stats)
@@ -813,10 +820,11 @@ process KRAKEN {
         '''
 }
 
+// 8.3. Summarize Kraken output with Bracken
 process BRACKEN_DOMAINS {
     cpus 1
     conda "${projectDir}/${params.env_dir}/bracken.yaml"
-    publishDir "${projectDir}/output/bracken", mode: "symlink"
+    publishDir "${projectDir}/output/taxonomy/bracken", mode: "symlink"
     errorStrategy "finish"
     input:
         tuple val(sample), path(output), path(report), path(unc_reads)
@@ -837,6 +845,50 @@ process BRACKEN_DOMAINS {
         '''
 }
 
+// 8.4. Label Bracken files with sample IDs
+process LABEL_BRACKEN {
+    cpus 1
+    publishDir "${projectDir}/output/taxonomy/bracken", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        tuple val(sample), path(bracken_output)
+    output:
+        path("${sample}_labeled.bracken")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        tab <- read_tsv("!{bracken_output}", show_col_types = FALSE) %>%
+            mutate(sample="!{sample}")
+        write_tsv(tab, "!{sample}_labeled.bracken")
+        '''
+}
+
+// 8.5. Combine Bracken files into a single output file
+process MERGE_BRACKEN {
+    cpus 1
+    publishDir "${projectDir}/output/taxonomy/results", mode: "symlink"
+    publishDir "${projectDir}/output/results", mode: "copy", overwrite: "true"
+    errorStrategy "finish"
+    input:
+        path(tsvs)
+    output:
+        path("bracken_counts.tsv")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        in_paths <- str_split("!{tsvs}", " ")[[1]]
+        print(in_paths)
+        tabs <- lapply(in_paths, function(t) read_tsv(t, col_names = TRUE, cols(.default="c")))
+        for (t in tabs) print(dim(t))
+        tab_out <- bind_rows(tabs)
+        print(dim(tab_out))
+        sapply(tabs, nrow) %>% sum %>% print
+        write_tsv(tab_out, "bracken_counts.tsv")
+        '''
+}
+
 workflow CLASSIFY_READS {
     take:
         data_ch
@@ -844,9 +896,11 @@ workflow CLASSIFY_READS {
         merged_ch = MERGE_JOIN(data_ch, params.script_dir)
         kraken_ch = KRAKEN(merged_ch, params.kraken_db)
         bracken_ch = BRACKEN_DOMAINS(kraken_ch, params.kraken_db)
+        label_ch = LABEL_BRACKEN(bracken_ch)
+        merged_ch_2 = MERGE_BRACKEN(label_ch.collect().ifEmpty([]))
     emit:
         kraken = kraken_ch
-        bracken = bracken_ch
+        bracken = merged_ch_2
 }
 
 workflow {
@@ -862,76 +916,4 @@ workflow {
     MAP_HUMAN_VIRUSES(REMOVE_HOST.out.data)
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data)
-}
-
-/***************************************
-| EXTRA PROCESSES, NOT YET IN PIPELINE |
-***************************************/
-
-//workflow {
-//    // 3. Kraken taxonomic assignment + processing
-//    kraken_ch = KRAKEN(dedup_pre_ch, params.kraken_db)
-//    filter_ch = EXTRACT_VIRAL_HITS(kraken_ch, params.script_dir, params.virus_db)
-//    // X. QC
-//}
-
-/* TOO SLOW - NEED TO OPTIMIZE */
-process EXTRACT_VIRAL_HITS {
-    cpus 16
-    publishDir "${projectDir}/hv_hits", mode: "symlink"
-    errorStrategy "finish"
-    input:
-        tuple val(sample), path(kraken_ribo), path(kraken_noribo)
-        val scriptDir
-        val virusPath
-    output:
-        tuple val(sample), path("${sample}_hv_hits.output")
-    shell:
-        '''
-        # Define paths
-        script_path=!{projectDir}/!{scriptDir}/filter_kraken.py
-        virus_path=!{projectDir}/!{virusPath}
-        out_ribo="!{sample}_hv_hits_ribo.output"
-        out_noribo="!{sample}_hv_hits_noribo.output"
-        ${script_path} -t !{task.cpus} !{kraken_ribo} ${virus_path} ${out_ribo}
-        ${script_path} -t !{task.cpus} !{kraken_noribo} ${virus_path} ${out_noribo}
-        # Concatenate & cleanup
-        out="!{sample}_hv_hits.output"
-        cat ${out_noribo} ${out_ribo} > ${out}
-        rm ${out_ribo} ${out_noribo}
-        '''
-}
-
-process EXTRACT_VIRAL_READS {
-    cpus 16
-    publishDir "${projectDir}/hv_reads_putative", mode: "symlink"
-    errorStrategy "finish"
-    input:
-        tuple val(sample), path(unmerged_noribo_1), path(unmerged_noribo_2), path(unmerged_ribo_1), path(unmerged_ribo_2), path(merged_noribo), path(merged_ribo)
-        tuple val(sample), path(hv_hits)
-    output:
-        tuple val(sample), path("${sample}_hv_unmerged_noribo_1.fastq.gz"), path("${sample}_hv_unmerged_noribo_2.fastq.gz"), path("${sample}_hv_unmerged_ribo_1.fastq.gz"), path("${sample}_hv_unmerged_ribo_2.fastq.gz"), path("${sample}_hv_merged_noribo.fastq.gz"), path("${sample}_hv_merged_ribo.fastq.gz")
-    shell:
-        '''
-        # Generate names file
-        names_path=test
-        # Define input/output
-        op1=!{sample}_hv_unmerged_noribo_1.fastq.gz
-        op2=!{sample}_hv_unmerged_noribo_2.fastq.gz
-        opm=!{sample}_hv_merged_noribo.fastq.gz
-        of1=!{sample}_hv_unmerged_ribo_1.fastq.gz
-        of2=!{sample}_hv_unmerged_ribo_2.fastq.gz
-        ofm=!{sample}_hv_merged_ribo.fastq.gz
-        io_unmerged_noribo="in=!{unmerged_noribo_1} in2=!{unmerged_noribo_2} out=${op1} out2=${op2}"
-        io_unmerged_ribo="in=!{unmerged_ribo_1} in2=!{unmerged_ribo_2} out=${of1} out2=${of2}"
-        io_merged_noribo="in=!{merged_noribo} out=${opm}"
-        io_merged_ribo="in=!{merged_ribo} out=${ofm}"
-        # Define parameters
-        par="names=${names_path} include=t t=!{task.cpus}"
-        # Execute
-        filterbyname.sh ${io_unmerged_noribo} ${par}
-        filterbyname.sh ${io_unmerged_ribo} ${par}
-        filterbyname.sh ${io_merged_noribo} ${par}
-        filterbyname.sh ${io_merged_ribo} ${par}
-        '''
 }
