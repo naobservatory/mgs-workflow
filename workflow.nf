@@ -332,24 +332,41 @@ workflow REMOVE_RIBO_INITIAL {
 | 5. HOST DEPLETION |
 ********************/
 
+// 5.0. Mask human genome in preparation for indexing
+process BBMASK_HUMAN {
+    cpus 16
+    publishDir "${projectDir}/output/preprocess/host/mask", mode: "symlink"
+    errorStrategy "finish"
+    input:
+        val(reference)
+    output:
+        path("human_ref_masked.fa.gz")
+    shell:
+        '''
+        in=!{projectDir}/!{reference}
+        out=human_ref_masked.fa.gz
+        io="in=${in} out=${out}"
+        par="threads=!{task.cpus} maskrepeats masklowentropy"
+        bbmask.sh ${io} ${par}
+        '''
+
+}
+
 // 5.1. Build human index from reference genome
-// NB: Currently uses a masked reference from 2014 from JGI
-// TODO: Replace with updated masked human genome
 process BBMAP_INDEX_HOST {
     cpus 16
     publishDir "${projectDir}/output/preprocess/host/index", mode: "symlink"
     errorStrategy "finish"
     input:
-        val(reference)
+        path(masked_reference)
     output:
         path("ref_index")
     shell:
         '''
         mkdir ref_index
-        ref=!{projectDir}/!{reference}
-        cp ${ref} ref_index/host_ref.fasta.gz
+        cp !{masked_reference} ref_index/host_ref.fasta.gz
         cd ref_index
-        bbmap.sh ref=host_ref.fasta.gz -Xmx23g t=!{task.cpus}
+        bbmap.sh ref=host_ref.fasta.gz t=!{task.cpus}
         '''
 }
 
@@ -375,8 +392,8 @@ process BBMAP_HOST_DEPLETION {
         of2=!{sample}_bbmap_host_2.fastq.gz
         stats=!{sample}_bbmap.stats.txt
         io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
-        # Define parameters (copied from Brian Bushnell)
-        par="minid=0.95 maxindel=3 bwr=0.16 bw=12 quickmatch fast minhits=2 qtrim=rl trimq=10 untrim -Xmx23g t=!{task.cpus}"
+        # Define parameters
+        par="minid=0.9 maxindel=3 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} -Xmx30g"
         # Execute
         bbmap.sh ${io_unmerged} ${par}
         '''
@@ -418,7 +435,8 @@ workflow REMOVE_HOST {
     take:
         ribo_ch
     main:
-        index_ch = BBMAP_INDEX_HOST(params.host_ref)
+        mask_ch = BBMASK_HUMAN(params.host_ref)
+        index_ch = BBMAP_INDEX_HOST(mask_ch)
         host_ch = BBMAP_HOST_DEPLETION(ribo_ch, index_ch)
         fastqc_host_ch = FASTQC_HOST(host_ch)
         multiqc_host_ch = MULTIQC_HOST(fastqc_host_ch.collect().ifEmpty([]))
@@ -633,7 +651,7 @@ process MERGE_SAMPLES_HV {
     input:
         path(tsvs)
     output:
-        path("hv_hits_putative.tsv")
+        path("hv_hits_putative_all.tsv")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -645,7 +663,31 @@ process MERGE_SAMPLES_HV {
         tab_out <- bind_rows(tabs)
         print(dim(tab_out))
         sapply(tabs, nrow) %>% sum %>% print
-        write_tsv(tab_out, "hv_hits_putative.tsv")
+        write_tsv(tab_out, "hv_hits_putative_all.tsv")
+        '''
+}
+
+// 6.10. Perform initial HV read filtering
+process FILTER_HV {
+    cpus 1
+    publishDir "${projectDir}/output/hviral/hits", mode: "symlink"
+    publishDir "${projectDir}/output/results", mode: "copy", overwrite: "true"
+    errorStrategy "finish"
+    input:
+        path(hv_hits)
+    output:
+        path("hv_hits_putative_filtered.tsv")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        score_threshold <- 15 # TODO: Make a parameter
+        data <- read_tsv("!{hv_hits}", col_names = TRUE, show_col_types = FALSE)
+        filtered <- mutate(data, hit_hv = as.logical(!is.na(str_match(encoded_hits, paste0(" ", as.character(taxid), ":"))))) %>%
+            filter(adj_score_fwd > score_threshold | adj_score_rev > score_threshold | assigned_hv | hit_hv)
+        print(dim(data))
+        print(dim(filtered))
+        write_tsv(filtered, "hv_hits_putative_filtered.tsv")
         '''
 }
 
@@ -663,8 +705,10 @@ workflow MAP_HUMAN_VIRUSES {
         merged_input_ch = kraken_processed_ch.combine(bowtie2_processed_ch, by: 0)
         merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
         merged_ch_2 = MERGE_SAMPLES_HV(merged_ch.collect().ifEmpty([]))
+        filtered_ch = FILTER_HV(merged_ch_2)
     emit:
-        data = merged_ch_2
+        data_all = merged_ch_2
+        data_filtered = filtered_ch
 }
 
 /*****************************
