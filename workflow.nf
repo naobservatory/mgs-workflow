@@ -10,9 +10,8 @@
 
 // 1.1. Concatenate split files from same sample together
 process CONCAT_GZIPPED {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/raw_concat", mode: "symlink"
-    errorStrategy "finish"
     input:
         val raw_files_directory
         tuple val(sample), val(libraries)
@@ -46,7 +45,6 @@ process CONCAT_GZIPPED {
 process FASTQC_CONCAT {
     cpus 2
     publishDir "${projectDir}/output/qc/fastqc/raw_concat", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(read1), path(read2)
     output:
@@ -60,9 +58,8 @@ process FASTQC_CONCAT {
 // 1.3. MultiQC
 // TODO: Customize output for later aggregation
 process MULTIQC_CONCAT {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/qc/multiqc/raw_concat", mode: "symlink"
-    errorStrategy "finish"
     input:
         path("*")
     output:
@@ -102,9 +99,8 @@ workflow HANDLE_RAW_READS {
 // NB: Does not include deduplication
 // TODO: Investigate alternative tools & parameter settings
 process PREPROCESS_FASTP {
-    cpus 16
+    label "large"
     publishDir "${projectDir}/output/preprocess/cleaned", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(read1), path(read2)
         val adapters
@@ -130,7 +126,6 @@ process PREPROCESS_FASTP {
 process FASTQC_CLEANED {
     cpus 2
     publishDir "${projectDir}/output/qc/fastqc/cleaned", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads), path(failed), path(reports)
     output:
@@ -144,9 +139,8 @@ process FASTQC_CLEANED {
 // 2.3. MultiQC
 // TODO: Customize output for later aggregation
 process MULTIQC_CLEANED {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/qc/multiqc/cleaned", mode: "symlink"
-    errorStrategy "finish"
     input:
         path("*")
     output:
@@ -180,9 +174,8 @@ workflow CLEAN_READS {
 // NB: Will NOT handle RC duplicates
 // TODO: Investigate alternative tools & approaches
 process DEDUP_CLUMPIFY {
-    cpus 16
+    label "large"
     publishDir "${projectDir}/output/preprocess/dedup", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads), path(failed), path(reports)
     output:
@@ -206,7 +199,6 @@ process DEDUP_CLUMPIFY {
 process FASTQC_DEDUP {
     cpus 2
     publishDir "${projectDir}/output/qc/fastqc/dedup", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads)
     output:
@@ -220,9 +212,8 @@ process FASTQC_DEDUP {
 // 3.3. MultiQC
 // TODO: Customize output for later aggregation
 process MULTIQC_DEDUP {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/qc/multiqc/dedup", mode: "symlink"
-    errorStrategy "finish"
     input:
         path("*")
     output:
@@ -255,9 +246,8 @@ workflow DEDUP_READS {
 // 4.1. Initial detection and removal of ribosomal reads
 // NB: Using quite stringent parameters here to reduce false positives
 process BBDUK_RIBO_INITIAL {
-    cpus 16
+    label "large"
     publishDir "${projectDir}/output/preprocess/ribo_initial", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads)
         val ribo_ref
@@ -286,7 +276,6 @@ process BBDUK_RIBO_INITIAL {
 process FASTQC_RIBO_INITIAL {
     cpus 2
     publishDir "${projectDir}/output/qc/fastqc/ribo_initial", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
     output:
@@ -300,9 +289,8 @@ process FASTQC_RIBO_INITIAL {
 // 4.3. MultiQC
 // TODO: Customize output for later aggregation
 process MULTIQC_RIBO_INITIAL {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/qc/multiqc/ribo_initial", mode: "symlink"
-    errorStrategy "finish"
     input:
         path("*")
     output:
@@ -328,15 +316,14 @@ workflow REMOVE_RIBO_INITIAL {
         multiqc_data = multiqc_ribo_ch[1]
 }
 
-/********************
-| 5. HOST DEPLETION |
-********************/
+/*********************
+| 5. HUMAN DEPLETION |
+*********************/
 
-// 5.0. Mask human genome in preparation for indexing
+// 5.1. Mask human genome in preparation for indexing
 process BBMASK_HUMAN {
-    cpus 16
-    publishDir "${projectDir}/output/preprocess/host/mask", mode: "symlink"
-    errorStrategy "finish"
+    label "large"
+    publishDir "${projectDir}/output/preprocess/remove_human/mask", mode: "symlink"
     input:
         val(reference)
     output:
@@ -352,11 +339,10 @@ process BBMASK_HUMAN {
 
 }
 
-// 5.1. Build human index from reference genome
-process BBMAP_INDEX_HOST {
-    cpus 16
-    publishDir "${projectDir}/output/preprocess/host/index", mode: "symlink"
-    errorStrategy "finish"
+// 5.2. Build human index from reference genome
+process BBMAP_INDEX_HUMAN {
+    label "large"
+    publishDir "${projectDir}/output/preprocess/remove_human/index", mode: "symlink"
     input:
         path(masked_reference)
     output:
@@ -370,26 +356,24 @@ process BBMAP_INDEX_HOST {
         '''
 }
 
-// 5.2. Segregate human reads with bbmap
-// TODO: Consider loosening parameters
-process BBMAP_HOST_DEPLETION {
-    cpus 16
-    publishDir "${projectDir}/output/preprocess/host", mode: "symlink"
-    errorStrategy "finish"
+// 5.3. Segregate human reads with bbmap
+process BBMAP_HUMAN_DEPLETION {
+    label "large"
+    publishDir "${projectDir}/output/preprocess/remove_human", mode: "symlink"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
         path(index_ref_dir)
     output:
-        tuple val(sample), path("${sample}_bbmap_nohost_{1,2}.fastq.gz"), path("${sample}_bbmap_host_{1,2}.fastq.gz"), path("${sample}_bbmap.stats.txt")
+        tuple val(sample), path("${sample}_bbmap_nohuman_{1,2}.fastq.gz"), path("${sample}_bbmap_human_{1,2}.fastq.gz"), path("${sample}_bbmap.stats.txt")
     shell:
         '''
         # Define input/output
         unmerged1=!{reads_noribo[0]}
         unmerged2=!{reads_noribo[1]}
-        op1=!{sample}_bbmap_nohost_1.fastq.gz
-        op2=!{sample}_bbmap_nohost_2.fastq.gz
-        of1=!{sample}_bbmap_host_1.fastq.gz
-        of2=!{sample}_bbmap_host_2.fastq.gz
+        op1=!{sample}_bbmap_nohuman_1.fastq.gz
+        op2=!{sample}_bbmap_nohuman_2.fastq.gz
+        of1=!{sample}_bbmap_human_1.fastq.gz
+        of2=!{sample}_bbmap_human_2.fastq.gz
         stats=!{sample}_bbmap.stats.txt
         io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
         # Define parameters
@@ -399,52 +383,180 @@ process BBMAP_HOST_DEPLETION {
         '''
 }
 
-// 5.3. FASTQC
-process FASTQC_HOST {
+// 5.4. FASTQC
+process FASTQC_HUMAN {
     cpus 2
-    publishDir "${projectDir}/output/qc/fastqc/host", mode: "symlink"
-    errorStrategy "finish"
+    publishDir "${projectDir}/output/qc/fastqc/remove_human", mode: "symlink"
     input:
-        tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
+        tuple val(sample), path(reads_nohuman), path(reads_human), path(stats)
     output:
-        path("${sample}_bbmap_nohost_{1,2}_fastqc.{zip,html}")
+        path("${sample}_bbmap_nohuman_{1,2}_fastqc.{zip,html}")
     shell:
         '''
-        fastqc -t !{task.cpus} !{reads_nohost}
+        fastqc -t !{task.cpus} !{reads_nohuman}
         '''
 }
 
-// 5.4. MultiQC
+// 5.5. MultiQC
 // TODO: Customize output for later aggregation
-process MULTIQC_HOST {
-    cpus 1
-    publishDir "${projectDir}/output/qc/multiqc/host", mode: "symlink"
-    errorStrategy "finish"
+process MULTIQC_HUMAN {
+    label "single"
+    publishDir "${projectDir}/output/qc/multiqc/remove_human", mode: "symlink"
     input:
         path("*")
     output:
         path("multiqc_report.html")
-        tuple val("host"), path("multiqc_data")
+        tuple val("remove_human"), path("multiqc_data")
     shell:
         '''
         multiqc .
         '''
 }
 
-workflow REMOVE_HOST {
+workflow REMOVE_HUMAN {
     take:
         ribo_ch
     main:
-        mask_ch = BBMASK_HUMAN(params.host_ref)
-        index_ch = BBMAP_INDEX_HOST(mask_ch)
-        host_ch = BBMAP_HOST_DEPLETION(ribo_ch, index_ch)
-        fastqc_host_ch = FASTQC_HOST(host_ch)
-        multiqc_host_ch = MULTIQC_HOST(fastqc_host_ch.collect().ifEmpty([]))
+        mask_ch = BBMASK_HUMAN(params.human_ref)
+        index_ch = BBMAP_INDEX_HUMAN(mask_ch)
+        deplete_ch = BBMAP_HUMAN_DEPLETION(ribo_ch, index_ch)
+        fastqc_deplete_ch = FASTQC_HUMAN(deplete_ch)
+        multiqc_deplete_ch = MULTIQC_HUMAN(fastqc_deplete_ch.collect().ifEmpty([]))
     emit:
-        data = host_ch
-        fastqc = fastqc_host_ch
-        multiqc_report = multiqc_host_ch[0]
-        multiqc_data = multiqc_host_ch[1]
+        data = deplete_ch
+        fastqc = fastqc_deplete_ch
+        multiqc_report = multiqc_deplete_ch[0]
+        multiqc_data = multiqc_deplete_ch[1]
+}
+
+/*********************
+| 6. OTHER DEPLETION |
+*********************/
+
+// 6.1. Join reference sequences together
+// TODO: Replace hardcoded references with an extensible list
+process JOIN_OTHER_REF {
+    label "single"
+    publishDir "${projectDir}/output/preprocess/remove_other/ref", mode: "symlink"
+    input:
+        val(cow_reference)
+        val(pig_reference)
+    output:
+        path("other_ref_concat.fasta.gz")
+    shell:
+        '''
+        in="!{projectDir}/!{cow_reference} !{projectDir}/!{pig_reference}"
+        cat ${in} > other_ref_concat.fasta.gz # TODO: Make robust to differences in gzip status
+        '''
+}
+
+// 6.2. Mask reference genomes in preparation for indexing
+process BBMASK_REFERENCES {
+    label "large"
+    publishDir "${projectDir}/output/preprocess/remove_other/mask", mode: "symlink"
+    input:
+        path(concat_references)
+    output:
+        path("other_ref_masked.fasta.gz")
+    shell:
+        '''
+        in=!{concat_references}
+        out=other_ref_masked.fasta.gz
+        io="in=${in} out=${out}"
+        par="threads=!{task.cpus} maskrepeats masklowentropy"
+        bbmask.sh ${io} ${par}
+        '''
+
+}
+
+// 6.3. Build index from reference genomes
+process BBMAP_INDEX_REFERENCES {
+    label "large"
+    publishDir "${projectDir}/output/preprocess/remove_other/index", mode: "symlink"
+    input:
+        path(masked_reference)
+    output:
+        path("ref_index")
+    shell:
+        '''
+        mkdir ref_index
+        cp !{masked_reference} ref_index/other_ref.fasta.gz
+        cd ref_index
+        bbmap.sh ref=other_ref.fasta.gz t=!{task.cpus} -Xmx30g
+        '''
+}
+
+// 6.4. Segregate reference reads with bbmap
+process BBMAP_REFERENCE_DEPLETION {
+    label "large"
+    publishDir "${projectDir}/output/preprocess/remove_other", mode: "symlink"
+    input:
+        tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
+        path(index_ref_dir)
+    output:
+        tuple val(sample), path("${sample}_bbmap_noref_{1,2}.fastq.gz"), path("${sample}_bbmap_ref_{1,2}.fastq.gz"), path("${sample}_bbmap.stats.txt")
+    shell:
+        '''
+        # Define input/output
+        unmerged1=!{reads_noribo[0]}
+        unmerged2=!{reads_noribo[1]}
+        op1=!{sample}_bbmap_noref_1.fastq.gz
+        op2=!{sample}_bbmap_noref_2.fastq.gz
+        of1=!{sample}_bbmap_ref_1.fastq.gz
+        of2=!{sample}_bbmap_ref_2.fastq.gz
+        stats=!{sample}_bbmap.stats.txt
+        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
+        # Define parameters
+        par="minid=0.9 maxindel=3 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} -Xmx30g"
+        # Execute
+        bbmap.sh ${io_unmerged} ${par}
+        '''
+}
+
+// 6.5. FASTQC
+process FASTQC_REMOVE_OTHER {
+    cpus 2
+    publishDir "${projectDir}/output/qc/fastqc/remove_other", mode: "symlink"
+    input:
+        tuple val(sample), path(reads_noref), path(reads_ref), path(stats)
+    output:
+        path("${sample}_bbmap_noref_{1,2}_fastqc.{zip,html}")
+    shell:
+        '''
+        fastqc -t !{task.cpus} !{reads_noref}
+        '''
+}
+
+// 6.6. MultiQC
+process MULTIQC_REMOVE_OTHER {
+    label "single"
+    publishDir "${projectDir}/output/qc/multiqc/remove_other", mode: "symlink"
+    input:
+        path("*")
+    output:
+        path("multiqc_report.html")
+        tuple val("remove_other"), path("multiqc_data")
+    shell:
+        '''
+        multiqc .
+        '''
+}
+
+workflow REMOVE_OTHER {
+    take:
+        ribo_ch
+    main:
+        join_ch = JOIN_OTHER_REF(params.cow_ref, params.pig_ref) // TODO: Replace hardcoded references with extensible list
+        mask_ch = BBMASK_REFERENCES(join_ch)
+        index_ch = BBMAP_INDEX_REFERENCES(mask_ch)
+        deplete_ch = BBMAP_REFERENCE_DEPLETION(ribo_ch, index_ch)
+        fastqc_deplete_ch = FASTQC_REMOVE_OTHER(deplete_ch)
+        multiqc_deplete_ch = MULTIQC_REMOVE_OTHER(fastqc_deplete_ch.collect().ifEmpty([]))
+    emit:
+        data = deplete_ch
+        fastqc = fastqc_deplete_ch
+        multiqc_report = multiqc_deplete_ch[0]
+        multiqc_data = multiqc_deplete_ch[1]
 }
 
 /****************************************
@@ -455,11 +567,11 @@ workflow REMOVE_HOST {
 // TODO: Write workflow
 
 // 6.1. Mask collated virus genomes
+// TODO: Replace with bbmask?
 process MASK_HV_GENOMES {
     conda "${projectDir}/${params.env_dir}/bowtie.yaml"
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/hviral/index", mode: "symlink"
-    errorStrategy "finish"
     input:
         path(collected_genomes)
     output:
@@ -475,9 +587,8 @@ process MASK_HV_GENOMES {
 // 6.2. Build Bowtie2 index from masked genomes
 process BUILD_BOWTIE2_DB {
     conda "${projectDir}/${params.env_dir}/bowtie.yaml"
-    cpus 16
+    label "large"
     publishDir "${projectDir}/output/hviral/index", mode: "symlink"
-    errorStrategy "finish"
     input:
         path(masked_genomes)
     output:
@@ -490,13 +601,10 @@ process BUILD_BOWTIE2_DB {
 }
 
 // 6.3. Run Bowtie2 and return mapped HV reads
-// TODO: Return unmapped reads for downstream processing? Currently assuming these are rare enough not to matter.
-// TODO: If return unmapped reads, add FASTQC/MultiQC processes
 process RUN_BOWTIE2 {
     conda "${projectDir}/${params.env_dir}/bowtie.yaml"
-    cpus 16
+    label "large"
     publishDir "${projectDir}/output/hviral/bowtie", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
         path(index_dir)
@@ -517,9 +625,8 @@ process RUN_BOWTIE2 {
 
 // 6.4. Merge-join deduplicated Bowtie2 output for Kraken processing
 process MERGE_JOIN_BOWTIE {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/hviral/merged", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(sam_out), path(reads_out)
         val scriptDir
@@ -550,9 +657,8 @@ process MERGE_JOIN_BOWTIE {
 
 // 6.5. Perform taxonomic assignment with Kraken2
 process KRAKEN_BOWTIE {
-    cpus 16
+    label "large"
     publishDir "${projectDir}/output/hviral/kraken", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads), path(stats) // Single input file, merged, joined & concatenated
         val db_path
@@ -575,9 +681,8 @@ process KRAKEN_BOWTIE {
 
 // 6.6. Process Kraken2 output and identify HV- and non-HV-assigned reads
 process PROCESS_KRAKEN_BOWTIE {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/hviral/kraken", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(output), path(report)
         val scriptDir
@@ -599,9 +704,8 @@ process PROCESS_KRAKEN_BOWTIE {
 // 6.7. Process Bowtie2 SAM output
 // NB: Currently paired, need to update if switch to merged
 process PROCESS_BOWTIE_SAM {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/hviral/bowtie", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(sam), path(reads)
         val scriptDir
@@ -620,9 +724,8 @@ process PROCESS_BOWTIE_SAM {
 
 // 6.8. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
 process MERGE_SAM_KRAKEN {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/hviral/hits", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(kraken_processed), path(sam_processed)
     output:
@@ -644,10 +747,9 @@ process MERGE_SAM_KRAKEN {
 
 // 6.9. Collapse outputs from different samples into one TSV
 process MERGE_SAMPLES_HV {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/hviral/hits", mode: "symlink"
     publishDir "${projectDir}/output/results", mode: "copy", overwrite: "true"
-    errorStrategy "finish"
     input:
         path(tsvs)
     output:
@@ -669,10 +771,9 @@ process MERGE_SAMPLES_HV {
 
 // 6.10. Perform initial HV read filtering
 process FILTER_HV {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/hviral/hits", mode: "symlink"
     publishDir "${projectDir}/output/results", mode: "copy", overwrite: "true"
-    errorStrategy "finish"
     input:
         path(hv_hits)
     output:
@@ -719,9 +820,8 @@ workflow MAP_HUMAN_VIRUSES {
 // NB: Using more liberal parameters here since very high specificity less important
 // TODO: Adjust input structure after writing section 6
 process BBDUK_RIBO_SECONDARY {
-    cpus 16
+    label "large"
     publishDir "${projectDir}/output/preprocess/ribo_secondary", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
         val ribo_ref
@@ -750,7 +850,6 @@ process BBDUK_RIBO_SECONDARY {
 process FASTQC_RIBO_SECONDARY {
     cpus 2
     publishDir "${projectDir}/output/qc/fastqc/ribo_secondary", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
     output:
@@ -764,9 +863,8 @@ process FASTQC_RIBO_SECONDARY {
 // 7.3. MultiQC
 // TODO: Customize output for later aggregation
 process MULTIQC_RIBO_SECONDARY {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/qc/multiqc/ribo_secondary", mode: "symlink"
-    errorStrategy "finish"
     input:
         path("*")
     output:
@@ -798,9 +896,8 @@ workflow REMOVE_RIBO_SECONDARY {
 
 // 8.1. Merge-join reads for Kraken processing
 process MERGE_JOIN {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/taxonomy/merged", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
         val scriptDir
@@ -832,9 +929,8 @@ process MERGE_JOIN {
 // 8.2. Perform taxonomic assignment with Kraken2
 // TODO: Check & update unclassified_out file configuration
 process KRAKEN {
-    cpus 16
+    label "large"
     publishDir "${projectDir}/output/taxonomy/kraken", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(reads), path(stats)
         val db_path
@@ -860,10 +956,9 @@ process KRAKEN {
 
 // 8.3. Summarize Kraken output with Bracken
 process BRACKEN_DOMAINS {
-    cpus 1
+    label "single"
     conda "${projectDir}/${params.env_dir}/bracken.yaml"
     publishDir "${projectDir}/output/taxonomy/bracken", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(output), path(report), path(unc_reads)
         val db_path
@@ -885,9 +980,8 @@ process BRACKEN_DOMAINS {
 
 // 8.4. Label Bracken files with sample IDs
 process LABEL_BRACKEN {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/taxonomy/bracken", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(sample), path(bracken_output)
     output:
@@ -904,10 +998,9 @@ process LABEL_BRACKEN {
 
 // 8.5. Combine Bracken files into a single output file
 process MERGE_BRACKEN {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/taxonomy/results", mode: "symlink"
     publishDir "${projectDir}/output/results", mode: "copy", overwrite: "true"
-    errorStrategy "finish"
     input:
         path(tsvs)
     output:
@@ -947,9 +1040,8 @@ workflow CLASSIFY_READS {
 
 // 9.1. Extract MultiQC data into more usable forms
 process SUMMARIZE_MULTIQC_SINGLE {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/qc/multiqc/summaries", mode: "symlink"
-    errorStrategy "finish"
     input:
         tuple val(stage), path(multiqc_data)
         val(scriptDir)
@@ -967,10 +1059,9 @@ process SUMMARIZE_MULTIQC_SINGLE {
 
 // 9.2. Combine MultiQC summary files across workflow stages
 process MERGE_MULTIQC {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/qc/multiqc/summaries", mode: "symlink"
     publishDir "${projectDir}/output/results", mode: "copy", overwrite: "true"
-    errorStrategy "finish"
     input:
         path(basic_stats_tsvs)
         path(adapter_tsvs)
@@ -1009,10 +1100,9 @@ process MERGE_MULTIQC {
 
 // 9.3. Summarize taxonomic composition from Bracken and MultiQC output
 process SUMMARIZE_COMPOSITION {
-    cpus 1
+    label "single"
     publishDir "${projectDir}/output/taxonomy/results", mode: "symlink"
     publishDir "${projectDir}/output/results", mode: "copy", overwrite: "true"
-    errorStrategy "finish"
     input:
         path(bracken_merged)
         path(multiqc_basic_merged)
@@ -1046,12 +1136,13 @@ process SUMMARIZE_COMPOSITION {
         read_comp <- transmute(read_counts, sample=sample,
                                n_filtered = raw_concat-cleaned,
                                n_duplicate = cleaned-dedup,
-                               n_ribosomal = (dedup-ribo_initial) + (host-ribo_secondary),
+                               n_ribosomal = (dedup-ribo_initial) + (remove_human-ribo_secondary),
                                n_unassigned = ribo_secondary-assigned,
                                n_bacterial = bacteria,
                                n_archaeal = archaea,
                                n_viral = viruses,
-                               n_human = (ribo_initial-host) + eukaryota)
+                               n_human = (ribo_initial-remove_human) + eukaryota,
+                               n_other_filtered = remove_human-remove_other)
         read_comp_long <- pivot_longer(read_comp, -(sample), names_to = "classification",
                                        names_prefix = "n_", values_to = "n_reads") %>%
           mutate(classification = fct_inorder(str_to_sentence(classification))) %>%
@@ -1067,12 +1158,13 @@ workflow PROCESS_OUTPUT {
         multiqc_data_cleaned
         multiqc_data_dedup
         multiqc_data_ribo_initial
-        multiqc_data_host
+        multiqc_data_human
+        multiqc_data_other
         multiqc_data_ribo_secondary
         bracken_merged
     main:
         // Summarize each MultiQC directory separately
-        multiqc_single = multiqc_data_raw_concat.mix(multiqc_data_cleaned, multiqc_data_dedup, multiqc_data_ribo_initial, multiqc_data_host, multiqc_data_ribo_secondary)
+        multiqc_single = multiqc_data_raw_concat.mix(multiqc_data_cleaned, multiqc_data_dedup, multiqc_data_ribo_initial, multiqc_data_human, multiqc_data_other, multiqc_data_ribo_secondary)
         multiqc_summ   = SUMMARIZE_MULTIQC_SINGLE(multiqc_single, params.script_dir)
         multiqc_basic = multiqc_summ[0].collect().ifEmpty([])
         multiqc_adapt = multiqc_summ[1].collect().ifEmpty([])
@@ -1096,13 +1188,14 @@ workflow {
     CLEAN_READS(HANDLE_RAW_READS.out.data)
     DEDUP_READS(CLEAN_READS.out.data)
     REMOVE_RIBO_INITIAL(DEDUP_READS.out.data)
-    REMOVE_HOST(REMOVE_RIBO_INITIAL.out.data)
-    REMOVE_RIBO_SECONDARY(REMOVE_HOST.out.data)
+    REMOVE_HUMAN(REMOVE_RIBO_INITIAL.out.data)
+    REMOVE_OTHER(REMOVE_HUMAN.out.data)
+    REMOVE_RIBO_SECONDARY(REMOVE_HUMAN.out.data)
     // TODO: Collate QC metrics from preprocessing
     // Human viral reads
-    MAP_HUMAN_VIRUSES(REMOVE_HOST.out.data)
+    MAP_HUMAN_VIRUSES(REMOVE_OTHER.out.data)
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data)
     // Process output
-    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HOST.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken)
+    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken)
 }
