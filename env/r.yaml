@@ -1,8 +1,9 @@
-name: dvf-env
+name: r-env
 channels:
-  - HCC
   - bioconda
   - conda-forge
   - defaults
 dependencies:
-  - deepvirfinder
+  - r-tidyverse
+  - r-jsonlite
+  - r-optparse

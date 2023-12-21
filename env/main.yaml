@@ -1,0 +1,11 @@
+name: mgs-env-main
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - fastp
+  - bbmap
+  - biopython
+  - pandas
+  - kraken2
