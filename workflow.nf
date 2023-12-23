@@ -15,7 +15,7 @@ hv_genomes = "${projectDir}/${params.hv_genomes}"
 kraken_db_path = "${projectDir}/${params.kraken_db}"
 virus_db_path = "${projectDir}/${params.virus_db}"
 nodes_path = "${projectDir}/${params.nodes}"
-genomeid_map_path = "${projectDir}${params.genomeid_map}"
+genomeid_map_path = "${projectDir}/${params.genomeid_map}"
 
 /****************************
 | 1. RAW READ HANDLING & QC |
@@ -353,7 +353,7 @@ process BBMASK_HUMAN {
         '''
         # Get human genome reference
         in=human_ref.fasta.gz
-        out=human_ref_masked.fa.gz
+        out=human_ref_masked.fasta.gz
         wget !{reference_path} -O ${in}
         io="in=${in} out=${out}"
         par="threads=!{task.cpus} maskrepeats masklowentropy"
@@ -388,7 +388,7 @@ process BBMAP_HUMAN_DEPLETION {
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
         path(index_ref_dir)
     output:
-        tuple val(sample), path("${sample}_bbmap_nohuman_{1,2}.fastq.gz"), path("${sample}_bbmap_human_{1,2}.fastq.gz"), path("${sample}_bbmap.stats.txt")
+        tuple val(sample), path("${sample}_bbmap_nohuman_{1,2}.fastq.gz"), path("${sample}_bbmap_human_{1,2}.fastq.gz"), path("${sample}_bbmap_human.stats.txt")
     shell:
         '''
         # Define input/output
@@ -398,7 +398,7 @@ process BBMAP_HUMAN_DEPLETION {
         op2=!{sample}_bbmap_nohuman_2.fastq.gz
         of1=!{sample}_bbmap_human_1.fastq.gz
         of2=!{sample}_bbmap_human_2.fastq.gz
-        stats=!{sample}_bbmap.stats.txt
+        stats=!{sample}_bbmap_human.stats.txt
         io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
         # Define parameters
         par="minid=0.9 maxindel=3 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} -Xmx30g"
@@ -525,7 +525,7 @@ process BBMAP_REFERENCE_DEPLETION {
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
         path(index_ref_dir)
     output:
-        tuple val(sample), path("${sample}_bbmap_noref_{1,2}.fastq.gz"), path("${sample}_bbmap_ref_{1,2}.fastq.gz"), path("${sample}_bbmap.stats.txt")
+        tuple val(sample), path("${sample}_bbmap_noref_{1,2}.fastq.gz"), path("${sample}_bbmap_ref_{1,2}.fastq.gz"), path("${sample}_bbmap_other.stats.txt")
     shell:
         '''
         # Define input/output
@@ -535,7 +535,7 @@ process BBMAP_REFERENCE_DEPLETION {
         op2=!{sample}_bbmap_noref_2.fastq.gz
         of1=!{sample}_bbmap_ref_1.fastq.gz
         of2=!{sample}_bbmap_ref_2.fastq.gz
-        stats=!{sample}_bbmap.stats.txt
+        stats=!{sample}_bbmap_other.stats.txt
         io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
         # Define parameters
         par="minid=0.9 maxindel=3 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} -Xmx30g"
@@ -659,7 +659,7 @@ process RUN_BOWTIE2 {
 // 6.4. Merge-join deduplicated Bowtie2 output for Kraken processing
 process MERGE_JOIN_BOWTIE {
     label "single"
-    conda "${envDir}/bowtie.yaml"
+    conda "${envDir}/main.yaml"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
         tuple val(sample), path(sam_out), path(reads_out)
@@ -825,6 +825,7 @@ process FILTER_HV {
         score_threshold <- 15 # TODO: Make a parameter
         data <- read_tsv("!{hv_hits}", col_names = TRUE, show_col_types = FALSE)
         filtered <- mutate(data, hit_hv = as.logical(!is.na(str_match(encoded_hits, paste0(" ", as.character(taxid), ":"))))) %>%
+            filter((!classified) | assigned_hv) %>% 
             filter(adj_score_fwd > score_threshold | adj_score_rev > score_threshold | assigned_hv | hit_hv)
         print(dim(data))
         print(dim(filtered))
@@ -1024,6 +1025,7 @@ process BRACKEN_DOMAINS {
 // 8.4. Label Bracken files with sample IDs
 process LABEL_BRACKEN {
     label "single"
+    conda "${envDir}/r.yaml"
     publishDir "${pubDir}/taxonomy/bracken", mode: "symlink"
     input:
         tuple val(sample), path(bracken_output)
@@ -1237,7 +1239,7 @@ workflow {
     REMOVE_RIBO_INITIAL(DEDUP_READS.out.data)
     REMOVE_HUMAN(REMOVE_RIBO_INITIAL.out.data)
     REMOVE_OTHER(REMOVE_HUMAN.out.data)
-    REMOVE_RIBO_SECONDARY(REMOVE_HUMAN.out.data)
+    REMOVE_RIBO_SECONDARY(REMOVE_OTHER.out.data)
     // TODO: Collate QC metrics from preprocessing
     // Human viral reads
     MAP_HUMAN_VIRUSES(REMOVE_OTHER.out.data)

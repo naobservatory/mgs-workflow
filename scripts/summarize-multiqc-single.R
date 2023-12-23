@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 
-library(tidyverse)
 library(jsonlite)
 library(optparse)
+library(tidyverse)
 
 # Set arguments
 option_list = list(
@@ -128,7 +128,7 @@ extract_per_sequence_quality <- function(multiqc_json){
 
 # Import data
 multiqc_json <- fromJSON(multiqc_json_path)
-fastqc_tsv <- read_tsv(fastqc_tsv_path, show_col_types = FALSE)
+fastqc_tsv <- readr::read_tsv(fastqc_tsv_path, show_col_types = FALSE)
 
 # Process
 basic_info <- basic_info_fastqc(fastqc_tsv, multiqc_json) %>% mutate(stage = opt$stage)

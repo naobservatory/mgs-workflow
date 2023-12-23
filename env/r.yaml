@@ -4,6 +4,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - r-essentials
   - r-tidyverse
   - r-jsonlite
   - r-optparse
