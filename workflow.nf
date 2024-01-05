@@ -714,7 +714,7 @@ process JOIN_BOWTIE {
     //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
-        tuple val(sample), path(reads)
+        tuple val(sample), path(reads), path(stats)
         path scriptDir
     output:
         tuple val(sample), path("${sample}_bowtie2_mjc.fastq.gz")
@@ -1023,7 +1023,7 @@ process JOIN {
     //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/taxonomy/merged", mode: "symlink"
     input:
-        tuple val(sample), path(reads)
+        tuple val(sample), path(reads), path(stats)
         path scriptDir
     output:
         tuple val(sample), path("${sample}_mjc.fastq.gz")
@@ -1051,7 +1051,7 @@ process KRAKEN {
     //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/taxonomy/kraken", mode: "symlink"
     input:
-        tuple val(sample), path(reads), path(stats)
+        tuple val(sample), path(reads)
         path db_path
     output:
         tuple val(sample), path("${sample}.output"), path("${sample}.report"), path("${sample}_unclassified.fastq.gz")
@@ -1327,5 +1327,5 @@ workflow {
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data)
     // Process output
-    //PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken)
+    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken)
 }
