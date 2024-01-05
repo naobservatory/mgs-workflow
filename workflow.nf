@@ -4,18 +4,17 @@
 
 // Set up directories
 rawDir = "${params.raw_dir}"
-envDir = "${projectDir}/${params.env_dir}"
-scriptDir = "${projectDir}/${params.script_dir}"
+scriptDir = "${params.script_dir}"
 pubDir = "${params.pub_dir}"
 
 // Generate paths from param files
-adapter_ref_path = "${projectDir}/${params.adapters}"
-ribo_ref_path = "${projectDir}/${params.ribo_ref}"
-hv_genomes = "${projectDir}/${params.hv_genomes}"
-kraken_db_path = "${projectDir}/${params.kraken_db}"
-virus_db_path = "${projectDir}/${params.virus_db}"
-nodes_path = "${projectDir}/${params.nodes}"
-genomeid_map_path = "${projectDir}/${params.genomeid_map}"
+adapter_ref_path = "${params.adapters}"
+ribo_ref_path = "${params.ribo_ref}"
+hv_genomes = "${params.hv_genomes}"
+kraken_db_path = "${params.kraken_db}"
+virus_db_path = "${params.virus_db}"
+nodes_path = "${params.nodes}"
+genomeid_map_path = "${params.genomeid_map}"
 
 /****************************
 | 1. RAW READ HANDLING & QC |
@@ -27,14 +26,14 @@ process CONCAT_GZIPPED {
     label "base"
     publishDir "${pubDir}/raw_concat", mode: "symlink"
     input:
-        val raw_files_directory
+        path raw_files_directory
         tuple val(sample), val(libraries)
     output:
         tuple val(sample), path("${sample}_1.fastq.gz"), path("${sample}_2.fastq.gz")
     shell:
         '''
         # Preamble
-        read_dir=!{rawDir}
+        read_dir=!{raw_files_directory}
         echo Raw files directory: $read_dir
         echo Sample: !{sample}
         echo Libraries: !{libraries.join(" ")}
@@ -57,7 +56,6 @@ process CONCAT_GZIPPED {
 
 // 1.2. FASTQC
 process FASTQC_CONCAT {
-    //conda "${envDir}/qc.yaml"
     label "FASTQC"
     cpus 2
     publishDir "${pubDir}/qc/fastqc/raw_concat", mode: "symlink"
@@ -73,7 +71,6 @@ process FASTQC_CONCAT {
 
 // 1.3. MultiQC
 process MULTIQC_CONCAT {
-    //conda "${envDir}/qc.yaml"
     label "single"
     label "MultiQC"
     publishDir "${pubDir}/qc/multiqc/raw_concat", mode: "symlink"
@@ -117,7 +114,6 @@ workflow HANDLE_RAW_READS {
 process PREPROCESS_FASTP {
     label "large"
     container "staphb/fastp:latest"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
     input:
         tuple val(sample), path(read1), path(read2)
@@ -144,7 +140,6 @@ process PREPROCESS_FASTP {
 process FASTQC_CLEANED {
     cpus 2
     label "FASTQC"
-    //conda "${envDir}/qc.yaml"
     publishDir "${pubDir}/qc/fastqc/cleaned", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(failed), path(reports)
@@ -160,7 +155,6 @@ process FASTQC_CLEANED {
 process MULTIQC_CLEANED {
     label "single"
     label "MultiQC"
-    //conda "${envDir}/qc.yaml"
     publishDir "${pubDir}/qc/multiqc/cleaned", mode: "symlink"
     input:
         path("*")
@@ -197,7 +191,6 @@ workflow CLEAN_READS {
 process DEDUP_CLUMPIFY {
     label "large"
     label "BBTools"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/preprocess/dedup", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(failed), path(reports)
@@ -220,7 +213,6 @@ process DEDUP_CLUMPIFY {
 
 // 3.2. FASTQC
 process FASTQC_DEDUP {
-    //conda "${envDir}/qc.yaml"
     label "FASTQC"
     cpus 2
     publishDir "${pubDir}/qc/fastqc/dedup", mode: "symlink"
@@ -236,7 +228,6 @@ process FASTQC_DEDUP {
 
 // 3.3. MultiQC
 process MULTIQC_DEDUP {
-    //conda "${envDir}/qc.yaml"
     label "single"
     label "MultiQC"
     publishDir "${pubDir}/qc/multiqc/dedup", mode: "symlink"
@@ -274,7 +265,6 @@ workflow DEDUP_READS {
 process BBDUK_RIBO_INITIAL {
     label "large"
     label "BBTools"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/preprocess/ribo_initial", mode: "symlink"
     input:
         tuple val(sample), path(reads)
@@ -302,7 +292,6 @@ process BBDUK_RIBO_INITIAL {
 
 // 4.2. FASTQC
 process FASTQC_RIBO_INITIAL {
-    //conda "${envDir}/qc.yaml"
     label "FASTQC"
     cpus 2
     publishDir "${pubDir}/qc/fastqc/ribo_initial", mode: "symlink"
@@ -318,7 +307,6 @@ process FASTQC_RIBO_INITIAL {
 
 // 4.3. MultiQC
 process MULTIQC_RIBO_INITIAL {
-    //conda "${envDir}/qc.yaml"
     label "MultiQC"
     label "single"
     publishDir "${pubDir}/qc/multiqc/ribo_initial", mode: "symlink"
@@ -355,7 +343,6 @@ workflow REMOVE_RIBO_INITIAL {
 process BBMASK_HUMAN {
     label "large"
     label "BBTools"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/preprocess/remove_human/mask", mode: "symlink"
     input:
         val(reference_path)
@@ -378,7 +365,6 @@ process BBMASK_HUMAN {
 process BBMAP_INDEX_HUMAN {
     label "large"
     label "BBTools"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/preprocess/remove_human/index", mode: "symlink"
     input:
         path(masked_reference)
@@ -397,7 +383,6 @@ process BBMAP_INDEX_HUMAN {
 process BBMAP_HUMAN_DEPLETION {
     label "large"
     label "BBTools"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/preprocess/remove_human", mode: "symlink"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
@@ -424,7 +409,6 @@ process BBMAP_HUMAN_DEPLETION {
 
 // 5.4. FASTQC
 process FASTQC_HUMAN {
-    //conda "${envDir}/qc.yaml"
     label "FASTQC"
     cpus 2
     publishDir "${pubDir}/qc/fastqc/remove_human", mode: "symlink"
@@ -440,7 +424,6 @@ process FASTQC_HUMAN {
 
 // 5.5. MultiQC
 process MULTIQC_HUMAN {
-    //conda "${envDir}/qc.yaml"
     label "MultiQC"
     label "single"
     publishDir "${pubDir}/qc/multiqc/remove_human", mode: "symlink"
@@ -500,7 +483,6 @@ process JOIN_OTHER_REF {
 process BBMASK_REFERENCES {
     label "BBTools"
     label "large"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/preprocess/remove_other/mask", mode: "symlink"
     input:
         path(concat_references)
@@ -514,14 +496,12 @@ process BBMASK_REFERENCES {
         par="threads=!{task.cpus} maskrepeats masklowentropy"
         bbmask.sh ${io} ${par}
         '''
-
 }
 
 // 6.3. Build index from reference genomes
 process BBMAP_INDEX_REFERENCES {
     label "BBTools"
     label "max"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/preprocess/remove_other/index", mode: "symlink"
     input:
         path(masked_reference)
@@ -540,7 +520,6 @@ process BBMAP_INDEX_REFERENCES {
 process BBMAP_REFERENCE_DEPLETION {
     label "BBTools"
     label "large"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/preprocess/remove_other", mode: "symlink"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
@@ -567,7 +546,6 @@ process BBMAP_REFERENCE_DEPLETION {
 
 // 6.5. FASTQC
 process FASTQC_REMOVE_OTHER {
-    //conda "${envDir}/qc.yaml"
     label "FASTQC"
     cpus 2
     publishDir "${pubDir}/qc/fastqc/remove_other", mode: "symlink"
@@ -583,7 +561,6 @@ process FASTQC_REMOVE_OTHER {
 
 // 6.6. MultiQC
 process MULTIQC_REMOVE_OTHER {
-    //conda "${envDir}/qc.yaml"
     label "MultiQC"
     label "single"
     publishDir "${pubDir}/qc/multiqc/remove_other", mode: "symlink"
@@ -615,17 +592,41 @@ workflow REMOVE_OTHER {
         multiqc_data = multiqc_deplete_ch[1]
 }
 
+/*****************************************
+| 7. PREPARE KRAKEN FOR DOWNSTREAM TASKS |
+*****************************************/
+
+// 7.1. Extract Kraken DB
+process EXTRACT_KRAKEN {
+    label "BBTools"
+    label "single"
+    input:
+        path(kraken_tarball)
+    output:
+        path("kraken_db")
+    shell:
+        '''
+        mkdir kraken_db
+        tar -xzf !{kraken_tarball} -C kraken_db
+        '''
+}
+
+workflow PREPARE_KRAKEN {
+    take:
+        db_path_ch
+    main:
+        db_ch = EXTRACT_KRAKEN(db_path_ch)
+    emit:
+        db = db_ch
+}
+
 /****************************************
-| 6. HUMAN VIRUS DETECTION WITH BOWTIE2 |
+| 8. HUMAN VIRUS DETECTION WITH BOWTIE2 |
 ****************************************/
 
-// TODO: Write processes for Bowtie2 index construction, alignment, data parsing
-// TODO: Write workflow
-
-// 6.1. Mask collated virus genomes
+// 8.1. Mask collated virus genomes
 // TODO: Replace with bbmask?
 process MASK_HV_GENOMES {
-    //conda "${envDir}/bowtie.yaml"
     label "BLAST"
     label "single"
     publishDir "${pubDir}/hviral/index", mode: "symlink"
@@ -641,9 +642,8 @@ process MASK_HV_GENOMES {
         '''
 }
 
-// 6.2. Build Bowtie2 index from masked genomes
+// 8.2. Build Bowtie2 index from masked genomes
 process BUILD_BOWTIE2_DB {
-    //conda "${envDir}/bowtie.yaml"
     label "Bowtie2"
     label "large"
     publishDir "${pubDir}/hviral/index", mode: "symlink"
@@ -658,9 +658,8 @@ process BUILD_BOWTIE2_DB {
         '''
 }
 
-// 6.3. Run Bowtie2 and return mapped HV reads
+// 8.3. Run Bowtie2 and return mapped HV reads
 process RUN_BOWTIE2 {
-    //conda "${envDir}/bowtie.yaml"
     label "Bowtie2"
     label "large"
     publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
@@ -682,11 +681,10 @@ process RUN_BOWTIE2 {
         '''
 }
 
-// 6.4.1. Merge-join deduplicated Bowtie2 output for Kraken processing, part 1: BBMerge
+// 8.4. Merge-join deduplicated Bowtie2 output for Kraken processing, part 1: BBMerge
 process BBMERGE_BOWTIE {
     label "BBTools"
     label "single"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
         tuple val(sample), path(sam_out), path(reads_out)
@@ -707,11 +705,10 @@ process BBMERGE_BOWTIE {
         '''
 }
 
-// 6.4.2. Merge-join deduplicated Bowtie2 output for Kraken processing, part 1: join and concatenate
+// 8.5. Merge-join deduplicated Bowtie2 output for Kraken processing, part 2: join and concatenate
 process JOIN_BOWTIE {
     label "biopython"
     label "single"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(stats)
@@ -734,11 +731,10 @@ process JOIN_BOWTIE {
         '''
 }
 
-// 6.5. Perform taxonomic assignment with Kraken2
+// 8.6. Perform taxonomic assignment with Kraken2
 process KRAKEN_BOWTIE {
     label "Kraken2"
     label "large"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/hviral/kraken", mode: "symlink"
     input:
         tuple val(sample), path(reads) // Single input file, merged, joined & concatenated
@@ -760,11 +756,10 @@ process KRAKEN_BOWTIE {
         '''
 }
 
-// 6.6. Process Kraken2 output and identify HV- and non-HV-assigned reads
+// 8.7. Process Kraken2 output and identify HV- and non-HV-assigned reads
 process PROCESS_KRAKEN_BOWTIE {
     label "pandas"
     label "single"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/hviral/kraken", mode: "symlink"
     input:
         tuple val(sample), path(output), path(report)
@@ -784,12 +779,11 @@ process PROCESS_KRAKEN_BOWTIE {
         '''
 }
 
-// 6.7. Process Bowtie2 SAM output
+// 8.8. Process Bowtie2 SAM output
 // NB: Currently paired, need to update if switch to merged
 process PROCESS_BOWTIE_SAM {
     label "pandas"
     label "single"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
     input:
         tuple val(sample), path(sam), path(reads)
@@ -807,11 +801,10 @@ process PROCESS_BOWTIE_SAM {
         '''
 }
 
-// 6.8. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
+// 8.9. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
 process MERGE_SAM_KRAKEN {
     label "tidyverse"
     label "single"
-    //conda "${envDir}/r.yaml"
     publishDir "${pubDir}/hviral/hits", mode: "symlink"
     input:
         tuple val(sample), path(kraken_processed), path(sam_processed)
@@ -832,11 +825,10 @@ process MERGE_SAM_KRAKEN {
         '''
 }
 
-// 6.9. Collapse outputs from different samples into one TSV
+// 8.10. Collapse outputs from different samples into one TSV
 process MERGE_SAMPLES_HV {
     label "tidyverse"
     label "single"
-    //conda "${envDir}/r.yaml"
     publishDir "${pubDir}/hviral/hits", mode: "symlink"
     publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
     input:
@@ -858,11 +850,10 @@ process MERGE_SAMPLES_HV {
         '''
 }
 
-// 6.10. Perform initial HV read filtering
+// 8.11. Perform initial HV read filtering
 process FILTER_HV {
     label "tidyverse"
     label "single"
-    //conda "${envDir}/r.yaml"
     publishDir "${pubDir}/hviral/hits", mode: "symlink"
     publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
     input:
@@ -887,13 +878,14 @@ process FILTER_HV {
 workflow MAP_HUMAN_VIRUSES {
     take:
         host_ch
+        db_ch
     main:
         mask_ch = MASK_HV_GENOMES(hv_genomes)
         index_ch = BUILD_BOWTIE2_DB(mask_ch)
         bowtie2_ch = RUN_BOWTIE2(host_ch, index_ch)
         merge_ch = BBMERGE_BOWTIE(bowtie2_ch)
         join_ch = JOIN_BOWTIE(merge_ch, scriptDir)
-        kraken_ch = KRAKEN_BOWTIE(join_ch, kraken_db_path)
+        kraken_ch = KRAKEN_BOWTIE(join_ch, db_ch)
         kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, scriptDir, nodes_path, virus_db_path)
         bowtie2_processed_ch = PROCESS_BOWTIE_SAM(bowtie2_ch, scriptDir, genomeid_map_path)
         merged_input_ch = kraken_processed_ch.combine(bowtie2_processed_ch, by: 0)
@@ -906,15 +898,14 @@ workflow MAP_HUMAN_VIRUSES {
 }
 
 /*****************************
-| 7. SECONDARY RIBODEPLETION |
+| 9. SECONDARY RIBODEPLETION |
 *****************************/
 
-// 7.1. Secondary detection and removal of ribosomal reads
+// 9.1. Secondary detection and removal of ribosomal reads
 // NB: Using more liberal parameters here since very high specificity less important
 process BBDUK_RIBO_SECONDARY {
     label "BBTools"
     label "large"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/preprocess/ribo_secondary", mode: "symlink"
     input:
         tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
@@ -940,9 +931,8 @@ process BBDUK_RIBO_SECONDARY {
         '''
 }
 
-// 7.2. FASTQC
+// 9.2. FASTQC
 process FASTQC_RIBO_SECONDARY {
-    //conda "${envDir}/qc.yaml"
     label "FASTQC"
     cpus 2
     publishDir "${pubDir}/qc/fastqc/ribo_secondary", mode: "symlink"
@@ -956,11 +946,10 @@ process FASTQC_RIBO_SECONDARY {
         '''
 }
 
-// 7.3. MultiQC
+// 9.3. MultiQC
 process MULTIQC_RIBO_SECONDARY {
     label "MultiQC"
     label "single"
-    //conda "${envDir}/qc.yaml"
     publishDir "${pubDir}/qc/multiqc/ribo_secondary", mode: "symlink"
     input:
         path("*")
@@ -987,15 +976,14 @@ workflow REMOVE_RIBO_SECONDARY {
         multiqc_data = multiqc_ribo_ch[1]
 }
 
-/**************************************
-| 8. TAXONOMIC ASSIGNMENT WITH KRAKEN |
-**************************************/
+/***************************************
+| 10. TAXONOMIC ASSIGNMENT WITH KRAKEN |
+***************************************/
 
-// 8.1.1. Merge-join deduplicated output for Kraken processing, part 1: BBMerge
+// 10.1. Merge-join deduplicated output for Kraken processing, part 1: BBMerge
 process BBMERGE {
     label "BBTools"
     label "single"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
@@ -1016,11 +1004,10 @@ process BBMERGE {
         '''
 }
 
-// 8.1.2. Merge-join deduplicated output for Kraken processing, part 1: join and concatenate
+// 10.2. Merge-join deduplicated output for Kraken processing, part 1: join and concatenate
 process JOIN {
     label "biopython"
     label "single"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/taxonomy/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(stats)
@@ -1043,12 +1030,11 @@ process JOIN {
         '''
 }
 
-// 8.2. Perform taxonomic assignment with Kraken2
+// 10.3. Perform taxonomic assignment with Kraken2
 // TODO: Check & update unclassified_out file configuration
 process KRAKEN {
     label "Kraken2"
     label "large"
-    //conda "${envDir}/main.yaml"
     publishDir "${pubDir}/taxonomy/kraken", mode: "symlink"
     input:
         tuple val(sample), path(reads)
@@ -1073,11 +1059,10 @@ process KRAKEN {
         '''
 }
 
-// 8.3. Summarize Kraken output with Bracken
+// 10.4. Summarize Kraken output with Bracken
 process BRACKEN_DOMAINS {
     label "Bracken"
     label "single"
-    //conda "${envDir}/bracken.yaml"
     publishDir "${pubDir}/taxonomy/bracken", mode: "symlink"
     input:
         tuple val(sample), path(output), path(report), path(unc_reads)
@@ -1098,11 +1083,10 @@ process BRACKEN_DOMAINS {
         '''
 }
 
-// 8.4. Label Bracken files with sample IDs
+// 10.5. Label Bracken files with sample IDs
 process LABEL_BRACKEN {
     label "tidyverse"
     label "single"
-    //conda "${envDir}/r.yaml"
     publishDir "${pubDir}/taxonomy/bracken", mode: "symlink"
     input:
         tuple val(sample), path(bracken_output)
@@ -1118,11 +1102,10 @@ process LABEL_BRACKEN {
         '''
 }
 
-// 8.5. Combine Bracken files into a single output file
+// 10.6. Combine Bracken files into a single output file
 process MERGE_BRACKEN {
     label "tidyverse"
     label "single"
-    //conda "${envDir}/r.yaml"
     publishDir "${pubDir}/taxonomy/results", mode: "symlink"
     publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
     input:
@@ -1147,11 +1130,12 @@ process MERGE_BRACKEN {
 workflow CLASSIFY_READS {
     take:
         data_ch
+        db_ch
     main:
         merged_ch = BBMERGE(data_ch)
         joined_ch = JOIN(merged_ch, scriptDir)
-        kraken_ch = KRAKEN(joined_ch, kraken_db_path)
-        bracken_ch = BRACKEN_DOMAINS(kraken_ch, kraken_db_path)
+        kraken_ch = KRAKEN(joined_ch, db_ch)
+        bracken_ch = BRACKEN_DOMAINS(kraken_ch, db_ch)
         label_ch = LABEL_BRACKEN(bracken_ch)
         merged_ch_2 = MERGE_BRACKEN(label_ch.collect().ifEmpty([]))
     emit:
@@ -1159,13 +1143,12 @@ workflow CLASSIFY_READS {
         bracken = merged_ch_2
 }
 
-/*********************************
-| 9. COLLATE AND PROCESS RESULTS |
-*********************************/
+/**********************************
+| 11. COLLATE AND PROCESS RESULTS |
+**********************************/
 
-// 9.1. Extract MultiQC data into more usable forms
+// 11.1. Extract MultiQC data into more usable forms
 process SUMMARIZE_MULTIQC_SINGLE {
-    //conda "${envDir}/r.yaml"
     label "R"
     label "single"
     publishDir "${pubDir}/qc/multiqc/summaries", mode: "symlink"
@@ -1184,9 +1167,8 @@ process SUMMARIZE_MULTIQC_SINGLE {
         '''
 }
 
-// 9.2. Combine MultiQC summary files across workflow stages
+// 11.2. Combine MultiQC summary files across workflow stages
 process MERGE_MULTIQC {
-    //conda "${envDir}/r.yaml"
     label "tidyverse"
     label "single"
     publishDir "${pubDir}/qc/multiqc/summaries", mode: "symlink"
@@ -1227,9 +1209,8 @@ process MERGE_MULTIQC {
         '''
 }
 
-// 9.3. Summarize taxonomic composition from Bracken and MultiQC output
+// 11.3. Summarize taxonomic composition from Bracken and MultiQC output
 process SUMMARIZE_COMPOSITION {
-    //conda "${envDir}/r.yaml"
     label "tidyverse"
     label "single"
     publishDir "${pubDir}/taxonomy/results", mode: "symlink"
@@ -1323,9 +1304,10 @@ workflow {
     REMOVE_OTHER(REMOVE_HUMAN.out.data)
     REMOVE_RIBO_SECONDARY(REMOVE_OTHER.out.data)
     // Human viral reads
-    MAP_HUMAN_VIRUSES(REMOVE_OTHER.out.data)
+    PREPARE_KRAKEN(kraken_db_path)
+    MAP_HUMAN_VIRUSES(REMOVE_OTHER.out.data, PREPARE_KRAKEN.out.db)
     // Broad taxonomic profiling
-    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data)
+    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_KRAKEN.out.db)
     // Process output
     PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken)
 }
