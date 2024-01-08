@@ -201,7 +201,7 @@ workflow PREPARE_OTHER {
 
 // 4.1. Collect full list of descendent taxids for each viral taxid
 process GET_HV_DESCENDENTS {
-    label "NCBI"
+    label "Python"
     label "single"
     publishDir "${pubDir}/hviral", mode: "symlink"
     input:
@@ -258,7 +258,7 @@ process GET_HV_DESCENDENTS {
 
 // 4.2. Get viral genome sequences based on expanded list of taxids
 process GET_HV_GENOMES {
-    label "NCBI"
+    label "Python"
     label "single"
     publishDir "${pubDir}/hviral", mode: "symlink"
     input:
@@ -276,7 +276,7 @@ process GET_HV_GENOMES {
 
 // 4.3. Generate mapping between genome IDs and taxids
 process MAKE_ID_MAPPING {
-    label "python"
+    label "Python"
     label "single"
     publishDir "${pubDir}/hviral", mode: "symlink"
     publishDir "${pubDir}/output", mode: "copy"
