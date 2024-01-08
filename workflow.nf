@@ -375,7 +375,7 @@ process BBMAP_INDEX_HUMAN {
         mkdir ref_index
         cp !{masked_reference} ref_index/host_ref.fasta.gz
         cd ref_index
-        bbmap.sh ref=host_ref.fasta.gz t=!{task.cpus} usemodulo
+        bbmap.sh ref=host_ref.fasta.gz t=!{task.cpus} -Xmx30g
         '''
 }
 
@@ -401,7 +401,7 @@ process BBMAP_HUMAN_DEPLETION {
         stats=!{sample}_bbmap_human.stats.txt
         io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
         # Define parameters
-        par="minid=0.9 maxindel=3 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} usemodulo -Xmx30g"
+        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} -Xmx30g"
         # Execute
         bbmap.sh ${io_unmerged} ${par}
         '''
@@ -538,7 +538,7 @@ process BBMAP_REFERENCE_DEPLETION {
         stats=!{sample}_bbmap_other.stats.txt
         io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
         # Define parameters
-        par="minid=0.9 maxindel=3 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} usemodulo -Xmx30g"
+        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} usemodulo -Xmx30g"
         # Execute
         bbmap.sh ${io_unmerged} ${par}
         '''
@@ -600,6 +600,7 @@ workflow REMOVE_OTHER {
 process EXTRACT_KRAKEN {
     label "BBTools"
     label "single"
+    errorStrategy "retry"
     input:
         path(kraken_tarball)
     output:
@@ -645,7 +646,7 @@ process MASK_HV_GENOMES {
 // 8.2. Build Bowtie2 index from masked genomes
 process BUILD_BOWTIE2_DB {
     label "Bowtie2"
-    label "large"
+    label "max"
     publishDir "${pubDir}/hviral/index", mode: "symlink"
     input:
         path(masked_genomes)
@@ -680,6 +681,8 @@ process RUN_BOWTIE2 {
         bowtie2 ${par} ${io}
         '''
 }
+
+// TODO: Add RC-sensitive second deduplication step (here?)
 
 // 8.4. Merge-join deduplicated Bowtie2 output for Kraken processing, part 1: BBMerge
 process BBMERGE_BOWTIE {
