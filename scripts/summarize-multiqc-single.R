@@ -38,29 +38,39 @@ process_n_bases <- function(n_bases_vec){
   return(val_out)
 }
 
+split_sample <- function(tab, sample_col_in="sample", sample_col_out="sample", split_char = "_"){
+    samples_split <- tab[[sample_col_in]] %>% str_split(split_char)
+    read_pairs <- sapply(samples_split, last)
+    sample_ids <- sapply(samples_split, function(x) head(x, -1) %>% paste(collapse=split_char))
+    tab_out <- tab %>% mutate(read_pair = read_pairs)
+    tab_out[[sample_col_out]] <- sample_ids
+    return(tab_out)
+}
+
 basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
   # Read in basic stats from multiqc JSON
   stats_json <- multiqc_json$report_general_stats_data
   tab_json <- lapply(names(stats_json), 
                      function(x) stats_json[[x]] %>% mutate(sample=x)) %>% bind_rows() %>%
-    mutate(read_pair = sapply(str_split(sample, "_"), last),
-           sample = sapply(str_split(sample, "_"), first)) %>%
+    split_sample %>%
     group_by(sample) %>%
     summarize(percent_gc = mean(percent_gc),
               mean_seq_len = mean(avg_sequence_length),
               n_read_pairs = total_sequences[1],
               percent_duplicates = mean(percent_duplicates))
   # Read in basic stats from fastqc TSV
-  tab_tsv <- fastqc_tsv %>%
-    mutate(read_pair = sapply(str_split(Sample, "_"), last),
-           sample = sapply(str_split(Sample, "_"), first),
-           n_bases_approx = process_n_bases(`Total Bases`)) %>%
+  tab_tsv <- fastqc_tsv %>% mutate(sample=Sample) %>%
+    split_sample %>%
+    mutate(n_bases_approx = process_n_bases(`Total Bases`)) %>%
     select(sample, read_pair, n_bases_approx, per_base_sequence_quality:adapter_content) %>%
     group_by(sample) %>% summarize_all(function(x) paste(x, collapse="/")) %>%
-    select(-read_pair) %>%
+    select(-read_pair)
+  print(tab_tsv)
+  tab_tsv_2 = tab_tsv %>%
     mutate(n_bases_approx = n_bases_approx %>% str_split("/") %>% sapply(as.numeric) %>% colSums())
   # Combine
-  tab <- tab_json %>% inner_join(tab_tsv, by="sample")
+  tab <- tab_json %>% inner_join(tab_tsv_2, by="sample")
+  return(tab)
 }
 
 extract_adapter_data_single <- function(adapter_dataset){
