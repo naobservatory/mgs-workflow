@@ -1,20 +1,94 @@
-/**************
-| 0. PREAMBLE |
-**************/
-
-// Set up directories
-rawDir = "${params.raw_dir}"
-scriptDir = "${params.script_dir}"
 pubDir = "${params.pub_dir}"
 
-// Generate paths from param files
-adapter_ref_path = "${params.adapters}"
-ribo_ref_path = "${params.ribo_ref}"
-hv_genomes = "${params.hv_genomes}"
-kraken_db_path = "${params.kraken_db}"
-virus_db_path = "${params.virus_db}"
-nodes_path = "${params.nodes}"
-genomeid_map_path = "${params.genomeid_map}"
+/************************************
+| 0. PREPARE REFERENCES AND INDEXES |
+************************************/
+
+// 0.1. Extract human index for BBMap
+process EXTRACT_HUMAN {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/index", mode: "symlink"
+    errorStrategy "retry"
+    input:
+        path(human_index_tarball)
+    output:
+        path("human_ref_index")
+    shell:
+        '''
+        mkdir human_ref_index
+        tar -xzf !{human_index_tarball} -C human_ref_index
+        '''
+}
+
+// 0.2. Extract contaminant index for BBMap
+process EXTRACT_OTHER {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/index", mode: "symlink"
+    errorStrategy "retry"
+    input:
+        path(other_index_tarball)
+    output:
+        path("other_ref_index")
+    shell:
+        '''
+        mkdir other_ref_index
+        tar -xzf !{other_index_tarball} -C other_ref_index
+        '''
+}
+
+// 0.3. Extract human-infecting virus index for Bowtie2
+process EXTRACT_HV {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/index", mode: "symlink"
+    errorStrategy "retry"
+    input:
+        path(hv_index_tarball)
+    output:
+        path("hv_ref_index")
+    shell:
+        '''
+        mkdir hv_ref_index
+        tar -xzf !{hv_index_tarball} -C hv_ref_index
+        '''
+}
+
+// 0.4. Extract Kraken DB
+process EXTRACT_KRAKEN {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/index", mode: "symlink"
+    errorStrategy "retry"
+    input:
+        path(kraken_tarball)
+    output:
+        path("kraken_db")
+    shell:
+        '''
+        mkdir kraken_db
+        tar -xzf !{kraken_tarball} -C kraken_db
+        '''
+}
+
+workflow PREPARE_REFERENCES {
+    take:
+        human_index_path
+        other_index_path
+        hv_index_path
+        kraken_db_path
+    main:
+        human_ch = EXTRACT_HUMAN(human_index_path)
+        other_ch = EXTRACT_OTHER(other_index_path)
+        hv_ch = EXTRACT_HV(hv_index_path)
+        kraken_ch = EXTRACT_KRAKEN(kraken_db_path)
+    emit:
+        human = human_ch
+        other = other_ch
+        hv = hv_ch
+        kraken = kraken_ch
+}
 
 /****************************
 | 1. RAW READ HANDLING & QC |
@@ -85,17 +159,12 @@ process MULTIQC_CONCAT {
         '''
 }
 
-libraries_ch = Channel
-    .fromPath(params.library_tab)
-    .splitCsv(header: true)
-    .map{row -> [row.sample, row.library]}
-    .groupTuple()
-
 workflow HANDLE_RAW_READS {
     take:
         libraries_ch
+        raw_dir_path
     main:
-        concat_ch = CONCAT_GZIPPED(rawDir, libraries_ch)
+        concat_ch = CONCAT_GZIPPED(raw_dir_path, libraries_ch)
         fastqc_concat_ch = FASTQC_CONCAT(concat_ch)
         multiqc_concat_ch = MULTIQC_CONCAT(fastqc_concat_ch.collect().ifEmpty([]))
     emit:
@@ -170,8 +239,9 @@ process MULTIQC_CLEANED {
 workflow CLEAN_READS {
     take:
         concat_ch
+        adapter_path
     main:
-        clean_ch = PREPROCESS_FASTP(concat_ch, adapter_ref_path)
+        clean_ch = PREPROCESS_FASTP(concat_ch, adapter_path)
         fastqc_cleaned_ch = FASTQC_CLEANED(clean_ch)
         multiqc_cleaned_ch = MULTIQC_CLEANED(fastqc_cleaned_ch.collect().ifEmpty([]))
     emit:
@@ -324,8 +394,9 @@ process MULTIQC_RIBO_INITIAL {
 workflow REMOVE_RIBO_INITIAL {
     take:
         dedup_ch
+        ribo_path
     main:
-        ribo_ch = BBDUK_RIBO_INITIAL(dedup_ch, ribo_ref_path)
+        ribo_ch = BBDUK_RIBO_INITIAL(dedup_ch, ribo_path)
         fastqc_ribo_ch = FASTQC_RIBO_INITIAL(ribo_ch)
         multiqc_ribo_ch = MULTIQC_RIBO_INITIAL(fastqc_ribo_ch.collect().ifEmpty([]))
     emit:
@@ -339,47 +410,7 @@ workflow REMOVE_RIBO_INITIAL {
 | 5. HUMAN DEPLETION |
 *********************/
 
-// 5.1. Mask human genome in preparation for indexing
-process BBMASK_HUMAN {
-    label "large"
-    label "BBTools"
-    publishDir "${pubDir}/preprocess/remove_human/mask", mode: "symlink"
-    input:
-        val(reference_path)
-    output:
-        path("human_ref.fasta.gz")
-        path("human_ref_masked.fasta.gz")
-    shell:
-        '''
-        # Get human genome reference
-        in=human_ref.fasta.gz
-        out=human_ref_masked.fasta.gz
-        wget !{reference_path} -O ${in}
-        io="in=${in} out=${out}"
-        par="threads=!{task.cpus} maskrepeats masklowentropy"
-        bbmask.sh ${par} ${io}
-        '''
-}
-
-// 5.2. Build human index from reference genome
-process BBMAP_INDEX_HUMAN {
-    label "large"
-    label "BBTools"
-    publishDir "${pubDir}/preprocess/remove_human/index", mode: "symlink"
-    input:
-        path(masked_reference)
-    output:
-        path("ref_index")
-    shell:
-        '''
-        mkdir ref_index
-        cp !{masked_reference} ref_index/host_ref.fasta.gz
-        cd ref_index
-        bbmap.sh ref=host_ref.fasta.gz t=!{task.cpus} -Xmx30g
-        '''
-}
-
-// 5.3. Segregate human reads with bbmap
+// 5.1. Segregate human reads with bbmap
 process BBMAP_HUMAN_DEPLETION {
     label "large"
     label "BBTools"
@@ -407,7 +438,7 @@ process BBMAP_HUMAN_DEPLETION {
         '''
 }
 
-// 5.4. FASTQC
+// 5.2. FASTQC
 process FASTQC_HUMAN {
     label "FASTQC"
     cpus 2
@@ -422,7 +453,7 @@ process FASTQC_HUMAN {
         '''
 }
 
-// 5.5. MultiQC
+// 5.3. MultiQC
 process MULTIQC_HUMAN {
     label "MultiQC"
     label "single"
@@ -441,9 +472,8 @@ process MULTIQC_HUMAN {
 workflow REMOVE_HUMAN {
     take:
         ribo_ch
+        index_ch
     main:
-        mask_ch = BBMASK_HUMAN(params.human_url)
-        index_ch = BBMAP_INDEX_HUMAN(mask_ch[1])
         deplete_ch = BBMAP_HUMAN_DEPLETION(ribo_ch, index_ch)
         fastqc_deplete_ch = FASTQC_HUMAN(deplete_ch)
         multiqc_deplete_ch = MULTIQC_HUMAN(fastqc_deplete_ch.collect().ifEmpty([]))
@@ -458,65 +488,7 @@ workflow REMOVE_HUMAN {
 | 6. OTHER DEPLETION |
 *********************/
 
-// 6.1. Join reference sequences together
-// TODO: Replace hardcoded references with an extensible list
-process JOIN_OTHER_REF {
-    label "BBTools"
-    label "single"
-    publishDir "${pubDir}/preprocess/remove_other/ref", mode: "symlink"
-    input:
-        val(cow_url)
-        val(pig_url)
-    output:
-        path("other_ref_concat.fasta.gz")
-    shell:
-        '''
-        # Download references
-        wget !{cow_url} -O cow_ref.fasta.gz
-        wget !{pig_url} -O pig_ref.fasta.gz
-        in="cow_ref.fasta.gz pig_ref.fasta.gz"
-        cat ${in} > other_ref_concat.fasta.gz # TODO: Make robust to differences in gzip status
-        '''
-}
-
-// 6.2. Mask reference genomes in preparation for indexing
-process BBMASK_REFERENCES {
-    label "BBTools"
-    label "large"
-    publishDir "${pubDir}/preprocess/remove_other/mask", mode: "symlink"
-    input:
-        path(concat_references)
-    output:
-        path("other_ref_masked.fasta.gz")
-    shell:
-        '''
-        in=!{concat_references}
-        out=other_ref_masked.fasta.gz
-        io="in=${in} out=${out}"
-        par="threads=!{task.cpus} maskrepeats masklowentropy"
-        bbmask.sh ${io} ${par}
-        '''
-}
-
-// 6.3. Build index from reference genomes
-process BBMAP_INDEX_REFERENCES {
-    label "BBTools"
-    label "max"
-    publishDir "${pubDir}/preprocess/remove_other/index", mode: "symlink"
-    input:
-        path(masked_reference)
-    output:
-        path("ref_index")
-    shell:
-        '''
-        mkdir ref_index
-        cp !{masked_reference} ref_index/other_ref.fasta.gz
-        cd ref_index
-        bbmap.sh ref=other_ref.fasta.gz t=!{task.cpus} usemodulo -Xmx60g
-        '''
-}
-
-// 6.4. Segregate reference reads with bbmap
+// 6.1. Segregate reference reads with bbmap
 process BBMAP_REFERENCE_DEPLETION {
     label "BBTools"
     label "large"
@@ -544,7 +516,7 @@ process BBMAP_REFERENCE_DEPLETION {
         '''
 }
 
-// 6.5. FASTQC
+// 6.2. FASTQC
 process FASTQC_REMOVE_OTHER {
     label "FASTQC"
     cpus 2
@@ -559,7 +531,7 @@ process FASTQC_REMOVE_OTHER {
         '''
 }
 
-// 6.6. MultiQC
+// 6.3. MultiQC
 process MULTIQC_REMOVE_OTHER {
     label "MultiQC"
     label "single"
@@ -577,12 +549,10 @@ process MULTIQC_REMOVE_OTHER {
 
 workflow REMOVE_OTHER {
     take:
-        ribo_ch
+        human_ch
+        index_ch
     main:
-        join_ch = JOIN_OTHER_REF(params.cow_url, params.pig_url) // TODO: Replace hardcoded references with extensible list
-        mask_ch = BBMASK_REFERENCES(join_ch)
-        index_ch = BBMAP_INDEX_REFERENCES(mask_ch)
-        deplete_ch = BBMAP_REFERENCE_DEPLETION(ribo_ch, index_ch)
+        deplete_ch = BBMAP_REFERENCE_DEPLETION(human_ch, index_ch)
         fastqc_deplete_ch = FASTQC_REMOVE_OTHER(deplete_ch)
         multiqc_deplete_ch = MULTIQC_REMOVE_OTHER(fastqc_deplete_ch.collect().ifEmpty([]))
     emit:
@@ -592,74 +562,11 @@ workflow REMOVE_OTHER {
         multiqc_data = multiqc_deplete_ch[1]
 }
 
-/*****************************************
-| 7. PREPARE KRAKEN FOR DOWNSTREAM TASKS |
-*****************************************/
-
-// 7.1. Extract Kraken DB
-process EXTRACT_KRAKEN {
-    label "BBTools"
-    label "single"
-    errorStrategy "retry"
-    input:
-        path(kraken_tarball)
-    output:
-        path("kraken_db")
-    shell:
-        '''
-        mkdir kraken_db
-        tar -xzf !{kraken_tarball} -C kraken_db
-        '''
-}
-
-workflow PREPARE_KRAKEN {
-    take:
-        db_path_ch
-    main:
-        db_ch = EXTRACT_KRAKEN(db_path_ch)
-    emit:
-        db = db_ch
-}
-
 /****************************************
-| 8. HUMAN VIRUS DETECTION WITH BOWTIE2 |
+| 7. HUMAN VIRUS DETECTION WITH BOWTIE2 |
 ****************************************/
 
-// 8.1. Mask collated virus genomes
-// TODO: Replace with bbmask?
-process MASK_HV_GENOMES {
-    label "BLAST"
-    label "single"
-    publishDir "${pubDir}/hviral/index", mode: "symlink"
-    input:
-        path(collected_genomes)
-    output:
-        path("masked_genomes.fasta.gz")
-    shell:
-        '''
-        zcat -f !{collected_genomes} | dustmasker -out "masked_genomes.fasta" -outfmt fasta
-        sed -i '/^>/!s/[a-z]/x/g' masked_genomes.fasta
-        gzip masked_genomes.fasta
-        '''
-}
-
-// 8.2. Build Bowtie2 index from masked genomes
-process BUILD_BOWTIE2_DB {
-    label "Bowtie2"
-    label "max"
-    publishDir "${pubDir}/hviral/index", mode: "symlink"
-    input:
-        path(masked_genomes)
-    output:
-        path("bt2_hv_index") // Output directory for index files
-    shell:
-        '''
-        mkdir bt2_hv_index
-        bowtie2-build -f --threads !{task.cpus} !{masked_genomes} bt2_hv_index/hv_index
-        '''
-}
-
-// 8.3. Run Bowtie2 and return mapped HV reads
+// 7.1. Run Bowtie2 and return mapped HV reads
 process RUN_BOWTIE2 {
     label "Bowtie2"
     label "large"
@@ -684,7 +591,7 @@ process RUN_BOWTIE2 {
 
 // TODO: Add RC-sensitive second deduplication step (here?)
 
-// 8.4. Merge-join deduplicated Bowtie2 output for Kraken processing, part 1: BBMerge
+// 7.2. Merge-join deduplicated Bowtie2 output for Kraken processing, part 1: BBMerge
 process BBMERGE_BOWTIE {
     label "BBTools"
     label "single"
@@ -708,7 +615,7 @@ process BBMERGE_BOWTIE {
         '''
 }
 
-// 8.5. Merge-join deduplicated Bowtie2 output for Kraken processing, part 2: join and concatenate
+// 7.3. Merge-join deduplicated Bowtie2 output for Kraken processing, part 2: join and concatenate
 process JOIN_BOWTIE {
     label "biopython"
     label "single"
@@ -734,7 +641,7 @@ process JOIN_BOWTIE {
         '''
 }
 
-// 8.6. Perform taxonomic assignment with Kraken2
+// 7.4. Perform taxonomic assignment with Kraken2
 process KRAKEN_BOWTIE {
     label "Kraken2"
     label "large"
@@ -759,7 +666,7 @@ process KRAKEN_BOWTIE {
         '''
 }
 
-// 8.7. Process Kraken2 output and identify HV- and non-HV-assigned reads
+// 7.5. Process Kraken2 output and identify HV- and non-HV-assigned reads
 process PROCESS_KRAKEN_BOWTIE {
     label "pandas"
     label "single"
@@ -782,7 +689,7 @@ process PROCESS_KRAKEN_BOWTIE {
         '''
 }
 
-// 8.8. Process Bowtie2 SAM output
+// 7.6. Process Bowtie2 SAM output
 // NB: Currently paired, need to update if switch to merged
 process PROCESS_BOWTIE_SAM {
     label "pandas"
@@ -804,7 +711,7 @@ process PROCESS_BOWTIE_SAM {
         '''
 }
 
-// 8.9. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
+// 7.7. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
 process MERGE_SAM_KRAKEN {
     label "tidyverse"
     label "single"
@@ -828,7 +735,7 @@ process MERGE_SAM_KRAKEN {
         '''
 }
 
-// 8.10. Collapse outputs from different samples into one TSV
+// 7.8. Collapse outputs from different samples into one TSV
 process MERGE_SAMPLES_HV {
     label "tidyverse"
     label "single"
@@ -853,7 +760,7 @@ process MERGE_SAMPLES_HV {
         '''
 }
 
-// 8.11. Perform initial HV read filtering
+// 7.9. Perform initial HV read filtering
 process FILTER_HV {
     label "tidyverse"
     label "single"
@@ -881,11 +788,14 @@ process FILTER_HV {
 workflow MAP_HUMAN_VIRUSES {
     take:
         host_ch
-        db_ch
+        bt2_index_ch
+        kraken_db_ch
+        nodes_path
+        hv_db_path
+        genomeid_map_path
+        scriptDir
     main:
-        mask_ch = MASK_HV_GENOMES(hv_genomes)
-        index_ch = BUILD_BOWTIE2_DB(mask_ch)
-        bowtie2_ch = RUN_BOWTIE2(host_ch, index_ch)
+        bowtie2_ch = RUN_BOWTIE2(host_ch, bt2_index_ch)
         merge_ch = BBMERGE_BOWTIE(bowtie2_ch)
         join_ch = JOIN_BOWTIE(merge_ch, scriptDir)
         kraken_ch = KRAKEN_BOWTIE(join_ch, db_ch)
@@ -901,10 +811,10 @@ workflow MAP_HUMAN_VIRUSES {
 }
 
 /*****************************
-| 9. SECONDARY RIBODEPLETION |
+| 8. SECONDARY RIBODEPLETION |
 *****************************/
 
-// 9.1. Secondary detection and removal of ribosomal reads
+// 8.1. Secondary detection and removal of ribosomal reads
 // NB: Using more liberal parameters here since very high specificity less important
 process BBDUK_RIBO_SECONDARY {
     label "BBTools"
@@ -934,7 +844,7 @@ process BBDUK_RIBO_SECONDARY {
         '''
 }
 
-// 9.2. FASTQC
+// 8.2. FASTQC
 process FASTQC_RIBO_SECONDARY {
     label "FASTQC"
     cpus 2
@@ -949,7 +859,7 @@ process FASTQC_RIBO_SECONDARY {
         '''
 }
 
-// 9.3. MultiQC
+// 8.3. MultiQC
 process MULTIQC_RIBO_SECONDARY {
     label "MultiQC"
     label "single"
@@ -968,6 +878,7 @@ process MULTIQC_RIBO_SECONDARY {
 workflow REMOVE_RIBO_SECONDARY {
     take:
         novirus_ch
+        ribo_ref_path
     main:
         ribo_ch = BBDUK_RIBO_SECONDARY(novirus_ch, ribo_ref_path)
         fastqc_ribo_ch = FASTQC_RIBO_SECONDARY(ribo_ch)
@@ -980,10 +891,10 @@ workflow REMOVE_RIBO_SECONDARY {
 }
 
 /***************************************
-| 10. TAXONOMIC ASSIGNMENT WITH KRAKEN |
+| 9. TAXONOMIC ASSIGNMENT WITH KRAKEN |
 ***************************************/
 
-// 10.1. Merge-join deduplicated output for Kraken processing, part 1: BBMerge
+// 9.1. Merge-join deduplicated output for Kraken processing, part 1: BBMerge
 process BBMERGE {
     label "BBTools"
     label "single"
@@ -1007,7 +918,7 @@ process BBMERGE {
         '''
 }
 
-// 10.2. Merge-join deduplicated output for Kraken processing, part 1: join and concatenate
+// 9.2. Merge-join deduplicated output for Kraken processing, part 1: join and concatenate
 process JOIN {
     label "biopython"
     label "single"
@@ -1033,7 +944,7 @@ process JOIN {
         '''
 }
 
-// 10.3. Perform taxonomic assignment with Kraken2
+// 9.3. Perform taxonomic assignment with Kraken2
 // TODO: Check & update unclassified_out file configuration
 process KRAKEN {
     label "Kraken2"
@@ -1062,7 +973,7 @@ process KRAKEN {
         '''
 }
 
-// 10.4. Summarize Kraken output with Bracken
+// 9.4. Summarize Kraken output with Bracken
 process BRACKEN_DOMAINS {
     label "Bracken"
     label "single"
@@ -1086,7 +997,7 @@ process BRACKEN_DOMAINS {
         '''
 }
 
-// 10.5. Label Bracken files with sample IDs
+// 9.5. Label Bracken files with sample IDs
 process LABEL_BRACKEN {
     label "tidyverse"
     label "single"
@@ -1105,7 +1016,7 @@ process LABEL_BRACKEN {
         '''
 }
 
-// 10.6. Combine Bracken files into a single output file
+// 9.6. Combine Bracken files into a single output file
 process MERGE_BRACKEN {
     label "tidyverse"
     label "single"
@@ -1133,12 +1044,13 @@ process MERGE_BRACKEN {
 workflow CLASSIFY_READS {
     take:
         data_ch
-        db_ch
+        kraken_db_ch
+        scriptDir
     main:
         merged_ch = BBMERGE(data_ch)
         joined_ch = JOIN(merged_ch, scriptDir)
-        kraken_ch = KRAKEN(joined_ch, db_ch)
-        bracken_ch = BRACKEN_DOMAINS(kraken_ch, db_ch)
+        kraken_ch = KRAKEN(joined_ch, kraken_db_ch)
+        bracken_ch = BRACKEN_DOMAINS(kraken_ch, kraken_db_ch)
         label_ch = LABEL_BRACKEN(bracken_ch)
         merged_ch_2 = MERGE_BRACKEN(label_ch.collect().ifEmpty([]))
     emit:
@@ -1277,6 +1189,7 @@ workflow PROCESS_OUTPUT {
         multiqc_data_other
         multiqc_data_ribo_secondary
         bracken_merged
+        scriptDir
     main:
         // Summarize each MultiQC directory separately
         multiqc_single = multiqc_data_raw_concat.mix(multiqc_data_cleaned, multiqc_data_dedup, multiqc_data_ribo_initial, multiqc_data_human, multiqc_data_other, multiqc_data_ribo_secondary)
@@ -1298,19 +1211,27 @@ workflow PROCESS_OUTPUT {
 }
 
 workflow {
+    // Prepare libraries
+    libraries_ch = Channel
+        .fromPath(params.library_tab)
+        .splitCsv(header: true)
+        .map{row -> [row.sample, row.library]}
+        .groupTuple()
+    // Prepare references & indexes
+    PREPARE_REFERENCES(params.human_index, params.other_index, params.hv_index, params.kraken_db)
     // Preprocessing
-    HANDLE_RAW_READS(libraries_ch)
-    CLEAN_READS(HANDLE_RAW_READS.out.data)
+    HANDLE_RAW_READS(libraries_ch, params.raw_dir)
+    CLEAN_READS(HANDLE_RAW_READS.out.data, params.adapters)
     DEDUP_READS(CLEAN_READS.out.data)
-    REMOVE_RIBO_INITIAL(DEDUP_READS.out.data)
-    REMOVE_HUMAN(REMOVE_RIBO_INITIAL.out.data)
-    REMOVE_OTHER(REMOVE_HUMAN.out.data)
-    REMOVE_RIBO_SECONDARY(REMOVE_OTHER.out.data)
+    REMOVE_RIBO_INITIAL(DEDUP_READS.out.data, params.ribo_db)
+    REMOVE_HUMAN(REMOVE_RIBO_INITIAL.out.data, PREPARE_REFERENCES.out.human)
+    REMOVE_OTHER(REMOVE_HUMAN.out.data, PREPARE_REFERENCES.out.other)
+    REMOVE_RIBO_SECONDARY(REMOVE_OTHER.out.data, params.ribo_db)
     // Human viral reads
-    PREPARE_KRAKEN(kraken_db_path)
-    MAP_HUMAN_VIRUSES(REMOVE_OTHER.out.data, PREPARE_KRAKEN.out.db)
+    MAP_HUMAN_VIRUSES(REMOVE_OTHER.out.data, PREPARE_REFERENCES.out.hv, PREPARE_REFERENCES.out.kraken,
+        params.nodes, params.hv_db, params.genomeid_map, params.script_dir)
     // Broad taxonomic profiling
-    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_KRAKEN.out.db)
+    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, params.script_dir)
     // Process output
-    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken)
+    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, params.script_dir)
 }

@@ -425,6 +425,7 @@ process EXTRACT_TAXONOMY {
     label "base"
     label "single"
     publishDir "${pubDir}/taxonomy", mode: "symlink"
+    publishDir "${pubDir}/output", mode: "copy"
     input:
         path(taxonomy_zip)
     output:
