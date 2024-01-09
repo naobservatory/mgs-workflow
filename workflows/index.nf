@@ -7,8 +7,6 @@ pubDir = "${params.pub_dir}"
 
 // Generate paths from param files
 virus_db_path = "${params.virus_db}"
-nodes_path = "${params.nodes}"
-genomeid_map_path = "${params.genomeid_map}"
 
 /*******************************************
 | 1. RIBOSOMAL REFERENCE FOR RIBODEPLETION |
@@ -71,7 +69,7 @@ process BBMASK_HUMAN {
     label "large"
     publishDir "${pubDir}/human", mode: "symlink"
     input:
-        val(reference_path)
+        path(reference_path)
     output:
         path("human_ref_masked.fasta.gz")
     shell:
@@ -215,42 +213,61 @@ process GET_HV_DESCENDENTS {
         # Import packages
         from collections import defaultdict
         import subprocess
+        import json
         # Load human viruses
+        print("Importing virus db...", end="")
         human_viruses = {}
         with open("!{human_virus_path}") as inf:
             for line in inf:
-                taxid, name = line.strip.split("\t")
+                taxid, name = line.strip().split("\\t")
                 human_viruses[int(taxid)] = name
+        print("done.")
         # Get descendents of each viral taxid
+        print("Fetching viral descendents:")
         taxid_descendents = defaultdict(list)
         taxid_unique = set()
         for hv_taxid in human_viruses:
+            print("\tFetching descendants of", hv_taxid, human_viruses[hv_taxid], end="")
+            taxid_unique.add(hv_taxid)
+            taxid_descendents[hv_taxid].append(hv_taxid)
             # Get descendent taxids from NCBI
-            try:
-                cmd = ["gimme_taxa.py", str(hv_taxid)]
-                desc = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-                desc_split = desc.decode("utf-8").split("\n")
-            except subprocess.CalledProcessError as exc:
-                r,o = exc.returncode, exc.output.decode("utf-8")
-                if r == 1 and "taxid not found" in o:
-                    continue
-                else:
-                    raise
+            cmd = ["gimme_taxa.py", str(hv_taxid)]
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error = p.communicate()
+            if p.returncode == 1 and "taxid not found" in error.decode("utf-8"):
+                print("Taxid not found: {}".format(hv_taxid))
+            elif p.returncode != 0:
+                raise Exception(error.decode("utf-8"))
+            desc_split = output.decode("utf-8").split("\\n")
             # Add descendent taxids to lists
+            tab = False # Skip frontmatter from stdout
+            n_desc = 0
             for line in desc_split:
                 line = line.strip()
-                if line.startswith("parent_taxid") or not line:
+                if not line:
                     continue
-                _, descendent_taxid, descendent_name = line.split("\t")
+                elif line.startswith("parent_taxid"):
+                    tab = True # Stop skipping after header line
+                    continue
+                elif not tab:
+                    continue
+                try:
+                    parent_taxid, descendent_taxid, descendent_name = line.split("\\t")
+                except ValueError:
+                    print(line)
+                    raise
                 descendent_taxid = int(descendent_taxid)
                 taxid_unique.add(descendent_taxid)
                 taxid_descendents[hv_taxid].append(descendent_taxid)
+                n_desc += 1
+            print("-", n_desc, "total descendents fetched.")
+        print("Fetching complete.")
         # Write output
         out_path_list = "human-virus-taxids-all.txt"
         out_path_json = "human-virus-taxid-descendents.json"
         with open(out_path_list, "w") as outf:
             for taxid in sorted(taxid_unique):
-                outf.write("%s\n" % taxid)
+                outf.write("%s\\n" % taxid)
         with open(out_path_json, "w") as outf:
             json.dump(taxid_descendents, outf)
         '''
@@ -294,10 +311,10 @@ process MAKE_ID_MAPPING {
         from Bio.SeqIO.FastaIO import SimpleFastaParser
         # Generate mapping
         genome_to_taxid = {}
-        with(open("!{ncbi_metadata}" as inf)):
+        with(open("!{ncbi_metadata}") as inf):
             cols = None
             for line in inf:
-                bits = line.rstrip("\n").split("\t")
+                bits = line.rstrip("\\n").split("\\t")
                 if not cols:
                     cols = bits
                     file_idx = cols.index("local_filename")
@@ -367,7 +384,7 @@ process BUILD_BOWTIE2_DB {
         '''
 }
 
-workflow PREPARE_OTHER {
+workflow PREPARE_VIRAL {
     take:
         hv_path
     main:
@@ -405,11 +422,11 @@ process GET_TAXONOMY {
 
 // 5.2. Extract taxonomy archive and access nodes file
 process EXTRACT_TAXONOMY {
-    label "BBTools"
+    label "base"
     label "single"
     publishDir "${pubDir}/taxonomy", mode: "symlink"
     input:
-        val(taxonomy_zip)
+        path(taxonomy_zip)
     output:
         path("taxonomy")
         path("taxonomy-nodes.dmp")
