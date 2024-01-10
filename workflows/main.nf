@@ -16,8 +16,7 @@ process EXTRACT_HUMAN {
         path("human_ref_index")
     shell:
         '''
-        mkdir human_ref_index
-        tar -xzf !{human_index_tarball} -C human_ref_index
+        tar -xzf !{human_index_tarball}
         '''
 }
 
@@ -33,8 +32,7 @@ process EXTRACT_OTHER {
         path("other_ref_index")
     shell:
         '''
-        mkdir other_ref_index
-        tar -xzf !{other_index_tarball} -C other_ref_index
+        tar -xzf !{other_index_tarball}
         '''
 }
 
@@ -47,11 +45,10 @@ process EXTRACT_HV {
     input:
         path(hv_index_tarball)
     output:
-        path("hv_ref_index")
+        path("bt2_hv_index")
     shell:
         '''
-        mkdir hv_ref_index
-        tar -xzf !{hv_index_tarball} -C hv_ref_index
+        tar -xzf !{hv_index_tarball}
         '''
 }
 
@@ -798,8 +795,8 @@ workflow MAP_HUMAN_VIRUSES {
         bowtie2_ch = RUN_BOWTIE2(host_ch, bt2_index_ch)
         merge_ch = BBMERGE_BOWTIE(bowtie2_ch)
         join_ch = JOIN_BOWTIE(merge_ch, scriptDir)
-        kraken_ch = KRAKEN_BOWTIE(join_ch, db_ch)
-        kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, scriptDir, nodes_path, virus_db_path)
+        kraken_ch = KRAKEN_BOWTIE(join_ch, kraken_db_ch)
+        kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, scriptDir, nodes_path, hv_db_path)
         bowtie2_processed_ch = PROCESS_BOWTIE_SAM(bowtie2_ch, scriptDir, genomeid_map_path)
         merged_input_ch = kraken_processed_ch.combine(bowtie2_processed_ch, by: 0)
         merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
