@@ -22,14 +22,14 @@ process JOIN_RIBO_REF {
         val(ssu_url)
         val(lsu_url)
     output:
-        path("ribo_ref_concat.fasta.gz")
+        path("ribo-ref-concat.fasta.gz")
     shell:
         '''
         # Download references
         wget !{ssu_url} -O ssu_ref.fasta.gz
         wget !{lsu_url} -O lsu_ref.fasta.gz
         in="ssu_ref.fasta.gz lsu_ref.fasta.gz"
-        cat ${in} > ribo_ref_concat.fasta.gz # TODO: Make robust to differences in gzip status
+        cat ${in} > ribo-ref-concat.fasta.gz # TODO: Make robust to differences in gzip status
         '''
 }
 
@@ -91,7 +91,7 @@ process BBMAP_INDEX_HUMAN {
     input:
         path(masked_reference)
     output:
-        path("human_ref_index.tar.gz")
+        path("human-ref-index.tar.gz")
     shell:
         '''
         mkdir human_ref_index
@@ -99,7 +99,7 @@ process BBMAP_INDEX_HUMAN {
         cd human_ref_index
         bbmap.sh ref=human_ref.fasta.gz t=!{task.cpus} -Xmx30g
         cd ..
-        tar -czf human_ref_index.tar.gz human_ref_index
+        tar -czf human-ref-index.tar.gz human_ref_index
         '''
 }
 
@@ -167,7 +167,7 @@ process BBMAP_INDEX_REFERENCES {
     input:
         path(masked_reference)
     output:
-        path("other_ref_index.tar.gz")
+        path("other-ref-index.tar.gz")
     shell:
         '''
         mkdir other_ref_index
@@ -175,7 +175,7 @@ process BBMAP_INDEX_REFERENCES {
         cd other_ref_index
         bbmap.sh ref=other_ref.fasta.gz t=!{task.cpus} usemodulo -Xmx60g
         cd ..
-        tar -czf other_ref_index.tar.gz other_ref_index
+        tar -czf other-ref-index.tar.gz other_ref_index
         '''
 }
 
@@ -375,12 +375,12 @@ process BUILD_BOWTIE2_DB {
     input:
         path(masked_genomes)
     output:
-        path("bt2_hv_index.tar.gz") // Output directory for index files
+        path("bt2-hv-index.tar.gz") // Output directory for index files
     shell:
         '''
         mkdir bt2_hv_index
         bowtie2-build -f --threads !{task.cpus} !{masked_genomes} bt2_hv_index/hv_index
-        tar -czf bt2_hv_index.tar.gz bt2_hv_index
+        tar -czf bt2-hv-index.tar.gz bt2_hv_index
         '''
 }
 
@@ -449,6 +449,57 @@ workflow PREPARE_TAXONOMY {
         nodes = extract_ch[1]
 }
 
+/********************************
+| 6. COPY OTHER REFERENCE FILES |
+********************************/
+
+// 6.1. Copy Kraken DB to reference directory
+process COPY_KRAKEN {
+    label "base"
+    label "single"
+    publishDir "${pubDir}/kraken", mode: "symlink"
+    publishDir "${pubDir}/output", mode: "copy"
+    input:
+        path(kraken_path)
+    output:
+        path("kraken-db.tar.gz")
+    shell:
+        '''
+        out=kraken-db.tar.gz
+        cp !{kraken_path} ${out}
+        '''
+}
+
+// 6.2. Copy HV DB to reference directory
+process COPY_HV {
+    label "base"
+    label "single"
+    publishDir "${pubDir}/hviral", mode: "symlink"
+    publishDir "${pubDir}/output", mode: "copy"
+    input:
+        path(hv_path)
+    output:
+        path("human-viruses.tsv")
+    shell:
+        '''
+        out=human-viruses.tsv
+        cp !{hv_path} ${out}
+        '''
+}
+
+workflow COPY_REFS {
+    take:
+        kraken_path
+        hv_path
+    main:
+        kraken_ch = COPY_KRAKEN(kraken_path)
+        hv_ch = COPY_HV(hv_path)
+    emit:
+        kraken = kraken_ch
+        hv = hv_ch
+}
+
+
 /****************
 | MAIN WORKFLOW |
 ****************/
@@ -459,4 +510,5 @@ workflow {
     PREPARE_OTHER(params.cow_url, params.pig_url)
     PREPARE_VIRAL(virus_db_path)
     PREPARE_TAXONOMY(params.taxonomy_url)
+    COPY_REFS(params.kraken_db, params.virus_db)
 }
