@@ -83,6 +83,7 @@ process COPY_RIBO {
         '''
         cp !{ribo_db} ribo_db_ref.fasta.gz
         '''
+}
 
 // 0.6. Copy adapters
 process COPY_ADAPTERS {
@@ -98,8 +99,10 @@ process COPY_ADAPTERS {
         '''
         cp !{adapters} adapters_ref.fasta
         '''
+}
 
 // 0.7. Copy scripts
+// NB: Sometimes fails to cache if path to script dir is a symlink; make sure to give true path in config file.
 process COPY_SCRIPTS {
     label "BBTools"
     label "single"
@@ -111,8 +114,9 @@ process COPY_SCRIPTS {
         path("scripts_ref")
     shell:
         '''
-        cp -r !{adapters} adapters_ref.fasta
+        cp -r !{script_dir} scripts_ref
         '''
+}
 
 workflow PREPARE_REFERENCES {
     take:
@@ -1363,9 +1367,9 @@ workflow {
     REMOVE_RIBO_SECONDARY(REMOVE_OTHER.out.data, PREPARE_REFERENCES.out.ribo)
     // Human viral reads
     MAP_HUMAN_VIRUSES(REMOVE_OTHER.out.data, PREPARE_REFERENCES.out.hv, PREPARE_REFERENCES.out.kraken,
-        params.nodes, params.hv_db, params.genomeid_map, PREPARE_REFERENCES.scripts)
+        params.nodes, params.hv_db, params.genomeid_map, PREPARE_REFERENCES.out.scripts)
     // Broad taxonomic profiling
-    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, PREPARE_REFERENCES.scripts)
+    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, PREPARE_REFERENCES.out.scripts)
     // Process output
-    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, PREPARE_REFERENCES.scripts)
+    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, PREPARE_REFERENCES.out.scripts)
 }
