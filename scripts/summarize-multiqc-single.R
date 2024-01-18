@@ -24,6 +24,9 @@ out_path_adapters <- file.path(opt$output_dir, paste0(opt$stage, "_qc_adapter_st
 out_path_quality_base <- file.path(opt$output_dir, paste0(opt$stage, "_qc_quality_base_stats.tsv"))
 out_path_quality_sequence <- file.path(opt$output_dir, paste0(opt$stage, "_qc_quality_sequence_stats.tsv"))
 
+# Specify state descriptors
+pipeline_states <- c("bbduk_noribo", "bbmap_nohuman", "bbmap_noref", "dedup", "fastp")
+
 #=====================#
 # AUXILIARY FUNCTIONS #
 #=====================#
@@ -38,10 +41,18 @@ process_n_bases <- function(n_bases_vec){
   return(val_out)
 }
 
-split_sample <- function(tab, sample_col_in="sample", sample_col_out="sample", split_char = "_"){
-    samples_split <- tab[[sample_col_in]] %>% str_split(split_char)
+split_sample <- function(tab, sample_col_in="sample", sample_col_out="sample", split_char = "_", states=pipeline_states){
+    # Purge state descriptors
+    samples <- tab[[sample_col_in]]
+    for (s in states){
+        samples <- gsub(s, "", samples)
+    }
+    samples <- gsub("__", "_", samples)
+    # Split and extract read pairs and IDs
+    samples_split <- samples %>% str_split(split_char)
     read_pairs <- sapply(samples_split, last)
     sample_ids <- sapply(samples_split, function(x) head(x, -1) %>% paste(collapse=split_char))
+    # Write output
     tab_out <- tab %>% mutate(read_pair = read_pairs)
     tab_out[[sample_col_out]] <- sample_ids
     return(tab_out)
