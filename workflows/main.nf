@@ -69,22 +69,76 @@ process EXTRACT_KRAKEN {
         '''
 }
 
+// 0.5. Copy ribosomal reference
+process COPY_RIBO {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/index", mode: "symlink"
+    errorStrategy "retry"
+    input:
+        path(ribo_db)
+    output:
+        path("ribo_db_ref.fasta.gz")
+    shell:
+        '''
+        cp !{ribo_db} ribo_db_ref.fasta.gz
+        '''
+
+// 0.6. Copy adapters
+process COPY_ADAPTERS {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/index", mode: "symlink"
+    errorStrategy "retry"
+    input:
+        path(adapters)
+    output:
+        path("adapters_ref.fasta")
+    shell:
+        '''
+        cp !{adapters} adapters_ref.fasta
+        '''
+
+// 0.7. Copy scripts
+process COPY_SCRIPTS {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/index", mode: "symlink"
+    errorStrategy "retry"
+    input:
+        path(script_dir)
+    output:
+        path("scripts_ref")
+    shell:
+        '''
+        cp -r !{adapters} adapters_ref.fasta
+        '''
+
 workflow PREPARE_REFERENCES {
     take:
         human_index_path
         other_index_path
         hv_index_path
         kraken_db_path
+        ribo_db_path
+        adapter_path
+        script_dir_path
     main:
         human_ch = EXTRACT_HUMAN(human_index_path)
         other_ch = EXTRACT_OTHER(other_index_path)
         hv_ch = EXTRACT_HV(hv_index_path)
         kraken_ch = EXTRACT_KRAKEN(kraken_db_path)
+        ribo_ch = COPY_RIBO(ribo_db_path)
+        adapter_ch = COPY_ADAPTERS(adapter_path)
+        script_ch = COPY_SCRIPTS(script_dir_path)
     emit:
         human = human_ch
         other = other_ch
         hv = hv_ch
         kraken = kraken_ch
+        ribo = ribo_ch
+        adapters = adapter_ch
+        scripts = script_ch
 }
 
 /****************************
@@ -233,6 +287,73 @@ process MULTIQC_CLEANED {
         '''
 }
 
+// 2.4. Extract adapter sequences into FASTA
+process EXTRACT_ADAPTERS_SINGLE {
+    label "biopython"
+    label "single"
+    publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
+    input:
+        tuple val(sample), path(reads), path(failed), path(reports)
+    output:
+        path("${sample}_adapters.fasta")
+    shell:
+        '''
+        #!/usr/bin/env python
+        import json
+        from Bio.Seq import Seq
+        from Bio.SeqRecord import SeqRecord
+        from Bio import SeqIO
+        inpath = "!{reports[1]}"
+        outpath = "!{sample}_adapters.fasta"
+        with open(inpath, "r") as inf:
+            j = json.load(inf)
+        a1 = Seq(j["adapter_cutting"]["read1_adapter_sequence"])
+        a2 = Seq(j["adapter_cutting"]["read2_adapter_sequence"])
+        r1 = SeqRecord(a1, id="adapter_1", name = "", description = "")
+        r2 = SeqRecord(a2, id="adapter_2", name = "", description = "")
+        rc1 = r1.reverse_complement(id="adapter_1_RC", name = "", description = "")
+        rc2 = r2.reverse_complement(id="adapter_2_RC", name = "", description = "")
+        with open(outpath, "w") as outf:
+            SeqIO.write([r1,r2,rc1,rc2], outf, "fasta")
+        '''
+}
+
+// 2.5. Collate autodetected adapter sequences across samples
+process MERGE_ADAPTERS {
+    label "biopython"
+    label "single"
+    publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
+    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    input:
+        path(adapters_in)
+        path(adapter_files)
+    output:
+        path("adapters.fasta")
+    shell:
+        '''
+        #!/usr/bin/env python
+        from Bio import SeqIO
+        from Bio.SeqRecord import SeqRecord
+        # Import pre-specified adapters
+        adapter_seqs = set()
+        with open("!{adapters_in}", "r") as inf:
+            adapters_pre = SeqIO.parse(inf, "fasta")
+            for a in adapters_pre:
+                adapter_seqs.add(a.seq)
+        # Add autodetected adapters
+        for fpath in "!{adapter_files}".split(" "):
+            with open(fpath, "r") as inf:
+                adapters_auto = SeqIO.parse(inf, "fasta")
+                for a in adapters_auto:
+                    adapter_seqs.add(a.seq)
+        # Format and return
+        outpath = "adapters.fasta"
+        adapter_list = list(adapter_seqs)
+        records_out = [SeqRecord(adapter_list[n], id=str(n), name="", description="") for n in range(len(adapter_list))]
+        SeqIO.write(records_out, outpath, "fasta")
+        '''
+}
+
 workflow CLEAN_READS {
     take:
         concat_ch
@@ -241,11 +362,14 @@ workflow CLEAN_READS {
         clean_ch = PREPROCESS_FASTP(concat_ch, adapter_path)
         fastqc_cleaned_ch = FASTQC_CLEANED(clean_ch)
         multiqc_cleaned_ch = MULTIQC_CLEANED(fastqc_cleaned_ch.collect().ifEmpty([]))
+        adapter_single_ch = EXTRACT_ADAPTERS_SINGLE(clean_ch)
+        adapters_ch = MERGE_ADAPTERS(adapter_path, adapter_single_ch.collect().ifEmpty([]))
     emit:
         data = clean_ch
         fastqc = fastqc_cleaned_ch
         multiqc_report = multiqc_cleaned_ch[0]
         multiqc_data = multiqc_cleaned_ch[1]
+        adapters = adapters_ch
 }
 
 /*******************
@@ -619,13 +743,13 @@ process JOIN_BOWTIE {
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(stats)
-        path scriptDir
+        path script_dir
     output:
         tuple val(sample), path("${sample}_bowtie2_mjc.fastq.gz")
     shell:
         '''
         # Prepare to join unmerged read pairs
-        script_path=!{scriptDir}/join_fastq.py
+        script_path=!{script_dir}/join_fastq.py
         ou1=!{reads[1]}
         ou2=!{reads[2]}
         om=!{reads[0]}
@@ -670,7 +794,7 @@ process PROCESS_KRAKEN_BOWTIE {
     publishDir "${pubDir}/hviral/kraken", mode: "symlink"
     input:
         tuple val(sample), path(output), path(report)
-        path scriptDir
+        path script_dir
         path nodes_path
         path hv_path
     output:
@@ -681,7 +805,7 @@ process PROCESS_KRAKEN_BOWTIE {
         out=!{sample}_bowtie2_kraken_processed.tsv
         nodes=!{nodes_path}
         hv=!{hv_path}
-        script_path=!{scriptDir}/process_kraken_hv.py
+        script_path=!{script_dir}/process_kraken_hv.py
         ${script_path} ${in} ${hv} ${nodes} ${out}
         '''
 }
@@ -694,7 +818,7 @@ process PROCESS_BOWTIE_SAM {
     publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
     input:
         tuple val(sample), path(sam), path(reads)
-        path scriptDir
+        path script_dir
         path genomeid_taxid_map_path
     output:
         tuple val(sample), path("${sample}_bowtie2_sam_processed.tsv")
@@ -703,7 +827,7 @@ process PROCESS_BOWTIE_SAM {
         in=!{sam}
         out=!{sample}_bowtie2_sam_processed.tsv
         map=!{genomeid_taxid_map_path}
-        script_path=!{scriptDir}/process_sam_hv.py
+        script_path=!{script_dir}/process_sam_hv.py
         ${script_path} ${in} ${map} ${out}
         '''
 }
@@ -790,14 +914,14 @@ workflow MAP_HUMAN_VIRUSES {
         nodes_path
         hv_db_path
         genomeid_map_path
-        scriptDir
+        script_dir
     main:
         bowtie2_ch = RUN_BOWTIE2(host_ch, bt2_index_ch)
         merge_ch = BBMERGE_BOWTIE(bowtie2_ch)
-        join_ch = JOIN_BOWTIE(merge_ch, scriptDir)
+        join_ch = JOIN_BOWTIE(merge_ch, script_dir)
         kraken_ch = KRAKEN_BOWTIE(join_ch, kraken_db_ch)
-        kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, scriptDir, nodes_path, hv_db_path)
-        bowtie2_processed_ch = PROCESS_BOWTIE_SAM(bowtie2_ch, scriptDir, genomeid_map_path)
+        kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, script_dir, nodes_path, hv_db_path)
+        bowtie2_processed_ch = PROCESS_BOWTIE_SAM(bowtie2_ch, script_dir, genomeid_map_path)
         merged_input_ch = kraken_processed_ch.combine(bowtie2_processed_ch, by: 0)
         merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
         merged_ch_2 = MERGE_SAMPLES_HV(merged_ch.collect().ifEmpty([]))
@@ -922,13 +1046,13 @@ process JOIN {
     publishDir "${pubDir}/taxonomy/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(stats)
-        path scriptDir
+        path script_dir
     output:
         tuple val(sample), path("${sample}_mjc.fastq.gz")
     shell:
         '''
         # Prepare to join unmerged read pairs
-        script_path=!{scriptDir}/join_fastq.py
+        script_path=!{script_dir}/join_fastq.py
         ou1=!{reads[1]}
         ou2=!{reads[2]}
         om=!{reads[0]}
@@ -1042,10 +1166,10 @@ workflow CLASSIFY_READS {
     take:
         data_ch
         kraken_db_ch
-        scriptDir
+        script_dir
     main:
         merged_ch = BBMERGE(data_ch)
-        joined_ch = JOIN(merged_ch, scriptDir)
+        joined_ch = JOIN(merged_ch, script_dir)
         kraken_ch = KRAKEN(joined_ch, kraken_db_ch)
         bracken_ch = BRACKEN_DOMAINS(kraken_ch, kraken_db_ch)
         label_ch = LABEL_BRACKEN(bracken_ch)
@@ -1066,7 +1190,7 @@ process SUMMARIZE_MULTIQC_SINGLE {
     publishDir "${pubDir}/qc/multiqc/summaries", mode: "symlink"
     input:
         tuple val(stage), path(multiqc_data)
-        path(scriptDir)
+        path(script_dir)
     output:
         path("${stage}_qc_basic_stats.tsv")
         path("${stage}_qc_adapter_stats.tsv")
@@ -1074,7 +1198,7 @@ process SUMMARIZE_MULTIQC_SINGLE {
         path("${stage}_qc_quality_sequence_stats.tsv")
     shell:
         '''
-        script_path=!{scriptDir}/summarize-multiqc-single.R
+        script_path=!{script_dir}/summarize-multiqc-single.R
         ${script_path} -i !{multiqc_data} -s !{stage} -o ${PWD}
         '''
 }
@@ -1186,11 +1310,11 @@ workflow PROCESS_OUTPUT {
         multiqc_data_other
         multiqc_data_ribo_secondary
         bracken_merged
-        scriptDir
+        script_dir
     main:
         // Summarize each MultiQC directory separately
         multiqc_single = multiqc_data_raw_concat.mix(multiqc_data_cleaned, multiqc_data_dedup, multiqc_data_ribo_initial, multiqc_data_human, multiqc_data_other, multiqc_data_ribo_secondary)
-        multiqc_summ   = SUMMARIZE_MULTIQC_SINGLE(multiqc_single, scriptDir)
+        multiqc_summ   = SUMMARIZE_MULTIQC_SINGLE(multiqc_single, script_dir)
         multiqc_basic = multiqc_summ[0].collect().ifEmpty([])
         multiqc_adapt = multiqc_summ[1].collect().ifEmpty([])
         multiqc_qbase = multiqc_summ[2].collect().ifEmpty([])
@@ -1207,28 +1331,41 @@ workflow PROCESS_OUTPUT {
         composition = taxo
 }
 
-workflow {
-    // Prepare libraries
-    libraries_ch = Channel
-        .fromPath(params.library_tab)
-        .splitCsv(header: true)
-        .map{row -> [row.sample, row.library]}
-        .groupTuple()
-    // Prepare references & indexes
+/*****************
+| MAIN WORKFLOWS |
+*****************/
+
+// Prepare libraries
+libraries_ch = Channel
+    .fromPath(params.library_tab)
+    .splitCsv(header: true)
+    .map{row -> [row.sample, row.library]}
+    .groupTuple()
+
+// Run first on new data to identify adapters
+workflow prelim {
     PREPARE_REFERENCES(params.human_index, params.other_index, params.hv_index, params.kraken_db)
-    // Preprocessing
     HANDLE_RAW_READS(libraries_ch, params.raw_dir)
     CLEAN_READS(HANDLE_RAW_READS.out.data, params.adapters)
+}
+
+// Complete primary workflow
+workflow {
+    // Prepare references & indexes
+    PREPARE_REFERENCES(params.human_index, params.other_index, params.hv_index, params.kraken_db, params.ribo_db, params.adapters, params.script_dir)
+    // Preprocessing
+    HANDLE_RAW_READS(libraries_ch, params.raw_dir)
+    CLEAN_READS(HANDLE_RAW_READS.out.data, PREPARE_REFERENCES.out.adapters)
     DEDUP_READS(CLEAN_READS.out.data)
-    REMOVE_RIBO_INITIAL(DEDUP_READS.out.data, params.ribo_db)
+    REMOVE_RIBO_INITIAL(DEDUP_READS.out.data, PREPARE_REFERENCES.out.ribo)
     REMOVE_HUMAN(REMOVE_RIBO_INITIAL.out.data, PREPARE_REFERENCES.out.human)
     REMOVE_OTHER(REMOVE_HUMAN.out.data, PREPARE_REFERENCES.out.other)
-    REMOVE_RIBO_SECONDARY(REMOVE_OTHER.out.data, params.ribo_db)
+    REMOVE_RIBO_SECONDARY(REMOVE_OTHER.out.data, PREPARE_REFERENCES.out.ribo)
     // Human viral reads
     MAP_HUMAN_VIRUSES(REMOVE_OTHER.out.data, PREPARE_REFERENCES.out.hv, PREPARE_REFERENCES.out.kraken,
-        params.nodes, params.hv_db, params.genomeid_map, params.script_dir)
+        params.nodes, params.hv_db, params.genomeid_map, PREPARE_REFERENCES.scripts)
     // Broad taxonomic profiling
-    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, params.script_dir)
+    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, PREPARE_REFERENCES.scripts)
     // Process output
-    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, params.script_dir)
+    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, PREPARE_REFERENCES.scripts)
 }
