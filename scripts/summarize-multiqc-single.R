@@ -25,7 +25,7 @@ out_path_quality_base <- file.path(opt$output_dir, paste0(opt$stage, "_qc_qualit
 out_path_quality_sequence <- file.path(opt$output_dir, paste0(opt$stage, "_qc_quality_sequence_stats.tsv"))
 
 # Specify state descriptors
-pipeline_states <- c("bbduk_noribo", "bbmap_nohuman", "bbmap_noref", "dedup", "fastp")
+pipeline_states <- c("bbduk_noribo", "bbmap_nohuman", "bbmap_noref", "dedup", "fastp", "trunc")
 
 #=====================#
 # AUXILIARY FUNCTIONS #

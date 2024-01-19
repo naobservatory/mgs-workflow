@@ -183,6 +183,29 @@ process CONCAT_GZIPPED {
         '''
 }
 
+// 1.1a. Truncate concatenated read files for trial run
+process TRUNCATE_CONCAT {
+    label "single"
+    label "BBTools"
+    publishDir "${pubDir}/raw_concat", mode: "symlink"
+    input:
+        tuple val(sample), path(read1), path(read2)
+        val n_reads
+    output:
+        tuple val(sample), path("${sample}_trunc_1.fastq.gz"), path("${sample}_trunc_2.fastq.gz")
+    shell:
+        '''
+        echo "Number of output reads: !{n_reads}"
+        n_lines=$(expr !{n_reads} \\* 4)
+        echo "Number of output lines: ${n_lines}"
+        echo Test
+        o1=!{sample}_trunc_1.fastq.gz
+        o2=!{sample}_trunc_2.fastq.gz
+        zcat !{read1} | head -n ${n_lines} | gzip -c > ${o1}
+        zcat !{read2} | head -n ${n_lines} | gzip -c > ${o2}
+        '''
+}
+
 // 1.2. FASTQC
 process FASTQC_CONCAT {
     label "FASTQC"
@@ -192,6 +215,21 @@ process FASTQC_CONCAT {
         tuple val(sample), path(read1), path(read2)
     output:
         path("${sample}_{1,2}_fastqc.{zip,html}")
+    shell:
+        '''
+        fastqc -t !{task.cpus} !{read1} !{read2}
+        '''
+}
+
+// 1.2a. FASTQC for truncated files
+process FASTQC_CONCAT_TRUNC {
+    label "FASTQC"
+    cpus 2
+    publishDir "${pubDir}/qc/fastqc/raw_concat", mode: "symlink"
+    input:
+        tuple val(sample), path(read1), path(read2)
+    output:
+        path("${sample}_trunc_{1,2}_fastqc.{zip,html}")
     shell:
         '''
         fastqc -t !{task.cpus} !{read1} !{read2}
@@ -227,6 +265,23 @@ workflow HANDLE_RAW_READS {
         fastqc = fastqc_concat_ch
         multiqc_report = multiqc_concat_ch[0]
         multiqc_data = multiqc_concat_ch[1]
+}
+
+workflow HANDLE_RAW_READS_TRUNC {
+    take:
+        libraries_ch
+        raw_dir_path
+        n_reads_trunc
+    main:
+        concat_ch = CONCAT_GZIPPED(raw_dir_path, libraries_ch)
+        trunc_ch = TRUNCATE_CONCAT(concat_ch, n_reads_trunc)
+        fastqc_trunc_ch = FASTQC_CONCAT_TRUNC(trunc_ch)
+        multiqc_trunc_ch = MULTIQC_CONCAT(fastqc_trunc_ch.collect().ifEmpty([]))
+    emit:
+        data = trunc_ch
+        fastqc = fastqc_trunc_ch
+        multiqc_report = multiqc_trunc_ch[0]
+        multiqc_data = multiqc_trunc_ch[1]
 }
 
 /**************************
@@ -1358,8 +1413,12 @@ workflow {
     // Prepare references & indexes
     PREPARE_REFERENCES(params.human_index, params.other_index, params.hv_index, params.kraken_db, params.ribo_db, params.adapters, params.script_dir)
     // Preprocessing
-    HANDLE_RAW_READS(libraries_ch, params.raw_dir)
-    CLEAN_READS(HANDLE_RAW_READS.out.data, PREPARE_REFERENCES.out.adapters)
+    if ( params.truncate_reads ) {
+        HANDLE = HANDLE_RAW_READS_TRUNC(libraries_ch, params.raw_dir, params.n_reads_trunc)
+    } else {
+      HANDLE = HANDLE_RAW_READS(libraries_ch, params.raw_dir)
+    }
+    CLEAN_READS(HANDLE.data, PREPARE_REFERENCES.out.adapters)
     DEDUP_READS(CLEAN_READS.out.data)
     REMOVE_RIBO_INITIAL(DEDUP_READS.out.data, PREPARE_REFERENCES.out.ribo)
     REMOVE_HUMAN(REMOVE_RIBO_INITIAL.out.data, PREPARE_REFERENCES.out.human)
@@ -1371,5 +1430,5 @@ workflow {
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, PREPARE_REFERENCES.out.scripts)
     // Process output
-    PROCESS_OUTPUT(HANDLE_RAW_READS.out.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, PREPARE_REFERENCES.out.scripts)
+    PROCESS_OUTPUT(HANDLE.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, PREPARE_REFERENCES.out.scripts)
 }
