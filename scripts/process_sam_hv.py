@@ -9,6 +9,7 @@ import datetime
 import gzip
 import bz2
 import json
+import functools
 
 # Utility functions
 
@@ -31,6 +32,7 @@ def get_next_alignment(sam_file):
         l = next(sam_file, "EOF") # Get next line
         if not l: continue # Skip empty lines
         if l.startswith("@"): continue # Skip header lines
+        if l == "EOF": return None
         return(l)
 
 def check_flag(flag_sum, flag_dict, flag_name, flag_value):
@@ -71,15 +73,14 @@ def extract_option(opt_list, query_value, default=None):
     out_value = re.findall(pattern, field)[0]
     return(out_value)
 
-def extract_optional_fields(opt_list, paired):
+def extract_optional_fields(opt_list):
     """Extract relevant optional fields from Bowtie2 SAM alignment."""
     out = {}
     out["alignment_score"] = extract_option(opt_list, "AS")
     out["next_best_alignment"] = extract_option(opt_list, "XS")
     out["edit_distance"] = extract_option(opt_list, "NM")
-    if paired:
-        out["mate_alignment_score"] = extract_option(opt_list, "YS")
-        out["pair_status"] = extract_option(opt_list, "YT")
+    out["pair_status"] = extract_option(opt_list, "YT")
+    out["mate_alignment_score"] = extract_option(opt_list, "YS")
     return(out)
 
 def process_sam_alignment(sam_line, genomeid_taxid_map, paired):
@@ -100,29 +101,54 @@ def process_sam_alignment(sam_line, genomeid_taxid_map, paired):
         out["fragment_length"] = abs(int(fields_in[8]))
     out["query_seq"] = fields_in[9]
     out["query_len"] = len(fields_in[9])
-    out.update(extract_optional_fields(fields_in[10:], paired))
+    out["query_qual"] = fields_in[10]
+    out.update(extract_optional_fields(fields_in[11:]))
     return(out)
 
-def process_sam_alignment_pair(fwd_line, rev_line, genomeid_taxid_map):
-    """Process a pair of SAM alignment lines."""
-    # Extract data from alignment entries
-    fwd_dict = process_sam_alignment(fwd_line, genomeid_taxid_map, True)
-    rev_dict = process_sam_alignment(rev_line, genomeid_taxid_map, True)
-    # Verify concordant alignment
-    try:
-        assert fwd_dict["query_name"] == rev_dict["query_name"]
-        assert fwd_dict["genome_id"] == rev_dict["genome_id"]
-        assert fwd_dict["pair_status"] == rev_dict["pair_status"] == "CP"
-        assert fwd_dict["fragment_length"] == rev_dict["fragment_length"]
-        assert fwd_dict["ref_start"] == rev_dict["mate_ref_start"]
-        assert rev_dict["ref_start"] == fwd_dict["mate_ref_start"]
-        assert fwd_dict["in_pair"] == rev_dict["in_pair"] == True
-        assert fwd_dict["proper_paired_alignment"] == rev_dict["proper_paired_alignment"] == True
-    except AssertionError:
-        print(fwd_line)
-        print(rev_line)
-        raise
-    # Generate output line
+def join_line(fields):
+    "Convert a list of arguments into a TSV string for output."
+    return("\t".join(map(str, fields)) + "\n")
+
+def get_line(query_name, genome_id, taxid, fragment_length, best_alignment_score_fwd, best_alignment_score_ref,
+             next_alignment_score_fwd, next_alignment_score_rev, edit_distance_fwd, edit_distance_rev,
+             ref_start_fwd, ref_start_rev, map_qual_fwd, map_qual_rev, cigar_fwd, cigar_rev, query_len_fwd, query_len_rev,
+             query_seq_fwd, query_seq_rev, pair_status):
+    """Convert a list of arguments into an output line."""
+    fields = [query_name, genome_id, taxid, fragment_length, best_alignment_score_fwd, best_alignment_score_ref,
+              next_alignment_score_fwd, next_alignment_score_rev, edit_distance_fwd, edit_distance_rev,
+              ref_start_fwd, ref_start_rev, map_qual_fwd, map_qual_rev, cigar_fwd, cigar_rev, query_len_fwd, query_len_rev,
+              query_seq_fwd, query_seq_rev, pair_status]
+    fields_joined = join_line(fields)
+    return(fields_joined)
+
+def process_sam_unpaired_pair(read_dict):
+    """Process an unpaired alignment from a paired SAM file."""
+    # Specify unpaired attributes
+    if read_dict["is_mate_1"]:
+        best_alignment_score_fwd, best_alignment_score_rev = read_dict["alignment_score"], None
+        next_alignment_score_fwd, next_alignment_score_rev = read_dict["next_best_alignment"], None
+        edit_distance_fwd, edit_distance_rev = read_dict["edit_distance"], None
+        ref_start_fwd, ref_start_rev = read_dict["ref_start"], None
+        map_qual_fwd, map_qual_rev = read_dict["map_qual"], None
+        cigar_fwd, cigar_rev = read_dict["cigar"], None
+        query_len_fwd, query_len_rev = read_dict["query_len"], None
+        query_seq_fwd, query_seq_rev = read_dict["query_seq"], None
+    else:
+        best_alignment_score_fwd, best_alignment_score_rev = None, read_dict["alignment_score"]
+        next_alignment_score_fwd, next_alignment_score_rev = None, read_dict["next_best_alignment"]
+        edit_distance_fwd, edit_distance_rev = None, read_dict["edit_distance"]
+        ref_start_fwd, ref_start_rev = None, read_dict["ref_start"]
+        map_qual_fwd, map_qual_rev = None, read_dict["map_qual"]
+        cigar_fwd, cigar_rev = None, read_dict["cigar"]
+        query_len_fwd, query_len_rev = None, read_dict["query_len"]
+        query_seq_fwd, query_seq_rev = None, read_dict["query_seq"]
+    return get_line(read_dict["query_name"], read_dict["genome_id"], read_dict["taxid"], read_dict["fragment_length"],
+                    best_alignment_score_fwd, best_alignment_score_rev, next_alignment_score_fwd, next_alignment_score_rev,
+                    edit_distance_fwd, edit_distance_rev, ref_start_fwd, ref_start_rev, map_qual_fwd, map_qual_rev,
+                    cigar_fwd, cigar_rev, query_len_fwd, query_len_rev, query_seq_fwd, query_seq_rev, read_dict["pair_status"])
+
+def line_from_valid_pair(fwd_dict, rev_dict):
+    """Generate an output line from a validated (concordant or discordant) pair of SAM alignments."""
     query_name = fwd_dict["query_name"]
     genome_id = fwd_dict["genome_id"]
     taxid = fwd_dict["taxid"]
@@ -143,41 +169,143 @@ def process_sam_alignment_pair(fwd_line, rev_line, genomeid_taxid_map):
     query_len_rev = rev_dict["query_len"]
     query_seq_fwd = fwd_dict["query_seq"]
     query_seq_rev = rev_dict["query_seq"]
-    fields_out = [query_name, genome_id, taxid, fragment_length, best_alignment_score_fwd, best_alignment_score_rev, next_alignment_score_fwd, next_alignment_score_rev, edit_distance_fwd, edit_distance_rev, ref_start_fwd, ref_start_rev, map_qual_fwd, map_qual_rev, cigar_fwd, cigar_rev, query_len_fwd, query_len_rev, query_seq_fwd, query_seq_rev]
-    return(fields_out)
+    pair_status = fwd_dict["pair_status"]
+    return get_line(query_name, genome_id, taxid, fragment_length,
+                    best_alignment_score_fwd, best_alignment_score_rev, next_alignment_score_fwd, next_alignment_score_rev,
+                    edit_distance_fwd, edit_distance_rev, ref_start_fwd, ref_start_rev, map_qual_fwd, map_qual_rev,
+                    cigar_fwd, cigar_rev, query_len_fwd, query_len_rev, query_seq_fwd, query_seq_rev, pair_status)
 
-def join_line(fields):
-    "Convert a list of arguments into a TSV string for output."
-    return("\t".join(map(str, fields)) + "\n")
+def process_sam_concordant_pair(fwd_dict, rev_dict):
+    """Process a concordant pair of SAM alignments."""
+    # Verify concordant alignment
+    try:
+        assert fwd_dict["query_name"] == rev_dict["query_name"]
+        assert fwd_dict["genome_id"] == rev_dict["genome_id"]
+        assert fwd_dict["pair_status"] == rev_dict["pair_status"] == "CP"
+        assert fwd_dict["fragment_length"] == rev_dict["fragment_length"]
+        assert fwd_dict["ref_start"] == rev_dict["mate_ref_start"]
+        assert rev_dict["ref_start"] == fwd_dict["mate_ref_start"]
+        assert fwd_dict["in_pair"] == rev_dict["in_pair"] == True
+        assert fwd_dict["proper_paired_alignment"] == rev_dict["proper_paired_alignment"] == True
+    except AssertionError:
+        print(fwd_line)
+        print(rev_line)
+        raise
+    # Generate output line
+    return line_from_valid_pair(fwd_dict, rev_dict)
+
+def process_sam_discordant_pair(fwd_dict, rev_dict):
+    """Process a discordant pair of SAM alignments."""
+    # Check if both reads align to the same genome.
+    if fwd_dict["genome_id"] != rev_dict["genome_id"]: # If not, process as separate alignments
+        return [process_sam_unpaired_pair(fwd_dict), process_sam_unpaired_pair(rev_dict)]
+    # Verify discordant same-subject alignment
+    try:
+        assert fwd_dict["query_name"] == rev_dict["query_name"]
+        assert fwd_dict["genome_id"] == rev_dict["genome_id"]
+        assert fwd_dict["pair_status"] == rev_dict["pair_status"] == "DP"
+        assert fwd_dict["fragment_length"] == rev_dict["fragment_length"]
+        assert fwd_dict["ref_start"] == rev_dict["mate_ref_start"]
+        assert rev_dict["ref_start"] == fwd_dict["mate_ref_start"]
+        assert fwd_dict["in_pair"] == rev_dict["in_pair"] == True
+    except AssertionError:
+        print(fwd_line)
+        print(rev_line)
+        raise
+    return [line_from_valid_pair(fwd_dict, rev_dict)]
 
 # File-level functions
+def write_sam_headers_paired(out_file):
+    """Write header line to new TSV."""
+    headers = ["query_name", "genome_id", "taxid", "fragment_length", "best_alignment_score_fwd", "best_alignment_score_rev", "next_alignment_score_fwd", "next_alignment_score_rev", "edit_distance_fwd", "edit_distance_rev", "ref_start_fwd", "ref_start_rev", "map_qual_fwd", "map_qual_rev", "cigar_fwd", "cigar_rev", "query_len_fwd", "query_len_rev", "query_seq_fwd", "query_seq_rev", "pair_status"]
+    header_line = join_line(headers)
+    out_file.write(header_line)
+    return None
+
+def process_sam_alignments_paired(fwd_line, rev_line, in_file, out_file, genomeid_taxid_map):
+    """Run through a paired SAM file & process into TSV."""
+    pr=functools.partial(process_sam_alignments_paired, in_file=in_file, out_file=out_file, genomeid_taxid_map=genomeid_taxid_map)
+    if fwd_line is not None: 
+        fwd_dict = process_sam_alignment(fwd_line, genomeid_taxid_map, True)
+        if fwd_dict["pair_status"] not in ["UU", "UP", "CP", "DP"]:
+            raise ValueError("Invalid pair status: {}, {}".format(fwd_dict["query_name"], fwd_dict["pair_status"]))
+        elif fwd_dict["pair_status"] == "UU":
+            raise ValueError("Unpaired read in paired SAM file: {}".format(fwd_dict["query_name"]))
+        elif fwd_dict["pair_status"] == "UP":
+            print_log("Unpaired pair: {}".format(fwd_dict["query_name"]))
+            line = process_sam_unpaired_pair(fwd_dict) # Process forward read, then move on one line and retry
+            out_file.write(line)
+            return(pr(rev_line, get_next_alignment(in_file)))
+        else:
+            if rev_line is None:
+                raise ValueError("Forward read is paired but reverse read is missing: {}".format(fwd_dict["query_name"]))
+            rev_dict = process_sam_alignment(rev_line, genomeid_taxid_map, True)
+            if rev_dict["query_name"] != fwd_dict["query_name"]:
+                msg = "Alignments should be paired but read IDs mismatch: {}, {}"
+                raise ValueError(msg.format(fwd_dict["query_name"], rev_dict["query_name"]))
+            elif fwd_dict["pair_status"] == "CP": # Process reads as a pair, then move on two lines
+                line = process_sam_concordant_pair(fwd_dict, rev_dict)
+                out_file.write(line)
+            elif fwd_dict["pair_status"] == "DP":
+                lines = process_sam_discordant_pair(fwd_dict, rev_dict)
+                for line in lines:
+                    out_file.write(line)
+            return(pr(get_next_alignment(in_file), get_next_alignment(in_file)))
+    elif rev_line is not None:
+        rev_dict = process_sam_alignment(rev_line, genomeid_taxid_map, True)
+        msg = "Invalid data: reverse line exists without forward line: {}".format(rev_dict["query_name"])
+        raise ValueError(msg)
+    else:
+        return None
 
 def process_paired_sam(sam_path, out_path, genomeid_taxid_map):
     """Process paired SAM file into a TSV."""
     with open_by_suffix(sam_path) as inf, open_by_suffix(out_path, "w") as outf:
-        # Write headers
-        headers = ["query_name", "genome_id", "taxid", "fragment_length", "best_alignment_score_fwd", "best_alignment_score_rev", "next_alignment_score_fwd", "next_alignment_score_rev", "edit_distance_fwd", "edit_distance_rev", "ref_start_fwd", "ref_start_rev", "map_qual_fwd", "map_qual_rev", "cigar_fwd", "cigar_rev", "query_len_fwd", "query_len_rev", "query_seq_fwd", "query_seq_rev"]
-        header_line = join_line(headers)
-        outf.write(header_line)
-        # Write content
-        end = False
+        head = write_sam_headers_paired(outf) # Write headers
+        # Process file & generate content
+        fwd_line = get_next_alignment(inf)
+        rev_line = get_next_alignment(inf)
         while True:
-            # Get paired alignment entries (skipping headers and empty lines)
-            fwd = get_next_alignment(inf)
-            rev = get_next_alignment(inf)
-            if fwd == "EOF":
+            if fwd_line is not None: # If forward line exists
+                fwd_dict = process_sam_alignment(fwd_line, genomeid_taxid_map, True)
+                if fwd_dict["pair_status"] not in ["UU", "UP", "CP", "DP"]:
+                    raise ValueError("Invalid pair status: {}, {}".format(fwd_dict["query_name"], fwd_dict["pair_status"]))
+                elif fwd_dict["pair_status"] == "UU":
+                    raise ValueError("Unpaired read in paired SAM file: {}".format(fwd_dict["query_name"]))
+                elif fwd_dict["pair_status"] == "UP":
+                    print_log("Unpaired pair: {}".format(fwd_dict["query_name"]))
+                    line = process_sam_unpaired_pair(fwd_dict) # Process forward read, then move on one line and retry
+                    outf.write(line)
+                    fwd_line = rev_line
+                    rev_line = get_next_alignment(inf)
+                    continue
+                else:
+                    if rev_line is None:
+                        raise ValueError("Forward read is paired but reverse read is missing: {}".format(fwd_dict["query_name"]))
+                    rev_dict = process_sam_alignment(rev_line, genomeid_taxid_map, True)
+                    if rev_dict["query_name"] != fwd_dict["query_name"]:
+                        msg = "Alignments should be paired but read IDs mismatch: {}, {}"
+                        raise ValueError(msg.format(fwd_dict["query_name"], rev_dict["query_name"]))
+                    elif fwd_dict["pair_status"] == "CP": # Process reads as a pair, then move on two lines
+                        line = process_sam_concordant_pair(fwd_dict, rev_dict)
+                        outf.write(line)
+                    elif fwd_dict["pair_status"] == "DP":
+                        lines = process_sam_discordant_pair(fwd_dict, rev_dict)
+                        for line in lines:
+                            outf.write(line)
+                    fwd_line = get_next_alignment(inf)
+                    rev_line = get_next_alignment(inf)
+                    continue
+            elif rev_line is not None:
+                rev_dict = process_sam_alignment(rev_line, genomeid_taxid_map, True)
+                msg = "Invalid data: reverse line exists without forward line: {}".format(rev_dict["query_name"])
+                raise ValueError(msg)
+            else:
                 break
-            elif rev == "EOF":
-                raise ValueError("Unpaired SAM file.")
-            # Process read pair
-            fields = process_sam_alignment_pair(fwd, rev, genomeid_taxid_map)
-            fields_joined = join_line(fields)
-            outf.write(fields_joined)
 
 # TODO: Process unpaired SAM
 
 # Main function
-
 def main():
     # Parse arguments
     parser = argparse.ArgumentParser(description="Process Bowtie2 SAM output into a TSV with additional information.")

@@ -755,29 +755,153 @@ process RUN_BOWTIE2 {
         tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
         path(index_dir)
     output:
-        tuple val(sample), path("${sample}_bowtie2_mapped.sam"), path("${sample}_bowtie2_mapped_{1,2}.fastq.gz")
+        tuple val(sample), path("${sample}_bowtie2_mapped.sam"), path("${sample}_bowtie2_conc_{1,2}.fastq.gz"), path("${sample}_bowtie2_unconc_{1,2}.fastq.gz")
     shell:
         '''
         in1=!{reads_nohost[0]}
         in2=!{reads_nohost[1]}
         idx="!{index_dir}/hv_index"
         sam="!{sample}_bowtie2_mapped.sam"
-        alc="!{sample}_bowtie2_mapped_%.fastq.gz"
-        io="-1 ${in1} -2 ${in2} -x ${idx} -S ${sam} --al-conc-gz ${alc}"
+        alc="!{sample}_bowtie2_conc_%.fastq.gz"
+        unc="!{sample}_bowtie2_unconc_%.fastq.gz"
+        io="-1 ${in1} -2 ${in2} -x ${idx} -S ${sam} --al-conc-gz ${alc} --un-conc-gz ${unc}"
         par="--threads !{task.cpus} --no-unal --no-sq --local --very-sensitive-local --score-min G,1,0 --mp 4,1"
         bowtie2 ${par} ${io}
         '''
 }
 
-// TODO: Add RC-sensitive second deduplication step (here?)
+// 7.2. Process Bowtie2 SAM output
+// NB: Currently paired, need to update if switch to merged
+process PROCESS_BOWTIE_SAM {
+    label "pandas"
+    label "single"
+    publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
+    input:
+        tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc)
+        path script_dir
+        path genomeid_taxid_map_path
+    output:
+        tuple val(sample), path("${sample}_bowtie2_sam_processed.tsv")
+    shell:
+        '''
+        in=!{sam_out}
+        out=!{sample}_bowtie2_sam_processed.tsv
+        map=!{genomeid_taxid_map_path}
+        script_path=!{script_dir}/process_sam_hv.py
+        ${script_path} ${in} ${map} ${out}
+        '''
+}
 
-// 7.2. Merge-join deduplicated Bowtie2 output for Kraken processing, part 1: BBMerge
+// 7.3. Get list of singly or discordantly aligned read pairs (if any)
+process GET_UNCONC_READ_IDS {
+    label "biopython"
+    label "single"
+    publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
+    input:
+        tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc)
+    output:
+        tuple val(sample), path("${sample}_bowtie2_mapped_unconc.txt")
+    shell:
+        '''
+        #!/usr/bin/env python
+        import re
+        # Define input and output paths
+        inp = "!{sam_out}"
+        outp = "!{sample}_bowtie2_mapped_unconc.txt"
+        # Extract read IDs from SAM file
+        ids_out = set()
+        with open(inp, "r") as inf:
+            for line in inf:
+                line_split = line.strip().split("\\t")
+                if line_split[0].startswith("@"):
+                    continue
+                id = line_split[0]
+                try:
+                    status_field = [f for f in line_split if "YT" in f][0]
+                    status = re.findall("YT:Z:(.*)", status_field)[0]
+                except:
+                    print(line_split)
+                    raise
+                if status in ["DP", "UP"]:
+                    ids_out.add(id)
+        # Write to new file
+        ids_out_write = "\\n".join(list(ids_out)) + "\\n"
+        with open(outp, "w") as outf:
+            outf.write(ids_out_write)
+        '''
+}
+
+// 7.4. Extract singly or discordantly aligned reads from Bowtie2 output
+process EXTRACT_UNCONC_READS {
+    label "biopython"
+    label "single"
+    publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
+    input:
+        tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc), path(id_file)
+    output:
+        tuple val(sample), path("${sample}_bowtie2_mapped_unconc_{1,2}.fastq.gz")
+    shell:
+        '''
+        #!/usr/bin/env python
+        from Bio import SeqIO
+        import gzip
+        # Define input and output paths
+        inp0="!{id_file}"
+        inp1="!{reads_unconc[0]}"
+        inp2="!{reads_unconc[1]}"
+        outp1="!{sample}_bowtie2_mapped_unconc_1.fastq.gz"
+        outp2="!{sample}_bowtie2_mapped_unconc_2.fastq.gz"
+        # Get list of ids
+        print("Importing IDs...")
+        with open(inp0, "r") as inf:
+            ids = [line.strip() for line in inf.readlines()]
+        print("Done. {} IDs imported.".format(len(ids)))
+        # Filter forward reads
+        print("Filtering forward reads...")
+        with gzip.open(inp1, "rt") as inf, gzip.open(outp1, "wt") as outf:
+            seqs = SeqIO.parse(inf, "fastq")
+            for s in seqs:
+                if s.id in ids:
+                    SeqIO.write(s, outf, "fastq")
+        # Filter reverse reads
+        print("Filtering reverse reads...")
+        with gzip.open(inp2, "rt") as inf, gzip.open(outp2, "wt") as outf:
+            seqs = SeqIO.parse(inf, "fastq")
+            for s in seqs:
+                if s.id in ids:
+                    SeqIO.write(s, outf, "fastq")
+        '''
+}
+
+// 7.5. Combine concordantly and non-concordantly mapped read pairs
+process COMBINE_MAPPED_READS {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
+    input:
+        tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc), path(reads_mapped_unconc)
+    output:
+        tuple val(sample), path("${sample}_bowtie2_mapped_all_{1,2}.fastq.gz")
+    shell:
+        '''
+        inc1=!{reads_conc[0]}
+        inc2=!{reads_conc[1]}
+        inu1=!{reads_mapped_unconc[0]}
+        inu2=!{reads_mapped_unconc[1]}
+        out1=!{sample}_bowtie2_mapped_all_1.fastq.gz
+        out2=!{sample}_bowtie2_mapped_all_2.fastq.gz
+        cat $inc1 $inu1 > $out1
+        cat $inc2 $inu2 > $out2
+        '''
+}
+
+// 7.6. Merge Bowtie2 output read pairs with BBMerge
 process BBMERGE_BOWTIE {
     label "BBTools"
     label "single"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
-        tuple val(sample), path(sam_out), path(reads_out)
+        tuple val(sample), path(reads_out)
     output:
         tuple val(sample), path("${sample}_bowtie2_bbmerge_{merged,unmerged_1,unmerged_2}.fastq.gz"), path("${sample}_bowtie2_bbmerge_stats.txt")
     shell:
@@ -795,7 +919,7 @@ process BBMERGE_BOWTIE {
         '''
 }
 
-// 7.3. Merge-join deduplicated Bowtie2 output for Kraken processing, part 2: join and concatenate
+// 7.7. Merge-join deduplicated Bowtie2 output for Kraken processing, part 2: join and concatenate
 process JOIN_BOWTIE {
     label "biopython"
     label "single"
@@ -821,7 +945,9 @@ process JOIN_BOWTIE {
         '''
 }
 
-// 7.4. Perform taxonomic assignment with Kraken2
+// TODO: Add RC-sensitive second deduplication step (here?)
+
+// 7.8. Perform taxonomic assignment with Kraken2
 process KRAKEN_BOWTIE {
     label "Kraken2"
     label "large"
@@ -846,7 +972,7 @@ process KRAKEN_BOWTIE {
         '''
 }
 
-// 7.5. Process Kraken2 output and identify HV- and non-HV-assigned reads
+// 7.9. Process Kraken2 output and identify HV- and non-HV-assigned reads
 process PROCESS_KRAKEN_BOWTIE {
     label "pandas"
     label "single"
@@ -869,29 +995,7 @@ process PROCESS_KRAKEN_BOWTIE {
         '''
 }
 
-// 7.6. Process Bowtie2 SAM output
-// NB: Currently paired, need to update if switch to merged
-process PROCESS_BOWTIE_SAM {
-    label "pandas"
-    label "single"
-    publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
-    input:
-        tuple val(sample), path(sam), path(reads)
-        path script_dir
-        path genomeid_taxid_map_path
-    output:
-        tuple val(sample), path("${sample}_bowtie2_sam_processed.tsv")
-    shell:
-        '''
-        in=!{sam}
-        out=!{sample}_bowtie2_sam_processed.tsv
-        map=!{genomeid_taxid_map_path}
-        script_path=!{script_dir}/process_sam_hv.py
-        ${script_path} ${in} ${map} ${out}
-        '''
-}
-
-// 7.7. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
+// 7.10. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
 process MERGE_SAM_KRAKEN {
     label "tidyverse"
     label "single"
@@ -915,7 +1019,7 @@ process MERGE_SAM_KRAKEN {
         '''
 }
 
-// 7.8. Collapse outputs from different samples into one TSV
+// 7.11. Collapse outputs from different samples into one TSV
 process MERGE_SAMPLES_HV {
     label "tidyverse"
     label "single"
@@ -940,7 +1044,7 @@ process MERGE_SAMPLES_HV {
         '''
 }
 
-// 7.9. Perform initial HV read filtering
+// 7.12. Perform initial HV read filtering
 process FILTER_HV {
     label "tidyverse"
     label "single"
@@ -957,6 +1061,7 @@ process FILTER_HV {
         score_threshold <- 15 # TODO: Make a parameter
         data <- read_tsv("!{hv_hits}", col_names = TRUE, show_col_types = FALSE)
         filtered <- mutate(data, hit_hv = as.logical(!is.na(str_match(encoded_hits, paste0(" ", as.character(taxid), ":"))))) %>%
+            mutate(adj_score_fwd = replace_na(adj_score_fwd, 0), adj_score_rev = replace_na(adj_score_rev, 0)) %>%
             filter((!classified) | assigned_hv) %>% 
             filter(adj_score_fwd > score_threshold | adj_score_rev > score_threshold | assigned_hv | hit_hv)
         print(dim(data))
@@ -975,13 +1080,20 @@ workflow MAP_HUMAN_VIRUSES {
         genomeid_map_path
         script_dir
     main:
+        // Run Bowtie2 and process output
         bowtie2_ch = RUN_BOWTIE2(host_ch, bt2_index_ch)
-        merge_ch = BBMERGE_BOWTIE(bowtie2_ch)
+        bowtie2_processed_ch = PROCESS_BOWTIE_SAM(bowtie2_ch, script_dir, genomeid_map_path)
+        bowtie2_unconc_ids_ch = GET_UNCONC_READ_IDS(bowtie2_ch)
+        bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.combine(bowtie2_unconc_ids_ch, by: 0))
+        bowtie2_reads_combined_ch = COMBINE_MAPPED_READS(bowtie2_ch.combine(bowtie2_unconc_reads_ch, by: 0))
+        // Merge & join for Kraken input
+        merge_ch = BBMERGE_BOWTIE(bowtie2_reads_combined_ch)
         join_ch = JOIN_BOWTIE(merge_ch, script_dir)
+        // Run Kraken2 and process output
         kraken_ch = KRAKEN_BOWTIE(join_ch, kraken_db_ch)
         kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, script_dir, nodes_path, hv_db_path)
-        bowtie2_processed_ch = PROCESS_BOWTIE_SAM(bowtie2_ch, script_dir, genomeid_map_path)
         merged_input_ch = kraken_processed_ch.combine(bowtie2_processed_ch, by: 0)
+        // Merge and filter output
         merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
         merged_ch_2 = MERGE_SAMPLES_HV(merged_ch.collect().ifEmpty([]))
         filtered_ch = FILTER_HV(merged_ch_2)
