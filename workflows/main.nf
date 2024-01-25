@@ -1063,10 +1063,35 @@ process FILTER_HV {
         filtered <- mutate(data, hit_hv = as.logical(!is.na(str_match(encoded_hits, paste0(" ", as.character(taxid), ":"))))) %>%
             mutate(adj_score_fwd = replace_na(adj_score_fwd, 0), adj_score_rev = replace_na(adj_score_rev, 0)) %>%
             filter((!classified) | assigned_hv) %>% 
-            filter(adj_score_fwd > score_threshold | adj_score_rev > score_threshold | assigned_hv | hit_hv)
+            filter(adj_score_fwd > score_threshold | adj_score_rev > score_threshold | assigned_hv | hit_hv) %>%
+            arrange(sample, desc(adj_score_fwd), desc(adj_score_rev)) %>% group_by(sample) %>%
+            mutate(seq_num = row_number())
         print(dim(data))
         print(dim(filtered))
         write_tsv(filtered, "hv_hits_putative_filtered.tsv")
+        '''
+}
+
+// 7.13. Extract FASTA from filtered sequences
+process MAKE_HV_FASTA {
+    label "tidyverse"
+    label "single"
+    publishDir "${pubDir}/hviral/hits", mode: "symlink"
+    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    input:
+        path(hv_hits_filtered)
+    output:
+        path("hv_hits_putative_filtered.fasta")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        tab <- read_tsv("!{hv_hits_filtered}", col_names = TRUE, show_col_types = FALSE)
+        fasta_tab <- mutate(tab, seq_head = paste0(">", sample, "_", seq_num),
+                            header1 = paste0(seq_head, "_1"), header2 = paste0(seq_head, "_2")) %>%
+            select(header1, seq1=query_seq_fwd, header2, seq2=query_seq_rev)
+        fasta_out <- do.call(paste, c(fasta_tab, sep="\n")) %>% paste(collapse="\n")
+        write(fasta_out, "hv_hits_putative_filtered.fasta")
         '''
 }
 
@@ -1097,9 +1122,11 @@ workflow MAP_HUMAN_VIRUSES {
         merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
         merged_ch_2 = MERGE_SAMPLES_HV(merged_ch.collect().ifEmpty([]))
         filtered_ch = FILTER_HV(merged_ch_2)
+        fasta_ch = MAKE_HV_FASTA(filtered_ch)
     emit:
         data_all = merged_ch_2
         data_filtered = filtered_ch
+        fasta = fasta_ch
 }
 
 /*****************************
