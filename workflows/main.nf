@@ -969,6 +969,8 @@ process KRAKEN_BOWTIE {
         par="--db ${db} --use-names --threads !{task.cpus}"
         # Run Kraken
         kraken2 ${par} ${io}
+        # Make empty output file if no reads
+        touch ${out}
         '''
 }
 
@@ -1010,11 +1012,14 @@ process MERGE_SAM_KRAKEN {
         library(tidyverse)
         sam <- read_tsv("!{sam_processed}", show_col_types = FALSE)
         krk <- read_tsv("!{kraken_processed}", show_col_types = FALSE)
-        mrg <- sam %>% rename(seq_id = query_name) %>% inner_join(krk, by="seq_id") %>%
-            mutate(adj_score_fwd = best_alignment_score_fwd/log(query_len_fwd),
-                   adj_score_rev = best_alignment_score_rev/log(query_len_rev),
-                   sample="!{sample}")
+        mrg <- sam %>% rename(seq_id = query_name) %>% inner_join(krk, by="seq_id")
         cat(nrow(sam), nrow(krk), nrow(mrg))
+        if (nrow(mrg)>0) {
+            mrg <- mrg %>%
+                mutate(adj_score_fwd = best_alignment_score_fwd/log(query_len_fwd),
+                       adj_score_rev = best_alignment_score_rev/log(query_len_rev),
+                       sample="!{sample}")
+        }
         write_tsv(mrg, "!{sample}_hv_hits_putative.tsv")
         '''
 }
