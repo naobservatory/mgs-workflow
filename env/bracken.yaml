@@ -1,7 +1,0 @@
-name: bracken-env
-channels:
-  - bioconda
-  - conda-forge
-  - defaults
-dependencies:
-  - bracken>=2.9
