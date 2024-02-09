@@ -127,6 +127,7 @@ process JOIN_OTHER_REF {
     input:
         val(cow_url)
         val(pig_url)
+        val(ecoli_url)
     output:
         path("other_ref_concat.fasta.gz")
     shell:
@@ -134,7 +135,8 @@ process JOIN_OTHER_REF {
         # Download references
         wget !{cow_url} -O cow_ref.fasta.gz
         wget !{pig_url} -O pig_ref.fasta.gz
-        in="cow_ref.fasta.gz pig_ref.fasta.gz"
+        wget !{ecoli_url} -O ecoli_ref.fasta.gz
+        in="cow_ref.fasta.gz pig_ref.fasta.gz ecoli_ref.fasta.gz"
         cat ${in} > other_ref_concat.fasta.gz # TODO: Make robust to differences in gzip status
         '''
 }
@@ -183,8 +185,9 @@ workflow PREPARE_OTHER {
     take:
         cow_url
         pig_url
+        ecoli_url
     main:
-        join_ch = JOIN_OTHER_REF(cow_url, pig_url) // TODO: Replace hardcoded references with extensible list
+        join_ch = JOIN_OTHER_REF(cow_url, pig_url, ecoli_url) // TODO: Replace hardcoded references with extensible list
         mask_ch = BBMASK_REFERENCES(join_ch)
         index_ch = BBMAP_INDEX_REFERENCES(mask_ch)
     emit:
@@ -348,6 +351,23 @@ process COLLATE_HV_GENOMES {
         '''
 }
 
+// 4.5. Filter masked genomes to exclude transgenic, mutated & unverified sequences
+process FILTER_HV_GENOMES {
+    label "seqtk"
+    label "single"
+    publishDir "${pubDir}/hviral", mode: "symlink"
+    publishDir "${pubDir}/output", mode: "copy"
+    input:
+        path(collated_genomes)
+    output:
+        path("human-viral-genomes-filtered.fasta.gz")
+    shell:
+        '''
+        zcat !{collated_genomes} | grep "^>" | grep -vi transg | grep -vi mutant | grep -vi unverified | grep -vi draft | sed 's/>//' > names.txt
+        seqtk subseq !{collated_genomes} names.txt | gzip -c > human-viral-genomes-filtered.fasta.gz
+        '''
+}
+
 // 4.5. Mask collated virus genomes
 // TODO: Replace with bbmask?
 process MASK_HV_GENOMES {
@@ -392,7 +412,8 @@ workflow PREPARE_VIRAL {
         genome_ch = GET_HV_GENOMES(desc_ch[0])
         map_ch = MAKE_ID_MAPPING(genome_ch[0], genome_ch[1])
         collate_ch = COLLATE_HV_GENOMES(genome_ch[1])
-        mask_ch = MASK_HV_GENOMES(collate_ch)
+        filter_ch = FILTER_HV_GENOMES(collate_ch)
+        mask_ch = MASK_HV_GENOMES(filter_ch)
         index_ch = BUILD_BOWTIE2_DB(mask_ch)
     emit:
         index = index_ch
@@ -507,7 +528,7 @@ workflow COPY_REFS {
 workflow {
     PREPARE_RIBOSOMAL(params.ssu_url, params.lsu_url)
     PREPARE_HUMAN(params.human_url)
-    PREPARE_OTHER(params.cow_url, params.pig_url)
+    PREPARE_OTHER(params.cow_url, params.pig_url, params.ecoli_url)
     PREPARE_VIRAL(virus_db_path)
     PREPARE_TAXONOMY(params.taxonomy_url)
     COPY_REFS(params.kraken_db, params.virus_db)
