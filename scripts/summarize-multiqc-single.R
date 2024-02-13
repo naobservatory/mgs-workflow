@@ -100,7 +100,7 @@ extract_adapter_data_single <- function(adapter_dataset){
 
 extract_adapter_data <- function(multiqc_json){
   # Extract adapter data from multiqc JSON
-  datasets <- multiqc_json$report_plot_data$fastqc_adapter_content_plot$datasets
+  datasets <- multiqc_json$report_plot_data$fastqc_adapter_content_plot$datasets$lines
   data_out <- lapply(datasets, extract_adapter_data_single) %>% bind_rows()
   return(data_out)
 }
@@ -119,7 +119,7 @@ extract_per_base_quality_single <- function(per_base_quality_dataset){
 
 extract_per_base_quality <- function(multiqc_json){
   # Extract per-base sequence quality data from multiqc JSON
-  datasets <- multiqc_json$report_plot_data$fastqc_per_base_sequence_quality_plot$datasets
+  datasets <- multiqc_json$report_plot_data$fastqc_per_base_sequence_quality_plot$datasets$lines
   data_out <- lapply(datasets, extract_per_base_quality_single) %>% bind_rows()
   return(data_out)
 }
@@ -138,7 +138,7 @@ extract_per_sequence_quality_single <- function(per_sequence_quality_dataset){
 
 extract_per_sequence_quality <- function(multiqc_json){
   # Extract per-base sequence quality data from multiqc JSON
-  datasets <- multiqc_json$report_plot_data$fastqc_per_sequence_quality_scores_plot$datasets
+  datasets <- multiqc_json$report_plot_data$fastqc_per_sequence_quality_scores_plot$datasets$lines
   data_out <- lapply(datasets, extract_per_sequence_quality_single) %>% bind_rows()
   return(data_out)
 }
