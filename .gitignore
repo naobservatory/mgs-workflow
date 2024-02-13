@@ -4,3 +4,4 @@ output/*
 *.swp
 test-local/work
 test-local/output
+*.Rhistory

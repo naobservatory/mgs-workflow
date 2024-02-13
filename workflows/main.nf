@@ -520,7 +520,7 @@ process BBDUK_RIBO_INITIAL {
         tuple val(sample), path(reads)
         path ribo_ref
     output:
-        tuple val(sample), path("${sample}_bbduk_noribo_{1,2}.fastq.gz"), path("${sample}_bbduk_ribo_{1,2}.fastq.gz"), path("${sample}_bbduk.stats.txt")
+        tuple val(sample), path("${sample}_bbduk_noribo_{1,2}.fastq.gz"), path("${sample}_bbduk_ribo_{1,2}.fastq.gz"), path("${sample}_bbduk_ribo.stats.txt")
     shell:
         '''
         # Define input/output
@@ -530,7 +530,7 @@ process BBDUK_RIBO_INITIAL {
         op2=!{sample}_bbduk_noribo_2.fastq.gz
         of1=!{sample}_bbduk_ribo_1.fastq.gz
         of2=!{sample}_bbduk_ribo_2.fastq.gz
-        stats_unmerged=!{sample}_bbduk.stats.txt
+        stats_unmerged=!{sample}_bbduk_ribo.stats.txt
         ref=!{ribo_ref}
         io_unmerged="in=${unmerged1} in2=${unmerged2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats_unmerged}"
         # Define parameters
@@ -586,180 +586,24 @@ workflow REMOVE_RIBO_INITIAL {
         multiqc_data = multiqc_ribo_ch[1]
 }
 
-/*********************
-| 5. HUMAN DEPLETION |
-*********************/
-
-// 5.1. Segregate human reads with bbmap
-process BBMAP_HUMAN_DEPLETION {
-    label "large"
-    label "BBTools"
-    publishDir "${pubDir}/preprocess/remove_human", mode: "symlink"
-    input:
-        tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
-        path(index_ref_dir)
-    output:
-        tuple val(sample), path("${sample}_bbmap_nohuman_{1,2}.fastq.gz"), path("${sample}_bbmap_human_{1,2}.fastq.gz"), path("${sample}_bbmap_human.stats.txt")
-    shell:
-        '''
-        # Define input/output
-        unmerged1=!{reads_noribo[0]}
-        unmerged2=!{reads_noribo[1]}
-        op1=!{sample}_bbmap_nohuman_1.fastq.gz
-        op2=!{sample}_bbmap_nohuman_2.fastq.gz
-        of1=!{sample}_bbmap_human_1.fastq.gz
-        of2=!{sample}_bbmap_human_2.fastq.gz
-        stats=!{sample}_bbmap_human.stats.txt
-        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
-        # Define parameters
-        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} -Xmx30g"
-        # Execute
-        bbmap.sh ${io_unmerged} ${par}
-        '''
-}
-
-// 5.2. FASTQC
-process FASTQC_HUMAN {
-    label "FASTQC"
-    cpus 2
-    publishDir "${pubDir}/qc/fastqc/remove_human", mode: "symlink"
-    input:
-        tuple val(sample), path(reads_nohuman), path(reads_human), path(stats)
-    output:
-        path("${sample}_bbmap_nohuman_{1,2}_fastqc.{zip,html}")
-    shell:
-        '''
-        fastqc -t !{task.cpus} !{reads_nohuman}
-        '''
-}
-
-// 5.3. MultiQC
-process MULTIQC_HUMAN {
-    label "MultiQC"
-    label "single"
-    publishDir "${pubDir}/qc/multiqc/remove_human", mode: "symlink"
-    input:
-        path("*")
-    output:
-        path("multiqc_report.html")
-        tuple val("remove_human"), path("multiqc_data")
-    shell:
-        '''
-        multiqc .
-        '''
-}
-
-workflow REMOVE_HUMAN {
-    take:
-        ribo_ch
-        index_ch
-    main:
-        deplete_ch = BBMAP_HUMAN_DEPLETION(ribo_ch, index_ch)
-        fastqc_deplete_ch = FASTQC_HUMAN(deplete_ch)
-        multiqc_deplete_ch = MULTIQC_HUMAN(fastqc_deplete_ch.collect().ifEmpty([]))
-    emit:
-        data = deplete_ch
-        fastqc = fastqc_deplete_ch
-        multiqc_report = multiqc_deplete_ch[0]
-        multiqc_data = multiqc_deplete_ch[1]
-}
-
-/*********************
-| 6. OTHER DEPLETION |
-*********************/
-
-// 6.1. Segregate reference reads with bbmap
-process BBMAP_REFERENCE_DEPLETION {
-    label "BBTools"
-    label "large"
-    publishDir "${pubDir}/preprocess/remove_other", mode: "symlink"
-    input:
-        tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
-        path(index_ref_dir)
-    output:
-        tuple val(sample), path("${sample}_bbmap_noref_{1,2}.fastq.gz"), path("${sample}_bbmap_ref_{1,2}.fastq.gz"), path("${sample}_bbmap_other.stats.txt")
-    shell:
-        '''
-        # Define input/output
-        unmerged1=!{reads_noribo[0]}
-        unmerged2=!{reads_noribo[1]}
-        op1=!{sample}_bbmap_noref_1.fastq.gz
-        op2=!{sample}_bbmap_noref_2.fastq.gz
-        of1=!{sample}_bbmap_ref_1.fastq.gz
-        of2=!{sample}_bbmap_ref_2.fastq.gz
-        stats=!{sample}_bbmap_other.stats.txt
-        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
-        # Define parameters
-        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} usemodulo -Xmx30g"
-        # Execute
-        bbmap.sh ${io_unmerged} ${par}
-        '''
-}
-
-// 6.2. FASTQC
-process FASTQC_REMOVE_OTHER {
-    label "FASTQC"
-    cpus 2
-    publishDir "${pubDir}/qc/fastqc/remove_other", mode: "symlink"
-    input:
-        tuple val(sample), path(reads_noref), path(reads_ref), path(stats)
-    output:
-        path("${sample}_bbmap_noref_{1,2}_fastqc.{zip,html}")
-    shell:
-        '''
-        fastqc -t !{task.cpus} !{reads_noref}
-        '''
-}
-
-// 6.3. MultiQC
-process MULTIQC_REMOVE_OTHER {
-    label "MultiQC"
-    label "single"
-    publishDir "${pubDir}/qc/multiqc/remove_other", mode: "symlink"
-    input:
-        path("*")
-    output:
-        path("multiqc_report.html")
-        tuple val("remove_other"), path("multiqc_data")
-    shell:
-        '''
-        multiqc .
-        '''
-}
-
-workflow REMOVE_OTHER {
-    take:
-        human_ch
-        index_ch
-    main:
-        deplete_ch = BBMAP_REFERENCE_DEPLETION(human_ch, index_ch)
-        fastqc_deplete_ch = FASTQC_REMOVE_OTHER(deplete_ch)
-        multiqc_deplete_ch = MULTIQC_REMOVE_OTHER(fastqc_deplete_ch.collect().ifEmpty([]))
-    emit:
-        data = deplete_ch
-        fastqc = fastqc_deplete_ch
-        multiqc_report = multiqc_deplete_ch[0]
-        multiqc_data = multiqc_deplete_ch[1]
-}
-
 /****************************************
-| 7. HUMAN VIRUS DETECTION WITH BOWTIE2 |
+| 5. HUMAN VIRUS DETECTION WITH BOWTIE2 |
 ****************************************/
 
-// 7.1. Run Bowtie2 and return mapped HV reads
+// 5.1. Run Bowtie2 and return mapped HV reads
 process RUN_BOWTIE2 {
     label "Bowtie2"
     label "large"
     publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
     input:
-        tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
+        tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
         path(index_dir)
     output:
         tuple val(sample), path("${sample}_bowtie2_mapped.sam"), path("${sample}_bowtie2_conc_{1,2}.fastq.gz"), path("${sample}_bowtie2_unconc_{1,2}.fastq.gz")
     shell:
         '''
-        in1=!{reads_nohost[0]}
-        in2=!{reads_nohost[1]}
+        in1=!{reads_noribo[0]}
+        in2=!{reads_noribo[1]}
         idx="!{index_dir}/hv_index"
         sam="!{sample}_bowtie2_mapped.sam"
         alc="!{sample}_bowtie2_conc_%.fastq.gz"
@@ -770,7 +614,7 @@ process RUN_BOWTIE2 {
         '''
 }
 
-// 7.2. Process Bowtie2 SAM output
+// 5.2. Process Bowtie2 SAM output
 // NB: Currently paired, need to update if switch to merged
 process PROCESS_BOWTIE_SAM {
     label "pandas"
@@ -792,7 +636,7 @@ process PROCESS_BOWTIE_SAM {
         '''
 }
 
-// 7.3. Get list of singly or discordantly aligned read pairs (if any)
+// 5.3. Get list of singly or discordantly aligned read pairs (if any)
 process GET_UNCONC_READ_IDS {
     label "biopython"
     label "single"
@@ -831,7 +675,7 @@ process GET_UNCONC_READ_IDS {
         '''
 }
 
-// 7.4. Extract singly or discordantly aligned reads from Bowtie2 output
+// 5.4. Extract singly or discordantly aligned reads from Bowtie2 output
 process EXTRACT_UNCONC_READS {
     label "biopython"
     label "single"
@@ -873,7 +717,7 @@ process EXTRACT_UNCONC_READS {
         '''
 }
 
-// 7.5. Combine concordantly and non-concordantly mapped read pairs
+// 5.5. Combine concordantly and non-concordantly mapped read pairs
 process COMBINE_MAPPED_READS {
     label "BBTools"
     label "single"
@@ -895,20 +739,78 @@ process COMBINE_MAPPED_READS {
         '''
 }
 
-// 7.6. Merge Bowtie2 output read pairs with BBMerge
+// 5.6. Segregate human reads with bbmap
+process BBMAP_HUMAN_DEPLETION {
+    label "large"
+    label "BBTools"
+    publishDir "${pubDir}/hviral/filter", mode: "symlink"
+    errorStrategy "retry"
+    input:
+        tuple val(sample), path(reads_mapped)
+        path(index_ref_dir)
+    output:
+        tuple val(sample), path("${sample}_bbmap_nohuman_{1,2}.fastq.gz"), path("${sample}_bbmap_human_{1,2}.fastq.gz"), path("${sample}_bbmap_human.stats.txt")
+    shell:
+        '''
+        # Define input/output
+        unmerged1=!{reads_mapped[0]}
+        unmerged2=!{reads_mapped[1]}
+        op1=!{sample}_bbmap_nohuman_1.fastq.gz
+        op2=!{sample}_bbmap_nohuman_2.fastq.gz
+        of1=!{sample}_bbmap_human_1.fastq.gz
+        of2=!{sample}_bbmap_human_2.fastq.gz
+        stats=!{sample}_bbmap_human.stats.txt
+        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
+        # Define parameters
+        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} -Xmx30g"
+        # Execute
+        bbmap.sh ${io_unmerged} ${par}
+        '''
+}
+
+// 5.7. Segregate reference reads with bbmap
+process BBMAP_REFERENCE_DEPLETION {
+    label "BBTools"
+    label "large"
+    errorStrategy "retry"
+    publishDir "${pubDir}/hviral/filter", mode: "symlink"
+    input:
+        tuple val(sample), path(reads_nohuman), path(reads_human), path(stats)
+        path(index_ref_dir)
+    output:
+        tuple val(sample), path("${sample}_bbmap_noref_{1,2}.fastq.gz"), path("${sample}_bbmap_ref_{1,2}.fastq.gz"), path("${sample}_bbmap_other.stats.txt")
+    shell:
+        '''
+        # Define input/output
+        unmerged1=!{reads_nohuman[0]}
+        unmerged2=!{reads_nohuman[1]}
+        op1=!{sample}_bbmap_noref_1.fastq.gz
+        op2=!{sample}_bbmap_noref_2.fastq.gz
+        of1=!{sample}_bbmap_ref_1.fastq.gz
+        of2=!{sample}_bbmap_ref_2.fastq.gz
+        stats=!{sample}_bbmap_other.stats.txt
+        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
+        # Define parameters
+        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} usemodulo -Xmx30g"
+        # Execute
+        bbmap.sh ${io_unmerged} ${par}
+        '''
+}
+
+// 5.8. Merge filtered Bowtie2 output read pairs with BBMerge
 process BBMERGE_BOWTIE {
     label "BBTools"
     label "single"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
-        tuple val(sample), path(reads_out)
+        tuple val(sample), path(reads_noref), path(reads_ref), path(stats)
     output:
         tuple val(sample), path("${sample}_bowtie2_bbmerge_{merged,unmerged_1,unmerged_2}.fastq.gz"), path("${sample}_bowtie2_bbmerge_stats.txt")
     shell:
         '''
         # Prepare input/output for bbmerge
-        in1=!{reads_out[0]}
-        in2=!{reads_out[1]}
+        in1=!{reads_noref[0]}
+        in2=!{reads_noref[1]}
         ou1=!{sample}_bowtie2_bbmerge_unmerged_1.fastq.gz
         ou2=!{sample}_bowtie2_bbmerge_unmerged_2.fastq.gz
         om=!{sample}_bowtie2_bbmerge_merged.fastq.gz
@@ -919,7 +821,7 @@ process BBMERGE_BOWTIE {
         '''
 }
 
-// 7.7. Merge-join deduplicated Bowtie2 output for Kraken processing, part 2: join and concatenate
+// 5.9. Merge-join deduplicated Bowtie2 output for Kraken processing, part 2: join and concatenate
 process JOIN_BOWTIE {
     label "biopython"
     label "single"
@@ -947,10 +849,10 @@ process JOIN_BOWTIE {
 
 // TODO: Add RC-sensitive second deduplication step (here?)
 
-// 7.8. Perform taxonomic assignment with Kraken2
+// 5.10. Perform taxonomic assignment with Kraken2
 process KRAKEN_BOWTIE {
     label "Kraken2"
-    label "large"
+    label "small"
     publishDir "${pubDir}/hviral/kraken", mode: "symlink"
     input:
         tuple val(sample), path(reads) // Single input file, merged, joined & concatenated
@@ -974,7 +876,7 @@ process KRAKEN_BOWTIE {
         '''
 }
 
-// 7.9. Process Kraken2 output and identify HV- and non-HV-assigned reads
+// 5.11. Process Kraken2 output and identify HV- and non-HV-assigned reads
 process PROCESS_KRAKEN_BOWTIE {
     label "pandas"
     label "single"
@@ -997,7 +899,7 @@ process PROCESS_KRAKEN_BOWTIE {
         '''
 }
 
-// 7.10. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
+// 5.12. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
 process MERGE_SAM_KRAKEN {
     label "tidyverse"
     label "single"
@@ -1024,7 +926,7 @@ process MERGE_SAM_KRAKEN {
         '''
 }
 
-// 7.11. Collapse outputs from different samples into one TSV
+// 5.13. Collapse outputs from different samples into one TSV
 process MERGE_SAMPLES_HV {
     label "tidyverse"
     label "single"
@@ -1049,7 +951,7 @@ process MERGE_SAMPLES_HV {
         '''
 }
 
-// 7.12. Perform initial HV read filtering
+// 5.14. Perform initial HV read filtering
 process FILTER_HV {
     label "tidyverse"
     label "single"
@@ -1077,7 +979,7 @@ process FILTER_HV {
         '''
 }
 
-// 7.13. Extract FASTA from filtered sequences
+// 5.15. Extract FASTA from filtered sequences
 process MAKE_HV_FASTA {
     label "tidyverse"
     label "single"
@@ -1102,22 +1004,27 @@ process MAKE_HV_FASTA {
 
 workflow MAP_HUMAN_VIRUSES {
     take:
-        host_ch
+        ribo_ch
         bt2_index_ch
         kraken_db_ch
         nodes_path
         hv_db_path
         genomeid_map_path
+        human_index_ch
+        other_index_ch
         script_dir
     main:
         // Run Bowtie2 and process output
-        bowtie2_ch = RUN_BOWTIE2(host_ch, bt2_index_ch)
+        bowtie2_ch = RUN_BOWTIE2(ribo_ch, bt2_index_ch)
         bowtie2_processed_ch = PROCESS_BOWTIE_SAM(bowtie2_ch, script_dir, genomeid_map_path)
         bowtie2_unconc_ids_ch = GET_UNCONC_READ_IDS(bowtie2_ch)
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.combine(bowtie2_unconc_ids_ch, by: 0))
         bowtie2_reads_combined_ch = COMBINE_MAPPED_READS(bowtie2_ch.combine(bowtie2_unconc_reads_ch, by: 0))
+        // Filter contaminants
+        human_ch = BBMAP_HUMAN_DEPLETION(bowtie2_reads_combined_ch, human_index_ch)
+        other_ch = BBMAP_REFERENCE_DEPLETION(human_ch, other_index_ch)
         // Merge & join for Kraken input
-        merge_ch = BBMERGE_BOWTIE(bowtie2_reads_combined_ch)
+        merge_ch = BBMERGE_BOWTIE(other_ch)
         join_ch = JOIN_BOWTIE(merge_ch, script_dir)
         // Run Kraken2 and process output
         kraken_ch = KRAKEN_BOWTIE(join_ch, kraken_db_ch)
@@ -1135,10 +1042,10 @@ workflow MAP_HUMAN_VIRUSES {
 }
 
 /*****************************
-| 8. SECONDARY RIBODEPLETION |
+| 6. SECONDARY RIBODEPLETION |
 *****************************/
 
-// 8.1. Secondary detection and removal of ribosomal reads
+// 6.1. Secondary detection and removal of ribosomal reads
 // NB: Using more liberal parameters here since very high specificity less important
 process BBDUK_RIBO_SECONDARY {
     label "BBTools"
@@ -1148,17 +1055,17 @@ process BBDUK_RIBO_SECONDARY {
         tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
         path ribo_ref
     output:
-        tuple val(sample), path("${sample}_bbduk_noribo_{1,2}.fastq.gz"), path("${sample}_bbduk_ribo_{1,2}.fastq.gz"), path("${sample}_bbduk.stats.txt")
+        tuple val(sample), path("${sample}_bbduk_noribo2_{1,2}.fastq.gz"), path("${sample}_bbduk_ribo2_{1,2}.fastq.gz"), path("${sample}_bbduk_ribo2.stats.txt")
     shell:
         '''
         # Define input/output
         in1=!{reads_nohost[0]}
         in2=!{reads_nohost[1]}
-        op1=!{sample}_bbduk_noribo_1.fastq.gz
-        op2=!{sample}_bbduk_noribo_2.fastq.gz
-        of1=!{sample}_bbduk_ribo_1.fastq.gz
-        of2=!{sample}_bbduk_ribo_2.fastq.gz
-        stats=!{sample}_bbduk.stats.txt
+        op1=!{sample}_bbduk_noribo2_1.fastq.gz
+        op2=!{sample}_bbduk_noribo2_2.fastq.gz
+        of1=!{sample}_bbduk_ribo2_1.fastq.gz
+        of2=!{sample}_bbduk_ribo2_2.fastq.gz
+        stats=!{sample}_bbduk_ribo2.stats.txt
         ref=!{ribo_ref}
         io="in=${in1} in2=${in2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats}"
         # Define parameters
@@ -1168,7 +1075,7 @@ process BBDUK_RIBO_SECONDARY {
         '''
 }
 
-// 8.2. FASTQC
+// 6.2. FASTQC
 process FASTQC_RIBO_SECONDARY {
     label "FASTQC"
     cpus 2
@@ -1176,14 +1083,14 @@ process FASTQC_RIBO_SECONDARY {
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
     output:
-        path("${sample}_bbduk_noribo_{1,2}_fastqc.{zip,html}")
+        path("${sample}_bbduk_noribo2_{1,2}_fastqc.{zip,html}")
     shell:
         '''
         fastqc -t !{task.cpus} !{reads_noribo}
         '''
 }
 
-// 8.3. MultiQC
+// 6.3. MultiQC
 process MULTIQC_RIBO_SECONDARY {
     label "MultiQC"
     label "single"
@@ -1215,10 +1122,10 @@ workflow REMOVE_RIBO_SECONDARY {
 }
 
 /***************************************
-| 9. TAXONOMIC ASSIGNMENT WITH KRAKEN |
+| 7. TAXONOMIC ASSIGNMENT WITH KRAKEN |
 ***************************************/
 
-// 9.1. Merge-join deduplicated output for Kraken processing, part 1: BBMerge
+// 7.1. Merge-join deduplicated output for Kraken processing, part 1: BBMerge
 process BBMERGE {
     label "BBTools"
     label "single"
@@ -1242,7 +1149,7 @@ process BBMERGE {
         '''
 }
 
-// 9.2. Merge-join deduplicated output for Kraken processing, part 1: join and concatenate
+// 7.2. Merge-join deduplicated output for Kraken processing, part 1: join and concatenate
 process JOIN {
     label "biopython"
     label "single"
@@ -1268,11 +1175,11 @@ process JOIN {
         '''
 }
 
-// 9.3. Perform taxonomic assignment with Kraken2
+// 7.3. Perform taxonomic assignment with Kraken2
 // TODO: Check & update unclassified_out file configuration
 process KRAKEN {
     label "Kraken2"
-    label "large"
+    label "small"
     publishDir "${pubDir}/taxonomy/kraken", mode: "symlink"
     input:
         tuple val(sample), path(reads)
@@ -1297,7 +1204,7 @@ process KRAKEN {
         '''
 }
 
-// 9.4. Summarize Kraken output with Bracken
+// 7.4. Summarize Kraken output with Bracken
 process BRACKEN_DOMAINS {
     label "Bracken"
     label "single"
@@ -1321,7 +1228,7 @@ process BRACKEN_DOMAINS {
         '''
 }
 
-// 9.5. Label Bracken files with sample IDs
+// 7.5. Label Bracken files with sample IDs
 process LABEL_BRACKEN {
     label "tidyverse"
     label "single"
@@ -1340,7 +1247,7 @@ process LABEL_BRACKEN {
         '''
 }
 
-// 9.6. Combine Bracken files into a single output file
+// 7.6. Combine Bracken files into a single output file
 process MERGE_BRACKEN {
     label "tidyverse"
     label "single"
@@ -1383,10 +1290,10 @@ workflow CLASSIFY_READS {
 }
 
 /**********************************
-| 11. COLLATE AND PROCESS RESULTS |
+| 8. COLLATE AND PROCESS RESULTS |
 **********************************/
 
-// 11.1. Extract MultiQC data into more usable forms
+// 8.1. Extract MultiQC data into more usable forms
 process SUMMARIZE_MULTIQC_SINGLE {
     label "R"
     label "single"
@@ -1406,7 +1313,7 @@ process SUMMARIZE_MULTIQC_SINGLE {
         '''
 }
 
-// 11.2. Combine MultiQC summary files across workflow stages
+// 8.2. Combine MultiQC summary files across workflow stages
 process MERGE_MULTIQC {
     label "tidyverse"
     label "single"
@@ -1448,7 +1355,7 @@ process MERGE_MULTIQC {
         '''
 }
 
-// 11.3. Summarize taxonomic composition from Bracken and MultiQC output
+// 8.3. Summarize taxonomic composition from Bracken and MultiQC output
 process SUMMARIZE_COMPOSITION {
     label "tidyverse"
     label "single"
@@ -1487,13 +1394,12 @@ process SUMMARIZE_COMPOSITION {
         read_comp <- transmute(read_counts, sample=sample,
                                n_filtered = raw_concat-cleaned,
                                n_duplicate = cleaned-dedup,
-                               n_ribosomal = (dedup-ribo_initial) + (remove_human-ribo_secondary),
+                               n_ribosomal = (dedup-ribo_initial) + (ribo_initial-ribo_secondary),
                                n_unassigned = ribo_secondary-assigned,
                                n_bacterial = bacteria,
                                n_archaeal = archaea,
                                n_viral = viruses,
-                               n_human = (ribo_initial-remove_human) + eukaryota,
-                               n_other_filtered = remove_human-remove_other)
+                               n_human = eukaryota)
         read_comp_long <- pivot_longer(read_comp, -(sample), names_to = "classification",
                                        names_prefix = "n_", values_to = "n_reads") %>%
           mutate(classification = fct_inorder(str_to_sentence(classification))) %>%
@@ -1509,14 +1415,12 @@ workflow PROCESS_OUTPUT {
         multiqc_data_cleaned
         multiqc_data_dedup
         multiqc_data_ribo_initial
-        multiqc_data_human
-        multiqc_data_other
         multiqc_data_ribo_secondary
         bracken_merged
         script_dir
     main:
         // Summarize each MultiQC directory separately
-        multiqc_single = multiqc_data_raw_concat.mix(multiqc_data_cleaned, multiqc_data_dedup, multiqc_data_ribo_initial, multiqc_data_human, multiqc_data_other, multiqc_data_ribo_secondary)
+        multiqc_single = multiqc_data_raw_concat.mix(multiqc_data_cleaned, multiqc_data_dedup, multiqc_data_ribo_initial, multiqc_data_ribo_secondary)
         multiqc_summ   = SUMMARIZE_MULTIQC_SINGLE(multiqc_single, script_dir)
         multiqc_basic = multiqc_summ[0].collect().ifEmpty([])
         multiqc_adapt = multiqc_summ[1].collect().ifEmpty([])
@@ -1565,14 +1469,13 @@ workflow {
     CLEAN_READS(HANDLE.data, PREPARE_REFERENCES.out.adapters)
     DEDUP_READS(CLEAN_READS.out.data)
     REMOVE_RIBO_INITIAL(DEDUP_READS.out.data, PREPARE_REFERENCES.out.ribo)
-    REMOVE_HUMAN(REMOVE_RIBO_INITIAL.out.data, PREPARE_REFERENCES.out.human)
-    REMOVE_OTHER(REMOVE_HUMAN.out.data, PREPARE_REFERENCES.out.other)
-    REMOVE_RIBO_SECONDARY(REMOVE_OTHER.out.data, PREPARE_REFERENCES.out.ribo)
+    REMOVE_RIBO_SECONDARY(REMOVE_RIBO_INITIAL.out.data, PREPARE_REFERENCES.out.ribo)
     // Human viral reads
-    MAP_HUMAN_VIRUSES(REMOVE_OTHER.out.data, PREPARE_REFERENCES.out.hv, PREPARE_REFERENCES.out.kraken,
-        params.nodes, params.hv_db, params.genomeid_map, PREPARE_REFERENCES.out.scripts)
+    MAP_HUMAN_VIRUSES(REMOVE_RIBO_INITIAL.out.data, PREPARE_REFERENCES.out.hv, PREPARE_REFERENCES.out.kraken,
+        params.nodes, params.hv_db, params.genomeid_map, PREPARE_REFERENCES.out.human,
+        PREPARE_REFERENCES.out.other, PREPARE_REFERENCES.out.scripts)
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, PREPARE_REFERENCES.out.scripts)
     // Process output
-    PROCESS_OUTPUT(HANDLE.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_HUMAN.out.multiqc_data, REMOVE_OTHER.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, PREPARE_REFERENCES.out.scripts)
+    PROCESS_OUTPUT(HANDLE.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, PREPARE_REFERENCES.out.scripts)
 }
