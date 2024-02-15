@@ -108,8 +108,8 @@ workflow PREPARE_HUMAN {
         human_url
     main:
         get_ch = GET_HUMAN(human_url)
-        mask_ch = BBMASK_HUMAN(get_ch)
-        index_ch = BBMAP_INDEX_HUMAN(mask_ch)
+        //mask_ch = BBMASK_HUMAN(get_ch)
+        index_ch = BBMAP_INDEX_HUMAN(get_ch)//mask_ch)
     emit:
         index = index_ch
 }
@@ -190,8 +190,8 @@ workflow PREPARE_OTHER {
         contaminant_path
     main:
         join_ch = JOIN_OTHER_REF(cow_url, pig_url, ecoli_url, contaminant_path) // TODO: Replace hardcoded references with extensible list
-        mask_ch = BBMASK_REFERENCES(join_ch)
-        index_ch = BBMAP_INDEX_REFERENCES(mask_ch)
+        //mask_ch = BBMASK_REFERENCES(join_ch)
+        index_ch = BBMAP_INDEX_REFERENCES(join_ch)//mask_ch)
     emit:
         index = index_ch
 }
