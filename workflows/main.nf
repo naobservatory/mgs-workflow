@@ -847,9 +847,31 @@ process JOIN_BOWTIE {
         '''
 }
 
+// 5.10. Deduplicate merged HV candidate reads in an RC-sensitive manner
+process DEDUP_HV {
+    label "BBTools"
+    label "small"
+    publishDir "${pubDir}/hviral/merged", mode: "symlink"
+    input:
+        tuple val(sample), path(reads)
+    output:
+        tuple val(sample), path("${sample}_bowtie2_mjc_dedup.fastq.gz")
+    shell:
+        '''
+        # Define input/output
+        in=!{reads}
+        out=!{sample}_bowtie2_mjc_dedup.fastq.gz
+        io="in=${in} out=${out}"
+        # Define parameters
+        par="reorder dedupe containment t=!{task.cpus} -Xmx15g"
+        # Execute
+        clumpify.sh ${io} ${par}
+        '''
+}
+
 // TODO: Add RC-sensitive second deduplication step (here?)
 
-// 5.10. Perform taxonomic assignment with Kraken2
+// 5.11. Perform taxonomic assignment with Kraken2
 process KRAKEN_BOWTIE {
     label "Kraken2"
     label "small"
@@ -876,7 +898,7 @@ process KRAKEN_BOWTIE {
         '''
 }
 
-// 5.11. Process Kraken2 output and identify HV- and non-HV-assigned reads
+// 5.12. Process Kraken2 output and identify HV- and non-HV-assigned reads
 process PROCESS_KRAKEN_BOWTIE {
     label "pandas"
     label "single"
@@ -899,7 +921,7 @@ process PROCESS_KRAKEN_BOWTIE {
         '''
 }
 
-// 5.12. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
+// 5.13. Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
 process MERGE_SAM_KRAKEN {
     label "tidyverse"
     label "single"
@@ -926,7 +948,7 @@ process MERGE_SAM_KRAKEN {
         '''
 }
 
-// 5.13. Collapse outputs from different samples into one TSV
+// 5.14. Collapse outputs from different samples into one TSV
 process MERGE_SAMPLES_HV {
     label "tidyverse"
     label "single"
@@ -951,7 +973,7 @@ process MERGE_SAMPLES_HV {
         '''
 }
 
-// 5.14. Perform initial HV read filtering
+// 5.15. Perform initial HV read filtering
 process FILTER_HV {
     label "tidyverse"
     label "single"
@@ -979,7 +1001,7 @@ process FILTER_HV {
         '''
 }
 
-// 5.15. Extract FASTA from filtered sequences
+// 5.16. Extract FASTA from filtered sequences
 process MAKE_HV_FASTA {
     label "tidyverse"
     label "single"
@@ -1026,8 +1048,10 @@ workflow MAP_HUMAN_VIRUSES {
         // Merge & join for Kraken input
         merge_ch = BBMERGE_BOWTIE(other_ch)
         join_ch = JOIN_BOWTIE(merge_ch, script_dir)
+        // Deduplicate
+        dedup_ch = DEDUP_HV(join_ch)
         // Run Kraken2 and process output
-        kraken_ch = KRAKEN_BOWTIE(join_ch, kraken_db_ch)
+        kraken_ch = KRAKEN_BOWTIE(dedup_ch, kraken_db_ch)
         kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, script_dir, nodes_path, hv_db_path)
         merged_input_ch = kraken_processed_ch.combine(bowtie2_processed_ch, by: 0)
         // Merge and filter output
