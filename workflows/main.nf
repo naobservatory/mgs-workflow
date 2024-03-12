@@ -117,6 +117,23 @@ process COPY_TAXA {
         '''
 }
 
+// 0.8. Copy sample metadata CSV
+process COPY_SAMPLE_METADATA {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/index", mode: "symlink"
+    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    errorStrategy "retry"
+    input:
+        path(sample_metadata)
+    output:
+        path("sample-metadata.csv")
+    shell:
+        '''
+        cp !{sample_metadata} sample-metadata.csv
+        '''
+}
+
 workflow PREPARE_REFERENCES {
     take:
         human_index_path
@@ -126,6 +143,7 @@ workflow PREPARE_REFERENCES {
         ribo_db_path
         adapter_path
         taxid_path
+        sample_metadata_path
     main:
         human_ch = EXTRACT_HUMAN(human_index_path)
         other_ch = EXTRACT_OTHER(other_index_path)
@@ -134,6 +152,7 @@ workflow PREPARE_REFERENCES {
         ribo_ch = COPY_RIBO(ribo_db_path)
         adapter_ch = COPY_ADAPTERS(adapter_path)
         taxa_ch = COPY_TAXA(taxid_path)
+        sample_ch = COPY_SAMPLE_METADATA(sample_metadata_path)
     emit:
         human = human_ch
         other = other_ch
@@ -142,6 +161,7 @@ workflow PREPARE_REFERENCES {
         ribo = ribo_ch
         adapters = adapter_ch
         taxa = taxa_ch
+        metadata = sample_ch
 }
 
 /****************************
@@ -1510,7 +1530,7 @@ workflow prelim {
 // Complete primary workflow
 workflow {
     // Prepare references & indexes
-    PREPARE_REFERENCES(params.human_index, params.other_index, params.hv_index, params.kraken_db, params.ribo_db, params.adapters, params.viral_taxa_db)
+    PREPARE_REFERENCES(params.human_index, params.other_index, params.hv_index, params.kraken_db, params.ribo_db, params.adapters, params.viral_taxa_db, params.sample_tab)
     // Preprocessing
     if ( params.truncate_reads ) {
         HANDLE = HANDLE_RAW_READS_TRUNC(libraries_ch, params.raw_dir, params.n_reads_trunc)
