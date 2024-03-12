@@ -101,6 +101,22 @@ process COPY_ADAPTERS {
         '''
 }
 
+// 0.7. Copy viral taxa
+process COPY_TAXA {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/index", mode: "symlink"
+    errorStrategy "retry"
+    input:
+        path(viral_taxa)
+    output:
+        path("viral-taxa.tsv.gz")
+    shell:
+        '''
+        cp !{viral_taxa} viral-taxa.tsv.gz
+        '''
+}
+
 workflow PREPARE_REFERENCES {
     take:
         human_index_path
@@ -109,6 +125,7 @@ workflow PREPARE_REFERENCES {
         kraken_db_path
         ribo_db_path
         adapter_path
+        taxid_path
     main:
         human_ch = EXTRACT_HUMAN(human_index_path)
         other_ch = EXTRACT_OTHER(other_index_path)
@@ -116,6 +133,7 @@ workflow PREPARE_REFERENCES {
         kraken_ch = EXTRACT_KRAKEN(kraken_db_path)
         ribo_ch = COPY_RIBO(ribo_db_path)
         adapter_ch = COPY_ADAPTERS(adapter_path)
+        taxa_ch = COPY_TAXA(taxid_path)
     emit:
         human = human_ch
         other = other_ch
@@ -123,6 +141,7 @@ workflow PREPARE_REFERENCES {
         kraken = kraken_ch
         ribo = ribo_ch
         adapters = adapter_ch
+        taxa = taxa_ch
 }
 
 /****************************
@@ -961,13 +980,14 @@ process FILTER_HV {
     publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
     input:
         path(hv_hits)
+        val(score_threshold)
     output:
         path("hv_hits_putative_filtered.tsv")
     shell:
         '''
         #!/usr/bin/env Rscript
         library(tidyverse)
-        score_threshold <- 15 # TODO: Make a parameter
+        score_threshold <- !{score_threshold}
         data <- read_tsv("!{hv_hits}", col_names = TRUE, show_col_types = FALSE)
         filtered <- mutate(data, hit_hv = as.logical(!is.na(str_match(encoded_hits, paste0(" ", as.character(taxid), ":"))))) %>%
             mutate(adj_score_fwd = replace_na(adj_score_fwd, 0), adj_score_rev = replace_na(adj_score_rev, 0)) %>%
@@ -1004,6 +1024,25 @@ process MAKE_HV_FASTA {
         '''
 }
 
+// 5.17. Extract table of clade counts from HV reads
+process COUNT_HV_CLADES {
+    label "R"
+    label "single"
+    publishDir "${pubDir}/hviral/counts", mode: "symlink"
+    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    input:
+        path(hv_hits_filtered)
+        path(viral_taxa)
+        path(script_count_taxa)
+    output:
+        path("hv_clade_counts.tsv.gz")
+    shell:
+        '''
+        script_path=./!{script_count_taxa}
+        ${script_path} --reads !{hv_hits_filtered} --taxa !{viral_taxa} --output hv_clade_counts.tsv.gz
+        '''
+}
+
 workflow MAP_HUMAN_VIRUSES {
     take:
         ribo_ch
@@ -1014,9 +1053,12 @@ workflow MAP_HUMAN_VIRUSES {
         genomeid_map_path
         human_index_ch
         other_index_ch
+        viral_taxa_ch
         script_process_sam
         script_join_fastq
         script_process_kraken
+        script_count_taxa
+        bt2_score_threshold
     main:
         // Run Bowtie2 and process output
         bowtie2_ch = RUN_BOWTIE2(ribo_ch, bt2_index_ch)
@@ -1039,12 +1081,15 @@ workflow MAP_HUMAN_VIRUSES {
         // Merge and filter output
         merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
         merged_ch_2 = MERGE_SAMPLES_HV(merged_ch.collect().ifEmpty([]))
-        filtered_ch = FILTER_HV(merged_ch_2)
+        filtered_ch = FILTER_HV(merged_ch_2, bt2_score_threshold)
         fasta_ch = MAKE_HV_FASTA(filtered_ch)
+        // Count clades
+        count_ch = COUNT_HV_CLADES(filtered_ch, viral_taxa_ch, script_count_taxa)
     emit:
         data_all = merged_ch_2
         data_filtered = filtered_ch
         fasta = fasta_ch
+        counts = count_ch
 }
 
 /*****************************
@@ -1465,7 +1510,7 @@ workflow prelim {
 // Complete primary workflow
 workflow {
     // Prepare references & indexes
-    PREPARE_REFERENCES(params.human_index, params.other_index, params.hv_index, params.kraken_db, params.ribo_db, params.adapters)
+    PREPARE_REFERENCES(params.human_index, params.other_index, params.hv_index, params.kraken_db, params.ribo_db, params.adapters, params.viral_taxa_db)
     // Preprocessing
     if ( params.truncate_reads ) {
         HANDLE = HANDLE_RAW_READS_TRUNC(libraries_ch, params.raw_dir, params.n_reads_trunc)
@@ -1479,7 +1524,9 @@ workflow {
     // Human viral reads
     MAP_HUMAN_VIRUSES(REMOVE_RIBO_INITIAL.out.data, PREPARE_REFERENCES.out.hv, PREPARE_REFERENCES.out.kraken,
         params.nodes, params.hv_db, params.genomeid_map, PREPARE_REFERENCES.out.human,
-        PREPARE_REFERENCES.out.other, params.script_process_sam, params.script_join_fastq, params.script_process_kraken)
+        PREPARE_REFERENCES.out.other, PREPARE_REFERENCES.out.taxa,
+        params.script_process_sam, params.script_join_fastq, params.script_process_kraken, params.script_count_taxa,
+        params.bt2_score_threshold)
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, params.script_join_fastq)
     // Process output
