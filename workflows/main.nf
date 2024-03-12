@@ -101,23 +101,6 @@ process COPY_ADAPTERS {
         '''
 }
 
-// 0.7. Copy scripts
-// NB: Sometimes fails to cache if path to script dir is a symlink; make sure to give true path in config file.
-process COPY_SCRIPTS {
-    label "BBTools"
-    label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
-    errorStrategy "retry"
-    input:
-        path(script_dir)
-    output:
-        path("scripts_ref")
-    shell:
-        '''
-        cp -r !{script_dir} scripts_ref
-        '''
-}
-
 workflow PREPARE_REFERENCES {
     take:
         human_index_path
@@ -126,7 +109,6 @@ workflow PREPARE_REFERENCES {
         kraken_db_path
         ribo_db_path
         adapter_path
-        script_dir_path
     main:
         human_ch = EXTRACT_HUMAN(human_index_path)
         other_ch = EXTRACT_OTHER(other_index_path)
@@ -134,7 +116,6 @@ workflow PREPARE_REFERENCES {
         kraken_ch = EXTRACT_KRAKEN(kraken_db_path)
         ribo_ch = COPY_RIBO(ribo_db_path)
         adapter_ch = COPY_ADAPTERS(adapter_path)
-        script_ch = COPY_SCRIPTS(script_dir_path)
     emit:
         human = human_ch
         other = other_ch
@@ -142,7 +123,6 @@ workflow PREPARE_REFERENCES {
         kraken = kraken_ch
         ribo = ribo_ch
         adapters = adapter_ch
-        scripts = script_ch
 }
 
 /****************************
@@ -622,7 +602,7 @@ process PROCESS_BOWTIE_SAM {
     publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
     input:
         tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc)
-        path script_dir
+        path script_process_sam
         path genomeid_taxid_map_path
     output:
         tuple val(sample), path("${sample}_bowtie2_sam_processed.tsv")
@@ -631,7 +611,7 @@ process PROCESS_BOWTIE_SAM {
         in=!{sam_out}
         out=!{sample}_bowtie2_sam_processed.tsv
         map=!{genomeid_taxid_map_path}
-        script_path=!{script_dir}/process_sam_hv.py
+        script_path=./!{script_process_sam}
         ${script_path} ${in} ${map} ${out}
         '''
 }
@@ -828,13 +808,13 @@ process JOIN_BOWTIE {
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(stats)
-        path script_dir
+        path script_join_fastq
     output:
         tuple val(sample), path("${sample}_bowtie2_mjc.fastq.gz")
     shell:
         '''
         # Prepare to join unmerged read pairs
-        script_path=!{script_dir}/join_fastq.py
+        script_path=./!{script_join_fastq}
         ou1=!{reads[1]}
         ou2=!{reads[2]}
         om=!{reads[0]}
@@ -905,7 +885,7 @@ process PROCESS_KRAKEN_BOWTIE {
     publishDir "${pubDir}/hviral/kraken", mode: "symlink"
     input:
         tuple val(sample), path(output), path(report)
-        path script_dir
+        path script_process_kraken
         path nodes_path
         path hv_path
     output:
@@ -916,7 +896,7 @@ process PROCESS_KRAKEN_BOWTIE {
         out=!{sample}_bowtie2_kraken_processed.tsv
         nodes=!{nodes_path}
         hv=!{hv_path}
-        script_path=!{script_dir}/process_kraken_hv.py
+        script_path=./!{script_process_kraken}
         ${script_path} ${in} ${hv} ${nodes} ${out}
         '''
 }
@@ -1034,11 +1014,13 @@ workflow MAP_HUMAN_VIRUSES {
         genomeid_map_path
         human_index_ch
         other_index_ch
-        script_dir
+        script_process_sam
+        script_join_fastq
+        script_process_kraken
     main:
         // Run Bowtie2 and process output
         bowtie2_ch = RUN_BOWTIE2(ribo_ch, bt2_index_ch)
-        bowtie2_processed_ch = PROCESS_BOWTIE_SAM(bowtie2_ch, script_dir, genomeid_map_path)
+        bowtie2_processed_ch = PROCESS_BOWTIE_SAM(bowtie2_ch, script_process_sam, genomeid_map_path)
         bowtie2_unconc_ids_ch = GET_UNCONC_READ_IDS(bowtie2_ch)
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.combine(bowtie2_unconc_ids_ch, by: 0))
         bowtie2_reads_combined_ch = COMBINE_MAPPED_READS(bowtie2_ch.combine(bowtie2_unconc_reads_ch, by: 0))
@@ -1047,12 +1029,12 @@ workflow MAP_HUMAN_VIRUSES {
         other_ch = BBMAP_REFERENCE_DEPLETION(human_ch, other_index_ch)
         // Merge & join for Kraken input
         merge_ch = BBMERGE_BOWTIE(other_ch)
-        join_ch = JOIN_BOWTIE(merge_ch, script_dir)
+        join_ch = JOIN_BOWTIE(merge_ch, script_join_fastq)
         // Deduplicate
         dedup_ch = DEDUP_HV(join_ch)
         // Run Kraken2 and process output
         kraken_ch = KRAKEN_BOWTIE(dedup_ch, kraken_db_ch)
-        kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, script_dir, nodes_path, hv_db_path)
+        kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, script_process_kraken, nodes_path, hv_db_path)
         merged_input_ch = kraken_processed_ch.combine(bowtie2_processed_ch, by: 0)
         // Merge and filter output
         merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
@@ -1180,13 +1162,13 @@ process JOIN {
     publishDir "${pubDir}/taxonomy/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(stats)
-        path script_dir
+        path script_join_fastq
     output:
         tuple val(sample), path("${sample}_mjc.fastq.gz")
     shell:
         '''
         # Prepare to join unmerged read pairs
-        script_path=!{script_dir}/join_fastq.py
+        script_path=./!{script_join_fastq}
         ou1=!{reads[1]}
         ou2=!{reads[2]}
         om=!{reads[0]}
@@ -1300,10 +1282,10 @@ workflow CLASSIFY_READS {
     take:
         data_ch
         kraken_db_ch
-        script_dir
+        script_join_fastq
     main:
         merged_ch = BBMERGE(data_ch)
-        joined_ch = JOIN(merged_ch, script_dir)
+        joined_ch = JOIN(merged_ch, script_join_fastq)
         kraken_ch = KRAKEN(joined_ch, kraken_db_ch)
         bracken_ch = BRACKEN_DOMAINS(kraken_ch, kraken_db_ch)
         label_ch = LABEL_BRACKEN(bracken_ch)
@@ -1324,7 +1306,7 @@ process SUMMARIZE_MULTIQC_SINGLE {
     publishDir "${pubDir}/qc/multiqc/summaries", mode: "symlink"
     input:
         tuple val(stage), path(multiqc_data)
-        path(script_dir)
+        path(script_summarize_multiqc)
     output:
         path("${stage}_qc_basic_stats.tsv")
         path("${stage}_qc_adapter_stats.tsv")
@@ -1332,7 +1314,7 @@ process SUMMARIZE_MULTIQC_SINGLE {
         path("${stage}_qc_quality_sequence_stats.tsv")
     shell:
         '''
-        script_path=!{script_dir}/summarize-multiqc-single.R
+        script_path=./!{script_summarize_multiqc}
         ${script_path} -i !{multiqc_data} -s !{stage} -o ${PWD}
         '''
 }
@@ -1441,11 +1423,11 @@ workflow PROCESS_OUTPUT {
         multiqc_data_ribo_initial
         multiqc_data_ribo_secondary
         bracken_merged
-        script_dir
+        script_summarize_multiqc
     main:
         // Summarize each MultiQC directory separately
         multiqc_single = multiqc_data_raw_concat.mix(multiqc_data_cleaned, multiqc_data_dedup, multiqc_data_ribo_initial, multiqc_data_ribo_secondary)
-        multiqc_summ   = SUMMARIZE_MULTIQC_SINGLE(multiqc_single, script_dir)
+        multiqc_summ   = SUMMARIZE_MULTIQC_SINGLE(multiqc_single, script_summarize_multiqc)
         multiqc_basic = multiqc_summ[0].collect().ifEmpty([])
         multiqc_adapt = multiqc_summ[1].collect().ifEmpty([])
         multiqc_qbase = multiqc_summ[2].collect().ifEmpty([])
@@ -1483,7 +1465,7 @@ workflow prelim {
 // Complete primary workflow
 workflow {
     // Prepare references & indexes
-    PREPARE_REFERENCES(params.human_index, params.other_index, params.hv_index, params.kraken_db, params.ribo_db, params.adapters, params.script_dir)
+    PREPARE_REFERENCES(params.human_index, params.other_index, params.hv_index, params.kraken_db, params.ribo_db, params.adapters)
     // Preprocessing
     if ( params.truncate_reads ) {
         HANDLE = HANDLE_RAW_READS_TRUNC(libraries_ch, params.raw_dir, params.n_reads_trunc)
@@ -1497,9 +1479,9 @@ workflow {
     // Human viral reads
     MAP_HUMAN_VIRUSES(REMOVE_RIBO_INITIAL.out.data, PREPARE_REFERENCES.out.hv, PREPARE_REFERENCES.out.kraken,
         params.nodes, params.hv_db, params.genomeid_map, PREPARE_REFERENCES.out.human,
-        PREPARE_REFERENCES.out.other, PREPARE_REFERENCES.out.scripts)
+        PREPARE_REFERENCES.out.other, params.script_process_sam, params.script_join_fastq, params.script_process_kraken)
     // Broad taxonomic profiling
-    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, PREPARE_REFERENCES.out.scripts)
+    CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, params.script_join_fastq)
     // Process output
-    PROCESS_OUTPUT(HANDLE.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, PREPARE_REFERENCES.out.scripts)
+    PROCESS_OUTPUT(HANDLE.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, params.script_summarize_multiqc)
 }

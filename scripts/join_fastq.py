@@ -29,7 +29,7 @@ def join_paired_reads(file1, file2, output_file, gap="N"):
         r  = zip(r1,r2)
         for fwd,rev in r:
             s1, q1 = str(fwd.seq), fwd.letter_annotations["phred_quality"]
-            s2, q2 = str(rev.seq), rev.letter_annotations["phred_quality"]
+            s2, q2 = str(rev.seq.reverse_complement()), rev.letter_annotations["phred_quality"][::-1]
             joined_seq = Seq.Seq(s1 + gap + s2)
             joined_qual = {"phred_quality": q1 + [0]*len(gap) + q2}
             joined_read = SeqIO.SeqRecord(joined_seq, id=fwd.id, description="joined", letter_annotations=joined_qual)
