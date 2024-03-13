@@ -40,9 +40,7 @@ count_hits_direct <- function(read_db, taxid_tree, group_var){
         count(name="n_reads_direct", .drop=FALSE) %>%
         pivot_wider(names_from=any_of(group_var), values_from=n_reads_direct,
                     values_fill = 0)
-    print(direct_hits_setup)
     direct_hits_joined <- taxids %>% left_join(direct_hits_setup, by="taxid")
-    print(direct_hits_joined)
     direct_hits <- taxids %>% left_join(direct_hits_setup, by="taxid") %>%
         pivot_longer(cols=-(taxid:n_children), names_to=group_var,
                      values_to="n_reads_direct") %>%
@@ -53,12 +51,15 @@ count_hits_direct <- function(read_db, taxid_tree, group_var){
 
 count_hits_indirect <- function(direct_hits, taxid_tree, group_var){
     # Count number of reads assigned to each taxid in a tree or its descendents
+    iter <- 0
     taxids <- count_children(taxid_tree)
-    n_children <- taxid_tree %>% select(taxid, n_children)
+    n_children <- taxids %>% select(taxid, n_children)
     hits_unresolved <- direct_hits %>% left_join(n_children, by="taxid") %>%
         mutate(n_reads_clade = n_reads_direct, n_reads_children = 0)
     hits_resolved <- tibble()
+    cat("\tIteration ", iter, ": ", nrow(hits_unresolved), " unresolved, ", nrow(hits_resolved), " resolved.\n", sep="")
     while (nrow(hits_unresolved) > 0){
+        iter <- iter + 1
         # Identify leaf nodes
         hits_leaf <- hits_unresolved %>% filter(n_children == 0)
         # Calculate contributions to parent nodes
@@ -68,7 +69,7 @@ count_hits_indirect <- function(direct_hits, taxid_tree, group_var){
         # Add child reads to direct hits to calculate clade reads
         hits_partial <- hits_unresolved %>% filter(n_children > 0) %>%
             select(-n_children, -n_reads_children) %>%
-            left_join(viral_hits_children, by=c("taxid", group_var)) %>%
+            left_join(hits_children, by=c("taxid", group_var)) %>%
             mutate(n_reads_children = replace_na(n_reads_children, 0),
                    n_reads_clade = n_reads_clade + n_reads_children)
         # Add leaf nodes to resolved hits
@@ -80,14 +81,19 @@ count_hits_indirect <- function(direct_hits, taxid_tree, group_var){
         hits_unresolved <- hits_partial %>%
             left_join(hits_n_children, by=c("taxid", group_var)) %>%
             mutate(n_children = replace_na(n_children, 0))
+        cat("\tIteration ", iter, ": ", nrow(hits_unresolved), " unresolved, ", nrow(hits_resolved), " resolved.\n", sep="")
     }
     return(hits_resolved %>% arrange(taxid))
 }
 
 count_hits <- function(read_db, taxid_tree, group_var){
     # Count direct and indirect hits for each taxon in a set of human-viral reads
+    cat("Counting direct hits...\n")
     hits_direct <- count_hits_direct(read_db, taxid_tree, group_var)
+    cat("Done.\n")
+    cat("Counting indirect hits...\n")
     hits_indirect <- count_hits_indirect(hits_direct, taxid_tree, group_var)
+    cat("Done.\n")
     return(hits_indirect)
 }
 
