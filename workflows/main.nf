@@ -152,8 +152,9 @@ workflow PREPARE_REFERENCES {
 // 1.1. Concatenate split files from same sample together
 process CONCAT_GZIPPED {
     label "single"
-    label "base"
+    label "seqtk"
     publishDir "${pubDir}/raw_concat", mode: "symlink"
+    errorStrategy "retry"
     input:
         path raw_files_directory
         tuple val(sample), val(libraries)
@@ -175,11 +176,46 @@ process CONCAT_GZIPPED {
             r1="${r1} ${L1}"
             r2="${r2} ${L2}"
             done
-        # Concatenate
+        ln1=$(wc -w <<< ${r1})
+        ln2=$(wc -w <<< ${r2})
+        echo Forward read files: ${ln1}
+        echo Reverse read files: ${ln2}
+        if [[ ${ln1} != ${ln2} ]]; then
+            >&2 echo "Error: uneven numbers of files for forward and reverse reads."
+        fi
+        if [[ ${ln1} == 0 ]]; then
+            >&2 echo "Error: No read files specified"
+        fi
+        # Concatenate or copy
+        out1=!{sample}_1.fastq.gz
+        out2=!{sample}_2.fastq.gz
         echo Read 1 files to concatenate: ${r1}
-        cat ${r1} > !{sample}_1.fastq.gz
         echo Read 2 files to concatenate: ${r2}
-        cat ${r2} > !{sample}_2.fastq.gz
+        if [[ ${ln1} == 1 ]]; then
+            # Make copies
+            echo "Only one file per read pair; copying."
+            cp ${r1} ${out1}
+            cp ${r2} ${out2}
+            # Test copies and fail if not identical
+            cmp ${r1} ${out1} > diff1.txt
+            cmp ${r2} ${out2} > diff2.txt
+            if [[ -s diff1.txt ]]; then
+                >&2 echo "Error: $(cat diff1)"
+                echo "Input file lengths: $(zcat ${r1} | wc -l) $(zcat ${r2} | wc -l)
+                echo "Output file lengths: $(zcat ${out1} | wc -l) $(zcat ${out2} | wc -l)
+                exit 1
+            elif [[ -s diff2.txt ]]; then
+                >&2 echo "Error: $(cat diff2)"
+                echo "Input file lengths: $(zcat ${r1} | wc -l) $(zcat ${r2} | wc -l)
+                echo "Output file lengths: $(zcat ${out1} | wc -l) $(zcat ${out2} | wc -l)
+                exit 1
+            fi
+        else
+            # Concatenate
+            # TODO: Add error checking and handling
+            cat ${r1} > ${out1}
+            cat ${r2} > ${out2}
+        fi
         '''
 }
 
@@ -441,6 +477,7 @@ workflow CLEAN_READS {
 process DEDUP_CLUMPIFY {
     label "large"
     label "BBTools"
+    errorStrategy "retry"
     publishDir "${pubDir}/preprocess/dedup", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(failed), path(reports)
@@ -516,6 +553,7 @@ process BBDUK_RIBO_INITIAL {
     label "large"
     label "BBTools"
     publishDir "${pubDir}/preprocess/ribo_initial", mode: "symlink"
+    errorStrategy "retry"
     input:
         tuple val(sample), path(reads)
         path ribo_ref
@@ -1050,6 +1088,7 @@ workflow MAP_HUMAN_VIRUSES {
 process BBDUK_RIBO_SECONDARY {
     label "BBTools"
     label "large"
+    errorStrategy "retry"
     publishDir "${pubDir}/preprocess/ribo_secondary", mode: "symlink"
     input:
         tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
