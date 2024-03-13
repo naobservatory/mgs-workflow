@@ -421,6 +421,7 @@ workflow PREPARE_VIRAL {
         index = index_ch
         map = map_ch
         genomes = collate_ch
+        desc = desc_ch[1]
 }
 
 /*********************************************************
@@ -522,6 +523,45 @@ workflow COPY_REFS {
         hv = hv_ch
 }
 
+/****************************
+| 7. GENERATE VIRAL TAXA DB |
+****************************/
+
+// 7.1. Generate DB of viral taxids and relationships
+process VIRAL_TAXA_DB {
+    label "R"
+    label "single"
+    publishDir "${pubDir}/hviral", mode: "symlink"
+    publishDir "${pubDir}/output", mode: "copy"
+    input:
+        path(taxonomy_dir)
+        path(human_virus_db)
+        path(human_virus_descendents_json)
+        path(script_path_viral_taxa)
+    output:
+        path("viral-taxids.tsv.gz")
+    shell:
+        '''
+        nodes_path=!{taxonomy_dir}/nodes.dmp
+        names_path=!{taxonomy_dir}/names.dmp
+        hv_path=!{human_virus_db}
+        json_path=!{human_virus_descendents_json}
+        inputs="--nodes ${nodes_path} --names ${names_path} --hv ${hv_path} --json ${json_path}"
+        ./!{script_path_viral_taxa} ${inputs} --output viral-taxids.tsv.gz
+        '''
+}
+
+workflow VIRAL_TAXA {
+    take:
+        taxonomy_dir
+        human_virus_db
+        human_virus_descendents_json
+        script_path_viral_taxa
+    main:
+        db_ch = VIRAL_TAXA_DB(taxonomy_dir, human_virus_db, human_virus_descendents_json, script_path_viral_taxa)
+    emit:
+        db = db_ch
+}
 
 /****************
 | MAIN WORKFLOW |
@@ -534,4 +574,5 @@ workflow {
     PREPARE_VIRAL(virus_db_path)
     PREPARE_TAXONOMY(params.taxonomy_url)
     COPY_REFS(params.kraken_db, params.virus_db)
+    VIRAL_TAXA(PREPARE_TAXONOMY.out.dir, virus_db_path, PREPARE_VIRAL.out.desc, params.script_viral_taxa)
 }
