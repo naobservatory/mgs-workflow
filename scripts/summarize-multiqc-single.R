@@ -25,7 +25,7 @@ out_path_quality_base <- file.path(opt$output_dir, paste0(opt$stage, "_qc_qualit
 out_path_quality_sequence <- file.path(opt$output_dir, paste0(opt$stage, "_qc_quality_sequence_stats.tsv"))
 
 # Specify state descriptors
-pipeline_states <- c("bbduk_noribo", "bbmap_nohuman", "bbmap_noref", "dedup", "fastp", "trunc")
+pipeline_states <- c("bbduk_noribo2", "bbduk_noribo", "bbmap_nohuman", "bbmap_noref", "dedup", "fastp", "trunc")
 
 #=====================#
 # AUXILIARY FUNCTIONS #
@@ -92,8 +92,7 @@ extract_adapter_data_single <- function(adapter_dataset){
     bind_rows() %>% as_tibble %>%
     rename(position=V1, pc_adapters=V2) %>%
     separate_wider_delim("sample", " - ", names=c("sample", "adapter")) %>%
-    mutate(read_pair = sapply(str_split(sample, "_"), last),
-           sample = sapply(str_split(sample, "_"), first))
+    split_sample
   return(data)
 }
 
@@ -112,8 +111,7 @@ extract_per_base_quality_single <- function(per_base_quality_dataset){
       mutate(sample=per_base_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(position=V1, mean_phred_score=V2) %>%
-    mutate(read_pair = sapply(str_split(sample, "_"), last),
-           sample = sapply(str_split(sample, "_"), first))
+    split_sample
   return(data)
 }
 
@@ -131,8 +129,7 @@ extract_per_sequence_quality_single <- function(per_sequence_quality_dataset){
       mutate(sample=per_sequence_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(mean_phred_score=V1, n_sequences=V2) %>%
-    mutate(read_pair = sapply(str_split(sample, "_"), last),
-           sample = sapply(str_split(sample, "_"), first))
+    split_sample
   return(data)
 }
 
