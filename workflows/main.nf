@@ -343,6 +343,25 @@ workflow HANDLE_RAW_READS_TRUNC {
 | 2. TRIMMING & FILTERING |
 **************************/
 
+// TEST: Remove internal adapters with cutadapt
+process PREPROCESS_CUTADAPT {
+    label "cutadapt"
+    label "large"
+    publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
+    input: 
+        tuple val(sample), path(read1), path(read2)
+        path adapters
+    output:
+        tuple val(sample), path("${sample}_cutadapt_{1,2}.fastq.gz"), path("${sample}_cutadapt_log.txt")
+    shell:
+        '''
+        par="-b file:!{adapters} -B file:!{adapters} -j !{task.cpus} -m 15 --action=trim"
+        out="-o !{sample}_cutadapt_1.fastq.gz -p !{sample}_cutadapt_2.fastq.gz"
+        log="!{sample}_cutadapt_log.txt"
+        cutadapt ${par} ${out} !{read1} !{read2} > ${log}
+        '''
+}
+
 // 2.1. Trim & filter by length & quality
 // NB: Does not include deduplication
 process PREPROCESS_FASTP {
@@ -350,7 +369,7 @@ process PREPROCESS_FASTP {
     container "staphb/fastp:latest"
     publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
     input:
-        tuple val(sample), path(read1), path(read2)
+        tuple val(sample), path(reads), path(log)
         path adapters
     output:
         tuple val(sample), path("${sample}_fastp_{1,2}.fastq.gz"), path("${sample}_fastp_failed.fastq.gz"), path("${sample}_fastp.{json,html}")
@@ -363,7 +382,7 @@ process PREPROCESS_FASTP {
         oj=!{sample}_fastp.json
         oh=!{sample}_fastp.html
         ad=!{adapters}
-        io="--in1 !{read1} --in2 !{read2} --out1 ${o1} --out2 ${o2} --failed_out ${of} --html ${oh} --json ${oj} --adapter_fasta ${ad}"
+        io="--in1 !{reads[0]} --in2 !{reads[1]} --out1 ${o1} --out2 ${o2} --failed_out ${of} --html ${oh} --json ${oj} --adapter_fasta ${ad}"
         par="--cut_front --cut_tail --correction --detect_adapter_for_pe --trim_poly_x --cut_mean_quality 25 --average_qual 25 --qualified_quality_phred 20 --verbose --dont_eval_duplication --thread !{task.cpus} --low_complexity_filter"
         # Execute
         fastp ${io} ${par}
@@ -473,7 +492,8 @@ workflow CLEAN_READS {
         concat_ch
         adapter_path
     main:
-        clean_ch = PREPROCESS_FASTP(concat_ch, adapter_path)
+        adapt_ch = PREPROCESS_CUTADAPT(concat_ch, adapter_path)
+        clean_ch = PREPROCESS_FASTP(adapt_ch, adapter_path)
         fastqc_cleaned_ch = FASTQC_CLEANED(clean_ch)
         multiqc_cleaned_ch = MULTIQC_CLEANED(fastqc_cleaned_ch.collect().ifEmpty([]))
         adapter_single_ch = EXTRACT_ADAPTERS_SINGLE(clean_ch)
@@ -779,173 +799,6 @@ process COMBINE_MAPPED_READS {
     label "BBTools"
     label "single"
     publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
-    input:
-        tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc), path(reads_mapped_unconc)
-    output:
-        tuple val(sample), path("${sample}_bowtie2_mapped_all_{1,2}.fastq.gz")
-    shell:
-        '''
-        inc1=!{reads_conc[0]}
-        inc2=!{reads_conc[1]}
-        inu1=!{reads_mapped_unconc[0]}
-        inu2=!{reads_mapped_unconc[1]}
-        out1=!{sample}_bowtie2_mapped_all_1.fastq.gz
-        out2=!{sample}_bowtie2_mapped_all_2.fastq.gz
-        cat $inc1 $inu1 > $out1
-        cat $inc2 $inu2 > $out2
-        '''
-}
-
-// TEST: Remove internal adapters with cutadapt
-process CUTADAPT {
-    label "cutadapt"
-    label "small"
-    publishDir "${pubDir}/hviral/bowtie2", mode: "symlink"
-    input: 
-        tuple val(sample), path(reads)
-        path adapters
-    output:
-        tuple val(sample), path("${sample}_cutadapt_{1,2}.fastq.gz")
-    shell:
-        '''
-        par="-b file:!{adapters} -B file:!{adapters} --action=mask"
-        out="-o !{sample}_cutadapt_1.fastq.gz -p !{sample}_cutadapt_2.fastq.gz"
-        cutadapt ${par} ${out} !{reads[0]} !{reads[1]}
-        '''
-}
-
-// TEST: Re-run Bowtie2 on Cutadapt output and re-process results
-process RUN_BOWTIE2_2 {
-    label "Bowtie2"
-    label "large"
-    publishDir "${pubDir}/hviral/bowtie2", mode: "symlink"
-    input:
-        tuple val(sample), path(reads_cut)
-        path(index_dir)
-    output:
-        tuple val(sample), path("${sample}_bowtie2_mapped.sam"), path("${sample}_bowtie2_conc_{1,2}.fastq.gz"), path("${sample}_bowtie2_unconc_{1,2}.fastq.gz")
-    shell:
-        '''
-        in1=!{reads_cut[0]}
-        in2=!{reads_cut[1]}
-        idx="!{index_dir}/hv_index"
-        sam="!{sample}_bowtie2_mapped.sam"
-        alc="!{sample}_bowtie2_conc_%.fastq.gz"
-        unc="!{sample}_bowtie2_unconc_%.fastq.gz"
-        io="-1 ${in1} -2 ${in2} -x ${idx} -S ${sam} --al-conc-gz ${alc} --un-conc-gz ${unc}"
-        par="--threads !{task.cpus} --no-unal --no-sq --local --very-sensitive-local --score-min G,1,0 --mp 4,1"
-        bowtie2 ${par} ${io}
-        '''
-}
-
-// 5.2. Process Bowtie2 SAM output
-// NB: Currently paired, need to update if switch to merged
-process PROCESS_BOWTIE_SAM_2 {
-    label "pandas"
-    label "single"
-    publishDir "${pubDir}/hviral/bowtie2", mode: "symlink"
-    input:
-        tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc)
-        path script_process_sam
-        path genomeid_taxid_map_path
-    output:
-        tuple val(sample), path("${sample}_bowtie2_sam_processed.tsv")
-    shell:
-        '''
-        in=!{sam_out}
-        out=!{sample}_bowtie2_sam_processed.tsv
-        map=!{genomeid_taxid_map_path}
-        script_path=./!{script_process_sam}
-        ${script_path} ${in} ${map} ${out}
-        '''
-}
-
-// 5.3. Get list of singly or discordantly aligned read pairs (if any)
-process GET_UNCONC_READ_IDS_2 {
-    label "biopython"
-    label "single"
-    publishDir "${pubDir}/hviral/bowtie2", mode: "symlink"
-    input:
-        tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc)
-    output:
-        tuple val(sample), path("${sample}_bowtie2_mapped_unconc.txt")
-    shell:
-        '''
-        #!/usr/bin/env python
-        import re
-        # Define input and output paths
-        inp = "!{sam_out}"
-        outp = "!{sample}_bowtie2_mapped_unconc.txt"
-        # Extract read IDs from SAM file
-        ids_out = set()
-        with open(inp, "r") as inf:
-            for line in inf:
-                line_split = line.strip().split("\\t")
-                if line_split[0].startswith("@"):
-                    continue
-                id = line_split[0]
-                try:
-                    status_field = [f for f in line_split if "YT" in f][0]
-                    status = re.findall("YT:Z:(.*)", status_field)[0]
-                except:
-                    print(line_split)
-                    raise
-                if status in ["DP", "UP"]:
-                    ids_out.add(id)
-        # Write to new file
-        ids_out_write = "\\n".join(list(ids_out)) + "\\n"
-        with open(outp, "w") as outf:
-            outf.write(ids_out_write)
-        '''
-}
-
-// 5.4. Extract singly or discordantly aligned reads from Bowtie2 output
-process EXTRACT_UNCONC_READS_2 {
-    label "biopython"
-    label "single"
-    publishDir "${pubDir}/hviral/bowtie2", mode: "symlink"
-    input:
-        tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc), path(id_file)
-    output:
-        tuple val(sample), path("${sample}_bowtie2_mapped_unconc_{1,2}.fastq.gz")
-    shell:
-        '''
-        #!/usr/bin/env python
-        from Bio import SeqIO
-        import gzip
-        # Define input and output paths
-        inp0="!{id_file}"
-        inp1="!{reads_unconc[0]}"
-        inp2="!{reads_unconc[1]}"
-        outp1="!{sample}_bowtie2_mapped_unconc_1.fastq.gz"
-        outp2="!{sample}_bowtie2_mapped_unconc_2.fastq.gz"
-        # Get list of ids
-        print("Importing IDs...")
-        with open(inp0, "r") as inf:
-            ids = [line.strip() for line in inf.readlines()]
-        print("Done. {} IDs imported.".format(len(ids)))
-        # Filter forward reads
-        print("Filtering forward reads...")
-        with gzip.open(inp1, "rt") as inf, gzip.open(outp1, "wt") as outf:
-            seqs = SeqIO.parse(inf, "fastq")
-            for s in seqs:
-                if s.id in ids:
-                    SeqIO.write(s, outf, "fastq")
-        # Filter reverse reads
-        print("Filtering reverse reads...")
-        with gzip.open(inp2, "rt") as inf, gzip.open(outp2, "wt") as outf:
-            seqs = SeqIO.parse(inf, "fastq")
-            for s in seqs:
-                if s.id in ids:
-                    SeqIO.write(s, outf, "fastq")
-        '''
-}
-
-// 5.5. Combine concordantly and non-concordantly mapped read pairs
-process COMBINE_MAPPED_READS_2 {
-    label "BBTools"
-    label "single"
-    publishDir "${pubDir}/hviral/bowtie2", mode: "symlink"
     input:
         tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc), path(reads_mapped_unconc)
     output:
@@ -1297,15 +1150,8 @@ workflow MAP_HUMAN_VIRUSES {
         bowtie2_unconc_ids_ch = GET_UNCONC_READ_IDS(bowtie2_ch)
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.combine(bowtie2_unconc_ids_ch, by: 0))
         bowtie2_reads_combined_ch = COMBINE_MAPPED_READS(bowtie2_ch.combine(bowtie2_unconc_reads_ch, by: 0))
-        // Run Cutadapt, then re-run Bowtie2
-        cut_ch = CUTADAPT(bowtie2_reads_combined_ch, adapters)
-        bowtie2_2_ch = RUN_BOWTIE2_2(cut_ch, bt2_index_ch)
-        bowtie2_2_processed_ch = PROCESS_BOWTIE_SAM_2(bowtie2_2_ch, script_process_sam, genomeid_map_path)
-        bowtie2_2_unconc_ids_ch = GET_UNCONC_READ_IDS_2(bowtie2_2_ch)
-        bowtie2_2_unconc_reads_ch = EXTRACT_UNCONC_READS_2(bowtie2_2_ch.combine(bowtie2_2_unconc_ids_ch, by: 0))
-        bowtie2_2_reads_combined_ch = COMBINE_MAPPED_READS_2(bowtie2_2_ch.combine(bowtie2_2_unconc_reads_ch, by: 0))
         // Filter contaminants
-        human_ch = BBMAP_HUMAN_DEPLETION(bowtie2_2_reads_combined_ch, human_index_ch)
+        human_ch = BBMAP_HUMAN_DEPLETION(bowtie2_reads_combined_ch, human_index_ch)
         other_ch = BBMAP_REFERENCE_DEPLETION(human_ch, other_index_ch)
         // Merge & join for Kraken input
         merge_ch = BBMERGE_BOWTIE(other_ch)
@@ -1315,7 +1161,7 @@ workflow MAP_HUMAN_VIRUSES {
         // Run Kraken2 and process output
         kraken_ch = KRAKEN_BOWTIE(dedup_ch, kraken_db_ch)
         kraken_processed_ch = PROCESS_KRAKEN_BOWTIE(kraken_ch, script_process_kraken, nodes_path, hv_db_path)
-        merged_input_ch = kraken_processed_ch.combine(bowtie2_2_processed_ch, by: 0)
+        merged_input_ch = kraken_processed_ch.combine(bowtie2_processed_ch, by: 0)
         // Merge and filter output
         merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
         merged_ch_2 = MERGE_SAMPLES_HV(merged_ch.collect().ifEmpty([]))
