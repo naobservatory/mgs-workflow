@@ -1239,7 +1239,7 @@ workflow REMOVE_RIBO_SECONDARY {
 process BBMERGE {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/hviral/merged", mode: "symlink"
+    publishDir "${pubDir}/taxonomy/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
     output:
@@ -1394,6 +1394,200 @@ workflow CLASSIFY_READS {
         bracken_ch = BRACKEN_DOMAINS(kraken_ch, kraken_db_ch)
         label_ch = LABEL_BRACKEN(bracken_ch)
         merged_ch_2 = MERGE_BRACKEN(label_ch.collect().ifEmpty([]))
+    emit:
+        kraken = kraken_ch
+        bracken = merged_ch_2
+}
+
+/**************************************************
+| 8. TAXONOMIC ASSIGNMENT WITH KRAKEN - PRE-DEDUP |
+**************************************************/
+
+// 8.0. Subsequence cleaned reads with seqtk
+process SUBSET_CLEANED {
+    label "seqtk"
+    label "single"
+    publishDir "${pubDir}/taxonomy/prededup/merged", mode: "symlink"
+    input:
+        tuple val(sample), path(reads), path(failed), path(reports)
+        val readFraction
+    output:
+        tuple val(sample), path("${sample}_cleaned_subset_{1,2}.fastq.gz")
+    shell:
+        '''
+        # Define input/output
+        in1=!{reads[0]}
+        in2=!{reads[1]}
+        out1=!{sample}_cleaned_subset_1.fastq.gz
+        out2=!{sample}_cleaned_subset_2.fastq.gz
+        # Carry out subsetting
+        seed=${RANDOM}
+        seqtk sample -s ${seed} ${in1} !{readFraction} | gzip -c > ${out1}
+        seqtk sample -s ${seed} ${in2} !{readFraction} | gzip -c > ${out2}
+        '''
+}
+
+// 8.1. Merge-join deduplicated output for Kraken processing, part 1: BBMerge
+process BBMERGE_SUBSET {
+    label "BBTools"
+    label "single"
+    publishDir "${pubDir}/taxonomy/prededup/merged", mode: "symlink"
+    input:
+        tuple val(sample), path(reads_subset)
+    output:
+        tuple val(sample), path("${sample}_subset_bbmerge_{merged,unmerged_1,unmerged_2}.fastq.gz"), path("${sample}_subset_bbmerge_stats.txt")
+    shell:
+        '''
+        # Prepare input/output for bbmerge
+        in1=!{reads_subset[0]}
+        in2=!{reads_subset[1]}
+        ou1=!{sample}_subset_bbmerge_unmerged_1.fastq.gz
+        ou2=!{sample}_subset_bbmerge_unmerged_2.fastq.gz
+        om=!{sample}_subset_bbmerge_merged.fastq.gz
+        stats=!{sample}_subset_bbmerge_stats.txt
+        io="in=${in1} in2=${in2} out=${om} outu=${ou1} outu2=${ou2} ihist=${stats}"
+        # Execute bbmerge
+        bbmerge.sh ${io}
+        '''
+}
+
+// 8.2. Merge-join deduplicated output for Kraken processing, part 1: join and concatenate
+process JOIN_SUBSET {
+    label "biopython"
+    label "single"
+    publishDir "${pubDir}/taxonomy/prededup/merged", mode: "symlink"
+    input:
+        tuple val(sample), path(reads), path(stats)
+        path script_join_fastq
+    output:
+        tuple val(sample), path("${sample}_subset_mjc.fastq.gz")
+    shell:
+        '''
+        # Prepare to join unmerged read pairs
+        script_path=./!{script_join_fastq}
+        ou1=!{reads[1]}
+        ou2=!{reads[2]}
+        om=!{reads[0]}
+        oj=!{sample}_subset_bbmerge_unmerged_joined.fastq.gz
+        # Join unmerged read pairs
+        ${script_path} ${ou1} ${ou2} ${oj}
+        # Concatenate single output file
+        oo=!{sample}_subset_mjc.fastq.gz
+        cat ${om} ${oj} > ${oo}
+        '''
+}
+
+// 8.3. Perform taxonomic assignment with Kraken2
+// TODO: Check & update unclassified_out file configuration
+process KRAKEN_SUBSET {
+    label "Kraken2"
+    label "small"
+    publishDir "${pubDir}/taxonomy/prededup/kraken", mode: "symlink"
+    input:
+        tuple val(sample), path(reads)
+        path db_path
+    output:
+        tuple val(sample), path("${sample}_subset.output"), path("${sample}_subset.report"), path("${sample}_subset_unclassified.fastq.gz")
+    shell:
+        '''
+        # Define input/output
+        db=!{db_path}
+        in=!{reads}
+        out=!{sample}_subset.output
+        report=!{sample}_subset.report
+        unc=!{sample}_subset_unclassified.fastq
+        io="--output ${out} --report ${report} --unclassified-out ${unc} ${in}"
+        # Define parameters
+        par="--db ${db} --use-names --threads !{task.cpus}"
+        # Run Kraken
+        kraken2 ${par} ${io}
+        # Gzip output
+        gzip ${unc}
+        '''
+}
+
+// 8.4. Summarize Kraken output with Bracken
+process BRACKEN_DOMAINS_SUBSET {
+    label "Bracken"
+    label "single"
+    publishDir "${pubDir}/taxonomy/prededup/bracken", mode: "symlink"
+    input:
+        tuple val(sample), path(output), path(report), path(unc_reads)
+        path db_path
+    output:
+        tuple val(sample), path("${sample}_subset.bracken")
+    shell:
+        '''
+        # Define input/output
+        db=!{db_path}
+        in=!{report}
+        out=!{sample}_subset.bracken
+        io="-d ${db} -i ${in} -o ${out}"
+        # Define parameters
+        par="-l D"
+        # Run Bracken
+        bracken ${io} ${par}
+        '''
+}
+
+// 8.5. Label Bracken files with sample IDs
+process LABEL_BRACKEN_SUBSET {
+    label "tidyverse"
+    label "single"
+    publishDir "${pubDir}/taxonomy/prededup/bracken", mode: "symlink"
+    input:
+        tuple val(sample), path(bracken_output)
+    output:
+        path("${sample}_subset_labeled.bracken")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        tab <- read_tsv("!{bracken_output}", show_col_types = FALSE) %>%
+            mutate(sample="!{sample}")
+        write_tsv(tab, "!{sample}_subset_labeled.bracken")
+        '''
+}
+
+// 8.6. Combine Bracken files into a single output file
+process MERGE_BRACKEN_SUBSET {
+    label "tidyverse"
+    label "single"
+    publishDir "${pubDir}/taxonomy/prededup/results", mode: "symlink"
+    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    input:
+        path(tsvs)
+    output:
+        path("bracken_counts_subset.tsv")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        in_paths <- str_split("!{tsvs}", " ")[[1]]
+        print(in_paths)
+        tabs <- lapply(in_paths, function(t) read_tsv(t, col_names = TRUE, cols(.default="c")))
+        for (t in tabs) print(dim(t))
+        tab_out <- bind_rows(tabs)
+        print(dim(tab_out))
+        sapply(tabs, nrow) %>% sum %>% print
+        write_tsv(tab_out, "bracken_counts_subset.tsv")
+        '''
+}
+
+workflow CLASSIFY_READS_SUBSET {
+    take:
+        cleaned_ch
+        kraken_db_ch
+        script_join_fastq
+        readFraction
+    main:
+        subset_ch = SUBSET_CLEANED(cleaned_ch, readFraction)
+        merged_ch = BBMERGE_SUBSET(subset_ch)
+        joined_ch = JOIN_SUBSET(merged_ch, script_join_fastq)
+        kraken_ch = KRAKEN_SUBSET(joined_ch, kraken_db_ch)
+        bracken_ch = BRACKEN_DOMAINS_SUBSET(kraken_ch, kraken_db_ch)
+        label_ch = LABEL_BRACKEN_SUBSET(bracken_ch)
+        merged_ch_2 = MERGE_BRACKEN_SUBSET(label_ch.collect().ifEmpty([]))
     emit:
         kraken = kraken_ch
         bracken = merged_ch_2
@@ -1588,6 +1782,9 @@ workflow {
         params.bt2_score_threshold)
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, params.script_join_fastq)
+    if ( params.classify_cleaned ) {
+        CLASSIFY_READS_SUBSET(CLEAN_READS.out.data, PREPARE_REFERENCES.out.kraken, params.script_join_fastq, params.classify_cleaned_subset)
+    }
     // Process output
     PROCESS_OUTPUT(HANDLE.multiqc_data, CLEAN_READS.out.multiqc_data, DEDUP_READS.out.multiqc_data, REMOVE_RIBO_INITIAL.out.multiqc_data, REMOVE_RIBO_SECONDARY.out.multiqc_data, CLASSIFY_READS.out.bracken, params.script_summarize_multiqc)
 }
