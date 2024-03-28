@@ -355,7 +355,7 @@ process PREPROCESS_CUTADAPT {
         tuple val(sample), path("${sample}_cutadapt_{1,2}.fastq.gz"), path("${sample}_cutadapt_log.txt")
     shell:
         '''
-        par="-b file:!{adapters} -B file:!{adapters} -j !{task.cpus} -m 15 --action=trim"
+        par="-b file:!{adapters} -B file:!{adapters} -j !{task.cpus} -m 15 -e 0.25 --action=trim"
         out="-o !{sample}_cutadapt_1.fastq.gz -p !{sample}_cutadapt_2.fastq.gz"
         log="!{sample}_cutadapt_log.txt"
         cutadapt ${par} ${out} !{read1} !{read2} > ${log}
