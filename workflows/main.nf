@@ -4,7 +4,7 @@ pubDir = "${params.pub_dir}"
 | 0. PREPARE REFERENCES AND INDEXES |
 ************************************/
 
-// 0.1. Extract human index for BBMap
+// 0.1. Extract human index for Bowtie2
 process EXTRACT_HUMAN {
     label "BBTools"
     label "single"
@@ -13,14 +13,14 @@ process EXTRACT_HUMAN {
     input:
         path(human_index_tarball)
     output:
-        path("human_ref_index")
+        path("bt2_human_index")
     shell:
         '''
         tar -xzf !{human_index_tarball}
         '''
 }
 
-// 0.2. Extract contaminant index for BBMap
+// 0.2. Extract contaminant index for Bowtie2
 process EXTRACT_OTHER {
     label "BBTools"
     label "single"
@@ -29,7 +29,7 @@ process EXTRACT_OTHER {
     input:
         path(other_index_tarball)
     output:
-        path("other_ref_index")
+        path("bt2_other_index")
     shell:
         '''
         tar -xzf !{other_index_tarball}
@@ -816,61 +816,51 @@ process COMBINE_MAPPED_READS {
         '''
 }
 
-// 5.6. Segregate human reads with bbmap
-process BBMAP_HUMAN_DEPLETION {
+// 5.6. Segregate human reads with Bowtie2
+process BOWTIE2_HUMAN_DEPLETION {
     label "large"
-    label "BBTools"
+    label "Bowtie2"
     publishDir "${pubDir}/hviral/filter", mode: "symlink"
-    errorStrategy "retry"
     input:
         tuple val(sample), path(reads_mapped)
-        path(index_ref_dir)
+        path(index_dir)
     output:
-        tuple val(sample), path("${sample}_bbmap_nohuman_{1,2}.fastq.gz"), path("${sample}_bbmap_human_{1,2}.fastq.gz"), path("${sample}_bbmap_human.stats.txt")
+        tuple val(sample), path("${sample}_bowtie2_human.sam"), path("${sample}_bowtie2_human_{1,2}.fastq.gz"), path("${sample}_bowtie2_nohuman_{1,2}.fastq.gz")
     shell:
         '''
-        # Define input/output
-        unmerged1=!{reads_mapped[0]}
-        unmerged2=!{reads_mapped[1]}
-        op1=!{sample}_bbmap_nohuman_1.fastq.gz
-        op2=!{sample}_bbmap_nohuman_2.fastq.gz
-        of1=!{sample}_bbmap_human_1.fastq.gz
-        of2=!{sample}_bbmap_human_2.fastq.gz
-        stats=!{sample}_bbmap_human.stats.txt
-        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
-        # Define parameters
-        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} -Xmx30g"
-        # Execute
-        bbmap.sh ${io_unmerged} ${par}
+        in1=!{reads_mapped[0]}
+        in2=!{reads_mapped[1]}
+        idx="!{index_dir}/human_index"
+        sam="!{sample}_bowtie2_human.sam"
+        alc="!{sample}_bowtie2_human_%.fastq.gz"
+        unc="!{sample}_bowtie2_nohuman_%.fastq.gz"
+        io="-1 ${in1} -2 ${in2} -x ${idx} -S ${sam} --al-conc-gz ${alc} --un-conc-gz ${unc}"
+        par="--threads !{task.cpus} --local --very-sensitive-local"
+        bowtie2 ${par} ${io}
         '''
 }
 
-// 5.7. Segregate reference reads with bbmap
-process BBMAP_REFERENCE_DEPLETION {
-    label "BBTools"
+// 5.7. Segregate reference reads with Bowtie2
+process BOWTIE2_REFERENCE_DEPLETION {
     label "large"
-    errorStrategy "retry"
+    label "Bowtie2"
     publishDir "${pubDir}/hviral/filter", mode: "symlink"
     input:
-        tuple val(sample), path(reads_nohuman), path(reads_human), path(stats)
-        path(index_ref_dir)
+        tuple val(sample), path(sam), path(reads_human), path(reads_nohuman)
+        path(index_dir)
     output:
-        tuple val(sample), path("${sample}_bbmap_noref_{1,2}.fastq.gz"), path("${sample}_bbmap_ref_{1,2}.fastq.gz"), path("${sample}_bbmap_other.stats.txt")
+        tuple val(sample), path("${sample}_bowtie2_ref.sam"), path("${sample}_bowtie2_ref_{1,2}.fastq.gz"), path("${sample}_bowtie2_noref_{1,2}.fastq.gz")
     shell:
         '''
-        # Define input/output
-        unmerged1=!{reads_nohuman[0]}
-        unmerged2=!{reads_nohuman[1]}
-        op1=!{sample}_bbmap_noref_1.fastq.gz
-        op2=!{sample}_bbmap_noref_2.fastq.gz
-        of1=!{sample}_bbmap_ref_1.fastq.gz
-        of2=!{sample}_bbmap_ref_2.fastq.gz
-        stats=!{sample}_bbmap_other.stats.txt
-        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
-        # Define parameters
-        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} usemodulo -Xmx30g"
-        # Execute
-        bbmap.sh ${io_unmerged} ${par}
+        in1=!{reads_nohuman[0]}
+        in2=!{reads_nohuman[1]}
+        idx="!{index_dir}/other_index"
+        sam="!{sample}_bowtie2_ref.sam"
+        alc="!{sample}_bowtie2_ref_%.fastq.gz"
+        unc="!{sample}_bowtie2_noref_%.fastq.gz"
+        io="-1 ${in1} -2 ${in2} -x ${idx} -S ${sam} --al-conc-gz ${alc} --un-conc-gz ${unc}"
+        par="--threads !{task.cpus} --local --very-sensitive-local"
+        bowtie2 ${par} ${io}
         '''
 }
 
@@ -880,7 +870,7 @@ process BBMERGE_BOWTIE {
     label "single"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
-        tuple val(sample), path(reads_noref), path(reads_ref), path(stats)
+        tuple val(sample), path(sam), path(reads_ref), path(reads_noref)
     output:
         tuple val(sample), path("${sample}_bowtie2_bbmerge_{merged,unmerged_1,unmerged_2}.fastq.gz"), path("${sample}_bowtie2_bbmerge_{stats,log}.txt")
     shell:
@@ -1151,8 +1141,8 @@ workflow MAP_HUMAN_VIRUSES {
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.combine(bowtie2_unconc_ids_ch, by: 0))
         bowtie2_reads_combined_ch = COMBINE_MAPPED_READS(bowtie2_ch.combine(bowtie2_unconc_reads_ch, by: 0))
         // Filter contaminants
-        human_ch = BBMAP_HUMAN_DEPLETION(bowtie2_reads_combined_ch, human_index_ch)
-        other_ch = BBMAP_REFERENCE_DEPLETION(human_ch, other_index_ch)
+        human_ch = BOWTIE2_HUMAN_DEPLETION(bowtie2_reads_combined_ch, human_index_ch)
+        other_ch = BOWTIE2_REFERENCE_DEPLETION(human_ch, other_index_ch)
         // Merge & join for Kraken input
         merge_ch = BBMERGE_BOWTIE(other_ch)
         join_ch = JOIN_BOWTIE(merge_ch, script_join_fastq)

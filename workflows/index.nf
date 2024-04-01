@@ -63,26 +63,7 @@ process GET_HUMAN {
         '''
 }
 
-// 2.2. Mask human genome in preparation for indexing
-process BBMASK_HUMAN {
-    label "BBTools"
-    label "large"
-    publishDir "${pubDir}/human", mode: "symlink"
-    input:
-        path(reference_path)
-    output:
-        path("human_ref_masked.fasta.gz")
-    shell:
-        '''
-        in=!{reference_path}
-        out=human_ref_masked.fasta.gz
-        io="in=${in} out=${out}"
-        par="threads=!{task.cpus} maskrepeats masklowentropy"
-        bbmask.sh ${par} ${io}
-        '''
-}
-
-// 2.3. Build and tarball human index from reference genome
+// 2.2a. Build and tarball human index from reference genome
 process BBMAP_INDEX_HUMAN {
     label "BBTools"
     label "large"
@@ -103,15 +84,34 @@ process BBMAP_INDEX_HUMAN {
         '''
 }
 
+// 2.2b. Build and tarball human index with Bowtie2
+process BOWTIE2_INDEX_HUMAN {
+    label "Bowtie2"
+    label "max"
+    publishDir "${pubDir}/human", mode: "symlink"
+    publishDir "${pubDir}/output", mode: "copy"
+    input:
+        path(masked_reference)
+    output:
+        path("bt2-human-index.tar.gz") // Output directory for index files
+    shell:
+        '''
+        mkdir bt2_human_index
+        bowtie2-build -f --threads !{task.cpus} !{masked_reference} bt2_human_index/human_index
+        tar -czf bt2-human-index.tar.gz bt2_human_index
+        '''
+}
+
 workflow PREPARE_HUMAN {
     take:
         human_url
     main:
         get_ch = GET_HUMAN(human_url)
-        //mask_ch = BBMASK_HUMAN(get_ch)
-        index_ch = BBMAP_INDEX_HUMAN(get_ch)//mask_ch)
+        index_ch_bb = BBMAP_INDEX_HUMAN(get_ch)
+        index_ch_bt2 = BOWTIE2_INDEX_HUMAN(get_ch)
     emit:
-        index = index_ch
+        index_bb = index_ch_bb
+        index_bt2 = index_ch_bt2
 }
 
 /******************************************
@@ -142,25 +142,6 @@ process JOIN_OTHER_REF {
         '''
 }
 
-// 3.2. Mask reference genomes in preparation for indexing
-process BBMASK_REFERENCES {
-    label "BBTools"
-    label "large"
-    publishDir "${pubDir}/other", mode: "symlink"
-    input:
-        path(concat_references)
-    output:
-        path("other_ref_masked.fasta.gz")
-    shell:
-        '''
-        in=!{concat_references}
-        out=other_ref_masked.fasta.gz
-        io="in=${in} out=${out}"
-        par="threads=!{task.cpus} maskrepeats masklowentropy"
-        bbmask.sh ${io} ${par}
-        '''
-}
-
 // 3.3. Build index from reference genomes
 process BBMAP_INDEX_REFERENCES {
     label "BBTools"
@@ -182,6 +163,24 @@ process BBMAP_INDEX_REFERENCES {
         '''
 }
 
+// 2.2b. Build and tarball human index with Bowtie2
+process BOWTIE2_INDEX_REFERENCES {
+    label "Bowtie2"
+    label "max"
+    publishDir "${pubDir}/other", mode: "symlink"
+    publishDir "${pubDir}/output", mode: "copy"
+    input:
+        path(masked_reference)
+    output:
+        path("bt2-other-index.tar.gz") // Output directory for index files
+    shell:
+        '''
+        mkdir bt2_other_index
+        bowtie2-build -f --threads !{task.cpus} !{masked_reference} bt2_other_index/other_index
+        tar -czf bt2-other-index.tar.gz bt2_other_index
+        '''
+}
+
 workflow PREPARE_OTHER {
     take:
         cow_url
@@ -190,10 +189,11 @@ workflow PREPARE_OTHER {
         contaminant_path
     main:
         join_ch = JOIN_OTHER_REF(cow_url, pig_url, ecoli_url, contaminant_path) // TODO: Replace hardcoded references with extensible list
-        //mask_ch = BBMASK_REFERENCES(join_ch)
-        index_ch = BBMAP_INDEX_REFERENCES(join_ch)//mask_ch)
+        index_ch_bb = BBMAP_INDEX_REFERENCES(join_ch)
+        index_ch_bt2 = BOWTIE2_INDEX_REFERENCES(join_ch)
     emit:
-        index = index_ch
+        index_bb = index_ch_bb
+        index_bt2 = index_ch_bt2
 }
 
 // TODO: Add custom kraken DB construction?
@@ -353,7 +353,7 @@ process COLLATE_HV_GENOMES {
         '''
 }
 
-// 4.5. Filter masked genomes to exclude transgenic, mutated & unverified sequences
+// 4.5. Filter masked genomes to exclude transgenic, mutated & unverified sequences, as well as known false inclusions (e.g. Parvovirus NIH-CQV-Co)
 process FILTER_HV_GENOMES {
     label "seqtk"
     label "single"
@@ -365,13 +365,14 @@ process FILTER_HV_GENOMES {
         path("human-viral-genomes-filtered.fasta.gz")
     shell:
         '''
-        zcat !{collated_genomes} | grep "^>" | grep -vi transg | grep -vi mutant | grep -vi unverified | grep -vi draft | grep -vi recomb | sed 's/>//' > names.txt
+        zcat !{collated_genomes} | grep "^>" | grep -vi transg | grep -vi mutant | grep -vi unverified | grep -vi draft | grep -vi recomb | 
+            grep -vi "parvo-like" | grep -vi "NIH-CQV" |
+            sed 's/>//' > names.txt
         seqtk subseq !{collated_genomes} names.txt | gzip -c > human-viral-genomes-filtered.fasta.gz
         '''
 }
 
 // 4.5. Mask collated virus genomes
-// TODO: Replace with bbmask?
 process MASK_HV_GENOMES {
     label "BLAST"
     label "single"
