@@ -4,7 +4,7 @@ pubDir = "${params.pub_dir}"
 | 0. PREPARE REFERENCES AND INDEXES |
 ************************************/
 
-// 0.1. Extract human index for BBMap
+// 0.1. Extract human index for Bowtie2
 process EXTRACT_HUMAN {
     label "BBTools"
     label "single"
@@ -13,14 +13,14 @@ process EXTRACT_HUMAN {
     input:
         path(human_index_tarball)
     output:
-        path("human_ref_index")
+        path("bt2_human_index")
     shell:
         '''
         tar -xzf !{human_index_tarball}
         '''
 }
 
-// 0.2. Extract contaminant index for BBMap
+// 0.2. Extract contaminant index for Bowtie2
 process EXTRACT_OTHER {
     label "BBTools"
     label "single"
@@ -29,7 +29,7 @@ process EXTRACT_OTHER {
     input:
         path(other_index_tarball)
     output:
-        path("other_ref_index")
+        path("bt2_other_index")
     shell:
         '''
         tar -xzf !{other_index_tarball}
@@ -343,6 +343,25 @@ workflow HANDLE_RAW_READS_TRUNC {
 | 2. TRIMMING & FILTERING |
 **************************/
 
+// TEST: Remove internal adapters with cutadapt
+process PREPROCESS_CUTADAPT {
+    label "cutadapt"
+    label "large"
+    publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
+    input: 
+        tuple val(sample), path(read1), path(read2)
+        path adapters
+    output:
+        tuple val(sample), path("${sample}_cutadapt_{1,2}.fastq.gz"), path("${sample}_cutadapt_log.txt")
+    shell:
+        '''
+        par="-b file:!{adapters} -B file:!{adapters} -j !{task.cpus} -m 15 -e 0.25 --action=trim"
+        out="-o !{sample}_cutadapt_1.fastq.gz -p !{sample}_cutadapt_2.fastq.gz"
+        log="!{sample}_cutadapt_log.txt"
+        cutadapt ${par} ${out} !{read1} !{read2} > ${log}
+        '''
+}
+
 // 2.1. Trim & filter by length & quality
 // NB: Does not include deduplication
 process PREPROCESS_FASTP {
@@ -350,7 +369,7 @@ process PREPROCESS_FASTP {
     container "staphb/fastp:latest"
     publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
     input:
-        tuple val(sample), path(read1), path(read2)
+        tuple val(sample), path(reads), path(log)
         path adapters
     output:
         tuple val(sample), path("${sample}_fastp_{1,2}.fastq.gz"), path("${sample}_fastp_failed.fastq.gz"), path("${sample}_fastp.{json,html}")
@@ -363,7 +382,7 @@ process PREPROCESS_FASTP {
         oj=!{sample}_fastp.json
         oh=!{sample}_fastp.html
         ad=!{adapters}
-        io="--in1 !{read1} --in2 !{read2} --out1 ${o1} --out2 ${o2} --failed_out ${of} --html ${oh} --json ${oj} --adapter_fasta ${ad}"
+        io="--in1 !{reads[0]} --in2 !{reads[1]} --out1 ${o1} --out2 ${o2} --failed_out ${of} --html ${oh} --json ${oj} --adapter_fasta ${ad}"
         par="--cut_front --cut_tail --correction --detect_adapter_for_pe --trim_poly_x --cut_mean_quality 25 --average_qual 25 --qualified_quality_phred 20 --verbose --dont_eval_duplication --thread !{task.cpus} --low_complexity_filter"
         # Execute
         fastp ${io} ${par}
@@ -473,7 +492,8 @@ workflow CLEAN_READS {
         concat_ch
         adapter_path
     main:
-        clean_ch = PREPROCESS_FASTP(concat_ch, adapter_path)
+        adapt_ch = PREPROCESS_CUTADAPT(concat_ch, adapter_path)
+        clean_ch = PREPROCESS_FASTP(adapt_ch, adapter_path)
         fastqc_cleaned_ch = FASTQC_CLEANED(clean_ch)
         multiqc_cleaned_ch = MULTIQC_CLEANED(fastqc_cleaned_ch.collect().ifEmpty([]))
         adapter_single_ch = EXTRACT_ADAPTERS_SINGLE(clean_ch)
@@ -796,61 +816,51 @@ process COMBINE_MAPPED_READS {
         '''
 }
 
-// 5.6. Segregate human reads with bbmap
-process BBMAP_HUMAN_DEPLETION {
+// 5.6. Segregate human reads with Bowtie2
+process BOWTIE2_HUMAN_DEPLETION {
     label "large"
-    label "BBTools"
+    label "Bowtie2"
     publishDir "${pubDir}/hviral/filter", mode: "symlink"
-    errorStrategy "retry"
     input:
         tuple val(sample), path(reads_mapped)
-        path(index_ref_dir)
+        path(index_dir)
     output:
-        tuple val(sample), path("${sample}_bbmap_nohuman_{1,2}.fastq.gz"), path("${sample}_bbmap_human_{1,2}.fastq.gz"), path("${sample}_bbmap_human.stats.txt")
+        tuple val(sample), path("${sample}_bowtie2_human.sam"), path("${sample}_bowtie2_human_{1,2}.fastq.gz"), path("${sample}_bowtie2_nohuman_{1,2}.fastq.gz")
     shell:
         '''
-        # Define input/output
-        unmerged1=!{reads_mapped[0]}
-        unmerged2=!{reads_mapped[1]}
-        op1=!{sample}_bbmap_nohuman_1.fastq.gz
-        op2=!{sample}_bbmap_nohuman_2.fastq.gz
-        of1=!{sample}_bbmap_human_1.fastq.gz
-        of2=!{sample}_bbmap_human_2.fastq.gz
-        stats=!{sample}_bbmap_human.stats.txt
-        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
-        # Define parameters
-        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} -Xmx30g"
-        # Execute
-        bbmap.sh ${io_unmerged} ${par}
+        in1=!{reads_mapped[0]}
+        in2=!{reads_mapped[1]}
+        idx="!{index_dir}/human_index"
+        sam="!{sample}_bowtie2_human.sam"
+        alc="!{sample}_bowtie2_human_%.fastq.gz"
+        unc="!{sample}_bowtie2_nohuman_%.fastq.gz"
+        io="-1 ${in1} -2 ${in2} -x ${idx} -S ${sam} --al-conc-gz ${alc} --un-conc-gz ${unc}"
+        par="--threads !{task.cpus} --local --very-sensitive-local"
+        bowtie2 ${par} ${io}
         '''
 }
 
-// 5.7. Segregate reference reads with bbmap
-process BBMAP_REFERENCE_DEPLETION {
-    label "BBTools"
+// 5.7. Segregate reference reads with Bowtie2
+process BOWTIE2_REFERENCE_DEPLETION {
     label "large"
-    errorStrategy "retry"
+    label "Bowtie2"
     publishDir "${pubDir}/hviral/filter", mode: "symlink"
     input:
-        tuple val(sample), path(reads_nohuman), path(reads_human), path(stats)
-        path(index_ref_dir)
+        tuple val(sample), path(sam), path(reads_human), path(reads_nohuman)
+        path(index_dir)
     output:
-        tuple val(sample), path("${sample}_bbmap_noref_{1,2}.fastq.gz"), path("${sample}_bbmap_ref_{1,2}.fastq.gz"), path("${sample}_bbmap_other.stats.txt")
+        tuple val(sample), path("${sample}_bowtie2_ref.sam"), path("${sample}_bowtie2_ref_{1,2}.fastq.gz"), path("${sample}_bowtie2_noref_{1,2}.fastq.gz")
     shell:
         '''
-        # Define input/output
-        unmerged1=!{reads_nohuman[0]}
-        unmerged2=!{reads_nohuman[1]}
-        op1=!{sample}_bbmap_noref_1.fastq.gz
-        op2=!{sample}_bbmap_noref_2.fastq.gz
-        of1=!{sample}_bbmap_ref_1.fastq.gz
-        of2=!{sample}_bbmap_ref_2.fastq.gz
-        stats=!{sample}_bbmap_other.stats.txt
-        io_unmerged="in=${unmerged1} in2=${unmerged2} outu=${op1} outu2=${op2} outm=${of1} outm2=${of2} statsfile=${stats} path=!{index_ref_dir}"
-        # Define parameters
-        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch minhits=2 t=!{task.cpus} usemodulo -Xmx30g"
-        # Execute
-        bbmap.sh ${io_unmerged} ${par}
+        in1=!{reads_nohuman[0]}
+        in2=!{reads_nohuman[1]}
+        idx="!{index_dir}/other_index"
+        sam="!{sample}_bowtie2_ref.sam"
+        alc="!{sample}_bowtie2_ref_%.fastq.gz"
+        unc="!{sample}_bowtie2_noref_%.fastq.gz"
+        io="-1 ${in1} -2 ${in2} -x ${idx} -S ${sam} --al-conc-gz ${alc} --un-conc-gz ${unc}"
+        par="--threads !{task.cpus} --local --very-sensitive-local"
+        bowtie2 ${par} ${io}
         '''
 }
 
@@ -860,9 +870,9 @@ process BBMERGE_BOWTIE {
     label "single"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
-        tuple val(sample), path(reads_noref), path(reads_ref), path(stats)
+        tuple val(sample), path(sam), path(reads_ref), path(reads_noref)
     output:
-        tuple val(sample), path("${sample}_bowtie2_bbmerge_{merged,unmerged_1,unmerged_2}.fastq.gz"), path("${sample}_bowtie2_bbmerge_stats.txt")
+        tuple val(sample), path("${sample}_bowtie2_bbmerge_{merged,unmerged_1,unmerged_2}.fastq.gz"), path("${sample}_bowtie2_bbmerge_{stats,log}.txt")
     shell:
         '''
         # Prepare input/output for bbmerge
@@ -872,9 +882,10 @@ process BBMERGE_BOWTIE {
         ou2=!{sample}_bowtie2_bbmerge_unmerged_2.fastq.gz
         om=!{sample}_bowtie2_bbmerge_merged.fastq.gz
         stats=!{sample}_bowtie2_bbmerge_stats.txt
+        log=!{sample}_bowtie2_bbmerge_log.txt
         io="in=${in1} in2=${in2} out=${om} outu=${ou1} outu2=${ou2} ihist=${stats}"
         # Execute bbmerge
-        bbmerge.sh ${io}
+        bbmerge.sh ${io} &> ${log}
         '''
 }
 
@@ -907,7 +918,8 @@ process JOIN_BOWTIE {
 // 5.10. Deduplicate merged HV candidate reads in an RC-sensitive manner
 process DEDUP_HV {
     label "BBTools"
-    label "small"
+    label "large"
+    errorStrategy "retry"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads)
@@ -925,8 +937,6 @@ process DEDUP_HV {
         clumpify.sh ${io} ${par}
         '''
 }
-
-// TODO: Add RC-sensitive second deduplication step (here?)
 
 // 5.11. Perform taxonomic assignment with Kraken2
 process KRAKEN_BOWTIE {
@@ -994,7 +1004,12 @@ process MERGE_SAM_KRAKEN {
         sam <- read_tsv("!{sam_processed}", show_col_types = FALSE)
         krk <- read_tsv("!{kraken_processed}", show_col_types = FALSE)
         mrg <- sam %>% rename(seq_id = query_name) %>% inner_join(krk, by="seq_id")
-        cat(nrow(sam), nrow(krk), nrow(mrg))
+        cat(nrow(sam), nrow(krk), nrow(mrg), "\n")
+        cat(ncol(sam), ncol(krk), ncol(mrg), "\n")
+        cat(names(mrg), "\n")
+        cat(head(mrg$best_alignment_score_fwd))
+        cat(head(mrg$query_len_fwd))
+        cat(class(mrg$query_len_fwd))
         if (nrow(mrg)>0) {
             mrg <- mrg %>%
                 mutate(adj_score_fwd = best_alignment_score_fwd/log(query_len_fwd),
@@ -1117,6 +1132,7 @@ workflow MAP_HUMAN_VIRUSES {
         script_process_kraken
         script_count_taxa
         bt2_score_threshold
+        adapters
     main:
         // Run Bowtie2 and process output
         bowtie2_ch = RUN_BOWTIE2(ribo_ch, bt2_index_ch)
@@ -1125,8 +1141,8 @@ workflow MAP_HUMAN_VIRUSES {
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.combine(bowtie2_unconc_ids_ch, by: 0))
         bowtie2_reads_combined_ch = COMBINE_MAPPED_READS(bowtie2_ch.combine(bowtie2_unconc_reads_ch, by: 0))
         // Filter contaminants
-        human_ch = BBMAP_HUMAN_DEPLETION(bowtie2_reads_combined_ch, human_index_ch)
-        other_ch = BBMAP_REFERENCE_DEPLETION(human_ch, other_index_ch)
+        human_ch = BOWTIE2_HUMAN_DEPLETION(bowtie2_reads_combined_ch, human_index_ch)
+        other_ch = BOWTIE2_REFERENCE_DEPLETION(human_ch, other_index_ch)
         // Merge & join for Kraken input
         merge_ch = BBMERGE_BOWTIE(other_ch)
         join_ch = JOIN_BOWTIE(merge_ch, script_join_fastq)
@@ -1256,6 +1272,11 @@ process BBMERGE {
         io="in=${in1} in2=${in2} out=${om} outu=${ou1} outu2=${ou2} ihist=${stats}"
         # Execute bbmerge
         bbmerge.sh ${io}
+        # Check for empty output files due to errors
+        if [[ ! -s ${ou1} ]] && [[ ! -s ${om} ]]; then
+            >&2 echo "Error: Empty output files."
+            exit 1
+        fi
         '''
 }
 
@@ -1779,7 +1800,7 @@ workflow {
         params.nodes, params.hv_db, params.genomeid_map, PREPARE_REFERENCES.out.human,
         PREPARE_REFERENCES.out.other, PREPARE_REFERENCES.out.taxa,
         params.script_process_sam, params.script_join_fastq, params.script_process_kraken, params.script_count_taxa,
-        params.bt2_score_threshold)
+        params.bt2_score_threshold, PREPARE_REFERENCES.out.adapters)
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, params.script_join_fastq)
     if ( params.classify_cleaned ) {

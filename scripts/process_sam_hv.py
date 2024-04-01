@@ -125,23 +125,23 @@ def process_sam_unpaired_pair(read_dict):
     """Process an unpaired alignment from a paired SAM file."""
     # Specify unpaired attributes
     if read_dict["is_mate_1"]:
-        best_alignment_score_fwd, best_alignment_score_rev = read_dict["alignment_score"], None
-        next_alignment_score_fwd, next_alignment_score_rev = read_dict["next_best_alignment"], None
-        edit_distance_fwd, edit_distance_rev = read_dict["edit_distance"], None
-        ref_start_fwd, ref_start_rev = read_dict["ref_start"], None
-        map_qual_fwd, map_qual_rev = read_dict["map_qual"], None
-        cigar_fwd, cigar_rev = read_dict["cigar"], None
-        query_len_fwd, query_len_rev = read_dict["query_len"], None
-        query_seq_fwd, query_seq_rev = read_dict["query_seq"], None
+        best_alignment_score_fwd, best_alignment_score_rev = read_dict["alignment_score"], "NA"
+        next_alignment_score_fwd, next_alignment_score_rev = read_dict["next_best_alignment"], "NA"
+        edit_distance_fwd, edit_distance_rev = read_dict["edit_distance"], "NA"
+        ref_start_fwd, ref_start_rev = read_dict["ref_start"], "NA"
+        map_qual_fwd, map_qual_rev = read_dict["map_qual"], "NA"
+        cigar_fwd, cigar_rev = read_dict["cigar"], "NA"
+        query_len_fwd, query_len_rev = read_dict["query_len"], "NA"
+        query_seq_fwd, query_seq_rev = read_dict["query_seq"], "NA"
     else:
-        best_alignment_score_fwd, best_alignment_score_rev = None, read_dict["alignment_score"]
-        next_alignment_score_fwd, next_alignment_score_rev = None, read_dict["next_best_alignment"]
-        edit_distance_fwd, edit_distance_rev = None, read_dict["edit_distance"]
-        ref_start_fwd, ref_start_rev = None, read_dict["ref_start"]
-        map_qual_fwd, map_qual_rev = None, read_dict["map_qual"]
-        cigar_fwd, cigar_rev = None, read_dict["cigar"]
-        query_len_fwd, query_len_rev = None, read_dict["query_len"]
-        query_seq_fwd, query_seq_rev = None, read_dict["query_seq"]
+        best_alignment_score_fwd, best_alignment_score_rev = "NA", read_dict["alignment_score"]
+        next_alignment_score_fwd, next_alignment_score_rev = "NA", read_dict["next_best_alignment"]
+        edit_distance_fwd, edit_distance_rev = "NA", read_dict["edit_distance"]
+        ref_start_fwd, ref_start_rev = "NA", read_dict["ref_start"]
+        map_qual_fwd, map_qual_rev = "NA", read_dict["map_qual"]
+        cigar_fwd, cigar_rev = "NA", read_dict["cigar"]
+        query_len_fwd, query_len_rev = "NA", read_dict["query_len"]
+        query_seq_fwd, query_seq_rev = "NA", read_dict["query_seq"]
     return get_line(read_dict["query_name"], read_dict["genome_id"], read_dict["taxid"], read_dict["fragment_length"],
                     best_alignment_score_fwd, best_alignment_score_rev, next_alignment_score_fwd, next_alignment_score_rev,
                     edit_distance_fwd, edit_distance_rev, ref_start_fwd, ref_start_rev, map_qual_fwd, map_qual_rev,
