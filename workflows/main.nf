@@ -869,6 +869,7 @@ process BBMERGE_BOWTIE {
     label "BBTools"
     label "single"
     publishDir "${pubDir}/hviral/merged", mode: "symlink"
+    errorStrategy "retry"
     input:
         tuple val(sample), path(sam), path(reads_ref), path(reads_noref)
     output:
@@ -886,6 +887,11 @@ process BBMERGE_BOWTIE {
         io="in=${in1} in2=${in2} out=${om} outu=${ou1} outu2=${ou2} ihist=${stats}"
         # Execute bbmerge
         bbmerge.sh ${io} &> ${log}
+        # Check for empty output files due to errors
+        if [[ ! -s ${ou1} ]] && [[ ! -s ${om} ]]; then
+            >&2 echo "Error: Empty output files."
+            exit 1
+        fi
         '''
 }
 
@@ -1256,6 +1262,7 @@ process BBMERGE {
     label "BBTools"
     label "single"
     publishDir "${pubDir}/taxonomy/merged", mode: "symlink"
+    errorStrategy "retry"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
     output:
@@ -1441,10 +1448,14 @@ process SUBSET_CLEANED {
         in2=!{reads[1]}
         out1=!{sample}_cleaned_subset_1.fastq.gz
         out2=!{sample}_cleaned_subset_2.fastq.gz
+        # Count reads for validation
+        echo "Input reads: $(zcat ${in1} | wc -l | awk '{ print $1/4 }')"
         # Carry out subsetting
         seed=${RANDOM}
         seqtk sample -s ${seed} ${in1} !{readFraction} | gzip -c > ${out1}
         seqtk sample -s ${seed} ${in2} !{readFraction} | gzip -c > ${out2}
+        # Count reads for validation
+        echo "Output reads: $(zcat ${out1} | wc -l | awk '{ print $1/4 }')"
         '''
 }
 
@@ -1453,6 +1464,7 @@ process BBMERGE_SUBSET {
     label "BBTools"
     label "single"
     publishDir "${pubDir}/taxonomy/prededup/merged", mode: "symlink"
+    errorStrategy "retry"
     input:
         tuple val(sample), path(reads_subset)
     output:
@@ -1469,6 +1481,11 @@ process BBMERGE_SUBSET {
         io="in=${in1} in2=${in2} out=${om} outu=${ou1} outu2=${ou2} ihist=${stats}"
         # Execute bbmerge
         bbmerge.sh ${io}
+        # Check for empty output files due to errors
+        if [[ ! -s ${ou1} ]] && [[ ! -s ${om} ]]; then
+            >&2 echo "Error: Empty output files."
+            exit 1
+        fi
         '''
 }
 
