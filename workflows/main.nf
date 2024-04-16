@@ -751,7 +751,7 @@ process RUN_BOWTIE2 {
         alc="!{sample}_bowtie2_conc_%.fastq.gz"
         unc="!{sample}_bowtie2_unconc_%.fastq.gz"
         io="-1 ${in1} -2 ${in2} -x ${idx} -S ${sam} --al-conc-gz ${alc} --un-conc-gz ${unc}"
-        par="--threads !{task.cpus} --no-unal --no-sq --local --very-sensitive-local --score-min G,1,0 --mp 4,1"
+        par="--threads !{task.cpus} --no-unal --no-sq --local --very-sensitive-local --score-min G,5,11"
         bowtie2 ${par} ${io}
         '''
 }
