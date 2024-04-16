@@ -127,6 +127,7 @@ process JOIN_OTHER_REF {
     input:
         val(cow_url)
         val(pig_url)
+        val(mouse_url)
         val(carp_url)
         val(ecoli_url)
         path(contaminants)
@@ -137,9 +138,10 @@ process JOIN_OTHER_REF {
         # Download references
         wget !{cow_url} -O cow_ref.fasta.gz
         wget !{pig_url} -O pig_ref.fasta.gz
+        wget !{mouse_url} -O mouse_ref.fasta.gz
         wget !{carp_url} -O carp_ref.fasta.gz
         wget !{ecoli_url} -O ecoli_ref.fasta.gz
-        in="cow_ref.fasta.gz pig_ref.fasta.gz carp_ref.fasta.gz ecoli_ref.fasta.gz !{contaminants}"
+        in="cow_ref.fasta.gz pig_ref.fasta.gz mouse_ref.fasta.gz carp_ref.fasta.gz ecoli_ref.fasta.gz !{contaminants}"
         cat ${in} > other_ref_concat.fasta.gz # TODO: Make robust to differences in gzip status
         '''
 }
@@ -187,11 +189,12 @@ workflow PREPARE_OTHER {
     take:
         cow_url
         pig_url
+        mouse_url
         carp_url
         ecoli_url
         contaminant_path
     main:
-        join_ch = JOIN_OTHER_REF(cow_url, pig_url, carp_url, ecoli_url, contaminant_path) // TODO: Replace hardcoded references with extensible list
+        join_ch = JOIN_OTHER_REF(cow_url, pig_url, mouse_url, carp_url, ecoli_url, contaminant_path) // TODO: Replace hardcoded references with extensible list
         index_ch_bb = BBMAP_INDEX_REFERENCES(join_ch)
         index_ch_bt2 = BOWTIE2_INDEX_REFERENCES(join_ch)
     emit:
@@ -368,8 +371,9 @@ process FILTER_HV_GENOMES {
         path("human-viral-genomes-filtered.fasta.gz")
     shell:
         '''
-        zcat !{collated_genomes} | grep "^>" | grep -vi transg | grep -vi mutant | grep -vi unverified | grep -vi draft | grep -vi recomb | 
+        zcat !{collated_genomes} | grep "^>" | grep -vi transg | grep -vi mutant | grep -vi unverified | grep -vi draft | grep -vi recomb |
             grep -vi "parvo-like" | grep -vi "NIH-CQV" |
+            grep -vi "HM133903.1" | grep -vi "HQ540592.1" |
             sed 's/>//' > names.txt
         seqtk subseq !{collated_genomes} names.txt | gzip -c > human-viral-genomes-filtered.fasta.gz
         '''
@@ -574,7 +578,7 @@ workflow VIRAL_TAXA {
 workflow {
     PREPARE_RIBOSOMAL(params.ssu_url, params.lsu_url)
     PREPARE_HUMAN(params.human_url)
-    PREPARE_OTHER(params.cow_url, params.pig_url, params.carp_url, params.ecoli_url, params.contaminants)
+    PREPARE_OTHER(params.cow_url, params.pig_url, params.mouse_url, params.carp_url, params.ecoli_url, params.contaminants)
     PREPARE_VIRAL(virus_db_path)
     PREPARE_TAXONOMY(params.taxonomy_url)
     COPY_REFS(params.kraken_db, params.virus_db)
