@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 
+#library(jsonlite)
 library(jsonlite)
 library(optparse)
 library(tidyverse)
@@ -145,7 +146,9 @@ extract_per_sequence_quality <- function(multiqc_json){
 #============#
 
 # Import data
-multiqc_json <- fromJSON(multiqc_json_path)
+multiqc_json_lines <- readLines(multiqc_json_path)
+multiqc_json_lines_sub <- gsub("NaN", "-1", multiqc_json_lines)
+multiqc_json <- fromJSON(multiqc_json_lines_sub)
 fastqc_tsv <- readr::read_tsv(fastqc_tsv_path, show_col_types = FALSE)
 
 # Process
