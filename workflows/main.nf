@@ -596,7 +596,7 @@ process DEDUP_CLUMPIFY {
         op2=!{sample}_dedup_2.fastq.gz
         io_unmerged="in=${unmerged1} in2=${unmerged2} out=${op1} out2=${op2}"
         # Define parameters
-        par="reorder dedupe containment t=!{task.cpus}"
+        par="reorder dedupe containment t=!{task.cpus} -Xmx30g"
         # Execute
         clumpify.sh ${io_unmerged} ${par}
         '''
@@ -838,7 +838,7 @@ process EXTRACT_UNCONC_READS {
         outp1="!{sample}_bowtie2_mapped_unconc_1.fastq.gz"
         outp2="!{sample}_bowtie2_mapped_unconc_2.fastq.gz"
         # Get list of ids
-        print("Importing IDs...")
+        print("Importing IDs....")
         with open(inp0, "r") as inf:
             ids = [line.strip() for line in inf.readlines()]
         print("Done. {} IDs imported.".format(len(ids)))
@@ -1227,7 +1227,7 @@ process MAKE_HV_FASTA {
 // 5.17. Extract table of clade counts from HV reads
 process COUNT_HV_CLADES {
     label "R"
-    label "single"
+    label "large"
     publishDir "${pubDir}/hviral/counts", mode: "symlink"
     publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
     input:
@@ -1442,7 +1442,7 @@ process JOIN {
 // TODO: Check & update unclassified_out file configuration
 process KRAKEN {
     label "Kraken2"
-    label "small"
+    label "large"
     publishDir "${pubDir}/taxonomy/kraken", mode: "symlink"
     input:
         tuple val(sample), path(reads)
