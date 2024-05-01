@@ -20,10 +20,10 @@ opt = parse_args(opt_parser);
 # Set input and output paths
 multiqc_json_path <- file.path(opt$input_dir, "multiqc_data.json")
 fastqc_tsv_path <- file.path(opt$input_dir, "multiqc_fastqc.txt")
-out_path_basic <- file.path(opt$output_dir, paste0(opt$stage, "_qc_basic_stats.tsv"))
-out_path_adapters <- file.path(opt$output_dir, paste0(opt$stage, "_qc_adapter_stats.tsv"))
-out_path_quality_base <- file.path(opt$output_dir, paste0(opt$stage, "_qc_quality_base_stats.tsv"))
-out_path_quality_sequence <- file.path(opt$output_dir, paste0(opt$stage, "_qc_quality_sequence_stats.tsv"))
+out_path_basic <- file.path(opt$output_dir, paste0(opt$stage, "_qc_basic_stats.tsv.gz"))
+out_path_adapters <- file.path(opt$output_dir, paste0(opt$stage, "_qc_adapter_stats.tsv.gz"))
+out_path_quality_base <- file.path(opt$output_dir, paste0(opt$stage, "_qc_quality_base_stats.tsv.gz"))
+out_path_quality_sequence <- file.path(opt$output_dir, paste0(opt$stage, "_qc_quality_sequence_stats.tsv.gz"))
 
 # Specify state descriptors
 pipeline_states <- c("bbduk_noribo2", "bbduk_noribo", "bbmap_nohuman", "bbmap_noref", "dedup", "fastp", "trunc")
