@@ -16,8 +16,7 @@ virus_db_path = "${params.virus_db}"
 process JOIN_RIBO_REF {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/ribo", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         val(ssu_url)
         val(lsu_url)
@@ -51,7 +50,6 @@ workflow PREPARE_RIBOSOMAL {
 process GET_HUMAN {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/human", mode: "symlink"
     input:
         val(human_url)
     output:
@@ -67,8 +65,7 @@ process GET_HUMAN {
 process BBMAP_INDEX_HUMAN {
     label "BBTools"
     label "large"
-    publishDir "${pubDir}/human", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(masked_reference)
     output:
@@ -88,8 +85,7 @@ process BBMAP_INDEX_HUMAN {
 process BOWTIE2_INDEX_HUMAN {
     label "Bowtie2"
     label "max"
-    publishDir "${pubDir}/human", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(masked_reference)
     output:
@@ -123,7 +119,6 @@ workflow PREPARE_HUMAN {
 process JOIN_OTHER_REF {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/other", mode: "symlink"
     input:
         val(cow_url)
         val(pig_url)
@@ -150,8 +145,7 @@ process JOIN_OTHER_REF {
 process BBMAP_INDEX_REFERENCES {
     label "BBTools"
     label "max"
-    publishDir "${pubDir}/other", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(masked_reference)
     output:
@@ -171,8 +165,7 @@ process BBMAP_INDEX_REFERENCES {
 process BOWTIE2_INDEX_REFERENCES {
     label "Bowtie2"
     label "max"
-    publishDir "${pubDir}/other", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(masked_reference)
     output:
@@ -212,7 +205,6 @@ workflow PREPARE_OTHER {
 process GET_HV_DESCENDENTS {
     label "Python"
     label "single"
-    publishDir "${pubDir}/hviral", mode: "symlink"
     input:
         path(human_virus_path)
     output:
@@ -288,7 +280,6 @@ process GET_HV_DESCENDENTS {
 process GET_HV_GENOMES {
     label "Python"
     label "single"
-    publishDir "${pubDir}/hviral", mode: "symlink"
     input:
         path(hv_taxids_all)
     output:
@@ -306,8 +297,7 @@ process GET_HV_GENOMES {
 process MAKE_ID_MAPPING {
     label "Python"
     label "single"
-    publishDir "${pubDir}/hviral", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(ncbi_metadata)
         path(genbank_genomes)
@@ -347,8 +337,7 @@ process MAKE_ID_MAPPING {
 process COLLATE_HV_GENOMES {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/hviral", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(genbank_genomes)
     output:
@@ -363,8 +352,7 @@ process COLLATE_HV_GENOMES {
 process FILTER_HV_GENOMES {
     label "seqtk"
     label "single"
-    publishDir "${pubDir}/hviral", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(collated_genomes)
     output:
@@ -373,7 +361,7 @@ process FILTER_HV_GENOMES {
         '''
         zcat !{collated_genomes} | grep "^>" | grep -vi transg | grep -vi mutant | grep -vi unverified | grep -vi draft | grep -vi recomb |
             grep -vi "parvo-like" | grep -vi "NIH-CQV" |
-            grep -vi "HM133903.1" | grep -vi "HQ540592.1" |
+            grep -vi "HM133903.1" | grep -vi "HQ540592.1" | grep -vi "AB618031.1" |
             sed 's/>//' > names.txt
         seqtk subseq !{collated_genomes} names.txt | gzip -c > human-viral-genomes-filtered.fasta.gz
         '''
@@ -383,7 +371,6 @@ process FILTER_HV_GENOMES {
 process MASK_HV_GENOMES {
     label "BLAST"
     label "single"
-    publishDir "${pubDir}/hviral/index", mode: "symlink"
     input:
         path(collected_genomes)
     output:
@@ -400,8 +387,7 @@ process MASK_HV_GENOMES {
 process BUILD_BOWTIE2_DB {
     label "Bowtie2"
     label "max"
-    publishDir "${pubDir}/hviral/index", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(masked_genomes)
     output:
@@ -440,7 +426,6 @@ workflow PREPARE_VIRAL {
 process GET_TAXONOMY {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/taxonomy", mode: "symlink"
     input:
         val(taxonomy_url)
     output:
@@ -456,8 +441,7 @@ process GET_TAXONOMY {
 process EXTRACT_TAXONOMY {
     label "base"
     label "single"
-    publishDir "${pubDir}/taxonomy", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(taxonomy_zip)
     output:
@@ -489,8 +473,7 @@ workflow PREPARE_TAXONOMY {
 process COPY_KRAKEN {
     label "base"
     label "single"
-    publishDir "${pubDir}/kraken", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(kraken_path)
     output:
@@ -506,8 +489,7 @@ process COPY_KRAKEN {
 process COPY_HV {
     label "base"
     label "single"
-    publishDir "${pubDir}/hviral", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(hv_path)
     output:
@@ -539,8 +521,7 @@ workflow COPY_REFS {
 process VIRAL_TAXA_DB {
     label "R"
     label "single"
-    publishDir "${pubDir}/hviral", mode: "symlink"
-    publishDir "${pubDir}/output", mode: "copy"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(taxonomy_dir)
         path(human_virus_db)
@@ -571,6 +552,32 @@ workflow VIRAL_TAXA {
         db = db_ch
 }
 
+/***********************
+| 8. DOWNLOAD BLAST DB |
+***********************/
+
+// 8.1. Download BLAST nt DB
+process DOWNLOAD_BLAST_NT {
+    label "BLAST2"
+    label "single"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
+    output:
+        path("nt")
+    shell:
+        '''
+        mkdir nt
+        cd nt
+        update_blastdb.pl --decompress nt
+        '''
+}
+
+workflow PREPARE_BLAST {
+    main:
+        nt_ch = DOWNLOAD_BLAST_NT()
+    emit:
+        nt = nt_ch
+}
+
 /****************
 | MAIN WORKFLOW |
 ****************/
@@ -583,4 +590,5 @@ workflow {
     PREPARE_TAXONOMY(params.taxonomy_url)
     COPY_REFS(params.kraken_db, params.virus_db)
     VIRAL_TAXA(PREPARE_TAXONOMY.out.dir, virus_db_path, PREPARE_VIRAL.out.desc, params.script_viral_taxa)
+    PREPARE_BLAST()
 }
