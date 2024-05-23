@@ -8,7 +8,6 @@ pubDir = "${params.pub_dir}"
 process EXTRACT_HUMAN_BOWTIE2 {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
     errorStrategy "retry"
     input:
         path(human_index_tarball)
@@ -24,7 +23,6 @@ process EXTRACT_HUMAN_BOWTIE2 {
 process EXTRACT_OTHER_BOWTIE2 {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
     errorStrategy "retry"
     input:
         path(other_index_tarball)
@@ -40,7 +38,6 @@ process EXTRACT_OTHER_BOWTIE2 {
 process EXTRACT_HUMAN_BBMAP {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
     errorStrategy "retry"
     input:
         path(human_index_tarball)
@@ -56,7 +53,6 @@ process EXTRACT_HUMAN_BBMAP {
 process EXTRACT_OTHER_BBMAP {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
     errorStrategy "retry"
     input:
         path(other_index_tarball)
@@ -72,7 +68,6 @@ process EXTRACT_OTHER_BBMAP {
 process EXTRACT_HV {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
     errorStrategy "retry"
     input:
         path(hv_index_tarball)
@@ -88,7 +83,6 @@ process EXTRACT_HV {
 process EXTRACT_KRAKEN {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
     errorStrategy "retry"
     input:
         path(kraken_tarball)
@@ -105,7 +99,6 @@ process EXTRACT_KRAKEN {
 process COPY_RIBO {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
     errorStrategy "retry"
     input:
         path(ribo_db)
@@ -121,7 +114,6 @@ process COPY_RIBO {
 process COPY_ADAPTERS {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
     errorStrategy "retry"
     input:
         path(adapters)
@@ -137,7 +129,6 @@ process COPY_ADAPTERS {
 process COPY_TAXA {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
     errorStrategy "retry"
     input:
         path(viral_taxa)
@@ -153,8 +144,7 @@ process COPY_TAXA {
 process COPY_SAMPLE_METADATA {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/index", mode: "symlink"
-    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     errorStrategy "retry"
     input:
         path(sample_metadata)
@@ -210,7 +200,6 @@ workflow PREPARE_REFERENCES {
 process CONCAT_GZIPPED {
     label "single"
     label "seqtk"
-    publishDir "${pubDir}/raw_concat", mode: "symlink"
     errorStrategy "retry"
     input:
         path raw_files_directory
@@ -280,7 +269,6 @@ process CONCAT_GZIPPED {
 process TRUNCATE_CONCAT {
     label "single"
     label "BBTools"
-    publishDir "${pubDir}/raw_concat", mode: "symlink"
     input:
         tuple val(sample), path(read1), path(read2)
         val n_reads
@@ -303,7 +291,6 @@ process TRUNCATE_CONCAT {
 process FASTQC_CONCAT {
     label "FASTQC"
     cpus 2
-    publishDir "${pubDir}/qc/fastqc/raw_concat", mode: "symlink"
     input:
         tuple val(sample), path(read1), path(read2)
     output:
@@ -318,7 +305,6 @@ process FASTQC_CONCAT {
 process FASTQC_CONCAT_TRUNC {
     label "FASTQC"
     cpus 2
-    publishDir "${pubDir}/qc/fastqc/raw_concat", mode: "symlink"
     input:
         tuple val(sample), path(read1), path(read2)
     output:
@@ -333,7 +319,6 @@ process FASTQC_CONCAT_TRUNC {
 process MULTIQC_CONCAT {
     label "single"
     label "MultiQC"
-    publishDir "${pubDir}/qc/multiqc/raw_concat", mode: "symlink"
     input:
         path("*")
     output:
@@ -385,7 +370,6 @@ workflow HANDLE_RAW_READS_TRUNC {
 process PREPROCESS_CUTADAPT {
     label "cutadapt"
     label "large"
-    publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
     input: 
         tuple val(sample), path(read1), path(read2)
         path adapters
@@ -403,7 +387,6 @@ process PREPROCESS_CUTADAPT {
 process PREPROCESS_TRIMMOMATIC {
     label "trimmomatic"
     label "large"
-    publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(log)
         path adapters
@@ -431,7 +414,6 @@ process PREPROCESS_TRIMMOMATIC {
 process PREPROCESS_FASTP {
     label "large"
     container "staphb/fastp:latest"
-    publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(unpaired), path(log)
         path adapters
@@ -457,7 +439,6 @@ process PREPROCESS_FASTP {
 process FASTQC_CLEANED {
     cpus 2
     label "FASTQC"
-    publishDir "${pubDir}/qc/fastqc/cleaned", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(failed), path(reports)
     output:
@@ -472,7 +453,6 @@ process FASTQC_CLEANED {
 process MULTIQC_CLEANED {
     label "single"
     label "MultiQC"
-    publishDir "${pubDir}/qc/multiqc/cleaned", mode: "symlink"
     input:
         path("*")
     output:
@@ -488,7 +468,6 @@ process MULTIQC_CLEANED {
 process EXTRACT_ADAPTERS_SINGLE {
     label "biopython"
     label "single"
-    publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(failed), path(reports)
     output:
@@ -519,8 +498,7 @@ process EXTRACT_ADAPTERS_SINGLE {
 process MERGE_ADAPTERS {
     label "biopython"
     label "single"
-    publishDir "${pubDir}/preprocess/cleaned", mode: "symlink"
-    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(adapters_in)
         path(adapter_files)
@@ -582,7 +560,6 @@ process DEDUP_CLUMPIFY {
     label "large"
     label "BBTools"
     errorStrategy "retry"
-    publishDir "${pubDir}/preprocess/dedup", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(failed), path(reports)
     output:
@@ -596,7 +573,7 @@ process DEDUP_CLUMPIFY {
         op2=!{sample}_dedup_2.fastq.gz
         io_unmerged="in=${unmerged1} in2=${unmerged2} out=${op1} out2=${op2}"
         # Define parameters
-        par="reorder dedupe containment t=!{task.cpus}"
+        par="reorder dedupe containment t=!{task.cpus} -Xmx30g"
         # Execute
         clumpify.sh ${io_unmerged} ${par}
         '''
@@ -606,7 +583,7 @@ process DEDUP_CLUMPIFY {
 process FASTQC_DEDUP {
     label "FASTQC"
     cpus 2
-    publishDir "${pubDir}/qc/fastqc/dedup", mode: "symlink"
+    memory "4 GB"
     input:
         tuple val(sample), path(reads)
     output:
@@ -621,7 +598,6 @@ process FASTQC_DEDUP {
 process MULTIQC_DEDUP {
     label "single"
     label "MultiQC"
-    publishDir "${pubDir}/qc/multiqc/dedup", mode: "symlink"
     input:
         path("*")
     output:
@@ -656,7 +632,6 @@ workflow DEDUP_READS {
 process BBDUK_RIBO_INITIAL {
     label "large"
     label "BBTools"
-    publishDir "${pubDir}/preprocess/ribo_initial", mode: "symlink"
     errorStrategy "retry"
     input:
         tuple val(sample), path(reads)
@@ -676,7 +651,7 @@ process BBDUK_RIBO_INITIAL {
         ref=!{ribo_ref}
         io_unmerged="in=${unmerged1} in2=${unmerged2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats_unmerged}"
         # Define parameters
-        par="minkmerfraction=0.6 k=43 t=!{task.cpus}"
+        par="minkmerfraction=0.6 k=43 t=!{task.cpus} -Xmx30g"
         # Execute
         bbduk.sh ${io_unmerged} ${par}
         '''
@@ -686,7 +661,6 @@ process BBDUK_RIBO_INITIAL {
 process FASTQC_RIBO_INITIAL {
     label "FASTQC"
     cpus 2
-    publishDir "${pubDir}/qc/fastqc/ribo_initial", mode: "symlink"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
     output:
@@ -701,7 +675,6 @@ process FASTQC_RIBO_INITIAL {
 process MULTIQC_RIBO_INITIAL {
     label "MultiQC"
     label "single"
-    publishDir "${pubDir}/qc/multiqc/ribo_initial", mode: "symlink"
     input:
         path("*")
     output:
@@ -736,7 +709,6 @@ workflow REMOVE_RIBO_INITIAL {
 process RUN_BOWTIE2 {
     label "Bowtie2"
     label "large"
-    publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
         path(index_dir)
@@ -761,7 +733,6 @@ process RUN_BOWTIE2 {
 process PROCESS_BOWTIE_SAM {
     label "pandas"
     label "single"
-    publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
     input:
         tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc)
         path script_process_sam
@@ -782,7 +753,6 @@ process PROCESS_BOWTIE_SAM {
 process GET_UNCONC_READ_IDS {
     label "biopython"
     label "single"
-    publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
     input:
         tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc)
     output:
@@ -821,7 +791,6 @@ process GET_UNCONC_READ_IDS {
 process EXTRACT_UNCONC_READS {
     label "biopython"
     label "single"
-    publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
     input:
         tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc), path(id_file)
     output:
@@ -838,7 +807,7 @@ process EXTRACT_UNCONC_READS {
         outp1="!{sample}_bowtie2_mapped_unconc_1.fastq.gz"
         outp2="!{sample}_bowtie2_mapped_unconc_2.fastq.gz"
         # Get list of ids
-        print("Importing IDs...")
+        print("Importing IDs....")
         with open(inp0, "r") as inf:
             ids = [line.strip() for line in inf.readlines()]
         print("Done. {} IDs imported.".format(len(ids)))
@@ -863,7 +832,6 @@ process EXTRACT_UNCONC_READS {
 process COMBINE_MAPPED_READS {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/hviral/bowtie", mode: "symlink"
     input:
         tuple val(sample), path(sam_out), path(reads_conc), path(reads_unconc), path(reads_mapped_unconc)
     output:
@@ -885,7 +853,6 @@ process COMBINE_MAPPED_READS {
 process BOWTIE2_HUMAN_DEPLETION {
     label "large"
     label "Bowtie2"
-    publishDir "${pubDir}/hviral/filter", mode: "symlink"
     input:
         tuple val(sample), path(reads_mapped)
         path(index_dir)
@@ -908,7 +875,6 @@ process BOWTIE2_HUMAN_DEPLETION {
 process BBMAP_HUMAN_DEPLETION {
     label "large"
     label "BBTools"
-    publishDir "${pubDir}/hviral/filter", mode: "symlink"
     errorStrategy "retry"
     input:
         tuple val(sample), path(sam), path(reads_human), path(reads_nohuman)
@@ -937,7 +903,6 @@ process BBMAP_HUMAN_DEPLETION {
 process BOWTIE2_REFERENCE_DEPLETION {
     label "large"
     label "Bowtie2"
-    publishDir "${pubDir}/hviral/filter", mode: "symlink"
     input:
         tuple val(sample), path(reads_nohuman), path(reads_human), path(stats)
         path(index_dir)
@@ -961,7 +926,6 @@ process BBMAP_REFERENCE_DEPLETION {
     label "BBTools"
     label "large"
     errorStrategy "retry"
-    publishDir "${pubDir}/hviral/filter", mode: "symlink"
     input:
         tuple val(sample), path(sam), path(reads_ref), path(reads_noref)
         path(index_ref_dir)
@@ -989,7 +953,6 @@ process BBMAP_REFERENCE_DEPLETION {
 process BBMERGE_BOWTIE {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/hviral/merged", mode: "symlink"
     errorStrategy "retry"
     input:
         tuple val(sample), path(reads_noref), path(reads_ref), path(stats)
@@ -1020,7 +983,6 @@ process BBMERGE_BOWTIE {
 process JOIN_BOWTIE {
     label "biopython"
     label "single"
-    publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(stats)
         path script_join_fastq
@@ -1047,7 +1009,6 @@ process DEDUP_HV {
     label "BBTools"
     label "large"
     errorStrategy "retry"
-    publishDir "${pubDir}/hviral/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads)
     output:
@@ -1069,7 +1030,6 @@ process DEDUP_HV {
 process KRAKEN_BOWTIE {
     label "Kraken2"
     label "small"
-    publishDir "${pubDir}/hviral/kraken", mode: "symlink"
     input:
         tuple val(sample), path(reads) // Single input file, merged, joined & concatenated
         path db_path
@@ -1084,7 +1044,7 @@ process KRAKEN_BOWTIE {
         report=!{sample}_bowtie2_kraken.report
         io="--output ${out} --report ${report} ${in}"
         # Define parameters
-        par="--db ${db} --use-names --threads !{task.cpus}"
+        par="--db ${db} --use-names --report-minimizer-data --threads !{task.cpus}"
         # Run Kraken
         kraken2 ${par} ${io}
         # Make empty output file if no reads
@@ -1096,7 +1056,6 @@ process KRAKEN_BOWTIE {
 process PROCESS_KRAKEN_BOWTIE {
     label "pandas"
     label "single"
-    publishDir "${pubDir}/hviral/kraken", mode: "symlink"
     input:
         tuple val(sample), path(output), path(report)
         path script_process_kraken
@@ -1119,11 +1078,10 @@ process PROCESS_KRAKEN_BOWTIE {
 process MERGE_SAM_KRAKEN {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}/hviral/hits", mode: "symlink"
     input:
         tuple val(sample), path(kraken_processed), path(sam_processed)
     output:
-        path("${sample}_hv_hits_putative.tsv")
+        path("${sample}_hv_hits_putative.tsv.gz")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -1143,7 +1101,7 @@ process MERGE_SAM_KRAKEN {
                        adj_score_rev = best_alignment_score_rev/log(query_len_rev),
                        sample="!{sample}")
         }
-        write_tsv(mrg, "!{sample}_hv_hits_putative.tsv")
+        write_tsv(mrg, "!{sample}_hv_hits_putative.tsv.gz")
         '''
 }
 
@@ -1151,12 +1109,10 @@ process MERGE_SAM_KRAKEN {
 process MERGE_SAMPLES_HV {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}/hviral/hits", mode: "symlink"
-    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
     input:
         path(tsvs)
     output:
-        path("hv_hits_putative_all.tsv")
+        path("hv_hits_putative_all.tsv.gz")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -1168,7 +1124,7 @@ process MERGE_SAMPLES_HV {
         tab_out <- bind_rows(tabs)
         print(dim(tab_out))
         sapply(tabs, nrow) %>% sum %>% print
-        write_tsv(tab_out, "hv_hits_putative_all.tsv")
+        write_tsv(tab_out, "hv_hits_putative_all.tsv.gz")
         '''
 }
 
@@ -1176,13 +1132,12 @@ process MERGE_SAMPLES_HV {
 process FILTER_HV {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}/hviral/hits", mode: "symlink"
-    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(hv_hits)
         val(score_threshold)
     output:
-        path("hv_hits_putative_filtered.tsv")
+        path("hv_hits_putative_filtered.tsv.gz")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -1192,12 +1147,10 @@ process FILTER_HV {
         filtered <- mutate(data, hit_hv = as.logical(!is.na(str_match(encoded_hits, paste0(" ", as.character(taxid), ":"))))) %>%
             mutate(adj_score_fwd = replace_na(adj_score_fwd, 0), adj_score_rev = replace_na(adj_score_rev, 0)) %>%
             filter((!classified) | assigned_hv) %>% 
-            filter(adj_score_fwd > score_threshold | adj_score_rev > score_threshold | assigned_hv | hit_hv) %>%
-            arrange(sample, desc(adj_score_fwd), desc(adj_score_rev)) %>% group_by(sample) %>%
-            mutate(seq_num = row_number())
+            filter(adj_score_fwd > score_threshold | adj_score_rev > score_threshold | assigned_hv)
         print(dim(data))
         print(dim(filtered))
-        write_tsv(filtered, "hv_hits_putative_filtered.tsv")
+        write_tsv(filtered, "hv_hits_putative_filtered.tsv.gz")
         '''
 }
 
@@ -1205,8 +1158,6 @@ process FILTER_HV {
 process MAKE_HV_FASTA {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}/hviral/hits", mode: "symlink"
-    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
     input:
         path(hv_hits_filtered)
     output:
@@ -1216,7 +1167,7 @@ process MAKE_HV_FASTA {
         #!/usr/bin/env Rscript
         library(tidyverse)
         tab <- read_tsv("!{hv_hits_filtered}", col_names = TRUE, show_col_types = FALSE)
-        fasta_tab <- mutate(tab, seq_head = paste0(">", sample, "_", seq_num),
+        fasta_tab <- mutate(tab, seq_head = paste0(">", seq_id),
                             header1 = paste0(seq_head, "_1"), header2 = paste0(seq_head, "_2")) %>%
             select(header1, seq1=query_seq_fwd, header2, seq2=query_seq_rev)
         fasta_out <- do.call(paste, c(fasta_tab, sep="\n")) %>% paste(collapse="\n")
@@ -1227,9 +1178,8 @@ process MAKE_HV_FASTA {
 // 5.17. Extract table of clade counts from HV reads
 process COUNT_HV_CLADES {
     label "R"
-    label "single"
-    publishDir "${pubDir}/hviral/counts", mode: "symlink"
-    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    label "large"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(hv_hits_filtered)
         path(viral_taxa)
@@ -1297,6 +1247,140 @@ workflow MAP_HUMAN_VIRUSES {
         counts = count_ch
 }
 
+/***************************************
+| 6. BLAST VALIDATION (OPTIONAL, SLOW) |
+***************************************/
+
+// 6.0. Subsequence merged reads for BLAST with seqtk
+process SUBSET_BLAST {
+    label "seqtk"
+    label "single"
+    input:
+        path(hv_hits_filtered_fasta)
+        val readFraction
+    output:
+        path("hv_hits_putative_subset.fasta")
+    shell:
+        '''
+        # Define input/output
+        in1=!{hv_hits_filtered_fasta}
+        out1=hv_hits_putative_subset.fasta
+        # Count reads for validation
+        echo "Input reads: $(zcat ${in1} | wc -l | awk '{ print $1/2 }')"
+        # Carry out subsetting
+        seed=${RANDOM}
+        seqtk sample -s ${seed} ${in1} !{readFraction} > ${out1}
+        # Count reads for validation
+        echo "Output reads: $(wc -l ${out1} | awk '{ print $1/2 }')"
+        '''
+}
+
+// 6.1. BLAST putative HV hits against nt
+process BLAST_HV {
+    label "BLAST"
+    cpus 32
+    memory "256 GB"
+    input:
+        path(hv_hits_subset_fasta)
+        path(blast_nt_dir)
+    output:
+        path("hv_hits_putative_subset.blast.gz")
+    shell:
+        '''
+        # Specify parameters
+        infile=!{hv_hits_subset_fasta}
+        db=!{blast_nt_dir}/nt
+        outfile=hv_hits_putative_subset.blast
+        threads=!{task.cpus}
+        # Set up command
+        io="-query ${infile} -out ${outfile} -db ${db}"
+        par="-perc_identity 60 -max_hsps 5 -num_alignments 250 -qcov_hsp_perc 30 -num_threads ${threads}"
+        # Run BLAST
+        blastn ${io} ${par} -outfmt "6 qseqid sseqid sgi staxid qlen evalue bitscore qcovs length pident mismatch gapopen sstrand qstart qend sstart send"
+        # Gzip output
+        gzip hv_hits_putative_subset.blast
+        '''
+}
+
+// 6.2. Process & filter BLAST output
+process FILTER_BLAST {
+    label "tidyverse"
+    cpus 1
+    memory "16 GB"
+    input:
+        path(blast_results)
+    output:
+        path("hv_hits_blast_filtered.tsv.gz")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        blast_results_path <- "!{blast_results}"
+        blast_cols <- c("qseqid", "sseqid", "sgi", "staxid", "qlen", "evalue",
+            "bitscore", "qcovs", "length", "pident", "mismatch", "gapopen",
+            "sstrand", "qstart", "qend", "sstart", "send")
+        blast_results <- read_tsv(blast_results_path, show_col_types = FALSE,
+            col_names = blast_cols, col_types = cols(.default="c"))
+        # Filter for best hit for each query/subject combination
+        blast_results_best <- blast_results %>% group_by(qseqid, staxid) %>% 
+          filter(bitscore == max(bitscore)) %>%
+          filter(length == max(length)) %>% filter(row_number() == 1)
+        # Rank hits for each query and filter for high-ranking hits
+        blast_results_ranked <- blast_results_best %>% 
+          group_by(qseqid) %>% mutate(rank = dense_rank(desc(bitscore)))
+        blast_results_highrank <- blast_results_ranked %>% filter(rank <= 5) %>%
+            mutate(read_pair = str_split(qseqid, "_") %>% sapply(nth, n=-1),
+                   seq_id = str_split(qseqid, "_") %>% sapply(nth, n=1))
+        # Write output
+        write_tsv(blast_results_highrank, "hv_hits_blast_filtered.tsv.gz")
+        '''
+}
+
+// 6.3. Collapse results across read pairs
+process PAIR_BLAST {
+    label "tidyverse"
+    label "single"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
+    input:
+        path(blast_results_filtered)
+    output:
+        path("hv_hits_blast_paired.tsv.gz")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        blast_results_filtered_path <- "!{blast_results_filtered}"
+        blast_results_filtered <- read_tsv(blast_results_filtered_path, show_col_types = FALSE)
+        # Summarize by read pair and taxid
+        blast_results_paired <- blast_results_filtered %>%
+            mutate(bitscore = as.numeric(bitscore)) %>%
+            group_by(seq_id, staxid) %>%
+            summarize(bitscore_max = max(bitscore), bitscore_min = min(bitscore),
+                      n_reads = n(), .groups = "drop")
+        # Write output
+        write_tsv(blast_results_paired, "hv_hits_blast_paired.tsv.gz")
+        '''
+}
+
+workflow BLAST_HUMAN_VIRUSES {
+    take:
+        hv_hits_filtered_fasta
+        blast_nt_dir
+        readFraction
+    main:
+        // Subset HV reads for BLAST
+        subset_ch = SUBSET_BLAST(hv_hits_filtered_fasta, readFraction)
+        // BLAST putative HV hits against nt
+        blast_ch = BLAST_HV(subset_ch, blast_nt_dir)
+        // Process output
+        filter_ch = FILTER_BLAST(blast_ch)
+        pair_ch = PAIR_BLAST(filter_ch)
+    emit:
+        blast = blast_ch
+        filtered = filter_ch
+        paired = pair_ch
+}
+
 /*****************************
 | 6. SECONDARY RIBODEPLETION |
 *****************************/
@@ -1307,7 +1391,6 @@ process BBDUK_RIBO_SECONDARY {
     label "BBTools"
     label "large"
     errorStrategy "retry"
-    publishDir "${pubDir}/preprocess/ribo_secondary", mode: "symlink"
     input:
         tuple val(sample), path(reads_nohost), path(reads_host), path(stats)
         path ribo_ref
@@ -1326,7 +1409,7 @@ process BBDUK_RIBO_SECONDARY {
         ref=!{ribo_ref}
         io="in=${in1} in2=${in2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats}"
         # Define parameters
-        par="minkmerfraction=0.4 k=27 t=!{task.cpus}"
+        par="minkmerfraction=0.4 k=27 t=!{task.cpus} -Xmx30g"
         # Execute
         bbduk.sh ${io} ${par}
         '''
@@ -1336,7 +1419,7 @@ process BBDUK_RIBO_SECONDARY {
 process FASTQC_RIBO_SECONDARY {
     label "FASTQC"
     cpus 2
-    publishDir "${pubDir}/qc/fastqc/ribo_secondary", mode: "symlink"
+    memory "4 GB"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
     output:
@@ -1351,7 +1434,6 @@ process FASTQC_RIBO_SECONDARY {
 process MULTIQC_RIBO_SECONDARY {
     label "MultiQC"
     label "single"
-    publishDir "${pubDir}/qc/multiqc/ribo_secondary", mode: "symlink"
     input:
         path("*")
     output:
@@ -1386,7 +1468,6 @@ workflow REMOVE_RIBO_SECONDARY {
 process BBMERGE {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/taxonomy/merged", mode: "symlink"
     errorStrategy "retry"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
@@ -1416,7 +1497,6 @@ process BBMERGE {
 process JOIN {
     label "biopython"
     label "single"
-    publishDir "${pubDir}/taxonomy/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(stats)
         path script_join_fastq
@@ -1442,8 +1522,7 @@ process JOIN {
 // TODO: Check & update unclassified_out file configuration
 process KRAKEN {
     label "Kraken2"
-    label "small"
-    publishDir "${pubDir}/taxonomy/kraken", mode: "symlink"
+    label "large"
     input:
         tuple val(sample), path(reads)
         path db_path
@@ -1459,7 +1538,7 @@ process KRAKEN {
         unc=!{sample}_unclassified.fastq
         io="--output ${out} --report ${report} --unclassified-out ${unc} ${in}"
         # Define parameters
-        par="--db ${db} --use-names --threads !{task.cpus}"
+        par="--db ${db} --use-names --report-minimizer-data --threads !{task.cpus}"
         # Run Kraken
         kraken2 ${par} ${io}
         # Gzip output
@@ -1467,11 +1546,54 @@ process KRAKEN {
         '''
 }
 
+// 7.5. Label Kraken2 reports with sample IDs
+process LABEL_KRAKEN_REPORTS {
+    label "tidyverse"
+    label "single"
+    input:
+        tuple val(sample), path(output), path(report), path(unc_reads)
+    output:
+        path("${sample}_labeled.report.tsv")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        cnames <- c("pc_reads_total", "n_reads_clade", "n_reads_direct",
+                    "n_minimizers_total", "n_minimizers_distinct", "rank", "taxid", "name")
+        tab <- read_tsv("!{report}", col_names = cnames, show_col_types = FALSE) %>%
+            mutate(sample="!{sample}")
+        write_tsv(tab, "!{sample}_labeled.report.tsv")
+        '''
+}
+
+// 7.6. Combine Bracken files into a single output file
+process MERGE_KRAKEN_REPORTS {
+    label "tidyverse"
+    label "single"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
+    input:
+        path(tsvs)
+    output:
+        path("kraken_reports.tsv.gz")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        in_paths <- str_split("!{tsvs}", " ")[[1]]
+        print(in_paths)
+        tabs <- lapply(in_paths, function(t) read_tsv(t, col_names = TRUE, cols(.default="c")))
+        for (t in tabs) print(dim(t))
+        tab_out <- bind_rows(tabs)
+        print(dim(tab_out))
+        sapply(tabs, nrow) %>% sum %>% print
+        write_tsv(tab_out, "kraken_reports.tsv.gz")
+        '''
+}
+
 // 7.4. Summarize Kraken output with Bracken
 process BRACKEN_DOMAINS {
     label "Bracken"
     label "single"
-    publishDir "${pubDir}/taxonomy/bracken", mode: "symlink"
     input:
         tuple val(sample), path(output), path(report), path(unc_reads)
         path db_path
@@ -1495,7 +1617,6 @@ process BRACKEN_DOMAINS {
 process LABEL_BRACKEN {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}/taxonomy/bracken", mode: "symlink"
     input:
         tuple val(sample), path(bracken_output)
     output:
@@ -1514,12 +1635,10 @@ process LABEL_BRACKEN {
 process MERGE_BRACKEN {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}/taxonomy/results", mode: "symlink"
-    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
     input:
         path(tsvs)
     output:
-        path("bracken_counts.tsv")
+        path("bracken_counts.tsv.gz")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -1531,7 +1650,7 @@ process MERGE_BRACKEN {
         tab_out <- bind_rows(tabs)
         print(dim(tab_out))
         sapply(tabs, nrow) %>% sum %>% print
-        write_tsv(tab_out, "bracken_counts.tsv")
+        write_tsv(tab_out, "bracken_counts.tsv.gz")
         '''
 }
 
@@ -1544,6 +1663,8 @@ workflow CLASSIFY_READS {
         merged_ch = BBMERGE(data_ch)
         joined_ch = JOIN(merged_ch, script_join_fastq)
         kraken_ch = KRAKEN(joined_ch, kraken_db_ch)
+        kraken_label_ch = LABEL_KRAKEN_REPORTS(kraken_ch)
+        kraken_merge_ch = MERGE_KRAKEN_REPORTS(kraken_label_ch.collect().ifEmpty([]))
         bracken_ch = BRACKEN_DOMAINS(kraken_ch, kraken_db_ch)
         label_ch = LABEL_BRACKEN(bracken_ch)
         merged_ch_2 = MERGE_BRACKEN(label_ch.collect().ifEmpty([]))
@@ -1560,7 +1681,6 @@ workflow CLASSIFY_READS {
 process SUBSET_CLEANED {
     label "seqtk"
     label "single"
-    publishDir "${pubDir}/taxonomy/prededup/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(failed), path(reports)
         val readFraction
@@ -1588,7 +1708,6 @@ process SUBSET_CLEANED {
 process BBMERGE_SUBSET {
     label "BBTools"
     label "single"
-    publishDir "${pubDir}/taxonomy/prededup/merged", mode: "symlink"
     errorStrategy "retry"
     input:
         tuple val(sample), path(reads_subset)
@@ -1618,7 +1737,6 @@ process BBMERGE_SUBSET {
 process JOIN_SUBSET {
     label "biopython"
     label "single"
-    publishDir "${pubDir}/taxonomy/prededup/merged", mode: "symlink"
     input:
         tuple val(sample), path(reads), path(stats)
         path script_join_fastq
@@ -1645,7 +1763,6 @@ process JOIN_SUBSET {
 process KRAKEN_SUBSET {
     label "Kraken2"
     label "small"
-    publishDir "${pubDir}/taxonomy/prededup/kraken", mode: "symlink"
     input:
         tuple val(sample), path(reads)
         path db_path
@@ -1661,7 +1778,7 @@ process KRAKEN_SUBSET {
         unc=!{sample}_subset_unclassified.fastq
         io="--output ${out} --report ${report} --unclassified-out ${unc} ${in}"
         # Define parameters
-        par="--db ${db} --use-names --threads !{task.cpus}"
+        par="--db ${db} --use-names --report-minimizer-data --threads !{task.cpus}"
         # Run Kraken
         kraken2 ${par} ${io}
         # Gzip output
@@ -1673,7 +1790,6 @@ process KRAKEN_SUBSET {
 process BRACKEN_DOMAINS_SUBSET {
     label "Bracken"
     label "single"
-    publishDir "${pubDir}/taxonomy/prededup/bracken", mode: "symlink"
     input:
         tuple val(sample), path(output), path(report), path(unc_reads)
         path db_path
@@ -1697,7 +1813,6 @@ process BRACKEN_DOMAINS_SUBSET {
 process LABEL_BRACKEN_SUBSET {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}/taxonomy/prededup/bracken", mode: "symlink"
     input:
         tuple val(sample), path(bracken_output)
     output:
@@ -1716,12 +1831,11 @@ process LABEL_BRACKEN_SUBSET {
 process MERGE_BRACKEN_SUBSET {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}/taxonomy/prededup/results", mode: "symlink"
-    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(tsvs)
     output:
-        path("bracken_counts_subset.tsv")
+        path("bracken_counts_subset.tsv.gz")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -1733,7 +1847,7 @@ process MERGE_BRACKEN_SUBSET {
         tab_out <- bind_rows(tabs)
         print(dim(tab_out))
         sapply(tabs, nrow) %>% sum %>% print
-        write_tsv(tab_out, "bracken_counts_subset.tsv")
+        write_tsv(tab_out, "bracken_counts_subset.tsv.gz")
         '''
 }
 
@@ -1764,15 +1878,14 @@ workflow CLASSIFY_READS_SUBSET {
 process SUMMARIZE_MULTIQC_SINGLE {
     label "R"
     label "single"
-    publishDir "${pubDir}/qc/multiqc/summaries", mode: "symlink"
     input:
         tuple val(stage), path(multiqc_data)
         path(script_summarize_multiqc)
     output:
-        path("${stage}_qc_basic_stats.tsv")
-        path("${stage}_qc_adapter_stats.tsv")
-        path("${stage}_qc_quality_base_stats.tsv")
-        path("${stage}_qc_quality_sequence_stats.tsv")
+        path("${stage}_qc_basic_stats.tsv.gz")
+        path("${stage}_qc_adapter_stats.tsv.gz")
+        path("${stage}_qc_quality_base_stats.tsv.gz")
+        path("${stage}_qc_quality_sequence_stats.tsv.gz")
     shell:
         '''
         script_path=./!{script_summarize_multiqc}
@@ -1784,18 +1897,17 @@ process SUMMARIZE_MULTIQC_SINGLE {
 process MERGE_MULTIQC {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}/qc/multiqc/summaries", mode: "symlink"
-    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(basic_stats_tsvs)
         path(adapter_tsvs)
         path(base_quality_tsvs)
         path(sequence_quality_tsvs)
     output:
-        path("qc_basic_stats.tsv")
-        path("qc_adapter_stats.tsv")
-        path("qc_quality_base_stats.tsv")
-        path("qc_quality_sequence_stats.tsv")
+        path("qc_basic_stats.tsv.gz")
+        path("qc_adapter_stats.tsv.gz")
+        path("qc_quality_base_stats.tsv.gz")
+        path("qc_quality_sequence_stats.tsv.gz")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -1815,10 +1927,10 @@ process MERGE_MULTIQC {
         tab_qbase_out <- bind_rows(tabs_qbase)
         tab_qseqs_out <- bind_rows(tabs_qseqs)
         # Write output
-        write_tsv(tab_basic_out, "qc_basic_stats.tsv")
-        write_tsv(tab_adapt_out, "qc_adapter_stats.tsv")
-        write_tsv(tab_qbase_out, "qc_quality_base_stats.tsv")
-        write_tsv(tab_qseqs_out, "qc_quality_sequence_stats.tsv")
+        write_tsv(tab_basic_out, "qc_basic_stats.tsv.gz")
+        write_tsv(tab_adapt_out, "qc_adapter_stats.tsv.gz")
+        write_tsv(tab_qbase_out, "qc_quality_base_stats.tsv.gz")
+        write_tsv(tab_qseqs_out, "qc_quality_sequence_stats.tsv.gz")
         '''
 }
 
@@ -1826,13 +1938,12 @@ process MERGE_MULTIQC {
 process SUMMARIZE_COMPOSITION {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}/taxonomy/results", mode: "symlink"
-    publishDir "${pubDir}/results", mode: "copy", overwrite: "true"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(bracken_merged)
         path(multiqc_basic_merged)
     output:
-        path("taxonomic_composition.tsv")
+        path("taxonomic_composition.tsv.gz")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -1849,10 +1960,12 @@ process SUMMARIZE_COMPOSITION {
         )
         bracken_spread <- bracken %>% select(name, sample, new_est_reads) %>%
           mutate(name = tolower(name)) %>%
-          pivot_wider(id_cols = "sample", names_from = "name", values_from = "new_est_reads")
+          pivot_wider(id_cols = "sample", names_from = "name", values_from = "new_est_reads",
+                      values_fill = 0)
         # Count reads
         read_counts_preproc <- basic %>% select(sample, stage, n_read_pairs) %>%
-          pivot_wider(id_cols = c("sample"), names_from="stage", values_from="n_read_pairs")
+          pivot_wider(id_cols = c("sample"), names_from="stage", values_from="n_read_pairs",
+                      values_fill = 0)
         read_counts <- read_counts_preproc %>%
           inner_join(total_assigned %>% select(sample, new_est_reads), by = "sample") %>%
           rename(assigned = new_est_reads) %>%
@@ -1872,7 +1985,7 @@ process SUMMARIZE_COMPOSITION {
           mutate(classification = fct_inorder(str_to_sentence(classification))) %>%
           group_by(sample) %>% mutate(p_reads = n_reads/sum(n_reads))
         # Write output
-        write_tsv(read_comp_long, "taxonomic_composition.tsv")
+        write_tsv(read_comp_long, "taxonomic_composition.tsv.gz")
         '''
 }
 
@@ -1944,6 +2057,9 @@ workflow {
         PREPARE_REFERENCES.out.taxa,
         params.script_process_sam, params.script_join_fastq, params.script_process_kraken, params.script_count_taxa,
         params.bt2_score_threshold, PREPARE_REFERENCES.out.adapters)
+    if ( params.blast_hv ) {
+        BLAST_HUMAN_VIRUSES(MAP_HUMAN_VIRUSES.out.fasta, params.blast_nt_dir, params.blast_fraction)
+    }
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, params.script_join_fastq)
     if ( params.classify_cleaned ) {
