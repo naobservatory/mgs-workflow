@@ -583,6 +583,7 @@ process DEDUP_CLUMPIFY {
 process FASTQC_DEDUP {
     label "FASTQC"
     cpus 2
+    memory "4 GB"
     input:
         tuple val(sample), path(reads)
     output:
@@ -1146,7 +1147,7 @@ process FILTER_HV {
         filtered <- mutate(data, hit_hv = as.logical(!is.na(str_match(encoded_hits, paste0(" ", as.character(taxid), ":"))))) %>%
             mutate(adj_score_fwd = replace_na(adj_score_fwd, 0), adj_score_rev = replace_na(adj_score_rev, 0)) %>%
             filter((!classified) | assigned_hv) %>% 
-            filter(adj_score_fwd > score_threshold | adj_score_rev > score_threshold | assigned_hv | hit_hv)
+            filter(adj_score_fwd > score_threshold | adj_score_rev > score_threshold | assigned_hv)
         print(dim(data))
         print(dim(filtered))
         write_tsv(filtered, "hv_hits_putative_filtered.tsv.gz")
@@ -1250,21 +1251,46 @@ workflow MAP_HUMAN_VIRUSES {
 | 6. BLAST VALIDATION (OPTIONAL, SLOW) |
 ***************************************/
 
+// 6.0. Subsequence merged reads for BLAST with seqtk
+process SUBSET_BLAST {
+    label "seqtk"
+    label "single"
+    input:
+        path(hv_hits_filtered_fasta)
+        val readFraction
+    output:
+        path("hv_hits_putative_subset.fasta")
+    shell:
+        '''
+        # Define input/output
+        in1=!{hv_hits_filtered_fasta}
+        out1=hv_hits_putative_subset.fasta
+        # Count reads for validation
+        echo "Input reads: $(zcat ${in1} | wc -l | awk '{ print $1/2 }')"
+        # Carry out subsetting
+        seed=${RANDOM}
+        seqtk sample -s ${seed} ${in1} !{readFraction} > ${out1}
+        # Count reads for validation
+        echo "Output reads: $(wc -l ${out1} | awk '{ print $1/2 }')"
+        '''
+}
+
 // 6.1. BLAST putative HV hits against nt
 process BLAST_HV {
     label "BLAST"
-    label "large"
+    cpus 32
+    memory "256 GB"
     input:
-        path(hv_hits_filtered_fasta)
+        path(hv_hits_subset_fasta)
         path(blast_nt_dir)
     output:
-        path("hv_hits_putative_filtered.blast.gz")
+        path("hv_hits_putative_subset.blast.gz")
     shell:
         '''
         # Specify parameters
-        infile=!{hv_hits_filtered_fasta}
+        infile=!{hv_hits_subset_fasta}
         db=!{blast_nt_dir}/nt
-        outfile=hv_hits_putative_filtered.blast
+        outfile=hv_hits_putative_subset.blast
         threads=!{task.cpus}
         # Set up command
         io="-query ${infile} -out ${outfile} -db ${db}"
@@ -1272,14 +1298,15 @@ process BLAST_HV {
         # Run BLAST
         blastn ${io} ${par} -outfmt "6 qseqid sseqid sgi staxid qlen evalue bitscore qcovs length pident mismatch gapopen sstrand qstart qend sstart send"
         # Gzip output
-        gzip hv_hits_putative_filtered.blast
+        gzip hv_hits_putative_subset.blast
         '''
 }
 
 // 6.2. Process & filter BLAST output
 process FILTER_BLAST {
     label "tidyverse"
-    label "single"
+    cpus 1
+    memory "16 GB"
     input:
         path(blast_results)
     output:
@@ -1339,9 +1366,12 @@ workflow BLAST_HUMAN_VIRUSES {
     take:
         hv_hits_filtered_fasta
         blast_nt_dir
+        readFraction
     main:
+        // Subset HV reads for BLAST
+        subset_ch = SUBSET_BLAST(hv_hits_filtered_fasta, readFraction)
         // BLAST putative HV hits against nt
-        blast_ch = BLAST_HV(hv_hits_filtered_fasta, blast_nt_dir)
+        blast_ch = BLAST_HV(subset_ch, blast_nt_dir)
         // Process output
         filter_ch = FILTER_BLAST(blast_ch)
         pair_ch = PAIR_BLAST(filter_ch)
@@ -1389,6 +1419,7 @@ process BBDUK_RIBO_SECONDARY {
 process FASTQC_RIBO_SECONDARY {
     label "FASTQC"
     cpus 2
+    memory "4 GB"
     input:
         tuple val(sample), path(reads_noribo), path(reads_ribo), path(stats)
     output:
@@ -2027,7 +2058,7 @@ workflow {
         params.script_process_sam, params.script_join_fastq, params.script_process_kraken, params.script_count_taxa,
         params.bt2_score_threshold, PREPARE_REFERENCES.out.adapters)
     if ( params.blast_hv ) {
-        BLAST_HUMAN_VIRUSES(MAP_HUMAN_VIRUSES.out.fasta, params.blast_nt_dir)
+        BLAST_HUMAN_VIRUSES(MAP_HUMAN_VIRUSES.out.fasta, params.blast_nt_dir, params.blast_fraction)
     }
     // Broad taxonomic profiling
     CLASSIFY_READS(REMOVE_RIBO_SECONDARY.out.data, PREPARE_REFERENCES.out.kraken, params.script_join_fastq)

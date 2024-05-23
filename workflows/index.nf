@@ -559,7 +559,8 @@ workflow VIRAL_TAXA {
 // 8.1. Download BLAST nt DB
 process DOWNLOAD_BLAST_NT {
     label "BLAST2"
-    label "single"
+    label "max"
+    errorStrategy "terminate"
     publishDir "${pubDir}", mode: "copy", overwrite: "true"
     output:
         path("nt")
