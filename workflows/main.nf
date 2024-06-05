@@ -217,8 +217,8 @@ process CONCAT_GZIPPED {
         r1=""
         r2=""
         for l in !{libraries.join(" ")}; do
-            L1=$(ls ${read_dir}/*${l}*_1.fastq.gz);
-            L2=$(ls ${read_dir}/*${l}*_2.fastq.gz);
+            L1=$(ls ${read_dir}/*${l}*_1.fastq.gz)
+            L2=$(ls ${read_dir}/*${l}*_2.fastq.gz)
             r1="${r1} ${L1}"
             r2="${r2} ${L2}"
             done
@@ -1608,8 +1608,16 @@ process BRACKEN_DOMAINS {
         io="-d ${db} -i ${in} -o ${out}"
         # Define parameters
         par="-l D"
-        # Run Bracken
-        bracken ${io} ${par}
+        # Handle files with no assigned reads
+        x=$(wc -l < ${in})
+        y=$(grep "unclassified" ${in} | wc -l)
+        echo ${x} ${y}
+        if [[ ${x} == "1" && ${y} == "1" ]]; then
+            touch ${out}
+        else
+            # Run Bracken
+            bracken ${io} ${par}
+        fi
         '''
 }
 
