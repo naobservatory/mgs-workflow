@@ -1132,7 +1132,6 @@ process MERGE_SAMPLES_HV {
 process FILTER_HV {
     label "tidyverse"
     label "single"
-    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(hv_hits)
         val(score_threshold)
@@ -1154,24 +1153,61 @@ process FILTER_HV {
         '''
 }
 
+// Collapse separate read pair entries in HV DB
+process COLLAPSE_HV {
+    label "tidyverse"
+    label "single"
+    publishDir "${pubDir}", mode: "copy", overwrite: "true"
+    input:
+        path(hv_hits_filtered)
+    output:
+        path("hv_hits_putative_collapsed.tsv.gz")
+    shell:
+        '''
+        #!/usr/bin/env Rscript
+        library(tidyverse)
+        rmax <- function(x){
+            if (all(is.na(x))) return(NA)
+            return(max(x, na.rm = TRUE))
+        }
+        collapse <- function(x) ifelse(all(x == x[1]), x[1], paste(x, collapse="/"))
+        reads_filtered <- read_tsv("!{hv_reads_filtered}", col_names = TRUE, show_col_types = FALSE)
+        print(dim(reads_filtered))
+        reads_collapsed <- reads_filtered %>% group_by(seq_id) %>% summarize(
+            sample = collapse(sample), genome_id = collapse(genome_id),
+            taxid_best = taxid[1], taxid = collapse(as.character(taxid)),
+            best_alignment_score_fwd = rmax(best_alignment_score_fwd),
+            best_alignment_score_rev = rmax(best_alignment_score_rev),
+            query_len_fwd = rmax(query_len_fwd), query_seq_fwd = query_seq_fwd[!is.na(query_seq_fwd)][1],
+            query_len_rev = rmax(query_len_rev), query_seq_rev = query_seq_rev[!is.na(query_seq_rev)][1],
+            classified = rmax(classified), assigned_name = collapse(assigned_name),
+            assigned_taxid_best = assigned_taxid[1], assigned_taxid = collapse(as.character(assigned_taxid)),
+            assigned_hv = rmax(assigned_hv), hit_hv = rmax(hit_hv), encoded_hits = collapse(encoded_hits),
+            adj_score_fwd = rmax(adj_score_fwd), adj_score_rev = rmax(adj_score_rev)
+            ) %>% mutate(adj_score_max = pmax(adj_score_fwd, adj_score_rev))
+        print(dim(reads_collapsed))
+        write_tsv(reads_collapsed, "hv_hits_putative_collapsed.tsv.gz")
+        '''
+}
+
 // 5.16. Extract FASTA from filtered sequences
 process MAKE_HV_FASTA {
     label "tidyverse"
     label "single"
     input:
-        path(hv_hits_filtered)
+        path(hv_hits_collapsed)
     output:
-        path("hv_hits_putative_filtered.fasta")
+        path("hv_hits_putative_collapsed.fasta")
     shell:
         '''
         #!/usr/bin/env Rscript
         library(tidyverse)
-        tab <- read_tsv("!{hv_hits_filtered}", col_names = TRUE, show_col_types = FALSE)
+        tab <- read_tsv("!{hv_hits_collapsed}", col_names = TRUE, show_col_types = FALSE)
         fasta_tab <- mutate(tab, seq_head = paste0(">", seq_id),
                             header1 = paste0(seq_head, "_1"), header2 = paste0(seq_head, "_2")) %>%
             select(header1, seq1=query_seq_fwd, header2, seq2=query_seq_rev)
         fasta_out <- do.call(paste, c(fasta_tab, sep="\n")) %>% paste(collapse="\n")
-        write(fasta_out, "hv_hits_putative_filtered.fasta")
+        write(fasta_out, "hv_hits_putative_collapsed.fasta")
         '''
 }
 
@@ -1181,7 +1217,7 @@ process COUNT_HV_CLADES {
     label "large"
     publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
-        path(hv_hits_filtered)
+        path(hv_hits_collapsed)
         path(viral_taxa)
         path(script_count_taxa)
     output:
@@ -1189,7 +1225,7 @@ process COUNT_HV_CLADES {
     shell:
         '''
         script_path=./!{script_count_taxa}
-        ${script_path} --reads !{hv_hits_filtered} --taxa !{viral_taxa} --output hv_clade_counts.tsv.gz
+        ${script_path} --reads !{hv_hits_collapsed} --taxa !{viral_taxa} --output hv_clade_counts.tsv.gz
         '''
 }
 
@@ -1237,12 +1273,13 @@ workflow MAP_HUMAN_VIRUSES {
         merged_ch = MERGE_SAM_KRAKEN(merged_input_ch)
         merged_ch_2 = MERGE_SAMPLES_HV(merged_ch.collect().ifEmpty([]))
         filtered_ch = FILTER_HV(merged_ch_2, bt2_score_threshold)
-        fasta_ch = MAKE_HV_FASTA(filtered_ch)
+        collapsed_ch = COLLAPSE_HV(filtered_ch)
+        fasta_ch = MAKE_HV_FASTA(collapsed_ch)
         // Count clades
-        count_ch = COUNT_HV_CLADES(filtered_ch, viral_taxa_ch, script_count_taxa)
+        count_ch = COUNT_HV_CLADES(collapsed_ch, viral_taxa_ch, script_count_taxa)
     emit:
         data_all = merged_ch_2
-        data_filtered = filtered_ch
+        data_collapsed = collapsed_ch
         fasta = fasta_ch
         counts = count_ch
 }
@@ -1256,14 +1293,14 @@ process SUBSET_BLAST {
     label "seqtk"
     label "single"
     input:
-        path(hv_hits_filtered_fasta)
+        path(hv_hits_collapsed_fasta)
         val readFraction
     output:
         path("hv_hits_putative_subset.fasta")
     shell:
         '''
         # Define input/output
-        in1=!{hv_hits_filtered_fasta}
+        in1=!{hv_hits_collapsed_fasta}
         out1=hv_hits_putative_subset.fasta
         # Count reads for validation
         echo "Input reads: $(zcat ${in1} | wc -l | awk '{ print $1/2 }')"
@@ -1364,12 +1401,12 @@ process PAIR_BLAST {
 
 workflow BLAST_HUMAN_VIRUSES {
     take:
-        hv_hits_filtered_fasta
+        hv_hits_collapsed_fasta
         blast_nt_dir
         readFraction
     main:
         // Subset HV reads for BLAST
-        subset_ch = SUBSET_BLAST(hv_hits_filtered_fasta, readFraction)
+        subset_ch = SUBSET_BLAST(hv_hits_collapsed_fasta, readFraction)
         // BLAST putative HV hits against nt
         blast_ch = BLAST_HV(subset_ch, blast_nt_dir)
         // Process output
