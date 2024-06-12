@@ -1,5 +1,12 @@
 pubDir = "${params.pub_dir}"
 
+/***************************
+| MODULES AND SUBWORKFLOWS |
+***************************/
+
+//include { FASTQC } from "../modules/local/fastqc" addParams(cpus: 2)
+//include { MULTIQC } from "../modules/local/multiqc"
+
 /************************************
 | 0. PREPARE REFERENCES AND INDEXES |
 ************************************/
@@ -414,6 +421,7 @@ process PREPROCESS_TRIMMOMATIC {
 process PREPROCESS_FASTP {
     label "large"
     container "staphb/fastp:latest"
+    publishDir "${pubDir}/cleaned", mode: "copy", overwrite: "true"
     input:
         tuple val(sample), path(reads), path(unpaired), path(log)
         path adapters
@@ -1171,9 +1179,9 @@ process COLLAPSE_HV {
             return(max(x, na.rm = TRUE))
         }
         collapse <- function(x) ifelse(all(x == x[1]), x[1], paste(x, collapse="/"))
-        reads_filtered <- read_tsv("!{hv_reads_filtered}", col_names = TRUE, show_col_types = FALSE)
-        print(dim(reads_filtered))
-        reads_collapsed <- reads_filtered %>% group_by(seq_id) %>% summarize(
+        hits_filtered <- read_tsv("!{hv_hits_filtered}", col_names = TRUE, show_col_types = FALSE)
+        print(dim(hits_filtered))
+        reads_collapsed <- hits_filtered %>% group_by(seq_id) %>% summarize(
             sample = collapse(sample), genome_id = collapse(genome_id),
             taxid_best = taxid[1], taxid = collapse(as.character(taxid)),
             best_alignment_score_fwd = rmax(best_alignment_score_fwd),
