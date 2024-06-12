@@ -6,7 +6,7 @@ process TRUNCATE_CONCAT {
         tuple val(sample), path(reads)
         val n_reads
     output:
-        tuple val(sample), path("${sample}_trunc_{1,2}.fastq.gz")
+        tuple val(sample), path("${sample}_trunc_{1,2}.fastq.gz"), emit: reads
     shell:
         '''
         echo "Number of output reads: !{n_reads}"

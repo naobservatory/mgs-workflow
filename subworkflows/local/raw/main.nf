@@ -2,7 +2,7 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { QC } from "../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus)
+include { QC } from "../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem)
 include { CONCAT_GZIPPED } from "../modules/local/concatGzipped"
 include { TRUNCATE_CONCAT } from "../modules/local/truncateConcat"
 
@@ -24,8 +24,8 @@ workflow RAW {
         } else {
             out_ch = concat_ch
         }
-        qc_ch = QC(out_ch)
+        qc_ch = QC(out_ch.reads, params.stage_label)
     emit:
-        data = out_ch
-        qc = qc_ch
+        reads = out_ch.reads
+        qc = qc_ch.out.qc
 }

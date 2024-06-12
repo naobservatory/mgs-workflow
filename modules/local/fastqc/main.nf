@@ -1,6 +1,7 @@
 process FASTQC {
     label "FASTQC"
     cpus "${params.cpus}"
+    memory "${params.mem}"
     input:
         path(reads)
     output:
