@@ -1171,7 +1171,7 @@ process COLLAPSE_HV {
             return(max(x, na.rm = TRUE))
         }
         collapse <- function(x) ifelse(all(x == x[1]), x[1], paste(x, collapse="/"))
-        reads_filtered <- read_tsv("!{hv_reads_filtered}", col_names = TRUE, show_col_types = FALSE)
+        reads_filtered <- read_tsv("!{hv_hits_filtered}", col_names = TRUE, show_col_types = FALSE)
         print(dim(reads_filtered))
         reads_collapsed <- reads_filtered %>% group_by(seq_id) %>% summarize(
             sample = collapse(sample), genome_id = collapse(genome_id),
