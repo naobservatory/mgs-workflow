@@ -26,3 +26,4 @@ process BLAST_PAIRED_NT {
         # Gzip output
         gzip hits.blast
         '''
+}

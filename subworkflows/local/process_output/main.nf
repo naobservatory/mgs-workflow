@@ -2,8 +2,8 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { MERGE_TSVS } from "../modules/local/mergeTsvs"
-include { SUMMARIZE_COMPOSITION } from "../modules/local/summarizeComposition"
+include { MERGE_TSVS } from "../../../modules/local/mergeTsvs"
+include { SUMMARIZE_COMPOSITION } from "../../../modules/local/summarizeComposition"
 
 /***********
 | WORKFLOW |

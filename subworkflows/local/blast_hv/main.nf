@@ -2,10 +2,10 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { SUBSET_READS_PAIRED } from "../modules/local/subsetReads"
-include { BLAST_PAIRED_NT } from "../modules/local/blast" addParams(cpus: params.blast_cpus, mem: params.blast_mem)
-include { FILTER_BLAST } from "../modules/local/filterBlast" addParams(mem: params.blast_filter_mem)
-include { PAIR_BLAST } from "../modules/local/pairBlast"
+include { SUBSET_READS_PAIRED } from "../../../modules/local/subsetReads"
+include { BLAST_PAIRED_NT } from "../../../modules/local/blast" addParams(cpus: params.blast_cpus, mem: params.blast_mem)
+include { FILTER_BLAST } from "../../../modules/local/filterBlast" addParams(mem: params.blast_filter_mem)
+include { PAIR_BLAST } from "../../../modules/local/pairBlast"
 
 /***********
 | WORKFLOW |

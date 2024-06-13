@@ -8,29 +8,12 @@ include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2",
 include { DEDUP } from "../subworkflows/local/dedup" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "dedup")
 include { RIBODEPLETION as RIBO_INITIAL } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_initial", min_kmer_fraction: "0.6", k: "43")
 include { RIBODEPLETION as RIBO_SECONDARY } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_secondary", min_kmer_fraction: "0.4", k: "27")
-include { TAXONOMY } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D")
+include { TAXONOMY as TAXONOMY_FULL } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: 1)
+include { TAXONOMY as TAXONOMY_PRE } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: params.classify_dedup_subset)
+include { TAXONOMY as TAXONOMY_POST } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: params.classify_dedup_subset)
 include { HV } from "../subworkflows/local/hv"
 include { BLAST_HV } from "../subworkflows/local/blast_hv" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
-
-/************************************
-| 0. PREPARE REFERENCES AND INDEXES |
-************************************/
-
-// 0.8. Copy sample metadata CSV
-process COPY_SAMPLE_METADATA {
-    label "BBTools"
-    label "single"
-    publishDir "${pubDir}", mode: "copy", overwrite: "true"
-    errorStrategy "retry"
-    input:
-        path(sample_metadata)
-    output:
-        path("sample-metadata.csv")
-    shell:
-        '''
-        cp !{sample_metadata} sample-metadata.csv
-        '''
-}
+nextflow.preview.output = true
 
 /*****************
 | MAIN WORKFLOWS |
@@ -46,19 +29,18 @@ libraries_ch = Channel
 // Complete primary workflow
 workflow {
     // Prepare references & indexes
-    PREPARE_REFERENCES(params.human_index_bt2, params.other_index_bt2, params.human_index_bb, params.other_index_bb, params.hv_index, params.kraken_db, params.sample_tab)
     kraken_db_ch = EXTRACT_TARBALL(params.kraken_db) // TODO: Eliminate this step and just pass reference db path directly
     // Preprocessing
     RAW(libraries_ch, params.raw_dir, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
-    DEDUP(CLEAN_READS.out.reads)
+    DEDUP(CLEAN.out.reads)
     RIBO_INITIAL(DEDUP.out.reads, params.ribo_db)
     RIBO_SECONDARY(RIBO_INITIAL.out.reads, params.ribo_db)
     // Taxonomic profiling (all ribodepleted)
-    TAX = TAXONOMY(RIBO_SECONDARY.out.reads, kraken_db_ch, 1)
+    TAXONOMY_FULL(RIBO_SECONDARY.out.reads, kraken_db_ch)
     // Taxonomic profiling (pre/post dedup)
-    TAX_PRE = TAXONOMY(CLEAN.out.reads, kraken_db_ch, params.classify_dedup_subset)
-    TAX_POST = TAXONOMY(DEDUP.out.reads, kraken_db_ch, params.classify_dedup_subset)
+    TAXONOMY_PRE(CLEAN.out.reads, kraken_db_ch)
+    TAXONOMY_POST(DEDUP.out.reads, kraken_db_ch)
     // Extract and count human-viral reads
     HV(RIBO_INITIAL.out.reads, params.genomeid_map, params.hv_index, params.human_index_bt2, params.other_index_bt2,
        params.human_index_bb, params.other_index_bb, kraken_db_ch, params.nodes, params.hv_db,
@@ -68,8 +50,24 @@ workflow {
         BLAST_HV(HV.out.fasta, params.blast_nt_dir, params.blast_fraction)
     }
     // Process output
-    PROCESS_OUTPUT(RAW.out.qc, CLEAN.out.qc, DEDUP.out.qc, RIBO_INITIAL.out.qc, RIBO_SECONDARY.out.qc, TAX.bracken, TAX_PRE.bracken, TAX_POST.bracken, params.classify_dedup_subset)
+    PROCESS_OUTPUT(RAW.out.qc, CLEAN.out.qc, DEDUP.out.qc, RIBO_INITIAL.out.qc, RIBO_SECONDARY.out.qc,
+                   TAXONOMY_FULL.out.bracken, TAXONOMY_PRE.out.bracken, TAXONOMY_POST.out.bracken, params.classify_dedup_subset)
+    // Save parameters
+    params_ch = Channel.of(params).collectFile(name: "params.txt", newLine: true) // TODO: Iterate on this
     // Publish results
+    publish:
+        // Saved inputs
+        params_ch >> "input"
+        params.sample_tab >> "input"
+        params.adapters >> "input"
+        // Intermediate files
+        CLEAN.out.reads >> "intermediates/cleaned_reads"
+        // Final results
+        HV.out.tsv >> "results"
+        HV.out.counts >> "results"
+        PROCESS_OUTPUT.out.composition_full >> "results/taxonomy_final"
+        PROCESS_OUTPUT.out.composition_pre >> "results/taxonomy_pre_dedup"
+        PROCESS_OUTPUT.out.composition_post >> "results/taxonomy_post_dedup"
 }
 
 output {

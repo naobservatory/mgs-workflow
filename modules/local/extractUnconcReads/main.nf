@@ -16,3 +16,4 @@ process EXTRACT_UNCONC_READS {
         seqtk subseq ${inp1} ${inp0} | gzip > ${outp1}
         seqtk subseq ${inp2} ${inp0} | gzip > ${outp2}
         '''
+}

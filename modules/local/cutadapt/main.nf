@@ -14,3 +14,4 @@ process CUTADAPT {
         log="!{sample}_cutadapt_log.txt"
         cutadapt ${par} ${out} !{reads[0]} !{reads[1]} > ${log}
         '''
+}

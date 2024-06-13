@@ -7,7 +7,7 @@ process FASTP {
     output:
         tuple val(sample), path("${sample}_fastp_{1,2}.fastq.gz"), emit: reads
         tuple val(sample), path("${sample}_fastp_failed.fastq.gz"), emit: failed
-        tuple val(sample), path("${sample}_fastp.{json,html}", emit: log
+        tuple val(sample), path("${sample}_fastp.{json,html}"), emit: log
     shell:
         '''
         # Define paths and subcommands
@@ -22,3 +22,4 @@ process FASTP {
         # Execute
         fastp ${io} ${par}
         '''
+}

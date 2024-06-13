@@ -1,5 +1,5 @@
 // Run Bowtie2 and return mapped and unmapped reads
-process RUN_BOWTIE2 {
+process BOWTIE2 {
     label "Bowtie2"
     label "large"
     input:

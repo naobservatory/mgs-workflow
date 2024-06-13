@@ -1,5 +1,5 @@
 // From a Bowtie2 SAM file, get a list of IDs for singly or discordantly aligned read pairs (if any)
-process GET_UNCONC_READ_IDS {
+process EXTRACT_UNCONC_READ_IDS {
     label "biopython"
     label "single"
     input:

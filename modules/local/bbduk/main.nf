@@ -5,8 +5,8 @@ process BBDUK {
     input:
         tuple val(sample), path(reads)
         path(contaminant_ref)
-        value(min_kmer_fraction)
-        value(k)
+        val(min_kmer_fraction)
+        val(k)
     output:
         tuple val(sample), path("${sample}_bbduk_pass_{1,2}.fastq.gz"), emit: reads
         tuple val(sample), path("${sample}_bbduk_fail_{1,2}.fastq.gz"), emit: fail

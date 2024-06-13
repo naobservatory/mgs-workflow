@@ -2,9 +2,9 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { QC } from "../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem)
-include { CONCAT_GZIPPED } from "../modules/local/concatGzipped"
-include { TRUNCATE_CONCAT } from "../modules/local/truncateConcat"
+include { QC } from "../../../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem)
+include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
+include { CONCAT_GZIPPED } from "../../../modules/local/concatGzipped"
 
 /***********
 | WORKFLOW |
@@ -26,5 +26,5 @@ workflow RAW {
         qc_ch = QC(out_ch.reads, params.stage_label)
     emit:
         reads = out_ch.reads
-        qc = qc_ch.out.qc
+        qc = qc_ch.qc
 }

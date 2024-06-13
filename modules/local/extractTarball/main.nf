@@ -1,5 +1,5 @@
 // Extract a Gzipped tarball into a directory
-process EXTRACT_TARBALL(
+process EXTRACT_TARBALL{
     label "BBTools"
     label "single"
     input:
@@ -10,3 +10,4 @@ process EXTRACT_TARBALL(
         '''
         tar -xzf !{tarball}
         '''
+}

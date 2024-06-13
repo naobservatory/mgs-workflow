@@ -6,7 +6,7 @@ process CONCAT_GZIPPED {
         path(raw_files_directory)
         tuple val(sample), val(libraries)
     output:
-        tuple val(sample), path(${sample}_{1,2}.fastq.gz"), emit: reads
+        tuple val(sample), path("${sample}_{1,2}.fastq.gz"), emit: reads
     shell:
         '''
         # Preamble
