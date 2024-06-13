@@ -14,11 +14,10 @@ workflow RAW {
     take:
         libraries_ch
         raw_dir_path
-        truncate_reads
         n_reads_trunc
     main:
         concat_ch = CONCAT_GZIPPED(raw_dir_path, libraries_ch)
-        if ( truncate_reads ) {
+        if ( n_reads_trunc == 0 ) {
             out_ch = TRUNCATE_CONCAT(concat_ch, n_reads_trunc)
             qc_ch = QC(trunc_ch)
         } else {
