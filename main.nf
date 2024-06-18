@@ -1,10 +1,13 @@
 include { RUN } from "./workflows/run"
 
+// Configure working and output directories
+pubDir  = "${params.base_dir}/output"
+
 workflow {
     RUN()
 }
 
 output {
-    directory "${params.pub_dir}"
+    directory "${pubDir}"
     mode "copy"
 }

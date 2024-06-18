@@ -203,7 +203,7 @@ workflow PREPARE_OTHER {
 
 // 4.1. Collect full list of descendent taxids for each viral taxid
 process GET_HV_DESCENDENTS {
-    label "Python"
+    label "biopython"
     label "single"
     input:
         path(human_virus_path)
@@ -278,7 +278,7 @@ process GET_HV_DESCENDENTS {
 
 // 4.2. Get viral genome sequences based on expanded list of taxids
 process GET_HV_GENOMES {
-    label "Python"
+    label "biopython"
     label "single"
     input:
         path(hv_taxids_all)
@@ -295,7 +295,7 @@ process GET_HV_GENOMES {
 
 // 4.3. Generate mapping between genome IDs and taxids
 process MAKE_ID_MAPPING {
-    label "Python"
+    label "biopython"
     label "single"
     publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:

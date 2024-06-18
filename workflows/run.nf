@@ -16,7 +16,6 @@ include { TAXONOMY as TAXONOMY_POST } from "../subworkflows/local/taxonomy" addP
 include { HV } from "../subworkflows/local/hv"
 include { BLAST_HV } from "../subworkflows/local/blast_hv" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
 include { PROCESS_OUTPUT } from "../subworkflows/local/process_output"
-include { SAVE_PARAMS } from "../modules/local/saveParams"
 nextflow.preview.output = true
 
 /*****************
@@ -33,25 +32,26 @@ libraries_ch = Channel
 // Complete primary workflow
 workflow RUN {
     // Prepare references & indexes
-    kraken_db_ch = EXTRACT_KRAKEN_DB(params.kraken_db, "kraken_db", true) // TODO: Eliminate this step and just pass reference db path directly
+    // TODO: Eliminate this step and just pass reference db path directly
+    kraken_db_path = "${params.ref_dir}/kraken-db.tar.gz"
+    kraken_db_ch = EXTRACT_KRAKEN_DB(kraken_db_path, "kraken_db", true)
     // Preprocessing
     RAW(libraries_ch, params.raw_dir, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
     DEDUP(CLEAN.out.reads)
-    RIBO_INITIAL(DEDUP.out.reads, params.ribo_db)
-    RIBO_SECONDARY(RIBO_INITIAL.out.reads, params.ribo_db)
+    RIBO_INITIAL(DEDUP.out.reads, params.ref_dir)
+    RIBO_SECONDARY(RIBO_INITIAL.out.reads, params.ref_dir)
     // Taxonomic profiling (all ribodepleted)
     TAXONOMY_FULL(RIBO_SECONDARY.out.reads, kraken_db_ch)
     // Taxonomic profiling (pre/post dedup)
     TAXONOMY_PRE(CLEAN.out.reads, kraken_db_ch)
     TAXONOMY_POST(DEDUP.out.reads, kraken_db_ch)
     // Extract and count human-viral reads
-    HV(RIBO_INITIAL.out.reads, params.genomeid_map, params.hv_index, params.human_index_bt2, params.other_index_bt2,
-       params.human_index_bb, params.other_index_bb, kraken_db_ch, params.nodes, params.hv_db,
-       params.bt2_score_threshold, params.viral_taxa_db)
+    HV(RIBO_INITIAL.out.reads, params.ref_dir, kraken_db_ch, params.bt2_score_threshold)
     // BLAST validation on human-viral reads (if activated)
-    if ( params.blast_hv ) {
-        BLAST_HV(HV.out.fasta, params.blast_nt_dir, params.blast_fraction)
+    if ( params.blast_hv_fraction > 0 ) {
+        blast_nt_path = "${params.ref_dir}/nt"
+        BLAST_HV(HV.out.fasta, blast_nt_path, params.blast_hv_fraction)
     }
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc, DEDUP.out.qc, RIBO_INITIAL.out.qc, RIBO_SECONDARY.out.qc)

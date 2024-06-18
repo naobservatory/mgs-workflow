@@ -32,18 +32,20 @@ include { COUNT_HV_CLADES } from "../../../modules/local/countHvClades"
 workflow HV {
     take:
         reads_ch
-        genomeid_map_path
-        bt2_hv_index_path
-        bt2_human_index_path
-        bt2_other_index_path
-        bbm_human_index_path
-        bbm_other_index_path
+        ref_dir
         kraken_db_ch
-        nodes_path
-        hv_db_path
         aln_score_threshold
-        viral_taxa_ch
     main:
+        // Get index paths
+        genomeid_map_path = "${ref_dir}/genomeid-to-taxid.json"
+        bt2_hv_index_path = "${ref_dir}/bt2-hv-index.tar.gz"
+        bt2_human_index_path = "${ref_dir}/bt2-human-index.tar.gz"
+        bt2_other_index_path = "${ref_dir}/bt2-other-index.tar.gz"
+        bbm_human_index_path = "${ref_dir}/human-ref-index.tar.gz"
+        bbm_other_index_path = "${ref_dir}/other-ref-index.tar.gz"
+        nodes_path = "${ref_dir}/taxonomy-nodes.dmp"
+        hv_db_path = "${ref_dir}/human-viruses.tsv"
+        viral_taxa_path = "${ref_dir}/viral-taxids.tsv.gz"
         // Extract index tarballs
         // TODO: Eliminate this step and just pass index dirs directly
         bt2_hv_index_ch    = EXTRACT_BT2_INDEX_HV(bt2_hv_index_path, "bt2_hv_index", false)
@@ -73,7 +75,7 @@ workflow HV {
         collapsed_ch = COLLAPSE_HV(filtered_ch)
         fasta_ch = MAKE_HV_FASTA(collapsed_ch)
         // Count clades
-        count_ch = COUNT_HV_CLADES(collapsed_ch, viral_taxa_ch)
+        count_ch = COUNT_HV_CLADES(collapsed_ch, viral_taxa_path)
     emit:
         tsv = collapsed_ch
         fasta = fasta_ch

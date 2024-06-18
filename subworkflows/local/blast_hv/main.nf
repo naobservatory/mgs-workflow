@@ -18,7 +18,11 @@ workflow BLAST_HV {
         read_fraction
     main:
         // Subset HV reads for BLAST
-        subset_ch = SUBSET_READS_PAIRED_MERGED(hv_fasta, read_fraction)
+        if ( read_fraction < 1 ) {
+            subset_ch = SUBSET_READS_PAIRED_MERGED(hv_fasta, read_fraction)
+        } else {
+            subset_ch = hv_fasta
+        }
         // BLAST putative HV hits against nt
         blast_ch = BLAST_PAIRED_NT(subset_ch, blast_nt_dir)
         // Process BLAST output
