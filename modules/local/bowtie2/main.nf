@@ -24,3 +24,20 @@ process BOWTIE2 {
         bowtie2 ${par} ${io}
         '''
 }
+
+// Generate a Bowtie2 index from an input file
+process BOWTIE2_INDEX {
+    label "Bowtie2"
+    label "max"
+    input:
+        path(reference_fasta)
+    output:
+        path("${params.outdir}")
+    shell:
+        '''
+        odir="!{params.outdir}"
+        mkdir ${odir}
+        bowtie2-build -f --threads !{task.cpus} !{reference_fasta} ${odir}/bt2_index
+        #tar -czf bt2-human-index.tar.gz bt2_human_index
+        '''
+}

@@ -14,8 +14,8 @@ include { TAXONOMY as TAXONOMY_FULL } from "../subworkflows/local/taxonomy" addP
 include { TAXONOMY as TAXONOMY_PRE } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: params.classify_dedup_subset)
 include { TAXONOMY as TAXONOMY_POST } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: params.classify_dedup_subset)
 include { HV } from "../subworkflows/local/hv"
-include { BLAST_HV } from "../subworkflows/local/blast_hv" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
-include { PROCESS_OUTPUT } from "../subworkflows/local/process_output"
+include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
+include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 nextflow.preview.output = true
 
 /*****************

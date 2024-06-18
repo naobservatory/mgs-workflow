@@ -26,3 +26,22 @@ process BBMAP {
         bbmap.sh ${io} ${par}
         '''
 }
+
+// Generate a BBMap index from an input file
+process BBMAP_INDEX {
+    label "BBTools"
+    label "large"
+    input:
+        path(reference_fasta)
+    output:
+        path("${params.outdir}")
+    shell:
+        '''
+        odir="!{params.outdir}"
+        mkdir ${odir}
+        cp !{reference_fasta} ${odir}/reference.fasta.gz
+        cd ${odir}
+        bbmap.sh ref=reference.fasta.gz t=!{task.cpus} -Xmx30g
+        #tar -czf human-ref-index.tar.gz human_ref_index
+        '''
+}
