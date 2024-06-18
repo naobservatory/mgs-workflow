@@ -22,5 +22,5 @@ workflow CLEAN {
         qc_ch = QC(fastp_ch.reads, params.stage_label)
     emit:
         reads = fastp_ch.reads
-        qc = qc_ch.out.qc
+        qc = qc_ch.qc
 }

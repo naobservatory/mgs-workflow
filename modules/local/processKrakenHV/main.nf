@@ -14,7 +14,6 @@ process PROCESS_KRAKEN_HV {
         out=!{sample}_kraken_hv_processed.tsv
         nodes=!{nodes_path}
         hv=!{hv_db_path}
-        script_path=./!{script_process_kraken}
         process_kraken_hv.py ${in} ${hv} ${nodes} ${out}
         '''
 }

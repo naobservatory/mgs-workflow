@@ -3,7 +3,7 @@
 ***************************/
 
 include { QC } from "../../../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem)
-include { BBDUK } from "../../../modules/local/bbduk"
+include { BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
 
 /***********
 | WORKFLOW |
@@ -19,5 +19,5 @@ workflow RIBODEPLETION {
     emit:
         reads = bbduk_ch.reads
         ribo = bbduk_ch.fail
-        qc = qc_ch.out.qc
+        qc = qc_ch.qc
 }

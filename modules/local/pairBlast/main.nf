@@ -19,6 +19,6 @@ process PAIR_BLAST {
             summarize(bitscore_max = max(bitscore), bitscore_min = min(bitscore),
                       n_reads = n(), .groups = "drop")
         # Write output
-        write_tsv(blast_hits_paired, "hv_hits_blast_paired.tsv.gz")
+        write_tsv(blast_hits_paired, "blast_hits_paired.tsv.gz")
         '''
 }

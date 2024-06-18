@@ -2,7 +2,6 @@
 process COUNT_HV_CLADES {
     label "R"
     label "large"
-    publishDir "${pubDir}", mode: "copy", overwrite: "true"
     input:
         path(hv_hits_tsv)
         path(viral_taxa)

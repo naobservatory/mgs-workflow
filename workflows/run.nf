@@ -1,18 +1,22 @@
+import groovy.json.JsonOutput
+
 /***************************
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { EXTRACT_TARBALL } from "../modules/local/extractTarball"
+include { EXTRACT_TARBALL as EXTRACT_KRAKEN_DB } from "../modules/local/extractTarball"
 include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
 include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
 include { DEDUP } from "../subworkflows/local/dedup" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "dedup")
-include { RIBODEPLETION as RIBO_INITIAL } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_initial", min_kmer_fraction: "0.6", k: "43")
-include { RIBODEPLETION as RIBO_SECONDARY } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_secondary", min_kmer_fraction: "0.4", k: "27")
+include { RIBODEPLETION as RIBO_INITIAL } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_initial", min_kmer_fraction: "0.6", k: "43", bbduk_suffix: "ribo_initial")
+include { RIBODEPLETION as RIBO_SECONDARY } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_secondary", min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo_secondary")
 include { TAXONOMY as TAXONOMY_FULL } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: 1)
 include { TAXONOMY as TAXONOMY_PRE } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: params.classify_dedup_subset)
 include { TAXONOMY as TAXONOMY_POST } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: params.classify_dedup_subset)
 include { HV } from "../subworkflows/local/hv"
 include { BLAST_HV } from "../subworkflows/local/blast_hv" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
+include { PROCESS_OUTPUT } from "../subworkflows/local/process_output"
+include { SAVE_PARAMS } from "../modules/local/saveParams"
 nextflow.preview.output = true
 
 /*****************
@@ -27,9 +31,9 @@ libraries_ch = Channel
     .groupTuple()
 
 // Complete primary workflow
-workflow {
+workflow RUN {
     // Prepare references & indexes
-    kraken_db_ch = EXTRACT_TARBALL(params.kraken_db) // TODO: Eliminate this step and just pass reference db path directly
+    kraken_db_ch = EXTRACT_KRAKEN_DB(params.kraken_db, "kraken_db", true) // TODO: Eliminate this step and just pass reference db path directly
     // Preprocessing
     RAW(libraries_ch, params.raw_dir, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
@@ -50,27 +54,31 @@ workflow {
         BLAST_HV(HV.out.fasta, params.blast_nt_dir, params.blast_fraction)
     }
     // Process output
-    PROCESS_OUTPUT(RAW.out.qc, CLEAN.out.qc, DEDUP.out.qc, RIBO_INITIAL.out.qc, RIBO_SECONDARY.out.qc,
-                   TAXONOMY_FULL.out.bracken, TAXONOMY_PRE.out.bracken, TAXONOMY_POST.out.bracken, params.classify_dedup_subset)
-    // Save parameters
-    params_ch = Channel.of(params).collectFile(name: "params.txt", newLine: true) // TODO: Iterate on this
+    qc_ch = RAW.out.qc.concat(CLEAN.out.qc, DEDUP.out.qc, RIBO_INITIAL.out.qc, RIBO_SECONDARY.out.qc)
+    PROCESS_OUTPUT(qc_ch, TAXONOMY_FULL.out.bracken, TAXONOMY_PRE.out.bracken, TAXONOMY_POST.out.bracken, params.classify_dedup_subset)
+    //params_ch = SAVE_PARAMS()
     // Publish results
+    params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
+    params_ch = Channel.of(params_str).collectFile(name: "params.json")
     publish:
         // Saved inputs
+        Channel.fromPath(params.sample_tab) >> "input"
+        Channel.fromPath(params.adapters) >> "input"
         params_ch >> "input"
-        params.sample_tab >> "input"
-        params.adapters >> "input"
         // Intermediate files
-        CLEAN.out.reads >> "intermediates/cleaned_reads"
+        CLEAN.out.reads >> "intermediates/reads/cleaned"
+        // QC
+        PROCESS_OUTPUT.out.basic >> "results/qc"
+        PROCESS_OUTPUT.out.adapt >> "results/qc"
+        PROCESS_OUTPUT.out.qbase >> "results/qc"
+        PROCESS_OUTPUT.out.qseqs >> "results/qc"
         // Final results
-        HV.out.tsv >> "results"
-        HV.out.counts >> "results"
+        HV.out.tsv >> "results/hv"
+        HV.out.counts >> "results/hv"
         PROCESS_OUTPUT.out.composition_full >> "results/taxonomy_final"
         PROCESS_OUTPUT.out.composition_pre >> "results/taxonomy_pre_dedup"
         PROCESS_OUTPUT.out.composition_post >> "results/taxonomy_post_dedup"
-}
-
-output {
-    directory "${params.pub_dir}"
-    mode "copy"
+        TAXONOMY_FULL.out.kraken_reports >> "results/taxonomy_final"
+        TAXONOMY_PRE.out.kraken_reports >> "results/taxonomy_pre_dedup"
+        TAXONOMY_POST.out.kraken_reports >> "results/taxonomy_post_dedup"
 }

@@ -17,11 +17,16 @@ process BRACKEN {
         io="-d ${db} -i ${in} -o ${out}"
         # Define parameters
         par="-l !{classificationLevel}"
-        # Handle files with no assigned reads
+        # Handle empty files and files with no assigned reads
         x=$(wc -l < ${in})
         y=$(grep "unclassified" ${in} | wc -l)
+        z=$(cat ${in} | awk '{print $6}' | grep "!{classificationLevel}" | wc -l)
         echo ${x} ${y}
-        if [[ ${x} == "1" && ${y} == "1" ]]; then
+        if [[ ${x} == "0" && ${y} == "0" ]]; then
+            touch ${out}
+        elif [[ ${x} == "1" && ${y} == "1" ]]; then
+            touch ${out}
+        elif [[ ${z} == "0" ]]; then
             touch ${out}
         else
             # Run Bracken

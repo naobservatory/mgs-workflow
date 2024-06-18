@@ -17,5 +17,5 @@ workflow DEDUP {
         qc_ch = QC(dedup_ch.reads, params.stage_label)
     emit:
         reads = dedup_ch.reads
-        qc = qc_ch.out.qc
+        qc = qc_ch.qc
 }

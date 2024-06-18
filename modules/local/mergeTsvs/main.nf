@@ -5,7 +5,7 @@ process MERGE_TSVS {
     input:
         path(tsvs)
     output:
-        path("merged.tsv.gz")
+        path("${params.name}.tsv.gz")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -17,6 +17,6 @@ process MERGE_TSVS {
         tab_out <- bind_rows(tabs)
         print(dim(tab_out))
         sapply(tabs, nrow) %>% sum %>% print
-        write_tsv(tab_out, "merged.tsv.gz")
+        write_tsv(tab_out, "!{params.name}.tsv.gz")
         '''
 }

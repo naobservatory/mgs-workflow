@@ -4,20 +4,20 @@ process BLAST_PAIRED_NT {
     cpus "${params.cpus}"
     memory "${params.mem}"
     input:
-        path(reads)
+        path(gzipped_reads)
         path(blast_nt_dir)
     output:
         path("hits.blast.gz")
     shell:
         '''
         # Specify parameters
-        in1=!{reads[0]}
-        in2=!{reads[1]}
+        in1=!{gzipped_reads[0]}
+        in2=!{gzipped_reads[1]}
         out=hits.blast
         db=!{blast_nt_dir}/nt
         threads=!{task.cpus}
-        # Concatenate inputs
-        cat ${in1} ${in2} > reads.fasta
+        # Concatenate and decompress inputs
+        cat ${in1} ${in2} | zcat > reads.fasta
         # Set up command
         io="-query reads.fasta -out ${out} -db ${db}"
         par="-perc_identity 60 -max_hsps 5 -num_alignments 250 -qcov_hsp_perc 30 -num_threads ${threads}"

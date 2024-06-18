@@ -4,10 +4,17 @@ process EXTRACT_TARBALL{
     label "single"
     input:
         path(tarball)
+        val(outdir)
+        val(makedir)
     output:
-        path("extracted_tarball")
+        path(outdir)
     shell:
         '''
-        tar -xzf !{tarball}
+        if [[ "!{makedir}" == "true" ]]; then
+            mkdir !{outdir}
+            tar -xzf !{tarball} -C !{outdir}
+        else
+            tar -xzf !{tarball}
+        fi
         '''
 }
