@@ -5,7 +5,7 @@ process COPY_FILE {
     input:
         path(file_path)
     output:
-        path("${params.outpath}), emit: file
+        path("${params.outpath}"), emit: file
     shell:
         '''
         cp !{file_path} !{params.outpath}

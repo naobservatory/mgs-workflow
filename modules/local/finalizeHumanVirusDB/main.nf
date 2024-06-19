@@ -1,5 +1,7 @@
 // Further expand human-virus DB with additional taxa from NCBI
 process FINALIZE_HUMAN_VIRUS_DB {
+    label "single"
+    label "biopython"
     input:
         path(human_virus_db)
         path(human_virus_descendents_json)
@@ -72,3 +74,4 @@ process FINALIZE_HUMAN_VIRUS_DB {
                    name = replace_na(name, "unknown virus"))
         write_tsv(taxids_all_out, out_path)
         '''
+}

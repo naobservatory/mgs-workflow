@@ -2,12 +2,12 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { DOWNLOAD_HUMAN_VIRUS_GENOMES } from "../modules/local/downloadHumanVirusGenomes"
-include { MAKE_HUMAN_VIRUS_ID_MAPPING } from "../modules/local/makeHumanVirusIdMapping"
-include { CONCATENATE_FASTA_GZIPPED } from "../modules/local/ConcatenateFasta" addParams(name: "human-viral-genomes")
-include { FILTER_HUMAN_VIRUS_GENOMES } from "../modules/local/filterHumanVirusGenomes" 
-include { DUSTMASKER_FASTA_GZIPPED } from "../modules/local/dustmasker"
-include { BOWTIE2_INDEX } from "../modules/bowtie2", addParams(outdir: "bt2-hv-index")
+include { DOWNLOAD_HUMAN_VIRUS_GENOMES } from "../../../modules/local/downloadHumanVirusGenomes"
+include { MAKE_HUMAN_VIRUS_ID_MAPPING } from "../../../modules/local/makeHumanVirusIdMapping"
+include { CONCATENATE_FASTA_GZIPPED } from "../../../modules/local/concatenateFasta" addParams(name: "human-viral-genomes")
+include { FILTER_HUMAN_VIRUS_GENOMES } from "../../../modules/local/filterHumanVirusGenomes" 
+include { DUSTMASKER_FASTA_GZIPPED } from "../../../modules/local/dustmasker"
+include { BOWTIE2_INDEX } from "../../../modules/local/bowtie2" addParams(outdir: "bt2-hv-index")
 
 /***********
 | WORKFLOW |
@@ -20,7 +20,7 @@ workflow MAKE_HUMAN_VIRUS_INDEX {
     main:
         genomes_ch = DOWNLOAD_HUMAN_VIRUS_GENOMES(hv_taxid_ch)
         mapping_ch = MAKE_HUMAN_VIRUS_ID_MAPPING(genomes_ch.metadata, genomes_ch.genomes)
-        concat_path = "${genomes_ch.genomes}/*.fna.gz"
+        concat_path = channel.fromPath("${genomes_ch.genomes}/*.fna.gz")
         concat_ch  = CONCATENATE_FASTA_GZIPPED(concat_path)
         filtered_ch = FILTER_HUMAN_VIRUS_GENOMES(concat_ch, hv_patterns_exclude)
         masked_ch = DUSTMASKER_FASTA_GZIPPED(filtered_ch)

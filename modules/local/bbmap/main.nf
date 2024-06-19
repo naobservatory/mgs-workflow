@@ -30,7 +30,7 @@ process BBMAP {
 // Generate a BBMap index from an input file
 process BBMAP_INDEX {
     label "BBTools"
-    label "large"
+    label "max"
     input:
         path(reference_fasta)
     output:
@@ -41,7 +41,7 @@ process BBMAP_INDEX {
         mkdir ${odir}
         cp !{reference_fasta} ${odir}/reference.fasta.gz
         cd ${odir}
-        bbmap.sh ref=reference.fasta.gz t=!{task.cpus} -Xmx30g
+        bbmap.sh ref=reference.fasta.gz t=!{task.cpus} -Xmx60g
         #tar -czf human-ref-index.tar.gz human_ref_index
         '''
 }

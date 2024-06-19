@@ -22,15 +22,14 @@ nextflow.preview.output = true
 | MAIN WORKFLOWS |
 *****************/
 
-// Prepare libraries
-libraries_ch = Channel
-    .fromPath(params.library_tab)
-    .splitCsv(header: true)
-    .map{row -> [row.sample, row.library]}
-    .groupTuple()
-
 // Complete primary workflow
 workflow RUN {
+    // Prepare libraries
+    libraries_ch = Channel
+        .fromPath(params.library_tab)
+        .splitCsv(header: true)
+        .map{row -> [row.sample, row.library]}
+        .groupTuple()
     // Prepare references & indexes
     // TODO: Eliminate this step and just pass reference db path directly
     kraken_db_path = "${params.ref_dir}/kraken-db.tar.gz"

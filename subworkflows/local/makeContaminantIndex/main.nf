@@ -2,14 +2,14 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { DOWNLOAD_GENOME as DOWNLOAD_COW } from "../modules/local/downloadGenome" addParams(name: "cow_genome")
-include { DOWNLOAD_GENOME as DOWNLOAD_PIG } from "../modules/local/downloadGenome" addParams(name: "pig_genome")
-include { DOWNLOAD_GENOME as DOWNLOAD_MOUSE } from "../modules/local/downloadGenome" addParams(name: "mouse_genome")
-include { DOWNLOAD_GENOME as DOWNLOAD_CARP } from "../modules/local/downloadGenome" addParams(name: "carp_genome")
-include { DOWNLOAD_GENOME as DOWNLOAD_ECOLI } from "../modules/local/downloadGenome" addParams(name: "ecoli_genome")
-include { CONCATENATE_FASTA_GZIPPED } from "../modules/local/concatenateFasta" addParams(name: "ref_concat")
-include { BBMAP_INDEX } from "../modules/local/bbmap" addParams(outdir: "bbm-other-index")
-include { BOWTIE2_INDEX } from "../modules/local/bowtie2" addParams(outdir: "bt2-other-index")
+include { DOWNLOAD_GENOME as DOWNLOAD_COW } from "../../../modules/local/downloadGenome" addParams(name: "cow_genome")
+include { DOWNLOAD_GENOME as DOWNLOAD_PIG } from "../../../modules/local/downloadGenome" addParams(name: "pig_genome")
+include { DOWNLOAD_GENOME as DOWNLOAD_MOUSE } from "../../../modules/local/downloadGenome" addParams(name: "mouse_genome")
+include { DOWNLOAD_GENOME as DOWNLOAD_CARP } from "../../../modules/local/downloadGenome" addParams(name: "carp_genome")
+include { DOWNLOAD_GENOME as DOWNLOAD_ECOLI } from "../../../modules/local/downloadGenome" addParams(name: "ecoli_genome")
+include { CONCATENATE_FASTA_GZIPPED } from "../../../modules/local/concatenateFasta" addParams(name: "ref_concat")
+include { BBMAP_INDEX } from "../../../modules/local/bbmap" addParams(outdir: "bbm-other-index")
+include { BOWTIE2_INDEX } from "../../../modules/local/bowtie2" addParams(outdir: "bt2-other-index")
 
 /***********
 | WORKFLOW |
@@ -30,7 +30,7 @@ workflow MAKE_CONTAMINANT_INDEX {
         mouse_ch = DOWNLOAD_MOUSE(mouse_url)
         carp_ch = DOWNLOAD_CARP(carp_url)
         ecoli_ch = DOWNLOAD_ECOLI(ecoli_url)
-        ref_ch = cow_ch.concat(pig_ch, mouse_ch, carp_ch, ecoli_ch, contaminants_path).collect()
+        ref_ch = cow_ch.mix(pig_ch, mouse_ch, carp_ch, ecoli_ch, channel.fromPath(contaminants_path)).collect()
         // Concatenate
         genome_ch = CONCATENATE_FASTA_GZIPPED(ref_ch)
         // Make indexes

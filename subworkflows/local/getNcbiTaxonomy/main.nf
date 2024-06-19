@@ -2,8 +2,8 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { DOWNLOAD_NCBI_TAXONOMY } from "../modules/local/downloadNcbiTaxonomy"
-include { EXTRACT_NCBI_TAXONOMY } from "../modules/local/extractNcbiTaxonomy"
+include { DOWNLOAD_NCBI_TAXONOMY } from "../../../modules/local/downloadNcbiTaxonomy"
+include { EXTRACT_NCBI_TAXONOMY } from "../../../modules/local/extractNcbiTaxonomy"
 
 /***********
 | WORKFLOW |

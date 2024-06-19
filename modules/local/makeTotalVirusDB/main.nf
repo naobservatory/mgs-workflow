@@ -1,5 +1,7 @@
 // Make taxid/name/rank DB for all viruses in NCBI taxonomy
 process MAKE_TOTAL_VIRUS_DB {
+    label "single"
+    label "R"
     input:
         path(human_virus_db)
         path(taxonomy_nodes)
@@ -52,3 +54,4 @@ process MAKE_TOTAL_VIRUS_DB {
                    name = replace_na(name, "unknown virus"))
         write_tsv(virus_db_out, out_path)
         '''
+}

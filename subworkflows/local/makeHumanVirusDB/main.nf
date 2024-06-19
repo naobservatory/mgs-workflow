@@ -2,10 +2,10 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { DOWNLOAD_HUMAN_VIRUS_DB } from "../modules/local/downloadHumanVirusDB"
-include { EXPAND_HUMAN_VIRUS_DB } from "../modules/local/expandHumanVirusDB"
-include { GET_HV_DESCENDENTS } from "../modules/local/getHvDescendents"
-include { FINALIZE_HUMAN_VIRUS_DB } from "../modules/local/finalizeHumanVirusDB"
+include { DOWNLOAD_HUMAN_VIRUS_DB } from "../../../modules/local/downloadHumanVirusDB"
+include { EXPAND_HUMAN_VIRUS_DB } from "../../../modules/local/expandHumanVirusDB"
+include { GET_HV_DESCENDENTS } from "../../../modules/local/getHvDescendents"
+include { FINALIZE_HUMAN_VIRUS_DB } from "../../../modules/local/finalizeHumanVirusDB"
 
 /***********
 | WORKFLOW |
