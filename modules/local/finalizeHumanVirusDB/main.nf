@@ -1,7 +1,7 @@
 // Further expand human-virus DB with additional taxa from NCBI
 process FINALIZE_HUMAN_VIRUS_DB {
     label "single"
-    label "biopython"
+    label "R"
     input:
         path(human_virus_db)
         path(human_virus_descendents_json)
@@ -23,10 +23,11 @@ process FINALIZE_HUMAN_VIRUS_DB {
         json_path  <- "!{human_virus_descendents_json}"
         out_path   <- "human-virus-db.tsv.gz"
 
-        # Import data
+        # Import data (NB: convoluted method for names file to avoid problems from unpaired strings)
         nodes <- read_tsv(nodes_path, col_names = FALSE) %>%
             transmute(taxid = X1, parent_taxid = X3, rank = X5)
-        names <- read_tsv(names_path, col_names = FALSE) %>%
+        names <- names_path %>% read_file %>% gsub("\\"", "", .) %>%
+            read_tsv(col_names = FALSE) %>%
             transmute(taxid = X1, name = X3, alt_name = X5, type = X7)
         hv    <- read_tsv(hv_path, col_names <- c("taxid", "name"))
         hv_extra <- read_json(json_path)
@@ -46,7 +47,7 @@ process FINALIZE_HUMAN_VIRUS_DB {
                    "subfamily", "family", "suborder", "order", "class",
                    "subphylum", "phylum", "kingdom", "superkingdom")
         taxids_extra <- lapply(names(hv_extra), function(taxid)
-                                tibble(ancestor_taxid=taxid, descendent_taxit=unlist(hv_extra[[taxid]]))) %>%
+                                tibble(ancestor_taxid=taxid, descendent_taxid=unlist(hv_extra[[taxid]]))) %>%
             bind_rows()
         taxids_extra_filtered <- filter(taxids_extra, !descendent_taxid %in% hv_db_out$taxid) %>%
             rename(taxid = ancestor_taxid) %>% mutate(taxid = as.integer(taxid)) %>%
