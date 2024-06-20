@@ -4,7 +4,7 @@
 
 include { DOWNLOAD_HUMAN_VIRUS_GENOMES } from "../../../modules/local/downloadHumanVirusGenomes"
 include { MAKE_HUMAN_VIRUS_ID_MAPPING } from "../../../modules/local/makeHumanVirusIdMapping"
-include { CONCATENATE_FASTA_GZIPPED } from "../../../modules/local/concatenateFasta" addParams(name: "human-viral-genomes")
+include { CONCATENATE_FASTA_GZIPPED_DIR } from "../../../modules/local/concatenateFasta" addParams(name: "human-viral-genomes", suffix: "fna.gz")
 include { FILTER_HUMAN_VIRUS_GENOMES } from "../../../modules/local/filterHumanVirusGenomes" 
 include { DUSTMASKER_FASTA_GZIPPED } from "../../../modules/local/dustmasker"
 include { BOWTIE2_INDEX } from "../../../modules/local/bowtie2" addParams(outdir: "bt2-hv-index")
@@ -20,8 +20,7 @@ workflow MAKE_HUMAN_VIRUS_INDEX {
     main:
         genomes_ch = DOWNLOAD_HUMAN_VIRUS_GENOMES(hv_taxid_ch)
         mapping_ch = MAKE_HUMAN_VIRUS_ID_MAPPING(genomes_ch.metadata, genomes_ch.genomes)
-        concat_path = channel.fromPath("${genomes_ch.genomes}/*.fna.gz")
-        concat_ch  = CONCATENATE_FASTA_GZIPPED(concat_path)
+        concat_ch = CONCATENATE_FASTA_GZIPPED_DIR(genomes_ch.genomes)
         filtered_ch = FILTER_HUMAN_VIRUS_GENOMES(concat_ch, hv_patterns_exclude)
         masked_ch = DUSTMASKER_FASTA_GZIPPED(filtered_ch)
         bowtie2_ch = BOWTIE2_INDEX(masked_ch)
