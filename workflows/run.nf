@@ -1,3 +1,7 @@
+/***********************************************************************************************
+| WORKFLOW: PREPROCESSING, TAXONOMIC PROFILING AND HUMAN-VIRUS ANALYSIS ON SHORT-READ MGS DATA |
+***********************************************************************************************/
+
 import groovy.json.JsonOutput
 
 /***************************
@@ -47,7 +51,7 @@ workflow RUN {
     TAXONOMY_POST(DEDUP.out.reads, kraken_db_ch)
     // Extract and count human-viral reads
     HV(RIBO_INITIAL.out.reads, params.ref_dir, kraken_db_ch, params.bt2_score_threshold)
-    // BLAST validation on human-viral reads (if activated)
+    // BLAST validation on human-viral reads (optional)
     if ( params.blast_hv_fraction > 0 ) {
         blast_nt_path = "${params.ref_dir}/nt"
         BLAST_HV(HV.out.fasta, blast_nt_path, params.blast_hv_fraction)

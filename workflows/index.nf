@@ -1,3 +1,7 @@
+/**************************************************************************************
+| WORKFLOW: GENERATE INDEX AND REFERENCE FILES FOR DOWNSTREAM PROCESSING AND ANALYSIS |
+**************************************************************************************/
+
 import groovy.json.JsonOutput
 
 /***************************
