@@ -9,6 +9,7 @@ process DOWNLOAD_BLAST_DB {
         db="!{params.db}"
         mkdir ${db}
         cd ${db}
-        update_blastdb.pl --decompress ${db}
+        ln -s $(which curl) /usr/local/bin/curl
+        update_blastdb.pl --source aws --num_threads !{task.cpus} --force --decompress ${db}
         '''
 }
