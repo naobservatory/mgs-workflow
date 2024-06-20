@@ -36,21 +36,21 @@ workflow INDEX {
     params_ch = Channel.of(params_str).collectFile(name: "index_params.json")
     publish:
         // Saved inputs
-        params_ch >> "."
+        params_ch >> "input"
         // Taxonomy and virus databases
-        GET_NCBI_TAXONOMY.out.nodes >> "."
-        GET_NCBI_TAXONOMY.out.names >> "."
-        MAKE_HUMAN_VIRUS_DB.out.hv >> "."
-        MAKE_TOTAL_VIRUS_DB.out.db >> "."
+        GET_NCBI_TAXONOMY.out.nodes >> "results"
+        GET_NCBI_TAXONOMY.out.names >> "results"
+        MAKE_HUMAN_VIRUS_DB.out.hv >> "results"
+        MAKE_TOTAL_VIRUS_DB.out.db >> "results"
         // Alignment indexes
-        MAKE_HUMAN_INDEX.out.bbm >> "."
-        MAKE_HUMAN_INDEX.out.bt2 >> "."
-        MAKE_CONTAMINANT_INDEX.out.bbm >> "."
-        MAKE_CONTAMINANT_INDEX.out.bt2 >> "."
-        MAKE_HUMAN_VIRUS_INDEX.out.bt2 >> "."
-        MAKE_HUMAN_VIRUS_INDEX.out.filtered >> "."
+        MAKE_HUMAN_INDEX.out.bbm >> "results"
+        MAKE_HUMAN_INDEX.out.bt2 >> "results"
+        MAKE_CONTAMINANT_INDEX.out.bbm >> "results"
+        MAKE_CONTAMINANT_INDEX.out.bt2 >> "results"
+        MAKE_HUMAN_VIRUS_INDEX.out.bt2 >> "results"
+        MAKE_HUMAN_VIRUS_INDEX.out.filtered >> "results"
         // Other reference files & directories
-        JOIN_RIBO_REF.out.ribo_ref >> "."
-        DOWNLOAD_BLAST_DB.out.db >> "."
-        COPY_KRAKEN.out.file >> "."
+        JOIN_RIBO_REF.out.ribo_ref >> "results"
+        DOWNLOAD_BLAST_DB.out.db >> "results"
+        COPY_KRAKEN.out.file >> "results"
 }
