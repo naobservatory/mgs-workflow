@@ -27,4 +27,5 @@ workflow MAKE_HUMAN_VIRUS_INDEX {
     emit:
         filtered = filtered_ch
         bt2 = bowtie2_ch
+        mapping = mapping_ch
 }

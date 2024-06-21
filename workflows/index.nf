@@ -53,6 +53,7 @@ workflow INDEX {
         MAKE_CONTAMINANT_INDEX.out.bt2 >> "results"
         MAKE_HUMAN_VIRUS_INDEX.out.bt2 >> "results"
         MAKE_HUMAN_VIRUS_INDEX.out.filtered >> "results"
+        MAKE_HUMAN_VIRUS_INDEX.out.mapping >> "results"
         // Other reference files & directories
         JOIN_RIBO_REF.out.ribo_ref >> "results"
         DOWNLOAD_BLAST_DB.out.db >> "results"
