@@ -22,11 +22,11 @@ A slight simplification of the overall process is given by this mildly baffling 
 
 ### Index workflow
 
-The index workflow is run by setting `mode = "index` in the relevant config file, and is intended to be run once (per reasonable length of time) to generate static index and reference files which can then be used by many instantiations of the run workflow. Many of these index/reference files are derived from publicly available reference genomes or other resources, and should thus be updated and re-run periodically as new versions of these become available; however, to keep results comparable across datasets analyzed with the run workflow, this should be done relatively rarely.
+The index workflow is run by setting `mode = "index"` in the relevant config file, and is intended to be run once (per reasonable length of time) to generate static index and reference files which can then be used by many instantiations of the run workflow. Many of these index/reference files are derived from publicly available reference genomes or other resources, and should thus be updated and re-run periodically as new versions of these become available; however, to keep results comparable across datasets analyzed with the run workflow, this should be done relatively rarely.
 
 Key inputs to the index workflow include:
 - A URL linking to a suitable Kraken2 database for taxonomic profiling (typically the [latest release](https://benlangmead.github.io/aws-indexes/k2) of the `k2_standard` database).
-- URLS for up-to-date releases of reference genomes for various common contaminant species that can confound the identification of HV reads (currently [human](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9606), [cow](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9913), [pig](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9823), [carp](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=7962), [mouse](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=10090)[^carp], [*E. coli*](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=562)).
+- URLS for up-to-date releases of reference genomes for various common contaminant species that can confound the identification of HV reads (currently [human](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9606), [cow](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9913), [pig](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9823), [carp](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=7962)[^carp], [mouse](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=10090), [*E. coli*](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=562)).
 - URLs to sequence databases for small and large ribosomal subunits from [SILVA](https://www.arb-silva.de/download/arb-files/).
 - Up-to-date links to [VirusHostDB](https://www.genome.jp/virushostdb) and [NCBI Taxonomy](https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/).
 
@@ -62,13 +62,75 @@ In the taxonomic profiling phase, paired-end reads output from the preprocessing
 This phase is actually run three times across the pipeline: once on the cleaned reads, once on deduplicated reads, and once on the output of the second ribodepletion step. The latter of these is the primary source of data for overall assessment of the composition of the dataset; the former two are primarily used to assess how deduplication alters the measured taxonomic composition.
 
 #### Viral identification phase
+
+The goal of this phase is to sensitively and specifically identify reads arising from human-infecting virus reads. It uses a multi-step process designed to avoid false-positive and false-negative errors arising from simpler systems tried previously.
+
+1. To begin with, the output of the initial (conservative) ribodepletion step is aligned against a database of human-infecting viral genomes generated from Genbank by the index workflow. This initial alignment is conducted with Bowtie2 using quite permissive parameters designed to capture as many putative HV reads as possible. The SAM and FASTQ files are processed to generate new read files containing any read pair for which at least one read matches the HV database.
+2. The output of the previous step is passed to a filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using both Bowtie2 and BBMap in series[^filter]. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
+3. Following filtering, surviving read pairs are merged into single sequences as described for the taxonomic profiling phase, then undergo an additional deduplication step intended to remove reverse-complement duplicates that weren't detected during preprocessing.
+4. After deduplication, surviving merged reads are passed to Kraken2 (using the same reference database used in the taxonomic profiling phase). For each read, we record whether that read was (1) assigned to a human-infecting virus taxon with Kraken, (2) assigned to a non-HV taxon with Kraken, or (3) not assigned to any taxon. All reads in category (2) are filtered out.
+5. Finally, reads are assigned a final HV status if they:
+    - Are given matching HV assignments by both Bowtie2 and Kraken2; or
+    - Are unassigned by Kraken and align to an HV taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
+
+Following HV status assignment, information for each read pair is processed into a TSV file available in the output directory as `hv_hits_putative_collapsed.tsv.gz`. Finally, the number of read pairs mapping to each detected HV taxon is counted and output as `hv_clade_counts.tsv.gz` for downstream use.
+
+[^filter]: We've found in past investigations that the two aligners detect different contaminant sequences, and aligning against both is more effective at avoiding false positives than either in isolation.
+[^threshold]: Specifically, Kraken-unassigned read pairs are classed as human-viral if, for either read in the pair, $S/ln(L) >= T$, where $S$ is the best-match Bowtie2 alignment score for that read, $L$ is the length of the read, and $T$ is the value of `params.bt2_score_threshold` specified in the config file.
+
 #### BLAST validation phase
+
+To evaluate the performance of the process described in the viral identification phase, it's useful to get some ground-truth information about whether the human-viral assignments made in that subworkflow are correct. To do this, we use BLASTN to align the putative HV reads output by the previous phase against the nt database, then process the output to check whether each sequence had a high-scoring alignment to at least one HV sequence. For computational tractability, this can be performed on only a subset of surviving HV reads (specified by `params.blast_hv_fraction`)[^blast].
+
+[^blast]: Setting `params.blast_hv_fraction` to 0 skips this step altogether.
+
+Currently, this subworkflow performs the BLAST alignment, filters & summarizes the output to a manageable size, and saves the result to the output directory as `blast_hits_paired.tsv.gz`. Actual assessment of HV status and performance evaluation is currently performed external to this workflow.
+
 #### QC and output phase
 
-TODO
+Each step in the preprocessing phase generates paired FASTQ files that can be analyzed with FASTQC and MultiQC. Doing so allows us to track important metrics (e.g. read quality, read numbers, adapter content) across the pipeline. This phase takes the MultiQC outputs from each phase and extracts relevant metrics into easy-to-parse TSV files[^tsvs] for downstream processing.
+
+In addition, for each iteration of the taxonomic classification workflow, this phase takes the Bracken output data and combines it with MultiQC metrics to compute the number and fraction of input reads assigned to each of the following categories (if applicable):
+- Filtered (removed during cleaning)
+- Duplicate (removed during deduplication)
+- Ribosomal (removed during ribodepletion)
+- Unassigned (non-ribosomal reads that were not assigned to any taxon by Kraken/Bracken)
+- Bacterial (non-ribosomal reads assigned to the Bacteria domain by Kraken/Bracken)
+- Archaeal (non-ribosomal reads assigned to the Archaea domain by Kraken/Bracken)
+- Viral (non-ribosomal reads assigned to the Viruses domain by Kraken/Bracken)
+- Human (non-ribosomal reads assigned to the Eukarya domain[^eukarya] by Kraken/Bracken)
+
+This composition information is given in a file named `taxonomic_composition.tsv.gz` in the results directory.
+
+[^tsvs]: Specifically, `qc_basic_stats.tsv.gz`, `qc_adapter_stats.tsv.gz`, `qc_quality_base_stats.tsv.gz` and `qc_quality_sequence_stats.tsv.gz`.
+[^eukarya]: As human is the only eukaryotic genome included in the Standard reference database for Kraken2, all sequences assigned to that domain can be assigned to *Homo sapiens*.
 
 ### Pipeline outputs
+
+If the pipeline runs to completion, the following output files are expected.
+
 #### Index workflow
+
+1. `output/input/index_params.json`: JSON file giving all the parameters passed to the pipeline (useful for trying to reproduce someone else's results).
+2. `output/results/nt`: Directory containing extracted BLAST database files for BLASTing against nt.
+3. `output/results/bt2-hv-index`: Directory containing Bowtie2 index for human-infecting viral genomes.
+4. `output/results/bt2-human-index`: Directory containing Bowtie2 index for the human genome.
+5. `output/results/bt2-other-index`: Directory containing Bowtie2 index for other contaminant sequences.
+6. `output/results/bbm-human-index`: Directory containing BBMap index for the human genome.
+7. `output/results/bbm-other-index`: Directory containing BBMap index for other contaminant sequences.
+8. `output/results/human-viral-genomes-filtered.fasta.gz`: FASTA file containing human-viral genomes downloaded from viral Genbank (filtered to remove transgenic, contaminated, or erroneous sequences).
+9. `output/results/genomeid-to-taxid.json`: JSON mapping between HV taxids and NCBI genome IDs for the sequences in (8).
+10. `output/results/kraken-db.tar.gz`: Kraken reference database (by default, the most recent version of Standard).
+11. `output/results/ribo-ref-concat.fasta.gz`: Reference database of ribosomal LSU and SSU sequences from SILVA.
+12. `output/results/taxonomy-nodes.dmp`: Taxonomy dump file from NCBI mapping between taxids and their parents in the NCBI taxonomy tree structure.
+13. `output/results/taxonomy-names.dmp`: Taxonomy dump file from NCBI mapping between taxids and taxon names.
+14. `output/results/human-virus-db.tsv.gz`: Database generated from (8), (9), (12) and (13) giving, for each human-viral taxon:
+    - The taxid (`taxid`)
+    - The taxid of the parent taxon (`parent_taxid`)
+    - The scientific name (`name`)
+    - The taxonomic rank (`rank`)
+15. `output/results/total-virus-db.tsv.gz`: As (14), but for all viral taxa (including non-human-infecting ones).
+
 #### Run workflow
 
 TODO
@@ -130,7 +192,7 @@ docker run hello-world
 
 Clone this repo into a new directory as normal.
 
-#### 4. Run index/reference workflow (if necessary)
+#### 4. Run index/reference workflow
 
 > [!TIP]
 > If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output/results`.
