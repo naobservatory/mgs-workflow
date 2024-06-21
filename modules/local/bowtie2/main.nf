@@ -5,7 +5,6 @@ process BOWTIE2 {
     input:
         tuple val(sample), path(reads)
         path(index_dir)
-        val(index_prefix)
         val(par_string)
     output:
         tuple val(sample), path("${sample}_${params.suffix}_bowtie2_mapped.sam"), emit: sam
@@ -15,7 +14,7 @@ process BOWTIE2 {
         '''
         in1=!{reads[0]}
         in2=!{reads[1]}
-        idx="!{index_dir}/!{index_prefix}"
+        idx="!{index_dir}/bt2_index"
         sam="!{sample}_!{params.suffix}_bowtie2_mapped.sam"
         alc="!{sample}_!{params.suffix}_bowtie2_conc_%.fastq.gz"
         unc="!{sample}_!{params.suffix}_bowtie2_unconc_%.fastq.gz"

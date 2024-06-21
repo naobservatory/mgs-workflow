@@ -47,14 +47,14 @@ workflow HV {
         hv_db_path = "${ref_dir}/human-viruses.tsv"
         viral_taxa_path = "${ref_dir}/viral-taxids.tsv.gz"
         // Run Bowtie2 against an HV database and process output
-        bowtie2_ch = BOWTIE2_HV(reads_ch, bt2_hv_index_path, "hv_index", "--no-unal --no-sq --score-min G,5,11")
+        bowtie2_ch = BOWTIE2_HV(reads_ch, bt2_hv_index_path, "--no-unal --no-sq --score-min G,5,11")
         bowtie2_sam_ch = PROCESS_BOWTIE2_SAM_PAIRED(bowtie2_ch.sam, genomeid_map_path)
         bowtie2_unconc_ids_ch = EXTRACT_UNCONC_READ_IDS(bowtie2_ch.sam)
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.reads_unconc.combine(bowtie2_unconc_ids_ch, by: 0))
         bowtie2_reads_combined_ch = COMBINE_MAPPED_BOWTIE2_READS(bowtie2_ch.reads_conc.combine(bowtie2_unconc_reads_ch, by: 0))
         // Filter contaminants
-        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_reads_combined_ch, bt2_human_index_path, "human_index", "")
-        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unconc, bt2_other_index_path, "other_index", "")
+        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_reads_combined_ch, bt2_human_index_path, "")
+        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unconc, bt2_other_index_path, "")
         human_bbm_ch = BBMAP_HUMAN(other_bt2_ch.reads_unconc, bbm_human_index_path)
         other_bbm_ch = BBMAP_OTHER(human_bbm_ch.reads_unmapped, bbm_other_index_path)
         // Run Kraken on filtered HV candidates
