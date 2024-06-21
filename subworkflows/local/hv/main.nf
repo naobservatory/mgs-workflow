@@ -36,34 +36,27 @@ workflow HV {
         kraken_db_ch
         aln_score_threshold
     main:
-        // Get index paths
+        // Get reference paths
         genomeid_map_path = "${ref_dir}/genomeid-to-taxid.json"
-        bt2_hv_index_path = "${ref_dir}/bt2-hv-index.tar.gz"
-        bt2_human_index_path = "${ref_dir}/bt2-human-index.tar.gz"
-        bt2_other_index_path = "${ref_dir}/bt2-other-index.tar.gz"
-        bbm_human_index_path = "${ref_dir}/human-ref-index.tar.gz"
-        bbm_other_index_path = "${ref_dir}/other-ref-index.tar.gz"
+        bt2_hv_index_path = "${ref_dir}/bt2-hv-index"
+        bt2_human_index_path = "${ref_dir}/bt2-human-index"
+        bt2_other_index_path = "${ref_dir}/bt2-other-index"
+        bbm_human_index_path = "${ref_dir}/bbm-human-index"
+        bbm_other_index_path = "${ref_dir}/bbm-other-index"
         nodes_path = "${ref_dir}/taxonomy-nodes.dmp"
         hv_db_path = "${ref_dir}/human-viruses.tsv"
         viral_taxa_path = "${ref_dir}/viral-taxids.tsv.gz"
-        // Extract index tarballs
-        // TODO: Eliminate this step and just pass index dirs directly
-        bt2_hv_index_ch    = EXTRACT_BT2_INDEX_HV(bt2_hv_index_path, "bt2_hv_index", false)
-        bt2_human_index_ch = EXTRACT_BT2_INDEX_HUMAN(bt2_human_index_path, "bt2_human_index", false)
-        bt2_other_index_ch = EXTRACT_BT2_INDEX_OTHER(bt2_other_index_path, "bt2_other_index", false)
-        bbm_human_index_ch = EXTRACT_BBM_INDEX_HUMAN(bbm_human_index_path, "human_ref_index", false)
-        bbm_other_index_ch = EXTRACT_BBM_INDEX_OTHER(bbm_other_index_path, "other_ref_index", false)
         // Run Bowtie2 against an HV database and process output
-        bowtie2_ch = BOWTIE2_HV(reads_ch, bt2_hv_index_ch, "hv_index", "--no-unal --no-sq --score-min G,5,11")
+        bowtie2_ch = BOWTIE2_HV(reads_ch, bt2_hv_index_path, "hv_index", "--no-unal --no-sq --score-min G,5,11")
         bowtie2_sam_ch = PROCESS_BOWTIE2_SAM_PAIRED(bowtie2_ch.sam, genomeid_map_path)
         bowtie2_unconc_ids_ch = EXTRACT_UNCONC_READ_IDS(bowtie2_ch.sam)
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.reads_unconc.combine(bowtie2_unconc_ids_ch, by: 0))
         bowtie2_reads_combined_ch = COMBINE_MAPPED_BOWTIE2_READS(bowtie2_ch.reads_conc.combine(bowtie2_unconc_reads_ch, by: 0))
         // Filter contaminants
-        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_reads_combined_ch, bt2_human_index_ch, "human_index", "")
-        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unconc, bt2_other_index_ch, "other_index", "")
-        human_bbm_ch = BBMAP_HUMAN(other_bt2_ch.reads_unconc, bbm_human_index_ch)
-        other_bbm_ch = BBMAP_OTHER(human_bbm_ch.reads_unmapped, bbm_other_index_ch)
+        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_reads_combined_ch, bt2_human_index_path, "human_index", "")
+        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unconc, bt2_other_index_path, "other_index", "")
+        human_bbm_ch = BBMAP_HUMAN(other_bt2_ch.reads_unconc, bbm_human_index_path)
+        other_bbm_ch = BBMAP_OTHER(human_bbm_ch.reads_unmapped, bbm_other_index_path)
         // Run Kraken on filtered HV candidates
         tax_ch = TAXONOMY(other_bbm_ch.reads_unmapped, kraken_db_ch)
         // Process Kraken output and merge with Bowtie2 output across samples

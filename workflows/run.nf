@@ -34,8 +34,7 @@ workflow RUN {
         .splitCsv(header: true)
         .map{row -> [row.sample, row.library]}
         .groupTuple()
-    // Prepare references & indexes
-    // TODO: Eliminate this step and just pass reference db path directly
+    // Extract Kraken DB from reference path
     kraken_db_path = "${params.ref_dir}/kraken-db.tar.gz"
     kraken_db_ch = EXTRACT_KRAKEN_DB(kraken_db_path, "kraken_db", true)
     // Preprocessing
