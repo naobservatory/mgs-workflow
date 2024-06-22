@@ -44,8 +44,8 @@ workflow HV {
         bbm_human_index_path = "${ref_dir}/bbm-human-index"
         bbm_other_index_path = "${ref_dir}/bbm-other-index"
         nodes_path = "${ref_dir}/taxonomy-nodes.dmp"
-        hv_db_path = "${ref_dir}/human-viruses.tsv"
-        viral_taxa_path = "${ref_dir}/viral-taxids.tsv.gz"
+        hv_db_path = "${ref_dir}/human-virus-db.tsv.gz"
+        viral_taxa_path = "${ref_dir}/total-virus-db.tsv.gz"
         // Run Bowtie2 against an HV database and process output
         bowtie2_ch = BOWTIE2_HV(reads_ch, bt2_hv_index_path, "--no-unal --no-sq --score-min G,5,11")
         bowtie2_sam_ch = PROCESS_BOWTIE2_SAM_PAIRED(bowtie2_ch.sam, genomeid_map_path)

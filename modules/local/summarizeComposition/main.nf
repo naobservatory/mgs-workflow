@@ -17,11 +17,15 @@ process SUMMARIZE_COMPOSITION {
         bracken <- read_tsv("!{bracken}", show_col_types = FALSE)
         basic   <- read_tsv("!{basic_stats}", show_col_types = FALSE)
         # Compute reads assigned to specific taxa
-        read_comp_taxa <- bracken %>% select(name, sample, new_est_reads) %>%
+        read_comp_taxa_raw <- bracken %>% select(name, sample, new_est_reads) %>%
           mutate(name = tolower(name)) %>%
           pivot_wider(id_cols = "sample", names_from = "name", values_from = "new_est_reads",
-                      values_fill = 0) %>%
-          select(sample, n_bacterial = bacteria, n_archaeal = archaea, n_viral = viruses, n_human = eukaryota)
+                      values_fill = 0)
+        read_comp_taxa <- select(read_comp_taxa_raw, sample)
+        if ("bacteria" %in% colnames(read_comp_taxa)) read_comp_taxa[["n_bacterial"]] <- read_comp_taxa_raw[["bacteria"]]
+        if ("archaea" %in% colnames(read_comp_taxa)) read_comp_taxa[["n_archaeal"]] <- read_comp_taxa_raw[["archaea"]]
+        if ("viruses" %in% colnames(read_comp_taxa)) read_comp_taxa[["n_viral"]] <- read_comp_taxa_raw[["viruses"]]
+        if ("eukaryota" %in% colnames(read_comp_taxa)) read_comp_taxa[["n_human"]] <- read_comp_taxa_raw[["eukaryota"]]
         # Compute reads surviving at each included preprocessing stage
         total_assigned <- bracken %>% group_by(sample) %>% summarize(
           name = "Total",

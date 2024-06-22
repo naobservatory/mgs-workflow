@@ -10,7 +10,7 @@ include { SUBSET_READS_PAIRED } from "../../../modules/local/subsetReads" addPar
 include { BBMERGE } from "../../../modules/local/bbmerge"
 include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
 include { CLUMPIFY_SINGLE } from "../../../modules/local/clumpify"
-include { KRAKEN } from "../../../modules/local/kraken"
+include { KRAKEN } from "../../../modules/local/kraken" addParams(mem: "${params.kraken_memory}")
 include { LABEL_KRAKEN_REPORTS } from "../../../modules/local/labelKrakenReports"
 include { MERGE_TSVS as MERGE_KRAKEN_REPORTS } from "../../../modules/local/mergeTsvs" addParams(name: "kraken_reports")
 include { MERGE_TSVS as MERGE_BRACKEN } from "../../../modules/local/mergeTsvs" addParams(name: "bracken_reports")

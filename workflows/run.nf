@@ -8,15 +8,14 @@ import groovy.json.JsonOutput
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { EXTRACT_TARBALL as EXTRACT_KRAKEN_DB } from "../modules/local/extractTarball"
 include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
 include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
 include { DEDUP } from "../subworkflows/local/dedup" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "dedup")
 include { RIBODEPLETION as RIBO_INITIAL } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_initial", min_kmer_fraction: "0.6", k: "43", bbduk_suffix: "ribo_initial")
 include { RIBODEPLETION as RIBO_SECONDARY } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_secondary", min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo_secondary")
-include { TAXONOMY as TAXONOMY_FULL } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: 1)
-include { TAXONOMY as TAXONOMY_PRE } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: params.classify_dedup_subset)
-include { TAXONOMY as TAXONOMY_POST } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: params.classify_dedup_subset)
+include { TAXONOMY as TAXONOMY_FULL } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: 1, kraken_memory: "${params.kraken_memory}")
+include { TAXONOMY as TAXONOMY_PRE } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: params.classify_dedup_subset, kraken_memory: "${params.kraken_memory}")
+include { TAXONOMY as TAXONOMY_POST } from "../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: params.classify_dedup_subset, kraken_memory: "${params.kraken_memory}")
 include { HV } from "../subworkflows/local/hv"
 include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
@@ -34,9 +33,8 @@ workflow RUN {
         .splitCsv(header: true)
         .map{row -> [row.sample, row.library]}
         .groupTuple()
-    // Extract Kraken DB from reference path
-    kraken_db_path = "${params.ref_dir}/kraken-db.tar.gz"
-    kraken_db_ch = EXTRACT_KRAKEN_DB(kraken_db_path, "kraken_db", true)
+    // Prepare Kraken DB
+    kraken_db_path = "${params.ref_dir}/kraken_db"
     // Preprocessing
     RAW(libraries_ch, params.raw_dir, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
@@ -44,12 +42,12 @@ workflow RUN {
     RIBO_INITIAL(DEDUP.out.reads, params.ref_dir)
     RIBO_SECONDARY(RIBO_INITIAL.out.reads, params.ref_dir)
     // Taxonomic profiling (all ribodepleted)
-    TAXONOMY_FULL(RIBO_SECONDARY.out.reads, kraken_db_ch)
+    TAXONOMY_FULL(RIBO_SECONDARY.out.reads, kraken_db_path)
     // Taxonomic profiling (pre/post dedup)
-    TAXONOMY_PRE(CLEAN.out.reads, kraken_db_ch)
-    TAXONOMY_POST(DEDUP.out.reads, kraken_db_ch)
+    TAXONOMY_PRE(CLEAN.out.reads, kraken_db_path)
+    TAXONOMY_POST(DEDUP.out.reads, kraken_db_path)
     // Extract and count human-viral reads
-    HV(RIBO_INITIAL.out.reads, params.ref_dir, kraken_db_ch, params.bt2_score_threshold)
+    HV(RIBO_INITIAL.out.reads, params.ref_dir, kraken_db_path, params.bt2_score_threshold)
     // BLAST validation on human-viral reads (optional)
     if ( params.blast_hv_fraction > 0 ) {
         blast_nt_path = "${params.ref_dir}/nt"

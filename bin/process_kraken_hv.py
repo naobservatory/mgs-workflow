@@ -26,7 +26,7 @@ def open_by_suffix(filename, mode="r"):
 
 def get_virus_db(virus_path):
     """Generate data frame of human virus taxids."""
-    df_viruses = pd.read_csv(virus_path, sep="\t", header=None).rename(columns={0:"taxid", 1:"name"})
+    df_viruses = pd.read_csv(virus_path, sep="\t").rename(columns={0:"taxid", 1:"name"})
     return(df_viruses)
 
 def get_parents(nodes_path):

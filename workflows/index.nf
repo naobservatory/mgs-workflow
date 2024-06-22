@@ -16,7 +16,7 @@ include { MAKE_HUMAN_VIRUS_DB } from "../subworkflows/local/makeHumanVirusDB"
 include { MAKE_TOTAL_VIRUS_DB } from "../modules/local/makeTotalVirusDB"
 include { GET_NCBI_TAXONOMY } from "../subworkflows/local/getNcbiTaxonomy"
 include { MAKE_HUMAN_VIRUS_INDEX } from "../subworkflows/local/makeHumanVirusIndex"
-include { COPY_FILE as COPY_KRAKEN } from "../modules/local/copyFile" addParams(outpath: "kraken-db.tar.gz")
+include { EXTRACT_TARBALL as EXTRACT_KRAKEN_DB } from "../modules/local/extractTarball"
 
 /****************
 | MAIN WORKFLOW |
@@ -34,7 +34,7 @@ workflow INDEX {
     // Other index files
     JOIN_RIBO_REF(params.ssu_url, params.lsu_url)
     DOWNLOAD_BLAST_DB()
-    COPY_KRAKEN(params.kraken_db)
+    EXTRACT_KRAKEN_DB(params.kraken_db, "kraken_db", true)
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "index_params.json")
@@ -57,5 +57,5 @@ workflow INDEX {
         // Other reference files & directories
         JOIN_RIBO_REF.out.ribo_ref >> "results"
         DOWNLOAD_BLAST_DB.out.db >> "results"
-        COPY_KRAKEN.out.file >> "results"
+        EXTRACT_KRAKEN_DB.out >> "results"
 }
