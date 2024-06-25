@@ -118,9 +118,9 @@ If the pipeline runs to completion, the following output files are expected.
 5. `output/results/bt2-other-index`: Directory containing Bowtie2 index for other contaminant sequences.
 6. `output/results/bbm-human-index`: Directory containing BBMap index for the human genome.
 7. `output/results/bbm-other-index`: Directory containing BBMap index for other contaminant sequences.
-8. `output/results/human-viral-genomes-filtered.fasta.gz`: FASTA file containing human-viral genomes downloaded from viral Genbank (filtered to remove transgenic, contaminated, or erroneous sequences).
-9. `output/results/genomeid-to-taxid.json`: JSON mapping between HV taxids and NCBI genome IDs for the sequences in (8).
-10. `output/results/kraken-db.tar.gz`: Kraken reference database (by default, the most recent version of Standard).
+8. `output/results/kraken_db`: Directory containing Kraken2 reference database (by default, the most recent version of Standard).
+9. `output/results/human-viral-genomes-filtered.fasta.gz`: FASTA file containing human-viral genomes downloaded from viral Genbank (filtered to remove transgenic, contaminated, or erroneous sequences).
+10. `output/results/genomeid-to-taxid.json`: JSON mapping between HV taxids and NCBI genome IDs for the sequences in (8).
 11. `output/results/ribo-ref-concat.fasta.gz`: Reference database of ribosomal LSU and SSU sequences from SILVA.
 12. `output/results/taxonomy-nodes.dmp`: Taxonomy dump file from NCBI mapping between taxids and their parents in the NCBI taxonomy tree structure.
 13. `output/results/taxonomy-names.dmp`: Taxonomy dump file from NCBI mapping between taxids and taxon names.
@@ -133,7 +133,21 @@ If the pipeline runs to completion, the following output files are expected.
 
 #### Run workflow
 
-TODO
+1. `output/input`: Directory containing saved input information (useful for trying to reproduce someone else's results)
+    1. `adapters.fasta`: FASTA file of adapter sequences used for adapter screening.
+    2. `params.json`: JSON file giving all the parameters passed to the pipeline.
+    3. A CSV file giving sample metadata (filename specified by `params.sample_tab`).
+2. `output/intermediates`: Intermediate files produced by key stages in the run workflow, saved for nonstandard downstream analysis.
+    1. `reads/cleaned`: Directory containing paired FASTQ files for cleaned reads (i.e. the output of the preprocessing phase described above).
+3. `output/results`: Directory containing processed results files for standard downstream analysis.
+    1. `hv/hv_hits_putative_collapsed.tsv.gz`: TSV output by the viral identification phase, giving information about each read pair assigned to a human-infecting virus.
+    2. `hv/hv_clade_counts.tsv.gz`: Summary of the previous file giving the number of HV read pairs mapped to each viral taxon. Includes both read pairs mapped directly to that taxon (`n_reads_direct`) and to that taxon plus all descendent taxa (`n_reads_clade`).
+    3. `hv/blast_hits_paired.tsv.gz`: Summarized BLASTN output for putative HV read pairs, giving, for each read pair and subject taxid:
+        - The number of reads in the read pair with high-scoring matches to that taxid (`n_reads`).
+        - The best bitscores of alignments to that taxid for each matching read (`bitscore_max` and `bitscore_min`)[^bitscore].
+    4. TODO
+
+[^bitscore]: If only one read aligns to the target, these two fields will be identical. If not, they will give the higher and lower of the best bitscores for the two reads in the pair..
 
 ## Using the workflow
 
