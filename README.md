@@ -145,7 +145,18 @@ If the pipeline runs to completion, the following output files are expected.
     3. `hv/blast_hits_paired.tsv.gz`: Summarized BLASTN output for putative HV read pairs, giving, for each read pair and subject taxid:
         - The number of reads in the read pair with high-scoring matches to that taxid (`n_reads`).
         - The best bitscores of alignments to that taxid for each matching read (`bitscore_max` and `bitscore_min`)[^bitscore].
-    4. TODO
+    4. `qc/qc_basic_stats.tsv.gz`: Summary statistics for each sample at each stage of the preprocessing phase (`stage`), including:
+        - GC content (`percent GC`);
+        - Average read length (`mean_seq_len`);
+        - Number of read pairs (`n_read pairs`);
+        - Approximate number of base pairs in reads (`n_bases_approx`);
+        - Percent duplicates as measured by FASTQC (`percent_duplicates`);
+        - Pass/fail scores for each test conducted by FASTQC.
+    5. `qc/qc_adapter_stats.tsv.gz`: Adapter statistics calculated by FASTQC for each sample and preprocessing stage, given as a percentage of reads containing adapter content (`pc_adapters`) at each position along the read (`position`) for each adapter detected (`adapter`) for each read in the read pair (`read_pair`).
+    6. `qc/qc_quality_base_stats.tsv.gz`: Per-base read-quality statistics calculated by FASTQC for each sample and preprocessing stage, given as the mean Phred score (`mean_phred_score`) at each position along the read (`position`) for each read in the read pair (`read_pair`).
+    7. `qc/qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for each sample and preprocessing stage, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
+    8. `taxonomy_final/taxonomic_composition.tsv.gz`: TODO
+    9. TODO
 
 [^bitscore]: If only one read aligns to the target, these two fields will be identical. If not, they will give the higher and lower of the best bitscores for the two reads in the pair..
 
