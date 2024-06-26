@@ -155,8 +155,12 @@ If the pipeline runs to completion, the following output files are expected.
     5. `qc/qc_adapter_stats.tsv.gz`: Adapter statistics calculated by FASTQC for each sample and preprocessing stage, given as a percentage of reads containing adapter content (`pc_adapters`) at each position along the read (`position`) for each adapter detected (`adapter`) for each read in the read pair (`read_pair`).
     6. `qc/qc_quality_base_stats.tsv.gz`: Per-base read-quality statistics calculated by FASTQC for each sample and preprocessing stage, given as the mean Phred score (`mean_phred_score`) at each position along the read (`position`) for each read in the read pair (`read_pair`).
     7. `qc/qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for each sample and preprocessing stage, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
-    8. `taxonomy_final/taxonomic_composition.tsv.gz`: TODO
-    9. TODO
+    8. `taxonomy_final/taxonomic_composition.tsv.gz`: High-level classification of input reads for each sample by preprocessing stage and taxonomic domain, based on taxonomic analysis of the complete workflow.
+    9. `taxonomy_final/kraken_reports.tsv.gz`: Kraken output reports in TSV format, labeled by sample, based on taxonomic analysis of the complete workflow.
+    10. `taxonomy_pre_dedup/taxonomic_composition.tsv.gz`: High-level classification of input reads for each sample by preprocessing stage and taxonomic domain, based on taxonomic analysis of the cleaned reads (i.e. without deduplication or ribodepletion).
+    11. `taxonomy_pre_dedup/kraken_reports.tsv.gz`: Kraken output reports in TSV format, labeled by sample, based on taxonomic analysis of the cleaned reads (i.e. without deduplication or ribodepletion).
+    12. `taxonomy_post_dedup/taxonomic_composition.tsv.gz`: High-level classification of input reads for each sample by preprocessing stage and taxonomic domain, based on taxonomic analysis of the deduplicated reads (i.e. without ribodepletion).
+    13. `taxonomy_post_dedup/kraken_reports.tsv.gz`: Kraken output reports in TSV format, labeled by sample, based on taxonomic analysis of the deduplicated reads (i.e. without ribodepletion).
 
 [^bitscore]: If only one read aligns to the target, these two fields will be identical. If not, they will give the higher and lower of the best bitscores for the two reads in the pair..
 
