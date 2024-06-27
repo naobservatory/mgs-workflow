@@ -27,6 +27,7 @@ out_path_quality_sequence <- file.path(opt$output_dir, paste0(opt$stage, "_qc_qu
 
 # Specify state descriptors
 pipeline_states <- c("bbduk_noribo2", "bbduk_noribo", "bbmap_nohuman", "bbmap_noref", "dedup", "fastp", "trunc")
+pipeline_states <- c("dedup", "fastp", "trunc", "ribo_initial_bbduk_pass", "ribo_secondary_bbduk_pass")
 
 #=====================#
 # AUXILIARY FUNCTIONS #
