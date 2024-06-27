@@ -2,6 +2,7 @@
 work/*
 output/*
 *.swp
-test-local/work
-test-local/output
+test/work
+test/output
+test/.nextflow*
 *.Rhistory
