@@ -217,7 +217,7 @@ aws_secret_access_key = <SECRET_ACCESS_KEY>
 If you encounter AccessDenied errors after doing this, you may also need to export these keys as environment variables before running Nextflow:
 
 ```
-eval "$(aws configure export-credentials --format env)
+eval "$(aws configure export-credentials --format env)"
 ```
 
 Next, you need to make sure your user is configured to use Docker. To do this, create the `docker` user group and add your current user to it:
@@ -310,3 +310,17 @@ If running on Batch, a good process for starting the pipeline on a new dataset i
 4. Edit `nextflow.config` to specify each item in `params` as appropriate, as well as setting `process.queue` to the appropriate Batch queue.
 5. Run `nextflow run PATH_TO_REPO_DIR -resume`.
 6. Navigate to `{params.base_dir}/output` to view and download output files.
+
+# Troubleshooting
+
+When attempting to run a released version of the pipeline, the most common sources of errors are AWS permission issues. Before debugging a persistent error in-depth, make sure that you have all the permissions specified in Step 0 of [our Batch workflow guide](https://data.securebio.org/wills-public-notebook/notebooks/2024-06-11_batch.html). Next, make sure Nextflow has access to your AWS credentials, such as by running `eval "$(aws configure export-credentials --format env)"`.
+
+Another common issue is for processes to fail with some variation of the following Docker-related error:
+
+```
+docker: failed to register layer: write /usr/lib/jvm/java-11-openjdk-amd64/lib/modules: **no space left on device**.
+```
+
+This is a fairly well-known problem, which can arise even when there is substantial free storage space accessible to your EC2 instance. Following the steps recommended [here](https://www.baeldung.com/linux/docker-fix-no-space-error) or [here](https://forums.docker.com/t/docker-no-space-left-on-device/69205) typically resolves the issue, either by deleting Docker assets to free up space (e.g. via `docker system prune --all --force`) or by giving Docker more space.
+
+We will add more common failure modes here as they get reported.
