@@ -111,25 +111,27 @@ If the pipeline runs to completion, the following output files are expected.
 
 #### Index workflow
 
-1. `output/input/index_params.json`: JSON file giving all the parameters passed to the pipeline (useful for trying to reproduce someone else's results).
-2. `output/results/nt`: Directory containing extracted BLAST database files for BLASTing against nt.
-3. `output/results/bt2-hv-index`: Directory containing Bowtie2 index for human-infecting viral genomes.
-4. `output/results/bt2-human-index`: Directory containing Bowtie2 index for the human genome.
-5. `output/results/bt2-other-index`: Directory containing Bowtie2 index for other contaminant sequences.
-6. `output/results/bbm-human-index`: Directory containing BBMap index for the human genome.
-7. `output/results/bbm-other-index`: Directory containing BBMap index for other contaminant sequences.
-8. `output/results/kraken_db`: Directory containing Kraken2 reference database (by default, the most recent version of Standard).
-9. `output/results/human-viral-genomes-filtered.fasta.gz`: FASTA file containing human-viral genomes downloaded from viral Genbank (filtered to remove transgenic, contaminated, or erroneous sequences).
-10. `output/results/genomeid-to-taxid.json`: JSON mapping between HV taxids and NCBI genome IDs for the sequences in (8).
-11. `output/results/ribo-ref-concat.fasta.gz`: Reference database of ribosomal LSU and SSU sequences from SILVA.
-12. `output/results/taxonomy-nodes.dmp`: Taxonomy dump file from NCBI mapping between taxids and their parents in the NCBI taxonomy tree structure.
-13. `output/results/taxonomy-names.dmp`: Taxonomy dump file from NCBI mapping between taxids and taxon names.
-14. `output/results/human-virus-db.tsv.gz`: Database generated from (8), (9), (12) and (13) giving, for each human-viral taxon:
+1. `output/input/index-params.json`: JSON file giving all the parameters passed to the pipeline (useful for trying to reproduce someone else's results).
+2. `output/input/pipeline-version.txt`: Version of the pipeline with which index directory was created.
+3. `output/input/time.txt`: Start time of index workflow run.
+4. `output/results/nt`: Directory containing extracted BLAST database files for BLASTing against nt.
+5. `output/results/bt2-hv-index`: Directory containing Bowtie2 index for human-infecting viral genomes.
+6. `output/results/bt2-human-index`: Directory containing Bowtie2 index for the human genome.
+7. `output/results/bt2-other-index`: Directory containing Bowtie2 index for other contaminant sequences.
+8. `output/results/bbm-human-index`: Directory containing BBMap index for the human genome.
+9. `output/results/bbm-other-index`: Directory containing BBMap index for other contaminant sequences.
+10. `output/results/kraken_db`: Directory containing Kraken2 reference database (by default, the most recent version of Standard).
+11. `output/results/human-viral-genomes-filtered.fasta.gz`: FASTA file containing human-viral genomes downloaded from viral Genbank (filtered to remove transgenic, contaminated, or erroneous sequences).
+12. `output/results/genomeid-to-taxid.json`: JSON mapping between HV taxids and NCBI genome IDs for the sequences in (8).
+13. `output/results/ribo-ref-concat.fasta.gz`: Reference database of ribosomal LSU and SSU sequences from SILVA.
+14. `output/results/taxonomy-nodes.dmp`: Taxonomy dump file from NCBI mapping between taxids and their parents in the NCBI taxonomy tree structure.
+15. `output/results/taxonomy-names.dmp`: Taxonomy dump file from NCBI mapping between taxids and taxon names.
+16. `output/results/human-virus-db.tsv.gz`: Database generated from (8), (9), (12) and (13) giving, for each human-viral taxon:
     - The taxid (`taxid`)
     - The taxid of the parent taxon (`parent_taxid`)
     - The scientific name (`name`)
     - The taxonomic rank (`rank`)
-15. `output/results/total-virus-db.tsv.gz`: As (14), but for all viral taxa (including non-human-infecting ones).
+17. `output/results/total-virus-db.tsv.gz`: As (14), but for all viral taxa (including non-human-infecting ones).
 
 #### Run workflow
 
@@ -137,6 +139,10 @@ If the pipeline runs to completion, the following output files are expected.
     1. `adapters.fasta`: FASTA file of adapter sequences used for adapter screening.
     2. `params.json`: JSON file giving all the parameters passed to the pipeline.
     3. A CSV file giving sample metadata (filename specified by `params.sample_tab`).
+    4. `time.txt`: Start time of run workflow.
+    5. `pipeline-version.txt`: Version of pipeline used for run.
+    6. `pipeline-version-index.txt`: Version of pipeline used to generate index directory (`params.ref_dir`).
+    7. `index-params.json`: JSON file giving parameters used to generate index directory (`params.ref_dir`).
 2. `output/intermediates`: Intermediate files produced by key stages in the run workflow, saved for nonstandard downstream analysis.
     1. `reads/cleaned`: Directory containing paired FASTQ files for cleaned reads (i.e. the output of the preprocessing phase described above).
 3. `output/results`: Directory containing processed results files for standard downstream analysis.

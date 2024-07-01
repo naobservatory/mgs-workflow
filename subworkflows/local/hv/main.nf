@@ -37,15 +37,15 @@ workflow HV {
         aln_score_threshold
     main:
         // Get reference paths
-        genomeid_map_path = "${ref_dir}/genomeid-to-taxid.json"
-        bt2_hv_index_path = "${ref_dir}/bt2-hv-index"
-        bt2_human_index_path = "${ref_dir}/bt2-human-index"
-        bt2_other_index_path = "${ref_dir}/bt2-other-index"
-        bbm_human_index_path = "${ref_dir}/bbm-human-index"
-        bbm_other_index_path = "${ref_dir}/bbm-other-index"
-        nodes_path = "${ref_dir}/taxonomy-nodes.dmp"
-        hv_db_path = "${ref_dir}/human-virus-db.tsv.gz"
-        viral_taxa_path = "${ref_dir}/total-virus-db.tsv.gz"
+        genomeid_map_path = "${ref_dir}/results/genomeid-to-taxid.json"
+        bt2_hv_index_path = "${ref_dir}/results/bt2-hv-index"
+        bt2_human_index_path = "${ref_dir}/results/bt2-human-index"
+        bt2_other_index_path = "${ref_dir}/results/bt2-other-index"
+        bbm_human_index_path = "${ref_dir}/results/bbm-human-index"
+        bbm_other_index_path = "${ref_dir}/results/bbm-other-index"
+        nodes_path = "${ref_dir}/results/taxonomy-nodes.dmp"
+        hv_db_path = "${ref_dir}/results/human-virus-db.tsv.gz"
+        viral_taxa_path = "${ref_dir}/results/total-virus-db.tsv.gz"
         // Run Bowtie2 against an HV database and process output
         bowtie2_ch = BOWTIE2_HV(reads_ch, bt2_hv_index_path, "--no-unal --no-sq --score-min G,5,11")
         bowtie2_sam_ch = PROCESS_BOWTIE2_SAM_PAIRED(bowtie2_ch.sam, genomeid_map_path)

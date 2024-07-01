@@ -3,6 +3,7 @@
 **************************************************************************************/
 
 import groovy.json.JsonOutput
+import java.time.LocalDateTime
 
 /***************************
 | MODULES AND SUBWORKFLOWS |
@@ -23,6 +24,9 @@ include { EXTRACT_TARBALL as EXTRACT_KRAKEN_DB } from "../modules/local/extractT
 ****************/
 
 workflow INDEX {
+    // Start time
+    start_time = new Date()
+    start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
     // Make human-viral and total-viral reference DBs
     GET_NCBI_TAXONOMY(params.taxonomy_url)
     MAKE_HUMAN_VIRUS_DB(params.virus_host_db_url, GET_NCBI_TAXONOMY.out.nodes, GET_NCBI_TAXONOMY.out.names)
@@ -37,10 +41,14 @@ workflow INDEX {
     EXTRACT_KRAKEN_DB(params.kraken_db, "kraken_db", true)
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
-    params_ch = Channel.of(params_str).collectFile(name: "index_params.json")
+    params_ch = Channel.of(params_str).collectFile(name: "index-params.json")
+    time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
+    version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
     publish:
         // Saved inputs
         params_ch >> "input"
+        time_ch >> "input"
+        version_ch >> "input"
         // Taxonomy and virus databases
         GET_NCBI_TAXONOMY.out.nodes >> "results"
         GET_NCBI_TAXONOMY.out.names >> "results"
