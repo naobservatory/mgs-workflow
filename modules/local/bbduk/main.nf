@@ -24,7 +24,7 @@ process BBDUK {
         ref=!{contaminant_ref}
         io="in=${in1} in2=${in2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats}"
         # Define parameters
-        par="minkmerfraction=!{min_kmer_fraction} k=!{k} t=!{task.cpus} -Xmx30g"
+        par="minkmerfraction=!{min_kmer_fraction} k=!{k} t=!{task.cpus} -Xmx${task.memory.toGiga()}g"
         # Execute
         bbduk.sh ${io} ${par}
         '''
