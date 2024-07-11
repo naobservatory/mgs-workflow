@@ -4,6 +4,7 @@ process CONCAT_GZIPPED {
     label "seqtk"
     input:
         path(raw_files_directory)
+        // libraries a list of library names, each of which should not contain whitespace
         tuple val(sample), val(libraries)
     output:
         tuple val(sample), path("${sample}_{1,2}.fastq.gz"), emit: reads
