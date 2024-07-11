@@ -102,7 +102,7 @@ count_hits <- function(read_db, taxid_tree, group_var){
 #============#
 
 # Import data
-read_db <- read_tsv(read_db_path, show_col_types = FALSE) %>% mutate(taxid = as.integer(taxid))
+read_db <- read_tsv(read_db_path, show_col_types = FALSE) %>% mutate(taxid = as.integer(taxid_best))
 taxa_db <- read_tsv(taxa_db_path, show_col_types = FALSE) %>% mutate(taxid = as.integer(taxid))
 
 if (nrow(read_db) > 0){
