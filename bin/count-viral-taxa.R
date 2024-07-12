@@ -36,12 +36,11 @@ count_children <- function(taxid_tree){
 count_hits_direct <- function(read_db, taxid_tree, group_var){
     # Count number of reads directly assigned to each taxid in a tree
     taxids <- count_children(taxid_tree)
-    direct_hits_setup <- read_db %>% group_by(taxid, .data[[group_var]]) %>%
+    direct_hits_setup <- read_db %>% group_by(taxid_best, .data[[group_var]]) %>%
         count(name="n_reads_direct", .drop=FALSE) %>%
         pivot_wider(names_from=any_of(group_var), values_from=n_reads_direct,
                     values_fill = 0)
-    direct_hits_joined <- taxids %>% left_join(direct_hits_setup, by="taxid")
-    direct_hits <- taxids %>% left_join(direct_hits_setup, by="taxid") %>%
+    direct_hits <- taxids %>% left_join(direct_hits_setup, by=c("taxid" = "taxid_best")) %>%
         pivot_longer(cols=-(taxid:n_children), names_to=group_var,
                      values_to="n_reads_direct") %>%
         mutate(n_reads_direct = replace_na(n_reads_direct, 0))
@@ -102,7 +101,7 @@ count_hits <- function(read_db, taxid_tree, group_var){
 #============#
 
 # Import data
-read_db <- read_tsv(read_db_path, show_col_types = FALSE) %>% mutate(taxid = as.integer(taxid_best))
+read_db <- read_tsv(read_db_path, show_col_types = FALSE) %>% mutate(taxid_best = as.integer(taxid_best))
 taxa_db <- read_tsv(taxa_db_path, show_col_types = FALSE) %>% mutate(taxid = as.integer(taxid))
 
 if (nrow(read_db) > 0){
