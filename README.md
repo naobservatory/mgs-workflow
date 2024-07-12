@@ -242,7 +242,7 @@ Clone this repo into a new directory as normal.
 #### 4. Run index/reference workflow
 
 > [!TIP]
-> If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output/results`.
+> If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output`.
 
 Create a new directory outside the repo directory and copy over the index workflow config file as `nextflow.config` in that directory:
 
