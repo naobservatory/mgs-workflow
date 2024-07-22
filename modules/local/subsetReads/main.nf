@@ -72,7 +72,7 @@ process SUBSET_READS_PAIRED_TARGET {
         n_reads=$(zcat ${in1} | wc -l | awk '{ print $1/4 }')
         echo "Input reads: ${n_reads}"
         echo "Target reads: !{readTarget}"
-        frac=$(awk -v a=${n_reads} -v b=!{readTarget} 'BEGIN {result = print b/a; print (result > 1) ? 1 : result}')
+        frac=$(awk -v a=${n_reads} -v b=!{readTarget} 'BEGIN {result = b/a; print (result > 1) ? 1 : result}')
         echo "Read fraction: ${frac}"
         # Carry out subsetting
         seed=${RANDOM}

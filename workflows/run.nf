@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 
 include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
 include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
-include { HV } from "../subworkflows/local/hv" addParams(min_kmer_fraction: "0.1", k: 21, bbduk_suffix: "hv")
+include { HV } from "../subworkflows/local/hv" addParams(min_kmer_fraction: "0.1", k: 21, bbduk_suffix: "hv", encoding: "${params.quality_encoding}")
 include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
 include { PROFILE } from "../subworkflows/local/profile" addParams(min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo", kraken_memory: "${params.kraken_memory}")
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
@@ -47,7 +47,7 @@ workflow RUN {
     // Taxonomic profiling
     PROFILE(CLEAN.out.reads, kraken_db_path, params.n_reads_profile, params.ref_dir)
     // Process output
-    qc_ch = RAW.out.qc.concat(CLEAN.out.qc, DEDUP.out.qc, RIBO_INITIAL.out.qc, RIBO_SECONDARY.out.qc)
+    qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
     PROCESS_OUTPUT(qc_ch)
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))

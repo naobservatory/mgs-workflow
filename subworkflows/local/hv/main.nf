@@ -21,7 +21,7 @@ include { MAKE_HV_FASTA } from "../../../modules/local/makeHvFasta"
 include { COUNT_HV_CLADES } from "../../../modules/local/countHvClades"
 include { BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
 include { CUTADAPT } from "../../../modules/local/cutadapt"
-include { TRIMMOMATIC } from "../../../modules/local/trimmomatic"
+include { TRIMMOMATIC } from "../../../modules/local/trimmomatic" addParams(encoding: params.encoding)
 
 /***********
 | WORKFLOW |

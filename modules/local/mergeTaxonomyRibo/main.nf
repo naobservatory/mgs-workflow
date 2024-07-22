@@ -17,8 +17,8 @@ process MERGE_TAXONOMY_RIBO {
         # Import data
         kr_ribo <- read_tsv("!{kraken_reports_ribo}", col_types = cols(.default="c"))
         kr_noribo <- read_tsv("!{kraken_reports_noribo}", col_types = cols(.default="c"))
-        br_ribo <- read_tsv("!{bracken_reports_ribo}", col_types = cols(.default="c"))
-        br_noribo <- read_tsv("!{bracken_reports_noribo}", col_types = cols(.default="c"))
+        br_ribo <- read_tsv("!{bracken_ribo}", col_types = cols(.default="c"))
+        br_noribo <- read_tsv("!{bracken_noribo}", col_types = cols(.default="c"))
         # Label and merge
         kr_out <- kr_ribo %>% mutate(ribosomal = TRUE) %>%
             bind_rows(kr_noribo %>% mutate(ribosomal = FALSE))
