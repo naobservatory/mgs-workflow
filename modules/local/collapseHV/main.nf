@@ -1,7 +1,8 @@
 // Collapse separate read pair entries in HV DB
 process COLLAPSE_HV {
     label "tidyverse"
-    label "single"
+    cpus 1
+    memory "16.GB"
     input:
         path(hv_hits_filtered)
     output:
@@ -19,13 +20,15 @@ process COLLAPSE_HV {
         print(dim(hits_filtered))
         reads_collapsed <- hits_filtered %>% group_by(seq_id) %>% summarize(
             sample = collapse(sample), genome_id = collapse(genome_id),
-            taxid_best = taxid[1], taxid = collapse(as.character(taxid)),
+            taxid_all = collapse(as.character(taxid)),
+            taxid = taxid[1],
             best_alignment_score_fwd = rmax(best_alignment_score_fwd),
             best_alignment_score_rev = rmax(best_alignment_score_rev),
             query_len_fwd = rmax(query_len_fwd), query_seq_fwd = query_seq_fwd[!is.na(query_seq_fwd)][1],
             query_len_rev = rmax(query_len_rev), query_seq_rev = query_seq_rev[!is.na(query_seq_rev)][1],
             classified = rmax(classified), assigned_name = collapse(assigned_name),
-            assigned_taxid_best = assigned_taxid[1], assigned_taxid = collapse(as.character(assigned_taxid)),
+            assigned_taxid_all = collapse(as.character(assigned_taxid)),
+            assigned_taxid = assigned_taxid[1],
             assigned_hv = rmax(assigned_hv), hit_hv = rmax(hit_hv), encoded_hits = collapse(encoded_hits),
             adj_score_fwd = rmax(adj_score_fwd), adj_score_rev = rmax(adj_score_rev)
             ) %>% mutate(adj_score_max = pmax(adj_score_fwd, adj_score_rev))
