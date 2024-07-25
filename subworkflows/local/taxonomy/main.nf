@@ -19,7 +19,7 @@ workflow TAXONOMY { // todo: rename
         reads_ch
     main:
         // Prepare reads
-        merged_ch = BBMERGE(subset_ch)
+        merged_ch = BBMERGE(reads_ch)
         joined_ch = JOIN_FASTQ(merged_ch.reads)
         // Deduplicate reads
         dedup_ch = CLUMPIFY_SINGLE(joined_ch)
