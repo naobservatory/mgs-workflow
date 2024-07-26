@@ -62,7 +62,7 @@ workflow RUN {
         CLEAN.out.reads >> "intermediates/reads/cleaned"
         RIBO_SECONDARY.out.reads >> "intermediates/reads/ribodepleted"
         // final joined-deduped
-        TAXONOMY.out.reads >> "results/reads"
+        TAXONOMY.out.joined_reads >> "results/reads"
         // QC
         PROCESS_OUTPUT.out.basic >> "results/qc"
         PROCESS_OUTPUT.out.adapt >> "results/qc"
