@@ -42,7 +42,7 @@ workflow TAXONOMY {
             dedup_ch = joined_ch
         }
         // Run Kraken and munge reports
-        kraken_ch = KRAKEN(joined_ch, kraken_db_ch)
+        kraken_ch = KRAKEN(dedup_ch, kraken_db_ch)
         kraken_label_ch = LABEL_KRAKEN_REPORTS(kraken_ch.report)
         kraken_merge_ch = MERGE_KRAKEN_REPORTS(kraken_label_ch.collect().ifEmpty([]))
         // Run Bracken and munge reports
