@@ -33,5 +33,6 @@ workflow BLAST_HV {
         blast_filtered = filter_ch
         blast_paired = pair_ch
     publish:
+        subset_ch >> "results/hv"
         pair_ch >> "results/hv"
 }
