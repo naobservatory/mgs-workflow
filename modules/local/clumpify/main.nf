@@ -38,7 +38,7 @@ process CLUMPIFY_SINGLE {
         out=!{sample}_dedup.fastq.gz
         io="in=${in} out=${out}"
         # Define parameters
-        par="reorder dedupe containment t=!{task.cpus} -Xmx30g"
+        par="reorder dedupe containment rcomp passes=6 t=!{task.cpus} -Xmx30g"
         # Execute
         clumpify.sh ${io} ${par}
         '''

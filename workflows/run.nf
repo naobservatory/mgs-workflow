@@ -12,8 +12,7 @@ import java.time.LocalDateTime
 include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
 include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
 include { DEDUP } from "../subworkflows/local/dedup" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "dedup")
-include { RIBODEPLETION as RIBO_INITIAL } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_initial", min_kmer_fraction: "0.6", k: "43", bbduk_suffix: "ribo_initial")
-include { RIBODEPLETION as RIBO_SECONDARY } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_secondary", min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo_secondary")
+include { RIBODEPLETION } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_secondary", min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo_secondary")
 include { TAXONOMY } from "../subworkflows/local/taxonomy"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 nextflow.preview.output = true
@@ -37,10 +36,9 @@ workflow RUN {
     RAW(libraries_ch, params.raw_dir, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
     DEDUP(CLEAN.out.reads)
-    RIBO_INITIAL(DEDUP.out.reads, params.ref_dir)
-    RIBO_SECONDARY(RIBO_INITIAL.out.reads, params.ref_dir)
+    RIBODEPLETION(DEDUP.out.reads, params.ref_dir)
     // merge paired reads, dedup considering RC
-    TAXONOMY(RIBO_SECONDARY.out.reads)
+    TAXONOMY(RIBODEPLETION.out.reads)
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc, DEDUP.out.qc, RIBO_INITIAL.out.qc, RIBO_SECONDARY.out.qc)
     PROCESS_OUTPUT(qc_ch)
