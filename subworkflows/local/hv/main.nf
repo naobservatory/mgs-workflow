@@ -19,7 +19,7 @@ include { FILTER_HV } from "../../../modules/local/filterHV"
 include { COLLAPSE_HV } from "../../../modules/local/collapseHV"
 include { MAKE_HV_FASTA } from "../../../modules/local/makeHvFasta"
 include { COUNT_HV_CLADES } from "../../../modules/local/countHvClades"
-include { BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
+include { BBDUK_HITS } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
 include { CUTADAPT } from "../../../modules/local/cutadapt"
 include { TRIMMOMATIC } from "../../../modules/local/trimmomatic" addParams(encoding: params.encoding)
 
@@ -47,12 +47,12 @@ workflow HV {
         hv_db_path = "${ref_dir}/results/human-virus-db.tsv.gz"
         viral_taxa_path = "${ref_dir}/results/total-virus-db.tsv.gz"
         // Run initial screen against HV genomes with BBDuk
-        bbduk_ch = BBDUK(reads_ch, hv_ref_path, params.min_kmer_fraction, params.k)
+        bbduk_ch = BBDUK_HITS(reads_ch, hv_ref_path, params.min_kmer_hits, params.k)
         // Carry out stringent adapter removal with Cutadapt and Trimmomatic
         adapt_ch = CUTADAPT(bbduk_ch.fail, adapter_path)
         trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path)
         // Run Bowtie2 against an HV database and process output
-        bowtie2_ch = BOWTIE2_HV(trim_ch.reads, bt2_hv_index_path, "--no-unal --no-sq --score-min G,5,11")
+        bowtie2_ch = BOWTIE2_HV(trim_ch.reads, bt2_hv_index_path, "--no-unal --no-sq --score-min G,1,1")
         bowtie2_sam_ch = PROCESS_BOWTIE2_SAM_PAIRED(bowtie2_ch.sam, genomeid_map_path)
         bowtie2_unconc_ids_ch = EXTRACT_UNCONC_READ_IDS(bowtie2_ch.sam)
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.reads_unconc.combine(bowtie2_unconc_ids_ch, by: 0))
