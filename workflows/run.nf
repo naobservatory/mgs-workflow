@@ -58,7 +58,7 @@ workflow RUN {
         version_ch >> "input"
         // Intermediate files
         CLEAN.out.reads >> "intermediates/reads/cleaned"
-        RIBO_SECONDARY.out.reads >> "intermediates/reads/ribodepleted"
+        RIBODEPLETION.out.reads >> "intermediates/reads/ribodepleted"
         // final joined-deduped
         TAXONOMY.out.joined_reads >> "results/reads"
         // QC
