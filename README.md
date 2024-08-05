@@ -10,13 +10,13 @@ The pipeline currently consists of two workflows, an **index** workflow and a **
 
 The run workflow then consists of five phases:
 
-1. A **preprocessing phase**, in which input files undergo adapter & quality trimming, deduplication, and ribodepletion.
-2. A **taxonomic profiling phase**, in which Kraken2 is used to assess the overall taxonomic composition of the input data and assess how it changes across different steps in the preprocessing phase.
-3. A **viral identification phase**, in which a custom multi-step pipeline based around Bowtie2 and Kraken2 is used to sensitively and specifically identify human-infecting virus (HV) reads in the input data for downstream analysis.
-4. An optional **BLAST validation phase**, in which putative HV reads from phase 3 are checked against the NCBI nt database to evaluate the sensitivity and specificity of the HV identification process.
+1. A **preprocessing phase**, in which input files are concatenated according to sample identity and undergo adapter & quality trimming.
+2. A **viral identification phase**, in which a custom multi-step pipeline based around BBDuk, Bowtie2 and Kraken2 is used to sensitively and specifically identify human-infecting virus (HV) reads in the input data for downstream analysis.
+3. A **taxonomic profiling phase**, in which a random subset of reads (default 1M/sample) undergo ribosomal classification with BBDuk, followed by broader taxonomic classification with Kraken2.
+4. An optional **BLAST validation phase**, in which putative HV reads from phase 2 are checked against nt to evaluate the sensitivity and specificity of the HV identification process.
 5. A final **QC and output phase**, in which FASTQC, MultiQC and other tools are used to assess the quality of the data produced by the pipeline at various steps and produce summarized output data for downstream analysis and visualization.
 
-A slight simplification of the overall process is given by this mildly baffling diagram:
+A slight simplification of the overall process is given by this diagram:
 
 ![A flowchart summarizing the pipeline's run workflow.](/readme-workflow-diagram.png)
 
@@ -43,33 +43,25 @@ Given these inputs, the index workflow:
 Run the index workflow by setting `mode = "index"` in the relevant config file. For more information, see `workflows/index.nf` and the associated subworkflows and modules.
 
 ### Run workflow
+
 #### Preprocessing phase
 
-The run workflow begins by concatenating all libraries assigned to the same sample ID together[^concat], then optionally subsampling the concatenated read files down to a specified number of reads[^subsample]. The reads then undergo cleaning by [Cutadapt](https://cutadapt.readthedocs.io/en/stable/), [Trimmomatic](https://github.com/usadellab/Trimmomatic), and [FASTP](https://github.com/OpenGene/fastp), in that order; the first two of these only screen for adapter contamination, while the last both screens for adapters and trims low-quality and low-complexity sequences. Running three different adapter-trimming tools in succession is unusual, but necessary to minimize spurious identification of "human-viral" reads based on adapter contamination of the reference genomes.
+The run workflow begins by concatenating all libraries assigned to the same sample ID together[^concat]. The reads then undergo cleaning by [FASTP](https://github.com/OpenGene/fastp), which both screens for adapters and trims low-quality and low-complexity sequences. The output of FASTP is then passed on to the other parts of the run workflow.
 
-[^concat]: This is controlled by the library file specied in the config file; any libraries with the same entry in the `sample` column are concatenated. This is primarily useful in cases where the same library is sequenced multiple times, e.g. to reach some total target depth.
-[^subsample]: This is mainly useful for an initial run of the pipeline to confirm everything functions well for a given dataset and sample sheet; it's not recommended for analyses that are actually expected to yield meaningful results.
-
-Cleaned reads then undergo deduplication with [Clumpify](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/clumpify-guide/), a tool from the [BBTools suite](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/) that identifies and collapses read pairs that are identical modulo some specified error rate. (Importantly, this deduplication phase does not remove reverse-complement duplicates.[^rc]) The deduplicated reads then undergo ribodepletion with [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which searches for ribosomal k-mers based on a SILVA sequencing database and removes any reads that exhibit rRNA matches above some threshold. This is performed twice in series, once with relatively strict parameters for what sequences qualify as "ribosomal" (which thus removes relatively fewer reads) and again with more inclusive parameters (which thus result in more reads being removed). The output of the initial, more conservative ribodepletion step is passed to the viral identification phase, while the output of the latter, more aggressive step is passed to the taxonomic profiling phase[^ribo].
-
-[^rc]: Unfortunately, I'm not aware of any deduplication tool that (1) works well on paired-read data, (2) can detect and remove duplicates in the presence of sequencing errors, and (3) can handle reverse-complement duplicates. If you know of one, please do let me know!
-[^ribo]: The splitting of ribodepletion into these two phases arises from differences in the needs of the two downstream processes they feed into. For viral identification, we want to make sure we aren't losing any HV reads through spurious identification as ribosomal, so we use more conservative parameters. For taxonomic profiling, we're much less concerned about the status of individual reads and more concerned about accurately measuring ribosomal content, so a more aggressive approach is appropriate.
-
-#### Taxonomic profiling phase
-
-In the taxonomic profiling phase, paired-end reads output from the preprocessing phase are merged together into single sequences through a combination of [BBMerge](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmerge-guide/) (which aligns and merges read pairs with significant overlap) and end-to-end concatenation (with an intervening "N" base, for those read pairs BBMerge is unable to merge). The resulting single sequences are passed to [Kraken2](https://ccb.jhu.edu/software/kraken2/) for taxonomic assignment, using the reference database obtained in the index workflow. The output of Kraken2 is then passed to [Bracken](https://ccb.jhu.edu/software/bracken/) for correction and summarization, and the outputs of both Kraken and Bracken are merged across samples to produce single output files.
-
-This phase is actually run three times across the pipeline: once on the cleaned reads, once on deduplicated reads, and once on the output of the second ribodepletion step. The latter of these is the primary source of data for overall assessment of the composition of the dataset; the former two are primarily used to assess how deduplication alters the measured taxonomic composition.
+[^concat]: This is controlled by the library file specified in the config file; any libraries with the same entry in the `sample` column are concatenated. This is primarily useful in cases where the same library is sequenced multiple times, e.g. to reach some total target depth.
 
 #### Viral identification phase
 
-The goal of this phase is to sensitively and specifically identify reads arising from human-infecting virus reads. It uses a multi-step process designed to avoid false-positive and false-negative errors arising from simpler systems tried previously.
+The goal of this phase is to sensitively, specifically, and efficiently identify reads arising from human-infecting viruses. It uses a multi-step process designed to keep computational costs low while minimizing false-positive and false-negative errors.
 
-1. To begin with, the output of the initial (conservative) ribodepletion step is aligned against a database of human-infecting viral genomes generated from Genbank by the index workflow. This initial alignment is conducted with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative HV reads as possible. The SAM and FASTQ files are processed to generate new read files containing any read pair for which at least one read matches the HV database.
-2. The output of the previous step is passed to a filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using both Bowtie2 and [BBMap](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmap-guide/) in series[^filter]. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
-3. Following filtering, surviving read pairs are merged into single sequences as described for the taxonomic profiling phase, then undergo an additional deduplication step intended to remove reverse-complement duplicates that weren't detected during preprocessing.
-4. After deduplication, surviving merged reads are passed to Kraken2 (using the same reference database used in the taxonomic profiling phase). For each read, we record whether that read was (1) assigned to a human-infecting virus taxon with Kraken, (2) assigned to a non-HV taxon with Kraken, or (3) not assigned to any taxon. All reads in category (2) are filtered out.
-5. Finally, reads are assigned a final HV status if they:
+1. To begin with, the cleaned reads produced by the preprocessing phase are screened against a database of human-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least three 21-mers matching any human-viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative human-viral reads while discarding the vast majority of non-HV reads, reducing the cost associated with the rest of this phase.
+2. Surviving reads undergo additional adapter trimming with [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) & [Trimmomatic](https://github.com/timflutre/trimmomatic), and [FASTP](https://github.com/OpenGene/fastp) to remove any residual adapter contamination that might lead to false positive results.
+3. Next, reads are aligned to the previously-mentioned database of HV genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative HV reads as possible. The SAM and FASTQ files are processed to generate new read files containing any read pair for which at least one read matches the HV database.
+4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using both Bowtie2 and [BBMap](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmap-guide/) in series[^filter]. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
+5. Surviving read pairs are merged into single sequences through a combination of [BBMerge](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmerge-guide/) (which aligns and merges read pairs with significant overlap) and end-to-end concatenation (with an intervening "N" base, for those read pairs BBMerge is unable to merge).
+6. Merged reads undergo deduplication with [Clumpify](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/clumpify-guide/), which identifies and collapses groups of reads that are identical modulo some specified error rate.
+7. Deduplicated reads are passed to [Kraken2](https://ccb.jhu.edu/software/kraken2/) for taxonomic assignment, using the reference database obtained in the index workflow. We record whether each read was (1) assigned to a human-infecting virus taxon with Kraken, (2) assigned to a non-HV taxon with Kraken, or (3) not assigned to any taxon. All reads in category (2) are filtered out.
+8. Finally, reads are assigned a final HV status if they:
     - Are given matching HV assignments by both Bowtie2 and Kraken2; or
     - Are unassigned by Kraken and align to an HV taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
 
@@ -77,6 +69,14 @@ Following HV status assignment, information for each read pair is processed into
 
 [^filter]: We've found in past investigations that the two aligners detect different contaminant sequences, and aligning against both is more effective at avoiding false positives than either in isolation.
 [^threshold]: Specifically, Kraken-unassigned read pairs are classed as human-viral if, for either read in the pair, $S/ln(L) >= T$, where $S$ is the best-match Bowtie2 alignment score for that read, $L$ is the length of the read, and $T$ is the value of `params.bt2_score_threshold` specified in the config file.
+
+#### Taxonomic profiling phase
+
+The goal of this phase is to give an overview of the taxonomic composition of the cleaned reads from the preprocessing phase. In particular, it gives an estimate of (i) the fraction of ribosomal reads in the dataset, (ii) the taxonomic breakdown of the dataset at the domain level[^eukarya], and (iii) more detailed abundance estimates for lower-level taxa.
+
+To maintain efficiency, the reads from the preprocessing phase are first subset, by default to 1 million reads per sample. These subset reads are then separated into ribosomal and non-ribosomal read groups using BBDuk, by searching for ribosomal k-mers from the SILVA database obtained during the index workflow. Both sets of read pairs are then merged into single sequences using BBMerge as described above, then are passed to Kraken2 for taxonomic assignment. The output of Kraken2 is then passed to [Bracken](https://ccb.jhu.edu/software/bracken/) for correction and summarization, and the outputs of both Kraken and Bracken are merged across samples to produce single output files.
+
+[^eukarya]: As human is the only eukaryotic genome included in the Standard reference database for Kraken2, all sequences assigned to that domain can be assigned to *Homo sapiens*.
 
 #### BLAST validation phase
 
@@ -88,22 +88,9 @@ Currently, this subworkflow performs the BLAST alignment, filters & summarizes t
 
 #### QC and output phase
 
-Each step in the preprocessing phase generates paired FASTQ files that can be analyzed with [FASTQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://multiqc.info/). Doing so allows us to track important metrics (e.g. read quality, read numbers, adapter content) across the pipeline. This phase takes the MultiQC outputs from each phase and extracts relevant metrics into easy-to-parse TSV files[^tsvs] for downstream processing.
-
-In addition, for each iteration of the taxonomic classification workflow, this phase takes the Bracken output data and combines it with MultiQC metrics to compute the number and fraction of input reads assigned to each of the following categories (if applicable):
-- Filtered (removed during cleaning)
-- Duplicate (removed during deduplication)
-- Ribosomal (removed during ribodepletion)
-- Unassigned (non-ribosomal reads that were not assigned to any taxon by Kraken/Bracken)
-- Bacterial (non-ribosomal reads assigned to the Bacteria domain by Kraken/Bracken)
-- Archaeal (non-ribosomal reads assigned to the Archaea domain by Kraken/Bracken)
-- Viral (non-ribosomal reads assigned to the Viruses domain by Kraken/Bracken)
-- Human (non-ribosomal reads assigned to the Eukarya domain[^eukarya] by Kraken/Bracken)
-
-This composition information is given in a file named `taxonomic_composition.tsv.gz` in the results directory.
+In this phase, the raw and cleaned reads from the preprocessing phase are analyzed with [FASTQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://multiqc.info/). This allows us to assess important metrics (e.g. read quality, read numbers, adapter content) in the raw input, and how these metrics are affected by cleaning. Relevant metrics are then extracted from MultiQC outputs into easy-to-parse TSV files[^tsvs] for downstream processing.
 
 [^tsvs]: Specifically, `qc_basic_stats.tsv.gz`, `qc_adapter_stats.tsv.gz`, `qc_quality_base_stats.tsv.gz` and `qc_quality_sequence_stats.tsv.gz`.
-[^eukarya]: As human is the only eukaryotic genome included in the Standard reference database for Kraken2, all sequences assigned to that domain can be assigned to *Homo sapiens*.
 
 ### Pipeline outputs
 
@@ -161,12 +148,8 @@ If the pipeline runs to completion, the following output files are expected.
     5. `qc/qc_adapter_stats.tsv.gz`: Adapter statistics calculated by FASTQC for each sample and preprocessing stage, given as a percentage of reads containing adapter content (`pc_adapters`) at each position along the read (`position`) for each adapter detected (`adapter`) for each read in the read pair (`read_pair`).
     6. `qc/qc_quality_base_stats.tsv.gz`: Per-base read-quality statistics calculated by FASTQC for each sample and preprocessing stage, given as the mean Phred score (`mean_phred_score`) at each position along the read (`position`) for each read in the read pair (`read_pair`).
     7. `qc/qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for each sample and preprocessing stage, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
-    8. `taxonomy_final/taxonomic_composition.tsv.gz`: High-level classification of input reads for each sample by preprocessing stage and taxonomic domain, based on taxonomic analysis of the complete workflow.
-    9. `taxonomy_final/kraken_reports.tsv.gz`: Kraken output reports in TSV format, labeled by sample, based on taxonomic analysis of the complete workflow.
-    10. `taxonomy_pre_dedup/taxonomic_composition.tsv.gz`: High-level classification of input reads for each sample by preprocessing stage and taxonomic domain, based on taxonomic analysis of the cleaned reads (i.e. without deduplication or ribodepletion).
-    11. `taxonomy_pre_dedup/kraken_reports.tsv.gz`: Kraken output reports in TSV format, labeled by sample, based on taxonomic analysis of the cleaned reads (i.e. without deduplication or ribodepletion).
-    12. `taxonomy_post_dedup/taxonomic_composition.tsv.gz`: High-level classification of input reads for each sample by preprocessing stage and taxonomic domain, based on taxonomic analysis of the deduplicated reads (i.e. without ribodepletion).
-    13. `taxonomy_post_dedup/kraken_reports.tsv.gz`: Kraken output reports in TSV format, labeled by sample, based on taxonomic analysis of the deduplicated reads (i.e. without ribodepletion).
+    8. `taxonomy/kraken_reports_merged.tsv.gz`: Kraken output reports in TSV format, labeled by sample and ribosomal status.
+    9. `taxonomy/bracken_reports_merged.tsv.gz`: Bracken output reports in TSV format, labeled by sample and ribosomal status.
 
 [^bitscore]: If only one read aligns to the target, these two fields will be identical. If not, they will give the higher and lower of the best bitscores for the two reads in the pair..
 
@@ -269,7 +252,7 @@ To confirm that the pipeline works in your hands, we provide a small test datase
 If your EC2 instance has the resources to handle it, the simplest way to start using the pipeline is to run the test data through it locally on that instance (i.e. without using S3). To do this:
 
 1. Navigate to the `test` directory.
-2. Edit `nextflow.config` to set `params.ref_dir` to the index directory you chose or created above (specifically `PATH_TO_REF_DIR/output/results`).
+2. Edit `nextflow.config` to set `params.ref_dir` to the index directory you chose or created above (specifically `PATH_TO_REF_DIR/output`).
 3. Still within the `test` directory, run `nextflow run -profile ec2_local .. -resume`.
 4. Wait for the workflow to finish. Inspect the `output` directory to view the processed output files.
 
@@ -302,7 +285,6 @@ To run the workflow on another dataset, you need:
 > [!NOTE]
 > Currently, the pipeline requires the following of raw data files:
 >   - They must be contained in a single directory
->   - Each pair of reads files must have names ending in `_1.fastq.gz` and `_2.fastq.gz`, respectively
 >   - Each pair of read files must be uniquely identifiable by a filename substring (specified in the `library` column of `params.library_tab`)
 
 > [!NOTE]

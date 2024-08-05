@@ -1,7 +1,7 @@
 // Get viral genome sequences based on expanded list of taxids
 process DOWNLOAD_HUMAN_VIRUS_GENOMES {
     label "biopython"
-    label "single"
+    label "max"
     input:
         path(hv_taxids)
     output:
@@ -9,8 +9,6 @@ process DOWNLOAD_HUMAN_VIRUS_GENOMES {
         path("genbank_genomes"), emit: genomes
     shell:
         '''
-        io="--taxids !{hv_taxids} --metadata-table ncbi_fetch_metadata.txt -o genbank_genomes"
-        par="--section genbank --formats fasta --flat-output"
-        ncbi-genome-download ${par} ${io} viral
+        download-ncbi-genomes.py !{hv_taxids} --threads !{task.cpus} --output genbank_genomes --metadata ncbi_fetch_metadata.txt
         '''
 }

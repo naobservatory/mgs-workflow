@@ -54,6 +54,7 @@ def screen_assignment(taxid, parents, virus_db):
     virus_taxids = virus_db["taxid"].unique()
     while taxid not in [0,1,2]:
         if taxid in virus_taxids: return(True)
+        if taxid not in parents.keys(): return(False) # Return False for missing taxids
         taxid = parents[taxid]
     return(False)
 

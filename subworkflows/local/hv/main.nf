@@ -2,11 +2,6 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { EXTRACT_TARBALL as EXTRACT_BT2_INDEX_HV } from "../../../modules/local/extractTarball"
-include { EXTRACT_TARBALL as EXTRACT_BT2_INDEX_HUMAN } from "../../../modules/local/extractTarball"
-include { EXTRACT_TARBALL as EXTRACT_BT2_INDEX_OTHER } from "../../../modules/local/extractTarball"
-include { EXTRACT_TARBALL as EXTRACT_BBM_INDEX_HUMAN } from "../../../modules/local/extractTarball"
-include { EXTRACT_TARBALL as EXTRACT_BBM_INDEX_OTHER } from "../../../modules/local/extractTarball"
 include { BOWTIE2 as BOWTIE2_HV } from "../../../modules/local/bowtie2" addParams(suffix: "hv")
 include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2" addParams(suffix: "human")
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2" addParams(suffix: "other")
@@ -24,6 +19,9 @@ include { FILTER_HV } from "../../../modules/local/filterHV"
 include { COLLAPSE_HV } from "../../../modules/local/collapseHV"
 include { MAKE_HV_FASTA } from "../../../modules/local/makeHvFasta"
 include { COUNT_HV_CLADES } from "../../../modules/local/countHvClades"
+include { BBDUK_HITS } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
+include { CUTADAPT } from "../../../modules/local/cutadapt"
+include { TRIMMOMATIC } from "../../../modules/local/trimmomatic" addParams(encoding: params.encoding)
 
 /***********
 | WORKFLOW |
@@ -35,8 +33,10 @@ workflow HV {
         ref_dir
         kraken_db_ch
         aln_score_threshold
+        adapter_path
     main:
         // Get reference paths
+        hv_ref_path = "${ref_dir}/results/human-viral-genomes-filtered.fasta.gz"
         genomeid_map_path = "${ref_dir}/results/genomeid-to-taxid.json"
         bt2_hv_index_path = "${ref_dir}/results/bt2-hv-index"
         bt2_human_index_path = "${ref_dir}/results/bt2-human-index"
@@ -46,8 +46,13 @@ workflow HV {
         nodes_path = "${ref_dir}/results/taxonomy-nodes.dmp"
         hv_db_path = "${ref_dir}/results/human-virus-db.tsv.gz"
         viral_taxa_path = "${ref_dir}/results/total-virus-db.tsv.gz"
+        // Run initial screen against HV genomes with BBDuk
+        bbduk_ch = BBDUK_HITS(reads_ch, hv_ref_path, params.min_kmer_hits, params.k)
+        // Carry out stringent adapter removal with Cutadapt and Trimmomatic
+        adapt_ch = CUTADAPT(bbduk_ch.fail, adapter_path)
+        trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path)
         // Run Bowtie2 against an HV database and process output
-        bowtie2_ch = BOWTIE2_HV(reads_ch, bt2_hv_index_path, "--no-unal --no-sq --score-min G,5,11")
+        bowtie2_ch = BOWTIE2_HV(trim_ch.reads, bt2_hv_index_path, "--no-unal --no-sq --score-min G,1,1")
         bowtie2_sam_ch = PROCESS_BOWTIE2_SAM_PAIRED(bowtie2_ch.sam, genomeid_map_path)
         bowtie2_unconc_ids_ch = EXTRACT_UNCONC_READ_IDS(bowtie2_ch.sam)
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.reads_unconc.combine(bowtie2_unconc_ids_ch, by: 0))

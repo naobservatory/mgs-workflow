@@ -8,7 +8,7 @@
 
 include { QC } from "../../../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem)
 include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
-include { CONCAT_GZIPPED } from "../../../modules/local/concatGzipped"
+include { CONCAT_GZIPPED } from "../../../modules/local/concatGzipped" addParams(r1_suffix: params.r1_suffix, r2_suffix: params.r2_suffix)
 
 /***********
 | WORKFLOW |
