@@ -20,7 +20,7 @@ workflow TAXONOMY { // todo: rename
         // Prepare reads
         joined_ch = BBMERGE(reads_ch)
         // Deduplicate reads
-        dedup_ch = CLUMPIFY_SINGLE(joined_ch)
+        dedup_ch = CLUMPIFY_SINGLE(joined_ch.reads)
     emit:
         joined_reads = dedup_ch.reads
 }
