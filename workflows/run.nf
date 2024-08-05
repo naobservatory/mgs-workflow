@@ -12,7 +12,7 @@ import java.time.LocalDateTime
 include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
 include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
 include { DEDUP } from "../subworkflows/local/dedup" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "dedup")
-include { RIBODEPLETION } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribo_secondary", min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo_secondary")
+include { RIBODEPLETION } from "../subworkflows/local/ribodepletion" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "ribodepletion", min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribodepletion")
 include { TAXONOMY } from "../subworkflows/local/taxonomy"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 nextflow.preview.output = true
@@ -40,7 +40,7 @@ workflow RUN {
     // merge paired reads, dedup considering RC
     TAXONOMY(RIBODEPLETION.out.reads)
     // Process output
-    qc_ch = RAW.out.qc.concat(CLEAN.out.qc, DEDUP.out.qc, RIBO_INITIAL.out.qc, RIBO_SECONDARY.out.qc)
+    qc_ch = RAW.out.qc.concat(CLEAN.out.qc, DEDUP.out.qc, RIBODEPLETION.out.qc, RIBODEPLETION.out.qc)
     PROCESS_OUTPUT(qc_ch)
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
