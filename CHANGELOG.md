@@ -1,3 +1,8 @@
+# v2.3.1
+
+- Clarifications to documentation (in README and elsewhere)
+- Re-added "joined" status marker to reads output by join_fastq.py
+
 # v2.3.0
 - Restructured run workflow to improve computational efficiency, especially on large datasets
     - Added preliminary BBDuk masking step to HV identification phase

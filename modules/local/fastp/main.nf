@@ -2,6 +2,7 @@ process FASTP {
     label "large"
     label "fastp"
     input:
+        // reads is a list of two files: forward/reverse reads
         tuple val(sample), path(reads)
         path(adapters)
     output:
@@ -9,6 +10,13 @@ process FASTP {
         tuple val(sample), path("${sample}_fastp_failed.fastq.gz"), emit: failed
         tuple val(sample), path("${sample}_fastp.{json,html}"), emit: log
     shell:
+        /* Cleaning not done in CUTADAPT or TRIMMOMATIC:
+        * Higher quality threshold for sliding window trimming;
+        * Removing poly-X tails;
+        * Automatic adapter detection;
+        * Base correction in overlapping paired-end reads;
+        * Filter low complexity reads.
+        */
         '''
         # Define paths and subcommands
         o1=!{sample}_fastp_1.fastq.gz
