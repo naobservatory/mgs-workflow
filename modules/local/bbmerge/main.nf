@@ -1,7 +1,7 @@
 // Merge read pairs into a single sequence
 process BBMERGE {
     label "BBTools"
-    label "single"
+    label "small"
     input:
         tuple val(sample), path(reads)
     output:
