@@ -19,8 +19,8 @@ process BBMERGE {
         # Execute bbmerge
         bbmerge-auto.sh ${io} mix &> ${log}
         # Check for empty output files due to errors
-        if [[ ! -s ${ou1} ]] && [[ ! -s ${om} ]]; then
-            >&2 echo "Error: Empty output files."
+        if [[ ! -s ${om} ]]; then
+            >&2 echo "Error: Empty output file."
             exit 1
         fi
         '''
