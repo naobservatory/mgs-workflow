@@ -40,7 +40,7 @@ workflow RUN {
     // merge paired reads, dedup considering RC
     TAXONOMY(RIBODEPLETION.out.reads)
     // Process output
-    qc_ch = RAW.out.qc.concat(CLEAN.out.qc, DEDUP.out.qc, RIBODEPLETION.out.qc, RIBODEPLETION.out.qc)
+    qc_ch = RAW.out.qc.concat(CLEAN.out.qc, DEDUP.out.qc, RIBODEPLETION.out.qc)
     PROCESS_OUTPUT(qc_ch)
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
