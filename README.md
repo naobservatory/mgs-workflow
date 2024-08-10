@@ -22,7 +22,7 @@ A slight simplification of the overall process is given by this diagram:
 
 ### Index workflow
 
-The index workflow is run by setting `mode = "index"` in the relevant config file, and is intended to be run once (per reasonable length of time) to generate static index and reference files which can then be used by many instantiations of the run workflow. Many of these index/reference files are derived from publicly available reference genomes or other resources, and should thus be updated and re-run periodically as new versions of these become available; however, to keep results comparable across datasets analyzed with the run workflow, this should be done relatively rarely.
+The index workflow generates static index files from reference data. These reference data and indices don't depend on the reads processed by the run workflow, so a set of indices built by the index workflow can be used by multiple instantiations of the run workflow — no need to rebuild indices for every set of reads. The index workflow should be run once per reasonable length of time, balancing two considerations: Many of these index/reference files are derived from publicly available reference genomes or other resources, and should thus be updated and re-run periodically as new versions of these become available; however, to keep results comparable across datasets analyzed with the run workflow, this should be done relatively rarely.
 
 Key inputs to the index workflow include:
 - A URL linking to a suitable Kraken2 database for taxonomic profiling (typically the [latest release](https://benlangmead.github.io/aws-indexes/k2) of the `k2_standard` database).
@@ -40,7 +40,7 @@ Given these inputs, the index workflow:
 
 [^genbank]: Excluding transgenic, contaminated, or erroneous sequences, which are excluded according to a list of sequence ID patterns specified in the config file.
 
-For more information, see `workflows/index.nf` and the associated subworkflows and modules.
+Run the index workflow by setting `mode = "index"` in the relevant config file. For more information, see `workflows/index.nf` and the associated subworkflows and modules.
 
 ### Run workflow
 

@@ -31,8 +31,16 @@ def join_paired_reads(file1, file2, output_file, gap="N"):
             s1, q1 = str(fwd.seq), fwd.letter_annotations["phred_quality"]
             s2, q2 = str(rev.seq.reverse_complement()), rev.letter_annotations["phred_quality"][::-1]
             joined_seq = Seq.Seq(s1 + gap + s2)
+            # Modify the description to include "joined" without duplicating the ID
+            description_parts = fwd.description.split(maxsplit=1)
+            if len(description_parts) > 1 and description_parts[0] == fwd.id:
+                new_description = f"joined {description_parts[1]}"
+            else:
+                new_description = f"joined {fwd.description}"
             joined_qual = {"phred_quality": q1 + [0]*len(gap) + q2}
-            joined_read = SeqIO.SeqRecord(joined_seq, id=fwd.id, name=fwd.name, description=fwd.description, letter_annotations=joined_qual)
+            joined_read = SeqIO.SeqRecord(joined_seq, id=fwd.id, name=fwd.name, 
+                                          description=new_description,
+                                          letter_annotations=joined_qual)
             SeqIO.write(joined_read, out, "fastq")
 
 def main():
