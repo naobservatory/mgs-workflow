@@ -13,7 +13,6 @@ include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fas
 include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
 include { HV } from "../subworkflows/local/hv" addParams(min_kmer_hits: "3", k: "21", bbduk_suffix: "hv", encoding: "${params.quality_encoding}")
 include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
-include { PROFILE } from "../subworkflows/local/profile" addParams(min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo", kraken_memory: "${params.kraken_memory}")
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 nextflow.preview.output = true
 
@@ -44,8 +43,6 @@ workflow RUN {
         blast_nt_path = "${params.ref_dir}/results/nt"
         BLAST_HV(HV.out.fasta, blast_nt_path, params.blast_hv_fraction)
     }
-    // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, kraken_db_path, params.n_reads_profile, params.ref_dir)
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
     PROCESS_OUTPUT(qc_ch)
@@ -73,6 +70,5 @@ workflow RUN {
         // Final results
         HV.out.tsv >> "results/hv"
         HV.out.counts >> "results/hv"
-        PROFILE.out.bracken >> "results/taxonomy"
-        PROFILE.out.kraken >> "results/taxonomy"
+        HV.out.fasta >> "results/hv"
 }
