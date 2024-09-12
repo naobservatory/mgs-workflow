@@ -70,5 +70,4 @@ workflow RUN {
         // Final results
         HV.out.tsv >> "results/hv"
         HV.out.counts >> "results/hv"
-        HV.out.fasta >> "results/hv"
 }

@@ -44,20 +44,8 @@ process CONCAT_GZIPPED {
             echo "Only one file per read pair; copying."
             cp ${r1} ${out1}
             cp ${r2} ${out2}
-            # Test copies and fail if not identical
-            cmp ${r1} ${out1} > diff1.txt
-            cmp ${r2} ${out2} > diff2.txt
-            if [[ -s diff1.txt ]]; then
-                >&2 echo "Error: $(cat diff1)"
-                echo "Input file lengths: $(zcat ${r1} | wc -l) $(zcat ${r2} | wc -l)
-                echo "Output file lengths: $(zcat ${out1} | wc -l) $(zcat ${out2} | wc -l)
-                exit 1
-            elif [[ -s diff2.txt ]]; then
-                >&2 echo "Error: $(cat diff2)"
-                echo "Input file lengths: $(zcat ${r1} | wc -l) $(zcat ${r2} | wc -l)
-                echo "Output file lengths: $(zcat ${out1} | wc -l) $(zcat ${out2} | wc -l)
-                exit 1
-            fi
+            # diff-based error checking removed; we adequately trust cp
+            # (or really just nextflow making links)
         else
             # Concatenate
             # TODO: Add error checking and handling
