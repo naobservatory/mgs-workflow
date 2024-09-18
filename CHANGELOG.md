@@ -1,3 +1,7 @@
+# v2.3.2
+
+- Added validation workflow for post-hoc BLAST validation of putative HV reads.
+
 # v2.3.1
 
 - Clarifications to documentation (in README and elsewhere)
