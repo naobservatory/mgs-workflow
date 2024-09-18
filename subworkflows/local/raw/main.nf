@@ -23,7 +23,6 @@ workflow RAW {
         concat_ch = CONCAT_GZIPPED(raw_dir_path, libraries_ch)
         if ( n_reads_trunc > 0 ) {
             out_ch = TRUNCATE_CONCAT(concat_ch, n_reads_trunc)
-            qc_ch = QC(trunc_ch)
         } else {
             out_ch = concat_ch
         }
