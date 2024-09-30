@@ -57,12 +57,12 @@ workflow RUN {
     publish:
         // Saved inputs
         Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
-        Channel.fromPath("${params.ref_dir}/input/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "input"
+        Channel.fromPath("${params.ref_dir}/input/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
         Channel.fromPath(params.sample_tab) >> "input"
         Channel.fromPath(params.adapters) >> "input"
         params_ch >> "input"
-        time_ch >> "input"
-        version_ch >> "input"
+        time_ch >> "logging"
+        version_ch >> "logging"
         // Intermediate files
         CLEAN.out.reads >> "intermediates/reads/cleaned"
         // QC
