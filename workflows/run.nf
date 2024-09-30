@@ -30,8 +30,7 @@ workflow RUN {
     libraries_ch = Channel
         .fromPath(params.library_tab)
         .splitCsv(header: true)
-        .map{row -> [row.sample, row.library]}
-        .groupTuple()
+        .map{row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2))}
     // Prepare Kraken DB
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     // Preprocessing
@@ -58,7 +57,7 @@ workflow RUN {
         // Saved inputs
         Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
         Channel.fromPath("${params.ref_dir}/input/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "input"
-        Channel.fromPath(params.sample_tab) >> "input"
+        Channel.fromPath(params.library_tab) >> "input"
         Channel.fromPath(params.adapters) >> "input"
         params_ch >> "input"
         time_ch >> "input"
