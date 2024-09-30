@@ -284,6 +284,8 @@ To run the workflow on another dataset, you need:
 > - First column: Sample ID (will refer to this as ${SAMPLE_ID} in the following)
 > - Second column: Path to FASTQ file 1 which should be the forward read file for this sample (should be ${PATH_TO_RAW_DATA}/${SAMPLE_ID}_1.fastq.gz)
 > - Third column: Path to FASTQ file 2 which should be the reverse read file for this sample (should be ${PATH_TO_RAW_DATA}/${SAMPLE_ID}_2.fastq.gz)
+> 
+> The easiest way to get this file is by using the `generate_samplesheet_from_raw_directory.sh` script, which takes an input directory of raw FASTQ files and generates a suitable library file. If you're using data from s3, just be sure to pass in the `s` flag along with the s3 bucket path.
 
 If running on Batch, a good process for starting the pipeline on a new dataset is as follows:
 
