@@ -2,7 +2,7 @@ include { RUN } from "./workflows/run"
 include { RUN2 } from "./workflows/run2"
 include { INDEX } from "./workflows/index"
 include { BASECALL } from "./workflows/basecall"
-
+include { RUN_ONT } from "./workflows/run_ont"
 // Configure working and output directories
 pubDir  = "${params.base_dir}/output"
 
@@ -16,6 +16,9 @@ workflow {
     }
     else if (params.mode == "basecall") {
         BASECALL()
+    }
+    else if (params.mode == "run_ont") {
+        RUN_ONT()
     }
 }
 
