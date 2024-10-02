@@ -16,7 +16,7 @@ process CLUMPIFY_PAIRED {
         op2=!{sample}_dedup_2.fastq.gz
         io="in=${in1} in2=${in2} out=${op1} out2=${op2}"
         # Define parameters
-        par="reorder dedupe containment addcount=t t=!{task.cpus} -Xmx30g"
+        par="reorder dedupe containment passes=6 addcount=t t=!{task.cpus} -Xmx30g"
         # Execute
         clumpify.sh ${io} ${par}
         '''
