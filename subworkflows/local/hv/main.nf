@@ -78,4 +78,5 @@ workflow HV {
         tsv = collapsed_ch
         fasta = fasta_ch
         counts = count_ch
+        merged_summary = tax_ch.merged_summary
 }
