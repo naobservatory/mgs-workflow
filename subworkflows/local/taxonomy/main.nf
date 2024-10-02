@@ -8,6 +8,8 @@
 
 include { SUBSET_READS_PAIRED } from "../../../modules/local/subsetReads" addParams(suffix: "fastq")
 include { BBMERGE } from "../../../modules/local/bbmerge"
+include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
+include { CLUMPIFY_PAIRED } from "../../../modules/local/clumpify"
 include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
 include { CLUMPIFY_SINGLE } from "../../../modules/local/clumpify"
 include { KRAKEN } from "../../../modules/local/kraken" addParams(mem: "${params.kraken_memory}")
@@ -32,8 +34,16 @@ workflow TAXONOMY {
         } else {
             subset_ch = SUBSET_READS_PAIRED(reads_ch, params.read_fraction)
         }
+
+         // Deduplicate reads (if applicable)
+        if ( params.dedup_rc ){
+            paired_dedup_ch = CLUMPIFY_PAIRED(subset_ch)
+        } else {
+            paired_dedup_ch = subset_ch
+        }
         // Prepare reads
-        merged_ch = BBMERGE(subset_ch)
+        merged_ch = BBMERGE(paired_dedup_ch)
+        merged_summary_ch = SUMMARIZE_BBMERGE(merged_ch.merged)
         joined_ch = JOIN_FASTQ(merged_ch.reads)
         // Deduplicate reads (if applicable)
         if ( params.dedup_rc ){
@@ -53,4 +63,5 @@ workflow TAXONOMY {
         kraken_output = kraken_ch.output
         kraken_reports = kraken_merge_ch
         bracken = bracken_merge_ch
+        merged_summary = merged_summary_ch
 }
