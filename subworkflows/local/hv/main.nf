@@ -79,4 +79,5 @@ workflow HV {
         fasta = fasta_ch
         counts = count_ch
         merged_summary = tax_ch.merged_summary
+        dedup_summary = tax_ch.dedup_summary
 }
