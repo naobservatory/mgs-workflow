@@ -73,6 +73,7 @@ workflow RUN {
         HV.out.tsv >> "results/hv"
         HV.out.counts >> "results/hv"
         HV.out.merged_summary >> "results/hv"
+        HV.out.dedup_summary >> "results/hv"
         PROFILE.out.bracken >> "results/taxonomy"
         PROFILE.out.kraken >> "results/taxonomy"
 }
