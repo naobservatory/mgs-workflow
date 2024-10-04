@@ -18,61 +18,100 @@ include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 nextflow.preview.output = true
 
 /*****************
-| MAIN WORKFLOWS |
+| TRIALLING WORKFLOWS |
 *****************/
-
-// Complete primary workflow
+// Workflow only including RAW
 workflow RUN {
     // Start time
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
+
     // Prepare libraries
     libraries_ch = Channel
         .fromPath(params.library_tab)
         .splitCsv(header: true)
         .map{row -> [row.sample, row.library]}
         .groupTuple()
-    // Prepare Kraken DB
-    kraken_db_path = "${params.ref_dir}/results/kraken_db"
-    // Preprocessing
+
+    // Run only RAW subworkflow
     RAW(libraries_ch, params.raw_dir, params.n_reads_trunc)
-    CLEAN(RAW.out.reads, params.adapters)
-    // Extract and count human-viral reads
-    HV(CLEAN.out.reads, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters)
-    // BLAST validation on human-viral reads (optional)
-    if ( params.blast_hv_fraction > 0 ) {
-        blast_nt_path = "${params.ref_dir}/results/nt"
-        BLAST_HV(HV.out.fasta, blast_nt_path, params.blast_hv_fraction)
-    }
-    // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, kraken_db_path, params.n_reads_profile, params.ref_dir)
-    // Process output
-    qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
-    PROCESS_OUTPUT(qc_ch)
+
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
     time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
+
     publish:
         // Saved inputs
-        Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
-        Channel.fromPath("${params.ref_dir}/input/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "input"
-        Channel.fromPath(params.sample_tab) >> "input"
-        Channel.fromPath(params.adapters) >> "input"
         params_ch >> "input"
         time_ch >> "input"
         version_ch >> "input"
-        // Intermediate files
-        CLEAN.out.reads >> "intermediates/reads/cleaned"
-        // QC
-        PROCESS_OUTPUT.out.basic >> "results/qc"
-        PROCESS_OUTPUT.out.adapt >> "results/qc"
-        PROCESS_OUTPUT.out.qbase >> "results/qc"
-        PROCESS_OUTPUT.out.qseqs >> "results/qc"
-        // Final results
-        HV.out.tsv >> "results/hv"
-        HV.out.counts >> "results/hv"
-        PROFILE.out.bracken >> "results/taxonomy"
-        PROFILE.out.kraken >> "results/taxonomy"
+        Channel.fromPath(params.library_tab) >> "input"
+
+        // RAW outputs
+        RAW.out.reads >> "results/raw_reads"
+        RAW.out.qc >> "results/raw_qc"
 }
+
+
+/*****************
+| MAIN WORKFLOWS (DEACTIVATED) |
+*****************/
+
+// Complete primary workflow
+// workflow RUN {
+//     // Start time
+//     start_time = new Date()
+//     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
+
+//     // Prepare libraries
+//     libraries_ch = Channel
+//         .fromPath(params.library_tab)
+//         .splitCsv(header: true)
+//         .map{row -> [row.sample, row.library]}
+//         .groupTuple()
+//     // Prepare Kraken DB
+//     kraken_db_path = "${params.ref_dir}/results/kraken_db"
+//     // Preprocessing
+//     RAW(libraries_ch, params.raw_dir, params.n_reads_trunc)
+//     CLEAN(RAW.out.reads, params.adapters)
+//     // Extract and count human-viral reads
+//     HV(CLEAN.out.reads, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters)
+//     // BLAST validation on human-viral reads (optional)
+//     if ( params.blast_hv_fraction > 0 ) {
+//         blast_nt_path = "${params.ref_dir}/results/nt"
+//         BLAST_HV(HV.out.fasta, blast_nt_path, params.blast_hv_fraction)
+//     }
+//     // Taxonomic profiling
+//     PROFILE(CLEAN.out.reads, kraken_db_path, params.n_reads_profile, params.ref_dir)
+//     // Process output
+//     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
+//     PROCESS_OUTPUT(qc_ch)
+//     // Publish results
+//     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
+//     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
+//     time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
+//     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
+//     publish:
+//         // Saved inputs
+//         Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
+//         Channel.fromPath("${params.ref_dir}/input/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "input"
+//         Channel.fromPath(params.sample_tab) >> "input"
+//         Channel.fromPath(params.adapters) >> "input"
+//         params_ch >> "input"
+//         time_ch >> "input"
+//         version_ch >> "input"
+//         // Intermediate files
+//         CLEAN.out.reads >> "intermediates/reads/cleaned"
+//         // QC
+//         PROCESS_OUTPUT.out.basic >> "results/qc"
+//         PROCESS_OUTPUT.out.adapt >> "results/qc"
+//         PROCESS_OUTPUT.out.qbase >> "results/qc"
+//         PROCESS_OUTPUT.out.qseqs >> "results/qc"
+//         // Final results
+//         HV.out.tsv >> "results/hv"
+//         HV.out.counts >> "results/hv"
+//         PROFILE.out.bracken >> "results/taxonomy"
+//         PROFILE.out.kraken >> "results/taxonomy"
+// }
