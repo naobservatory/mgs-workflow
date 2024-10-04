@@ -44,14 +44,26 @@ process_n_bases <- function(n_bases_vec){
 }
 
 split_sample <- function(tab, sample_col_in="sample", sample_col_out="sample", split_char = "_", states=pipeline_states){
-    tab_out <- tab %>% mutate(read_pair = 1)
+    # Purge state descriptors
+    samples <- tab[[sample_col_in]]
+    for (s in states){
+        samples <- gsub(s, "", samples)
+    }
+    samples <- gsub("__", "_", samples)
+    # Split and extract read pairs and IDs
+    samples_split <- samples %>% str_split(split_char)
+    read_pairs <- sapply(samples_split, last)
+    sample_ids <- sapply(samples_split, function(x) head(x, -1) %>% paste(collapse=split_char))
+    # Write output
+    tab_out <- tab %>% mutate(read_pair = read_pairs)
+    tab_out[[sample_col_out]] <- sample_ids
     return(tab_out)
 }
 
 basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
   # Read in basic stats from multiqc JSON
   stats_json <- multiqc_json$report_general_stats_data
-  tab_json <- lapply(names(stats_json),
+  tab_json <- lapply(names(stats_json), 
                      function(x) stats_json[[x]] %>% mutate(sample=x)) %>% bind_rows() %>%
     split_sample %>%
     group_by(sample) %>%
@@ -67,15 +79,17 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
     group_by(sample) %>% summarize_all(function(x) paste(x, collapse="/")) %>%
     select(-read_pair)
   print(tab_tsv)
+  tab_tsv_2 = tab_tsv %>%
+    mutate(n_bases_approx = n_bases_approx %>% str_split("/") %>% sapply(as.numeric) %>% colSums())
   # Combine
-  tab <- tab_json %>% inner_join(tab_tsv, by="sample")
+  tab <- tab_json %>% inner_join(tab_tsv_2, by="sample")
   return(tab)
 }
 
 extract_adapter_data_single <- function(adapter_dataset){
   # Convert a single JSON adapter dataset into a tibble
   data <- lapply(1:length(adapter_dataset$name), function(n)
-    adapter_dataset$data[[n]] %>% as.data.frame %>%
+    adapter_dataset$data[[n]] %>% as.data.frame %>% 
       mutate(sample=adapter_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(position=V1, pc_adapters=V2) %>%
@@ -95,7 +109,7 @@ extract_adapter_data <- function(multiqc_json){
 extract_per_base_quality_single <- function(per_base_quality_dataset){
   # Convert a single JSON per-base-quality dataset into a tibble
   data <- lapply(1:length(per_base_quality_dataset$name), function(n)
-    per_base_quality_dataset$data[[n]] %>% as.data.frame %>%
+    per_base_quality_dataset$data[[n]] %>% as.data.frame %>% 
       mutate(sample=per_base_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(position=V1, mean_phred_score=V2) %>%
@@ -113,7 +127,7 @@ extract_per_base_quality <- function(multiqc_json){
 extract_per_sequence_quality_single <- function(per_sequence_quality_dataset){
   # Convert a single JSON per-sequence-quality dataset into a tibble
   data <- lapply(1:length(per_sequence_quality_dataset$name), function(n)
-    per_sequence_quality_dataset$data[[n]] %>% as.data.frame %>%
+    per_sequence_quality_dataset$data[[n]] %>% as.data.frame %>% 
       mutate(sample=per_sequence_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(mean_phred_score=V1, n_sequences=V2) %>%
