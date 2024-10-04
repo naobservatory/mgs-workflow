@@ -6,9 +6,14 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { QC } from "../../../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem)
-include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
-include { CONCAT_GZIPPED } from "../../../modules/local/concatGzipped" addParams(r1_suffix: params.r1_suffix, r2_suffix: params.r2_suffix)
+include { QC} from "../../../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem)
+
+if ( params.read_type == "single_end" ) {
+    include { CONCAT_GZIPPED_SINGLE as CONCAT_GZIPPED } from "../../../modules/local/concatGzipped" addParams(r1_suffix: params.r1_suffix, r2_suffix: params.r2_suffix)
+} else if ( params.read_type == "paired_end" ) {
+    include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
+    include { CONCAT_GZIPPED_PAIRED as CONCAT_GZIPPED } from "../../../modules/local/concatGzipped" addParams(r1_suffix: params.r1_suffix, r2_suffix: params.r2_suffix)
+}
 
 /***********
 | WORKFLOW |
