@@ -1,0 +1,9 @@
+library,sample,dataset,bioproject,kit,replicate
+D23-14904-1,1A,test,NA,Zymo quick-RNA,A
+D23-14905-1,2A,test,NA,Zymo quick-DNA/RNA,A
+D23-14906-1,6A,test,NA,QIAamp Viral RNA,A
+D23-14907-1,1C,test,NA,Zymo quick-RNA,C
+D23-14908-1,2C,test,NA,Zymo quick-DNA/RNA,C
+D23-14909-1,6C,test,NA,QIAamp Viral RNA,C
+D23-14910-1,SS1,test,NA,QIAamp Viral RNA,S1
+D23-14911-1,SS2,test,NA,QIAamp Viral RNA,S2
