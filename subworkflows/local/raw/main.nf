@@ -16,7 +16,6 @@ include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
 workflow RAW {
     take:
         libraries_ch
-        raw_dir_path
         n_reads_trunc
     main:
         concat_ch = libraries_ch.map { sample, read1, read2 ->
