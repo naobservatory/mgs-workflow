@@ -37,6 +37,12 @@ workflow RUN {
     RAW(libraries_ch, params.raw_dir, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
 
+    // Prepare Kraken DB
+    kraken_db_path = "${params.ref_dir}/results/kraken_db"
+
+    // Taxonomic profiling
+    PROFILE(CLEAN.out.reads, kraken_db_path, params.n_reads_profile, params.ref_dir)
+
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
@@ -56,6 +62,10 @@ workflow RUN {
 
         // CLEAN outputs
         CLEAN.out.qc >> "results/cleaned_qc"
+
+        // PROFILE outputs
+        PROFILE.out.bracken >> "results/taxonomy"
+        PROFILE.out.kraken >> "results/taxonomy"
 }
 
 
@@ -88,7 +98,7 @@ workflow RUN {
 //         BLAST_HV(HV.out.fasta, blast_nt_path, params.blast_hv_fraction)
 //     }
 //     // Taxonomic profiling
-//     PROFILE(CLEAN.out.reads, kraken_db_path, params.n_reads_profile, params.ref_dir)
+//
 //     // Process output
 //     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
 //     PROCESS_OUTPUT(qc_ch)
