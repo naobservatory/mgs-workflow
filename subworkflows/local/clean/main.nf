@@ -7,7 +7,12 @@
 ***************************/
 
 include { QC } from "../../../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem)
-include { FASTP } from "../../../modules/local/fastp"
+
+if ( params.read_type == "single_end" ) {
+    include { FASTP_SINGLE as FASTP } from "../../../modules/local/fastp"
+} else if ( params.read_type == "paired_end" ) {
+    include { FASTP_PAIRED as FASTP } from "../../../modules/local/fastp"
+}
 
 /***********
 | WORKFLOW |
