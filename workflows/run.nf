@@ -33,8 +33,9 @@ workflow RUN {
         .map{row -> [row.sample, row.library]}
         .groupTuple()
 
-    // Run only RAW subworkflow
+    // Run only RAW and CLEAN subworkflow
     RAW(libraries_ch, params.raw_dir, params.n_reads_trunc)
+    CLEAN(RAW.out.reads, params.adapters)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -48,10 +49,13 @@ workflow RUN {
         time_ch >> "input"
         version_ch >> "input"
         Channel.fromPath(params.library_tab) >> "input"
+        Channel.fromPath(params.adapters) >> "input"
 
         // RAW outputs
-        RAW.out.reads >> "results/raw_reads"
         RAW.out.qc >> "results/raw_qc"
+
+        // CLEAN outputs
+        CLEAN.out.qc >> "results/cleaned_qc"
 }
 
 
