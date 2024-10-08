@@ -6,6 +6,7 @@ include { BOWTIE2 as BOWTIE2_HV } from "../../../modules/local/bowtie2" addParam
 include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2" addParams(suffix: "human")
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2" addParams(suffix: "other")
 include { PROCESS_BOWTIE2_SAM_PAIRED } from "../../../modules/local/processBowtie2Sam"
+include { COUNT_DUPLICATE_READS } from "../../../modules/local/countDuplicateReads"
 include { EXTRACT_UNCONC_READ_IDS } from "../../../modules/local/extractUnconcReadIDs"
 include { EXTRACT_UNCONC_READS } from "../../../modules/local/extractUnconcReads"
 include { COMBINE_MAPPED_BOWTIE2_READS } from "../../../modules/local/combineMappedBowtie2Reads"
@@ -54,6 +55,7 @@ workflow HV {
         // Run Bowtie2 against an HV database and process output
         bowtie2_ch = BOWTIE2_HV(trim_ch.reads, bt2_hv_index_path, "--no-unal --no-sq --score-min G,1,1")
         bowtie2_sam_ch = PROCESS_BOWTIE2_SAM_PAIRED(bowtie2_ch.sam, genomeid_map_path)
+        bowtie2_dedup_ch = COUNT_DUPLICATE_READS(bowtie2_sam_ch)
         bowtie2_unconc_ids_ch = EXTRACT_UNCONC_READ_IDS(bowtie2_ch.sam)
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.reads_unconc.combine(bowtie2_unconc_ids_ch, by: 0))
         bowtie2_reads_combined_ch = COMBINE_MAPPED_BOWTIE2_READS(bowtie2_ch.reads_conc.combine(bowtie2_unconc_reads_ch, by: 0))
@@ -80,4 +82,5 @@ workflow HV {
         counts = count_ch
         merged_summary = tax_ch.merged_summary
         dedup_summary = tax_ch.dedup_summary
+        duplicate_reads = bowtie2_dedup_ch
 }
