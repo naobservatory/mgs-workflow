@@ -273,21 +273,21 @@ Finally, you can run the test dataset through the pipeline on AWS Batch. To do t
 To run the workflow on another dataset, you need:
 
 1. Accessible raw data files in Gzipped FASTQ format, named appropriately.
-2. A library file specifying the samples, along with paths to the forward and reverse read files for each sample.
+2. A sample sheet file specifying the samples, along with paths to the forward and reverse read files for each sample.
 3. A config file in a clean launch directory, pointing to:
     - The directory containing the raw data (`params.raw_dir`).
     - The base directory in which to put the working and output directories (`params.base_dir`).
     - The directory containing the outputs of the reference workflow (`params.ref_dir`).
-    - The library file (`params.library_tab`).
+    - The sample sheet (`params.sample_sheet`).
     - Various other parameter values.
 
 > [!NOTE]
-> The library file must have the following format for each row:
-> - First column: Sample ID (will refer to this as ${SAMPLE_ID} in the following)
-> - Second column: Path to FASTQ file 1 which should be the forward read file for this sample (should be ${PATH_TO_RAW_DATA}/${SAMPLE_ID}_1.fastq.gz)
-> - Third column: Path to FASTQ file 2 which should be the reverse read file for this sample (should be ${PATH_TO_RAW_DATA}/${SAMPLE_ID}_2.fastq.gz)
+> The samplesheet must have the following format for each row:
+> - First column: Sample ID
+> - Second column: Path to FASTQ file 1 which should be the forward read for this sample
+> - Third column: Path to FASTQ file 2 which should be the reverse read for this sample
 > 
-> The easiest way to get this file is by using the `generate_samplesheet_from_raw_directory.sh` script, which takes an input directory of raw FASTQ files and generates a suitable library file. If you're using data from s3, just be sure to pass in the `s` flag along with the s3 bucket path.
+> The easiest way to get this file is by using the `generate_samplesheet.sh` script. As input, this script takes a path to raw FASTQ files (`dir_path`), and forward (`forward_suffix`) and reverse (`reverse_suffix`) read suffixes. In the situation that you have text between the sample id and the read suffixes, you can pass that in as regex in the `middle` parameter. Those using data from s3 should make sure to set the `s3` parameter to 1. As output, the script generates a CSV file (`samplesheet.csv`) which can be used as input for the pipeline.
 
 If running on Batch, a good process for starting the pipeline on a new dataset is as follows:
 
