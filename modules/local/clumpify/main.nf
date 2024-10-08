@@ -26,7 +26,7 @@ process CLUMPIFY_PAIRED {
 // NB: Should handle RC duplicates
 process CLUMPIFY_SINGLE {
     label "large"
-    label "BBTools"
+    label "customBbtools"
     input:
         tuple val(sample), path(reads)
     output:
@@ -38,8 +38,8 @@ process CLUMPIFY_SINGLE {
         out=!{sample}_dedup.fastq.gz
         io="in=${in} out=${out}"
         # Define parameters
-        par="reorder dedupe containment rcomp passes=6 addcount=t t=!{task.cpus} -Xmx30g"
+        par="reorder markduplicates allduplicates rcomp passes=6 t=!{task.cpus} -Xmx30g"
         # Execute
-        clumpify.sh ${io} ${par}
+        clumpify.sh ${io} ${par} > duplicate_list.txt 2> log.txt
         '''
 }
