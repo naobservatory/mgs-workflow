@@ -15,10 +15,10 @@ include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
 
 workflow RAW {
     take:
-        libraries_ch
+        samplesheet
         n_reads_trunc
     main:
-        concat_ch = libraries_ch.map { sample, read1, read2 ->
+        concat_ch = samplesheet.map { sample, read1, read2 ->
             tuple(sample, [read1, read2])
         }
         if ( n_reads_trunc > 0 ) {
