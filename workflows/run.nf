@@ -26,15 +26,15 @@ workflow RUN {
     // Start time
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
-    // Prepare libraries
-    libraries_ch = Channel
+    // Prepare samplesheet
+    samplesheet = Channel
         .fromPath(params.sample_sheet)
         .splitCsv(header: true)
         .map{row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2))}
     // Prepare Kraken DB
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     // Preprocessing
-    RAW(libraries_ch, params.n_reads_trunc)
+    RAW(samplesheet, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
     // Extract and count human-viral reads
     HV(CLEAN.out.reads, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters)
