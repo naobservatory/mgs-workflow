@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat", r1_suffix: params.r1_suffix, r2_suffix: params.r2_suffix)
+include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
 include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
 include { HV } from "../subworkflows/local/hv" addParams(min_kmer_hits: "3", k: "21", bbduk_suffix: "hv", encoding: "${params.quality_encoding}")
 include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
@@ -26,16 +26,15 @@ workflow RUN {
     // Start time
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
-    // Prepare libraries
-    libraries_ch = Channel
-        .fromPath(params.library_tab)
+    // Prepare samplesheet
+    samplesheet = Channel
+        .fromPath(params.sample_sheet)
         .splitCsv(header: true)
-        .map{row -> [row.sample, row.library]}
-        .groupTuple()
+        .map{row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2))}
     // Prepare Kraken DB
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     // Preprocessing
-    RAW(libraries_ch, params.raw_dir, params.n_reads_trunc)
+    RAW(samplesheet, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
     // Extract and count human-viral reads
     HV(CLEAN.out.reads, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters)
@@ -58,7 +57,7 @@ workflow RUN {
         // Saved inputs
         Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
         Channel.fromPath("${params.ref_dir}/input/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
-        Channel.fromPath(params.sample_tab) >> "input"
+        Channel.fromPath(params.sample_sheet) >> "input"
         Channel.fromPath(params.adapters) >> "input"
         params_ch >> "input"
         time_ch >> "logging"
