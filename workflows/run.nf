@@ -74,6 +74,7 @@ workflow RUN {
         HV.out.counts >> "results/hv"
         HV.out.merged_summary >> "results/hv"
         HV.out.dedup_summary >> "results/hv"
+        HV.out.duplicate_reads >> "results/hv"
         PROFILE.out.bracken >> "results/taxonomy"
         PROFILE.out.kraken >> "results/taxonomy"
 }
