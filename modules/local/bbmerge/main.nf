@@ -5,6 +5,7 @@ process BBMERGE {
     input:
         tuple val(sample), path(reads)
     output:
+        tuple val(sample), path("${sample}_bbmerge_merged.fastq.gz"), emit: merged
         tuple val(sample), path("${sample}_bbmerge_{merged,unmerged_1,unmerged_2}.fastq.gz"), emit: reads
         tuple val(sample), path("${sample}_bbmerge_{stats,log}.txt"), emit: log
     shell:

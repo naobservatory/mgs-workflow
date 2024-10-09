@@ -5,6 +5,8 @@ process COLLAPSE_HV {
     memory "16.GB"
     input:
         path(hv_hits_filtered)
+        path(merged_bbmerge_paired_results)
+        path(merged_bbmerge_concat_results)
     output:
         path("hv_hits_putative_collapsed.tsv.gz")
     shell:
@@ -33,6 +35,21 @@ process COLLAPSE_HV {
             adj_score_fwd = rmax(adj_score_fwd), adj_score_rev = rmax(adj_score_rev)
             ) %>% mutate(adj_score_max = pmax(adj_score_fwd, adj_score_rev))
         print(dim(reads_collapsed))
-        write_tsv(reads_collapsed, "hv_hits_putative_collapsed.tsv.gz")
+      
+        bbmerge_merged <- read_tsv("!{merged_bbmerge_paired_results}", col_names = TRUE, show_col_types = FALSE) %>% 
+            mutate(bbmerge_merge_status = 1) %>% rename(bbmerge_frag_length=frag_length)
+        
+
+        dedup <- read_tsv("!{merged_bbmerge_concat_results}", col_names = TRUE, show_col_types = FALSE) %>% 
+            rename(merged_concatenated_sequence=sequence, clumpify_dupcount=counts)
+
+        bbtools_summary <- left_join(dedup, bbmerge_merged, by = "seq_id") %>%
+            mutate(bbmerge_merge_status = ifelse(is.na(bbmerge_merge_status), 0, bbmerge_merge_status),
+            seq_id = str_remove(seq_id, "@")
+            ) 
+        
+        reads_collapsed_with_bbtools_summary <- left_join(reads_collapsed, bbtools_summary, by = "seq_id")
+
+        write_tsv(reads_collapsed_with_bbtools_summary, "hv_hits_putative_collapsed.tsv.gz")
         '''
 }
