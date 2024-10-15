@@ -75,5 +75,4 @@ workflow RUN {
 
         PROFILE.out.bracken >> "results/taxonomy"
         PROFILE.out.kraken >> "results/taxonomy"
-        HV.out.duplicate_reads >> "results/hv"
 }
