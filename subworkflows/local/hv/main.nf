@@ -6,7 +6,7 @@ include { BOWTIE2 as BOWTIE2_HV } from "../../../modules/local/bowtie2" addParam
 include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2" addParams(suffix: "human")
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2" addParams(suffix: "other")
 include { PROCESS_BOWTIE2_SAM_PAIRED } from "../../../modules/local/processBowtie2Sam"
-include { COUNT_ALIGNMENT_DUPLICATES } from "../../../modules/local/countAlignmentDuplicates" addParams(fuzzy_match: 0)
+include { COUNT_ALIGNMENT_DUPLICATES } from "../../../modules/local/countAlignmentDuplicates" addParams(fuzzy_match: params.fuzzy_match.toInteger())
 include { EXTRACT_UNCONC_READ_IDS } from "../../../modules/local/extractUnconcReadIDs"
 include { EXTRACT_UNCONC_READS } from "../../../modules/local/extractUnconcReads"
 include { COMBINE_MAPPED_BOWTIE2_READS } from "../../../modules/local/combineMappedBowtie2Reads"
