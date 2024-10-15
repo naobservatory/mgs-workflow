@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 
 include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
 include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
-include { HV } from "../subworkflows/local/hv" addParams(min_kmer_hits: "3", k: "21", bbduk_suffix: "hv", encoding: "${params.quality_encoding}")
+include { HV } from "../subworkflows/local/hv" addParams(min_kmer_hits: "3", k: "21", bbduk_suffix: "hv", encoding: "${params.quality_encoding}", fuzzy_match: "${params.fuzzy_match_alignment_duplicates}")
 include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
 include { PROFILE } from "../subworkflows/local/profile" addParams(min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo", kraken_memory: "${params.kraken_memory}")
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
