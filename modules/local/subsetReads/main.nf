@@ -72,12 +72,18 @@ process SUBSET_READS_PAIRED_TARGET {
         n_reads=$(zcat ${in1} | wc -l | awk '{ print $1/4 }')
         echo "Input reads: ${n_reads}"
         echo "Target reads: !{readTarget}"
-        frac=$(awk -v a=${n_reads} -v b=!{readTarget} 'BEGIN {result = b/a; print (result > 1) ? 1 : result}')
-        echo "Read fraction: ${frac}"
-        # Carry out subsetting
-        seed=${RANDOM}
-        seqtk sample -s ${seed} ${in1} ${frac} | gzip -c > ${out1}
-        seqtk sample -s ${seed} ${in2} ${frac} | gzip -c > ${out2}
+        if (( ${n_reads} <= !{readTarget} )); then
+            echo "Target larger than input; returning all reads."
+            cp ${in1} ${out1}
+            cp ${in2} ${out2}
+        else
+            frac=$(awk -v a=${n_reads} -v b=!{readTarget} 'BEGIN {result = b/a; print (result > 1) ? 1.0 : result}')
+            echo "Read fraction for subsetting: ${frac}"
+            # Carry out subsetting
+            seed=${RANDOM}
+            seqtk sample -s ${seed} ${in1} ${frac} | gzip -c > ${out1}
+            seqtk sample -s ${seed} ${in2} ${frac} | gzip -c > ${out2}
+        fi
         # Count reads for validation
         echo "Output reads: $(zcat ${out1} | wc -l | awk '{ print $1/4 }')"
         '''

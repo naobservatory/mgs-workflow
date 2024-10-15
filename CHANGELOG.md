@@ -1,3 +1,6 @@
+# v2.3.2
+- Fixed subsetReads to run on all reads when the number of reads per sample is below the set threshold.
+
 # v2.3.1
 
 - Clarifications to documentation (in README and elsewhere)
