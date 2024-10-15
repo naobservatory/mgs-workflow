@@ -6,7 +6,7 @@ include { BOWTIE2 as BOWTIE2_HV } from "../../../modules/local/bowtie2" addParam
 include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2" addParams(suffix: "human")
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2" addParams(suffix: "other")
 include { PROCESS_BOWTIE2_SAM_PAIRED } from "../../../modules/local/processBowtie2Sam"
-include { COUNT_DUPLICATE_READS } from "../../../modules/local/countDuplicateReads"
+include { COUNT_ALIGNMENT_DUPLICATES } from "../../../modules/local/countAlignmentDuplicates" addParams(fuzzy_match: 0)
 include { EXTRACT_UNCONC_READ_IDS } from "../../../modules/local/extractUnconcReadIDs"
 include { EXTRACT_UNCONC_READS } from "../../../modules/local/extractUnconcReads"
 include { COMBINE_MAPPED_BOWTIE2_READS } from "../../../modules/local/combineMappedBowtie2Reads"
@@ -18,6 +18,7 @@ include { MERGE_SAM_KRAKEN } from "../../../modules/local/mergeSamKraken"
 include { MERGE_TSVS as MERGE_TSVS_BOWTIE2_KRAKEN } from "../../../modules/local/mergeTsvs" addParams(name: "bowtie2_kraken_merged")
 include { MERGE_TSVS as MERGE_TSVS_BBMERGE_PAIRED } from "../../../modules/local/mergeTsvs" addParams(name: "bbmerge_paired")
 include { MERGE_TSVS as MERGE_TSVS_BBMERGE_CONCAT } from "../../../modules/local/mergeTsvs" addParams(name: "bbmerge_concat")
+include { MERGE_TSVS as MERGE_TSVS_ALIGNMENT_DUPLICATES } from "../../../modules/local/mergeTsvs" addParams(name: "alignment_duplicates")
 include { FILTER_HV } from "../../../modules/local/filterHV"
 include { COLLAPSE_HV } from "../../../modules/local/collapseHV"
 include { MAKE_HV_FASTA } from "../../../modules/local/makeHvFasta"
@@ -57,7 +58,7 @@ workflow HV {
         // Run Bowtie2 against an HV database and process output
         bowtie2_ch = BOWTIE2_HV(trim_ch.reads, bt2_hv_index_path, "--no-unal --no-sq --score-min G,1,1")
         bowtie2_sam_ch = PROCESS_BOWTIE2_SAM_PAIRED(bowtie2_ch.sam, genomeid_map_path)
-        bowtie2_dedup_ch = COUNT_DUPLICATE_READS(bowtie2_sam_ch)
+        alignment_dups = COUNT_ALIGNMENT_DUPLICATES(bowtie2_sam_ch)
         bowtie2_unconc_ids_ch = EXTRACT_UNCONC_READ_IDS(bowtie2_ch.sam)
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.reads_unconc.combine(bowtie2_unconc_ids_ch, by: 0))
         bowtie2_reads_combined_ch = COMBINE_MAPPED_BOWTIE2_READS(bowtie2_ch.reads_conc.combine(bowtie2_unconc_reads_ch, by: 0))
@@ -74,15 +75,15 @@ workflow HV {
         merged_ch = MERGE_TSVS_BOWTIE2_KRAKEN(bowtie2_kraken_merged_ch.collect().ifEmpty([]))
         merged_bbmerge_paired_results = MERGE_TSVS_BBMERGE_PAIRED(tax_ch.merged_summary.collect().ifEmpty([]))
         merged_bbmerge_concat_results = MERGE_TSVS_BBMERGE_CONCAT(tax_ch.dedup_summary.collect().ifEmpty([]))
+        merged_alignment_dups = MERGE_TSVS_ALIGNMENT_DUPLICATES(alignment_dups.collect().ifEmpty([]))
         // Filter and process putative HV hit TSV
         filtered_ch = FILTER_HV(merged_ch, aln_score_threshold)
-        collapsed_ch = COLLAPSE_HV(filtered_ch, merged_bbmerge_paired_results, merged_bbmerge_concat_results)
+        collapsed_ch = COLLAPSE_HV(filtered_ch, merged_bbmerge_paired_results, merged_bbmerge_concat_results, merged_alignment_dups)
         fasta_ch = MAKE_HV_FASTA(collapsed_ch)
         // Count clades
         count_ch = COUNT_HV_CLADES(collapsed_ch, viral_taxa_path)
     emit:
         tsv = collapsed_ch
         fasta = fasta_ch
-        duplicate_reads = bowtie2_dedup_ch
         counts = count_ch
 }
