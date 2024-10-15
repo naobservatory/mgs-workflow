@@ -7,6 +7,7 @@ process COLLAPSE_HV {
         path(hv_hits_filtered)
         path(merged_bbmerge_paired_results)
         path(merged_bbmerge_concat_results)
+        path(merged_alignment_dups)
     output:
         path("hv_hits_putative_collapsed.tsv.gz")
     shell:
@@ -48,7 +49,14 @@ process COLLAPSE_HV {
             seq_id = str_remove(seq_id, "@")
             ) 
         
-        reads_collapsed_with_bbtools_summary <- left_join(reads_collapsed, bbtools_summary, by = "seq_id")
+        alignment_dups <- read_tsv("!{merged_alignment_dups}", col_names = TRUE, show_col_types = FALSE) %>%
+            rename(seq_id = query_name, 
+            bowtie2_frag_length = fragment_length, 
+            bowtie2_exemplar = exemplar,
+            bowtie2_dupcount = dup_count)
+
+        reads_collapsed_with_bbtools_summary <- left_join(reads_collapsed, bbtools_summary, by = "seq_id") %>%
+            left_join(alignment_dups, by = "seq_id")
 
         write_tsv(reads_collapsed_with_bbtools_summary, "hv_hits_putative_collapsed.tsv.gz")
         '''
