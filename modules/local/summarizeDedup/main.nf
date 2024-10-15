@@ -4,7 +4,7 @@ process SUMMARIZE_DEDUP {
     input:
         tuple val(sample), path(merged)
     output:
-        tuple val(sample), path("${sample}_dedup_summary.txt")
+        path("${sample}_dedup_summary.txt")
     script:
         """
         zcat ${merged} | awk '

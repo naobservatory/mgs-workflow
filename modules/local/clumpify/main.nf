@@ -16,7 +16,7 @@ process CLUMPIFY_PAIRED {
         op2=!{sample}_dedup_2.fastq.gz
         io="in=${in1} in2=${in2} out=${op1} out2=${op2}"
         # Define parameters
-        par="reorder dedupe containment passes=6 addcount=t t=!{task.cpus} -Xmx30g"
+        par="reorder dedupe passes=6 addcount=t t=!{task.cpus} -Xmx30g"
         # Execute
         clumpify.sh ${io} ${par}
         '''
@@ -38,7 +38,7 @@ process CLUMPIFY_SINGLE {
         out=!{sample}_dedup.fastq.gz
         io="in=${in} out=${out}"
         # Define parameters
-        par="reorder markduplicates allduplicates rcomp passes=6 t=!{task.cpus} -Xmx30g"
+        par="reorder dedupe rcomp passes=6 addcount=t t=!{task.cpus} -Xmx30g"
         # Execute
         clumpify.sh ${io} ${par} > duplicate_list.txt 2> log.txt
         '''

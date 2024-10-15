@@ -4,7 +4,7 @@ process SUMMARIZE_BBMERGE {
     input:
         tuple val(sample), path(merged)
     output:
-        tuple val(sample), path("${sample}_bbmerge_merged_summary.txt")
+        path("${sample}_bbmerge_merged_summary.txt")
     script:
         """
         zcat ${merged} | awk '
