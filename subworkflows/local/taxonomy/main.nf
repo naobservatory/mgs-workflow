@@ -44,7 +44,8 @@ workflow TAXONOMY {
         }
         // Prepare reads
         merged_ch = BBMERGE(paired_dedup_ch)
-        merged_summary_ch = SUMMARIZE_BBMERGE(merged_ch.merged)
+        // Only want to summarize the merged elements
+        summarize_bbmerge_ch = SUMMARIZE_BBMERGE(merged_ch.reads.map{sample, files -> [sample, files[0]]})
         joined_ch = JOIN_FASTQ(merged_ch.reads)
         // Deduplicate reads (if applicable)
         if ( params.dedup_rc ){
@@ -53,7 +54,7 @@ workflow TAXONOMY {
             dedup_ch = joined_ch
         }
         // Summarize last of the output
-        summary_ch = SUMMARIZE_DEDUP(dedup_ch)
+        summarize_dedup_ch = SUMMARIZE_DEDUP(dedup_ch)
 
         // Run Kraken and munge reports
         kraken_ch = KRAKEN(dedup_ch, kraken_db_ch)
@@ -67,6 +68,6 @@ workflow TAXONOMY {
         kraken_output = kraken_ch.output
         kraken_reports = kraken_merge_ch
         bracken = bracken_merge_ch
-        merged_summary = merged_summary_ch
-        dedup_summary = summary_ch
+        bbmerge_summary = summarize_bbmerge_ch
+        dedup_summary = summarize_dedup_ch
 }
