@@ -10,7 +10,7 @@ The pipeline currently consists of two workflows, an **index** workflow and a **
 
 The run workflow then consists of five phases:
 
-1. A **preprocessing phase**, in which input files are concatenated according to sample identity and undergo adapter & quality trimming.
+1. A **preprocessing phase**, in which input files undergo adapter & quality trimming.
 2. A **viral identification phase**, in which a custom multi-step pipeline based around BBDuk, Bowtie2 and Kraken2 is used to sensitively and specifically identify human-infecting virus (HV) reads in the input data for downstream analysis.
 3. A **taxonomic profiling phase**, in which a random subset of reads (default 1M/sample) undergo ribosomal classification with BBDuk, followed by broader taxonomic classification with Kraken2.
 4. An optional **BLAST validation phase**, in which putative HV reads from phase 2 are checked against nt to evaluate the sensitivity and specificity of the HV identification process.
@@ -46,9 +46,7 @@ Run the index workflow by setting `mode = "index"` in the relevant config file. 
 
 #### Preprocessing phase
 
-The run workflow begins by concatenating all libraries assigned to the same sample ID together[^concat]. The reads then undergo cleaning by [FASTP](https://github.com/OpenGene/fastp), which both screens for adapters and trims low-quality and low-complexity sequences. The output of FASTP is then passed on to the other parts of the run workflow.
-
-[^concat]: This is controlled by the library file specified in the config file; any libraries with the same entry in the `sample` column are concatenated. This is primarily useful in cases where the same library is sequenced multiple times, e.g. to reach some total target depth.
+The run workflow begins by undergoing cleaning by [FASTP](https://github.com/OpenGene/fastp), which both screens for adapters and trims low-quality and low-complexity sequences. The output of FASTP is then passed on to the other parts of the run workflow.
 
 #### Viral identification phase
 
@@ -275,22 +273,21 @@ Finally, you can run the test dataset through the pipeline on AWS Batch. To do t
 To run the workflow on another dataset, you need:
 
 1. Accessible raw data files in Gzipped FASTQ format, named appropriately.
-2. A library file specifying the relationship between the names of these files (specifically, substrings uniquely identifying each pair of FASTQ files) and the original samples.
-3. A sample sheet giving metadata for each sample (can be identical with the library file).
-4. A config file in a clean launch directory, pointing to:
+2. A sample sheet file specifying the samples, along with paths to the forward and reverse read files for each sample.
+3. A config file in a clean launch directory, pointing to:
     - The directory containing the raw data (`params.raw_dir`).
     - The base directory in which to put the working and output directories (`params.base_dir`).
     - The directory containing the outputs of the reference workflow (`params.ref_dir`).
-    - The library file (`params.library_tab`) and sample sheet (`params.sample_tab`).
+    - The sample sheet (`params.sample_sheet`).
     - Various other parameter values.
 
 > [!NOTE]
-> Currently, the pipeline requires the following of raw data files:
->   - They must be contained in a single directory
->   - Each pair of read files must be uniquely identifiable by a filename substring (specified in the `library` column of `params.library_tab`)
-
-> [!NOTE]
-> The library file should specify the mapping between library read files and sample IDs. It must be a CSV file with `library` and `sample` columns, as well as any other metadata columns you feel is appropriate. See `test/libraries.csv` for a minimal example.
+> The samplesheet must have the following format for each row:
+> - First column: Sample ID
+> - Second column: Path to FASTQ file 1 which should be the forward read for this sample
+> - Third column: Path to FASTQ file 2 which should be the reverse read for this sample
+> 
+> The easiest way to get this file is by using the `generate_samplesheet.sh` script. As input, this script takes a path to raw FASTQ files (`dir_path`), and forward (`forward_suffix`) and reverse (`reverse_suffix`) read suffixes, both of which support regex. Those using data from s3 should make sure to set the `s3` parameter to 1. As output, the script generates a CSV file (`samplesheet.csv`) which can be used as input for the pipeline.
 
 If running on Batch, a good process for starting the pipeline on a new dataset is as follows:
 
