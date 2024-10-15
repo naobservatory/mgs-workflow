@@ -92,6 +92,3 @@ done
 
 
 echo "CSV file 'samplesheet.csv' has been created."
-
-
-
