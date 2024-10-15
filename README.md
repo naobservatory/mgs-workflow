@@ -287,7 +287,7 @@ To run the workflow on another dataset, you need:
 > - Second column: Path to FASTQ file 1 which should be the forward read for this sample
 > - Third column: Path to FASTQ file 2 which should be the reverse read for this sample
 > 
-> The easiest way to get this file is by using the `generate_samplesheet.sh` script. As input, this script takes a path to raw FASTQ files (`dir_path`), and forward (`forward_suffix`) and reverse (`reverse_suffix`) read suffixes. In the situation that you have text between the sample id and the read suffixes, you can pass that in as regex in the `middle` parameter. Those using data from s3 should make sure to set the `s3` parameter to 1. As output, the script generates a CSV file (`samplesheet.csv`) which can be used as input for the pipeline.
+> The easiest way to get this file is by using the `generate_samplesheet.sh` script. As input, this script takes a path to raw FASTQ files (`dir_path`), and forward (`forward_suffix`) and reverse (`reverse_suffix`) read suffixes, both of which support regex. Those using data from s3 should make sure to set the `s3` parameter to 1. As output, the script generates a CSV file (`samplesheet.csv`) which can be used as input for the pipeline.
 
 If running on Batch, a good process for starting the pipeline on a new dataset is as follows:
 
