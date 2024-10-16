@@ -77,7 +77,7 @@ workflow HV {
 
         merged_bbmerge_results = MERGE_TSVS_BBMERGE(tax_ch.bbmerge_summary.collect().ifEmpty([]))
         merged_dedup_results = MERGE_TSVS_DEDUP(tax_ch.dedup_summary.collect().ifEmpty([]))
-        merged_alignment_dup_results = MERGE_TSVS_ALIGNMENT_DUPLICATES(alignment_dups.collect().ifEmpty([]))
+        merged_alignment_dup_results = MERGE_TSVS_ALIGNMENT_DUPLICATES(alignment_dup_summary.collect().ifEmpty([]))
         // Filter and process putative HV hit TSV
         filtered_ch = FILTER_HV(merged_ch, aln_score_threshold)
         collapsed_ch = COLLAPSE_HV(filtered_ch)

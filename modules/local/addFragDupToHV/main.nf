@@ -7,6 +7,7 @@ process ADD_FRAG_DUP_TO_HV {
         path(collapsed_ch)
         path(merged_bbmerge_results)
         path(merged_dedup_results)
+        path(merged_alignment_dup_results)
     output:
         path("hv_hits_putative_collapsed.tsv.gz")
     shell:
@@ -35,14 +36,14 @@ process ADD_FRAG_DUP_TO_HV {
                 seq_id = str_remove(seq_id, "@")
             ) 
         
-        alignment_dup <- read_tsv("!{merged_alignment_dups}", col_names = TRUE, show_col_types = FALSE) %>%
+        alignment_dup_summary <- read_tsv("!{merged_alignment_dup_results}", col_names = TRUE, show_col_types = FALSE) %>%
             rename(seq_id = query_name, 
             bowtie2_frag_length = fragment_length, 
             bowtie2_exemplar = exemplar,
             bowtie2_dupcount = dup_count)
         
         reads_collapsed_with_bbtools_summary <- left_join(reads_collapsed, bbtools_summary, by = "seq_id") %>%
-            left_join(alignment_dup, by = "seq_id")
+            left_join(alignment_dup_summary, by = "seq_id")
 
         write_tsv(reads_collapsed_with_bbtools_summary, "hv_hits_putative_collapsed.tsv.gz")
         '''
