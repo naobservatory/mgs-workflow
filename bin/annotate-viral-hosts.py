@@ -150,11 +150,11 @@ def mark_direct_infections(virus_taxids: pd.Series,
         pd.Series: Binary series giving direct infection status of each
             viral taxid in virus_taxids.
     """
-    def check_infection(virus_taxid):
+    def check_direct_infection(virus_taxid):
         if virus_taxid in virus_host_mapping:
             return int(bool(virus_host_mapping[virus_taxid] & host_taxids))
         return 0
-    return virus.taxids.apply(check_infection)
+    return virus_taxids.apply(check_direct_infection)
 
 def mark_descendant_infections(virus_taxids: pd.Series,
                                virus_tree: Dict[str, Set[str]],
@@ -308,7 +308,7 @@ def check_infection(virus_taxids: pd.Series,
                     virus_tree: Dict[str, Set[str]],
                     virus_host_mapping: Dict[str, Set[str]]) -> pd.Series:
     """
-    For a given set of host taxids, check whether each virus taxid in a
+    For a single set of host taxids, check whether each virus taxid in a
     series infects that group of hosts. Classifies each virus taxon as
     follows:
         - If the taxon is directly marked in Virus-Host-DB as infecting
@@ -344,11 +344,93 @@ def check_infection(virus_taxids: pd.Series,
     statuses = mark_ancestor_infections(virus_taxids, virus_tree, statuses)
     return statuses
 
-# TODO: Write functions to add infection status to virus DB for multiple
-# host taxa (using check_infection, get_virus_host_mapping, get_host_taxids and build_virus_tree)
-# TODO: Write main function taking in arguments and returning outputs
+def annotate_virus_db_single(virus_db: pd.DataFrame,
+                             host_name: str,
+                             host_taxids: Set[str],
+                             virus_tree: Dict[str, Set[str]],
+                             virus_host_mapping: Dict[str, Set[str]]) -> pd.DataFrame:
+    """
+    Annotate a DataFrame of virus taxa with infection status information
+    for a specified host taxon.
 
+    Args:
+        virus_db (pd.DataFrame): DataFrame with columns indicating taxid
+            and parent taxid for each virus.
+        host_name (str): String name for host taxon of interest, used to
+            label infection status column.
+        host_taxids (Set[str]): Expanded set of taxids within host taxon,
+            generated with get_host_taxids().
+        virus_tree (Dict[str, Set[str]]): Dictionary giving viral
+            taxonomic structure, generated with build_virus_tree().
+        virus_host_mapping (Dict[str, Set[str]]): Mapping of virus
+            taxids to host taxids, generated using
+            get_virus_host_mapping().
 
+    Returns:
+        pd.DataFrame: Copy of virus_db with an additional column giving
+            infection status for the specified host taxon.
+    """
 
+    # Get infection statuses
+    statuses = check_infection(virus_db["taxid"], host_taxids, virus_tree, 
+                               virus_host_mapping)
+    # Annotate DB with infection statuses and return
+    virus_db["infection_status_" + host_name] = statuses
+    return virus_db
 
+def annotate_virus_db(virus_db: pd.DataFrame,
+                      host_db: pd.DataFrame,
+                      virus_host_mapping: Dict[str, Set[str]]) -> pd.DataFrame:
+    """
+    Given a DataFrame of virus taxa (including taxids and parent taxids)
+    and another of host taxa (including names and taxids) add a column
+    to the former for each taxid in the latter indicating infection
+    status for each virus.
 
+    Args:
+        virus_db (pd.DataFrame): DataFrame with columns indicating taxid
+            and parent taxid for each virus.
+        host_db (pd.DataFrame): DataFrame with columns indicating taxid
+            and name for each host taxon of interest.
+        virus_host_mapping (Dict[str, Set[str]]): Mapping of virus
+            taxids to host taxids, generated using
+            get_virus_host_mapping().
+
+    Returns:
+        pd.DataFrame: Copy of virus_db with additional columns giving
+            infection status for each taxon in host_db.
+    """
+    # Get viral taxonomic tree
+    virus_tree = build_virus_tree(virus_db)
+    # Get dictionary of host taxid sets
+    host_dict_single = host_db.set_index("name")["taxid"].to_dict()
+    host_dict_full = get_host_taxids(host_dict_single)
+    # Add annotations for each host group
+    for k in host_dict_full.keys():
+        virus_db = annotate_virus_db_single(virus_db, k, host_dict_full[k],
+                                            virus_tree, virus_host_mapping)
+    return virus_db
+
+#=======================================================================
+# Main function
+#=======================================================================
+
+def main():
+    # Define argument parsing
+    parser = argparse.ArgumentParser(description="Annotate a viral TSV with host infection status.")
+    parser.add_argument("virus_db", help="Path to TSV of virus taxids and tree structure.")
+    parser.add_argument("host_db", help="Path to TSV of target host taxids and names.")
+    parser.add_argument("infection_db", help="Path to TSV from Virus-Host DB giving host information.")
+    parser.add_argument("output_db", help="Output path for host-annotated TSV.")
+    args = parser.parse_args()
+    # Import inputs
+    virus_db = pd.read_csv(args.virus_db, sep="\t")
+    host_db = pd.read_csv(args.host_db, sep="\t")
+    virus_host_mapping = get_virus_host_mapping(args.infection_db)
+    # Add annotations
+    output_db = annotate_virus_db(virus_db, host_db, virus_host_mapping)
+    # Write output
+    output_db.to_csv(args.output_db, sep="\t")
+
+if __name__ == "__main__":
+    main()
