@@ -8,6 +8,7 @@ process ADD_FRAG_DUP_TO_HV {
         path(merged_bbmerge_results)
         path(merged_dedup_results)
         path(merged_alignment_dup_results)
+
     output:
         path("hv_hits_putative_collapsed.tsv.gz")
     shell:
@@ -44,6 +45,7 @@ process ADD_FRAG_DUP_TO_HV {
         
         reads_collapsed_with_bbtools_summary <- left_join(reads_collapsed, bbtools_summary, by = "seq_id") %>%
             left_join(alignment_dup_summary, by = "seq_id")
+
 
         write_tsv(reads_collapsed_with_bbtools_summary, "hv_hits_putative_collapsed.tsv.gz")
         '''
