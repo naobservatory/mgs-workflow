@@ -26,7 +26,7 @@ process CLUMPIFY_PAIRED {
 // NB: Should handle RC duplicates
 process CLUMPIFY_SINGLE {
     label "large"
-    label "customBbtools"
+    label "BBTools"
     input:
         tuple val(sample), path(reads)
     output:
@@ -40,6 +40,6 @@ process CLUMPIFY_SINGLE {
         # Define parameters
         par="reorder dedupe rcomp passes=6 addcount=t t=!{task.cpus} -Xmx30g"
         # Execute
-        clumpify.sh ${io} ${par} > duplicate_list.txt 2> log.txt
+        clumpify.sh ${io} ${par}
         '''
 }
