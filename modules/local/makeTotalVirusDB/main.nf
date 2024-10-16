@@ -19,7 +19,7 @@ process MAKE_TOTAL_VIRUS_DB {
         hv_path    <- "!{human_virus_db}"
         out_path   <- "total-virus-db.tsv.gz"
 
-        # Import data (NB: convoluted method for names file to avoid problems from unpaired strings)
+        # Import data (NB: convoluted method for names file to avoid problems from unpaired quotes)
         nodes <- read_tsv(nodes_path, col_names = FALSE) %>%
             transmute(taxid = X1, parent_taxid = X3, rank = X5)
         names <- names_path %>% read_file %>% gsub("\\"", "", .) %>%

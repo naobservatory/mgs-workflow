@@ -1,7 +1,7 @@
 // Annotate virus taxonomic DB with infection status for target host taxa
 process ANNOTATE_VIRUS_INFECTION {
     label "single"
-    label "pandas"
+    label "biopython"
     input:
         path(virus_db)
         path(host_db)
@@ -12,3 +12,4 @@ process ANNOTATE_VIRUS_INFECTION {
         '''
         annotate-viral-hosts.py !{virus_db} !{host_db} !{infection_db} total-virus-db-annotated.tsv.gz
         '''
+}

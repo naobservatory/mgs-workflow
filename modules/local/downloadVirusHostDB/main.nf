@@ -1,5 +1,5 @@
 // Download entire VirusHostDB
-process DOWNLOAD_HUMAN_VIRUS_DB {
+process DOWNLOAD_VIRUS_HOST_DB {
     label "single"
     label "base"
     input:

@@ -188,7 +188,7 @@ def mark_descendant_infections(virus_taxids: pd.Series,
     marked_taxids_new = expand_taxids(marked_taxids)
     while marked_taxids_new > marked_taxids:
         marked_taxids = marked_taxids_new
-        marked_taxids_new = expand_taxids(taxids)
+        marked_taxids_new = expand_taxids(marked_taxids)
     # Mark those as 1
     final_status = pd.Series(index=virus_taxids, data=0)
     final_status[final_status.index.isin(marked_taxids)] = 1
