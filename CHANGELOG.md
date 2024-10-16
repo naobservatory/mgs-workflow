@@ -1,3 +1,13 @@
+# v2.4.0
+- Created a new output directory where we put log files called `logging`. 
+- Added the trace file from Nextflow to the `logging` directory which can be used for understanding cpu, memory usage, and other infromation like runtime. After running the pipeline, `plot-timeline-script.R` can be used to generate a useful summary plot of the runtime for each process in the pipeline.
+- Removed CONCAT_GZIPPED.
+- Replaced the sample input format with something more similar to nf-core, called `samplesheet.csv`. This new input file can be generated using the script `generate_samplesheet.sh`.
+- Now run deduplication on paired-ends reads using clumpify in the taxonomic workflow.
+- Fragment length analysis and deduplication analysis.
+  - BBtools: Extract the fragment length as well as the number of duplicates from the taxonomic workflow and add them to the `hv_hits_putative_collapsed.tsv.gz`.
+  - Bowtie2: Conduct a duplication analysis on the aligned reads, then add the number of duplicates and fragment length to the `hv_hits_putative_collapsed.tsv.gz`.
+
 # v2.3.1
 
 - Clarifications to documentation (in README and elsewhere)
