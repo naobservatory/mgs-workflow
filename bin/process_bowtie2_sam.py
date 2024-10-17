@@ -112,12 +112,12 @@ def join_line(fields):
 def get_line(query_name, genome_id, taxid, fragment_length, best_alignment_score_fwd, best_alignment_score_ref,
              next_alignment_score_fwd, next_alignment_score_rev, edit_distance_fwd, edit_distance_rev,
              ref_start_fwd, ref_start_rev, map_qual_fwd, map_qual_rev, cigar_fwd, cigar_rev, query_len_fwd, query_len_rev,
-             query_seq_fwd, query_seq_rev, pair_status):
+             query_seq_fwd, query_seq_rev, query_qual_fwd, query_qual_rev, pair_status):
     """Convert a list of arguments into an output line."""
     fields = [query_name, genome_id, taxid, fragment_length, best_alignment_score_fwd, best_alignment_score_ref,
               next_alignment_score_fwd, next_alignment_score_rev, edit_distance_fwd, edit_distance_rev,
               ref_start_fwd, ref_start_rev, map_qual_fwd, map_qual_rev, cigar_fwd, cigar_rev, query_len_fwd, query_len_rev,
-              query_seq_fwd, query_seq_rev, pair_status]
+              query_seq_fwd, query_seq_rev, query_qual_fwd, query_qual_rev, pair_status]
     fields_joined = join_line(fields)
     return(fields_joined)
 
@@ -133,6 +133,7 @@ def process_sam_unpaired_pair(read_dict):
         cigar_fwd, cigar_rev = read_dict["cigar"], "NA"
         query_len_fwd, query_len_rev = read_dict["query_len"], "NA"
         query_seq_fwd, query_seq_rev = read_dict["query_seq"], "NA"
+        query_qual_fwd, query_qual_rev = read_dict["query_qual"], "NA"
     else:
         best_alignment_score_fwd, best_alignment_score_rev = "NA", read_dict["alignment_score"]
         next_alignment_score_fwd, next_alignment_score_rev = "NA", read_dict["next_best_alignment"]
@@ -142,10 +143,11 @@ def process_sam_unpaired_pair(read_dict):
         cigar_fwd, cigar_rev = "NA", read_dict["cigar"]
         query_len_fwd, query_len_rev = "NA", read_dict["query_len"]
         query_seq_fwd, query_seq_rev = "NA", read_dict["query_seq"]
+        query_qual_fwd, query_qual_rev = "NA", read_dict["query_qual"]
     return get_line(read_dict["query_name"], read_dict["genome_id"], read_dict["taxid"], read_dict["fragment_length"],
                     best_alignment_score_fwd, best_alignment_score_rev, next_alignment_score_fwd, next_alignment_score_rev,
                     edit_distance_fwd, edit_distance_rev, ref_start_fwd, ref_start_rev, map_qual_fwd, map_qual_rev,
-                    cigar_fwd, cigar_rev, query_len_fwd, query_len_rev, query_seq_fwd, query_seq_rev, read_dict["pair_status"])
+                    cigar_fwd, cigar_rev, query_len_fwd, query_len_rev, query_seq_fwd, query_seq_rev, query_qual_fwd, query_qual_rev, read_dict["pair_status"])
 
 def line_from_valid_pair(fwd_dict, rev_dict):
     """Generate an output line from a validated (concordant or discordant) pair of SAM alignments."""
@@ -169,11 +171,13 @@ def line_from_valid_pair(fwd_dict, rev_dict):
     query_len_rev = rev_dict["query_len"]
     query_seq_fwd = fwd_dict["query_seq"]
     query_seq_rev = rev_dict["query_seq"]
+    query_qual_fwd = fwd_dict["query_qual"]
+    query_qual_rev = rev_dict["query_qual"]
     pair_status = fwd_dict["pair_status"]
     return get_line(query_name, genome_id, taxid, fragment_length,
                     best_alignment_score_fwd, best_alignment_score_rev, next_alignment_score_fwd, next_alignment_score_rev,
                     edit_distance_fwd, edit_distance_rev, ref_start_fwd, ref_start_rev, map_qual_fwd, map_qual_rev,
-                    cigar_fwd, cigar_rev, query_len_fwd, query_len_rev, query_seq_fwd, query_seq_rev, pair_status)
+                    cigar_fwd, cigar_rev, query_len_fwd, query_len_rev, query_seq_fwd, query_seq_rev, query_qual_fwd, query_qual_rev, pair_status)
 
 def process_sam_concordant_pair(fwd_dict, rev_dict):
     """Process a concordant pair of SAM alignments."""
@@ -217,7 +221,7 @@ def process_sam_discordant_pair(fwd_dict, rev_dict):
 # File-level functions
 def write_sam_headers_paired(out_file):
     """Write header line to new TSV."""
-    headers = ["query_name", "genome_id", "taxid", "fragment_length", "best_alignment_score_fwd", "best_alignment_score_rev", "next_alignment_score_fwd", "next_alignment_score_rev", "edit_distance_fwd", "edit_distance_rev", "ref_start_fwd", "ref_start_rev", "map_qual_fwd", "map_qual_rev", "cigar_fwd", "cigar_rev", "query_len_fwd", "query_len_rev", "query_seq_fwd", "query_seq_rev", "pair_status"]
+    headers = ["query_name", "genome_id", "taxid", "fragment_length", "best_alignment_score_fwd", "best_alignment_score_rev", "next_alignment_score_fwd", "next_alignment_score_rev", "edit_distance_fwd", "edit_distance_rev", "ref_start_fwd", "ref_start_rev", "map_qual_fwd", "map_qual_rev", "cigar_fwd", "cigar_rev", "query_len_fwd", "query_len_rev", "query_seq_fwd", "query_seq_rev", "query_qual_fwd", "query_qual_rev", "pair_status"]
     header_line = join_line(headers)
     out_file.write(header_line)
     return None

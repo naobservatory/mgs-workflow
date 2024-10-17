@@ -6,6 +6,7 @@ include { BOWTIE2 as BOWTIE2_HV } from "../../../modules/local/bowtie2" addParam
 include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2" addParams(suffix: "human")
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2" addParams(suffix: "other")
 include { PROCESS_BOWTIE2_SAM_PAIRED } from "../../../modules/local/processBowtie2Sam"
+include { COUNT_ALIGNMENT_DUPLICATES } from "../../../modules/local/countAlignmentDuplicates" addParams(fuzzy_match: params.fuzzy_match.toInteger())
 include { EXTRACT_UNCONC_READ_IDS } from "../../../modules/local/extractUnconcReadIDs"
 include { EXTRACT_UNCONC_READS } from "../../../modules/local/extractUnconcReads"
 include { COMBINE_MAPPED_BOWTIE2_READS } from "../../../modules/local/combineMappedBowtie2Reads"
@@ -14,9 +15,13 @@ include { BBMAP as BBMAP_OTHER } from "../../../modules/local/bbmap" addParams(s
 include { TAXONOMY } from "../../../subworkflows/local/taxonomy" addParams(dedup_rc: true, classification_level: "F", read_fraction: 1)
 include { PROCESS_KRAKEN_HV } from "../../../modules/local/processKrakenHV"
 include { MERGE_SAM_KRAKEN } from "../../../modules/local/mergeSamKraken"
-include { MERGE_TSVS } from "../../../modules/local/mergeTsvs" addParams(name: "bowtie2_kraken_merged")
+include { MERGE_TSVS as MERGE_TSVS_BOWTIE2_KRAKEN } from "../../../modules/local/mergeTsvs" addParams(name: "bowtie2_kraken_merged")
+include { MERGE_TSVS as MERGE_TSVS_BBMERGE } from "../../../modules/local/mergeTsvs" addParams(name: "bbmerge")
+include { MERGE_TSVS as MERGE_TSVS_DEDUP } from "../../../modules/local/mergeTsvs" addParams(name: "dedup")
+include { MERGE_TSVS as MERGE_TSVS_ALIGNMENT_DUPLICATES } from "../../../modules/local/mergeTsvs" addParams(name: "alignment_duplicates")
 include { FILTER_HV } from "../../../modules/local/filterHV"
 include { COLLAPSE_HV } from "../../../modules/local/collapseHV"
+include { ADD_FRAG_DUP_TO_HV } from "../../../modules/local/addFragDupToHV"
 include { MAKE_HV_FASTA } from "../../../modules/local/makeHvFasta"
 include { COUNT_HV_CLADES } from "../../../modules/local/countHvClades"
 include { BBDUK_HITS } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
@@ -54,6 +59,7 @@ workflow HV {
         // Run Bowtie2 against an HV database and process output
         bowtie2_ch = BOWTIE2_HV(trim_ch.reads, bt2_hv_index_path, "--no-unal --no-sq --score-min G,1,1")
         bowtie2_sam_ch = PROCESS_BOWTIE2_SAM_PAIRED(bowtie2_ch.sam, genomeid_map_path)
+        alignment_dup_summary = COUNT_ALIGNMENT_DUPLICATES(bowtie2_sam_ch)
         bowtie2_unconc_ids_ch = EXTRACT_UNCONC_READ_IDS(bowtie2_ch.sam)
         bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.reads_unconc.combine(bowtie2_unconc_ids_ch, by: 0))
         bowtie2_reads_combined_ch = COMBINE_MAPPED_BOWTIE2_READS(bowtie2_ch.reads_conc.combine(bowtie2_unconc_reads_ch, by: 0))
@@ -67,15 +73,19 @@ workflow HV {
         // Process Kraken output and merge with Bowtie2 output across samples
         kraken_output_ch = PROCESS_KRAKEN_HV(tax_ch.kraken_output, nodes_path, hv_db_path)
         bowtie2_kraken_merged_ch = MERGE_SAM_KRAKEN(kraken_output_ch.combine(bowtie2_sam_ch, by: 0))
-        merged_ch = MERGE_TSVS(bowtie2_kraken_merged_ch.collect().ifEmpty([]))
+        merged_ch = MERGE_TSVS_BOWTIE2_KRAKEN(bowtie2_kraken_merged_ch.collect().ifEmpty([]))
+        merged_bbmerge_results = MERGE_TSVS_BBMERGE(tax_ch.bbmerge_summary.collect().ifEmpty([]))
+        merged_dedup_results = MERGE_TSVS_DEDUP(tax_ch.dedup_summary.collect().ifEmpty([]))
+        merged_alignment_dup_results = MERGE_TSVS_ALIGNMENT_DUPLICATES(alignment_dup_summary.collect().ifEmpty([]))
         // Filter and process putative HV hit TSV
         filtered_ch = FILTER_HV(merged_ch, aln_score_threshold)
         collapsed_ch = COLLAPSE_HV(filtered_ch)
-        fasta_ch = MAKE_HV_FASTA(collapsed_ch)
+        collapsed_frag_dup_ch = ADD_FRAG_DUP_TO_HV(collapsed_ch, merged_bbmerge_results, merged_dedup_results, merged_alignment_dup_results)
+        fasta_ch = MAKE_HV_FASTA(collapsed_frag_dup_ch)
         // Count clades
-        count_ch = COUNT_HV_CLADES(collapsed_ch, viral_taxa_path)
+        count_ch = COUNT_HV_CLADES(collapsed_frag_dup_ch, viral_taxa_path)
     emit:
-        tsv = collapsed_ch
+        tsv = collapsed_frag_dup_ch
         fasta = fasta_ch
         counts = count_ch
 }

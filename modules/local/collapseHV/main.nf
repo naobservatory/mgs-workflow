@@ -33,6 +33,7 @@ process COLLAPSE_HV {
             adj_score_fwd = rmax(adj_score_fwd), adj_score_rev = rmax(adj_score_rev)
             ) %>% mutate(adj_score_max = pmax(adj_score_fwd, adj_score_rev))
         print(dim(reads_collapsed))
+      
         write_tsv(reads_collapsed, "hv_hits_putative_collapsed.tsv.gz")
         '''
 }
