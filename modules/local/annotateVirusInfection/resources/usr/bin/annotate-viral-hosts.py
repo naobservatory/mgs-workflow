@@ -49,90 +49,54 @@ def get_virus_host_mapping(db_path: str) -> Dict[str, Set[str]]:
     mapping = df.groupby("virus tax id")["host tax id"].apply(set).to_dict()
     return mapping
 
-def run_gimme_taxa(taxid: str) -> str:
+def expand_taxid(taxid: str, nodes: pd.DataFrame) -> Set[str]:
     """
-    Run gimme_taxa.py for a given taxid and capture stderr output.
+    Given a starting taxid and an NCBI nodes DataFrame, return a set of
+    all taxids descended from that starting taxid (including itself).
 
     Args:
-        taxid (str): Target taxid as a numeric string.
+        taxid (str): Ancestral taxid as a numeric string.
+        nodes (pd.DataFrame): A DataFrame generated from an NCBI nodes DMP
+            file giving the parent taxid of each taxid within the NCBI
 
     Returns:
-        str: TSV output as a tab- and newline-delimited string.
+        Set[str]: Set of descendant taxids, including the original
+            ancestor.
     """
-    cmd = ["gimme_taxa.py", str(taxid)]
-    try:
-        logger.info(f"Obtaining descendents of taxid {taxid} with gimme_taxa.py.")
-        p = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        logger.info("gimme_taxa.py ran successfully.")
-        return p.stdout
-    except subprocess.CalledProcessError as e:
-        print(f"Error fetching descendants for taxid {taxid}: {e}")
-        print(f"Error output: {e.stderr}")
-        raise  # Re-raise the exception if it's not about missing database
+    taxids_old = {taxid}
+    taxids_desc = nodes.loc[nodes["parent_taxid"].isin(taxids_old)]["taxid"]
+    taxids_new = taxids_old.union(taxids_desc)
+    while taxids_new > taxids_old:
+        taxids_old = taxids_new
+        taxids_desc = nodes.loc[nodes["parent_taxid"].isin(taxids_old)]["taxid"]
+        taxids_new = taxids_old.union(taxids_desc)
+    return taxids_new
 
-def fetch_descendents(taxid: str) -> Set[str]:
-    """
-    For a given taxid, run gimme_taxa.py and process the output into
-    list format.
-
-    Args:
-        taxid (str): Target taxid as a numeric string.
-
-    Returns:
-        Set[str]: Set of descendent taxids (including the original
-            taxid as the first element).
-    """
-    # Run gimme_taxa.py
-    try:
-        output = run_gimme_taxa(taxid)
-    except Exception as e:
-        print(f"Error: {e}")
-        raise  # Re-raise the exception to be handled by the calling function
-    logger.info("Extracting descendents from gimme_taxa.py output.")
-    desc_split = output.split("\n")
-    # Get list of descendents
-    descendents = [taxid]
-    tab = False # Skip frontmatter from stdout
-    for line in desc_split:
-        line = line.strip()
-        if not line:
-            continue
-        elif line.startswith("parent_taxid"):
-            tab = True # Stop skipping after header line
-            continue
-        elif not tab:
-            continue
-        try:
-            parent_taxid, descendent_taxid, descendent_name = line.split("\t")
-            descendents.append(str(int(descendent_taxid)))
-        except ValueError:
-            print(line)
-            raise
-    desc_out = set(descendents)
-    n_desc = len(desc_out)
-    logger.info(f"{n_desc} descendent taxids obtained for ancestor taxid {taxid}.")
-    return desc_out
-
-def get_host_taxids(hosts: Dict[str, str]) -> Dict[str, Set[str]]:
+def get_host_taxids(hosts: Dict[str, str], nodes: pd.DataFrame) -> Dict[str, Set[str]]:
     """
     Given a dictionary mapping host group names to host ancestor taxids,
     return a dictionary instead mapping those host names to sets of
-    descendent taxids.
+    descendant taxids.
 
     Args:
         hosts (Dict[str, str]): A dictionary mapping string names for
             host taxa (e.g. "human", "vertebrate") to ancestral taxids
             as numeric strings (e.g. "9606", "7742").
+        nodes (pd.DataFrame): A DataFrame generated from an NCBI nodes DMP
+            file giving the parent taxid of each taxid within the NCBI
+            taxonomy structure.
 
     Returns:
         Dict[str, Set[str]]: A dictionary mapping those same string
-            names to sets of descendent taxids returned by
-            fetch_descendents().
+            names to sets of descendant taxids returned by
+            expand_taxid().
     """
     logger.info("Generating host taxid dictionary from input TSV.")
     host_dict_out = dict()
     for k in hosts.keys():
-        host_dict_out[k] = fetch_descendents(hosts[k])
+        host_dict_out[k] = expand_taxid(hosts[k], nodes)
+        n_desc = len(host_dict_out[k])
+        logger.info(f"\tFound {n_desc} descendant taxids for host group \"{k}\" (taxid {hosts[k]}).")
     logger.info("Host taxid dictionary construction complete.")
     return host_dict_out
 
@@ -168,8 +132,8 @@ def mark_direct_infections(virus_taxids: pd.Series,
     Args:
         virus_taxids (pd.Series): Series of virus taxids to check.
         host_taxids (Set[str]): Series of host taxids to check against.
-            Should be expanded to include all descendent taxids using
-            fetch_descendents().
+            Should be expanded to include all descendant taxids using
+            netch_descendants().
         virus_host_mapping (Dict[str, Set[str]]): Mapping of virus
             taxids to host taxids, generated using
             get_virus_host_mapping().
@@ -291,9 +255,9 @@ def mark_ancestor_infections(virus_taxids: pd.Series,
     generated by mark_descendant_infections(), return a three-state
     series marking each virus taxid as follows:
         - If a taxid is already marked 1, it remains so marked.
-        - If all of the taxon's descendent taxa are marked 1, it is also
+        - If all of the taxon's descendant taxa are marked 1, it is also
           marked 1.
-        - If some but not all of the taxon's descendents are marked 1,
+        - If some but not all of the taxon's descendants are marked 1,
           or if any is marked 2, it is marked 2.
         - Otherwise, the taxon is marked 0.
 
@@ -336,17 +300,17 @@ def check_infection(virus_taxids: pd.Series,
           that host group, returns 1.
         - If the taxon is descended from a taxon marked 1, it is also
           marked 1.
-        - If all of the taxon's descendent taxa are marked 1, it is also
+        - If all of the taxon's descendant taxa are marked 1, it is also
           marked 1.
-        - If some but not all of the taxon's descendents are marked 1,
+        - If some but not all of the taxon's descendants are marked 1,
           or if any are marked 2, it is marked 2.
         - Otherwise, the taxon is marked 0.
 
     Args:
         virus_taxids (pd.Series): Series of virus taxids to check.
         host_taxids (Set[str]): Series of host taxids to check against.
-            Should be expanded to include all descendent taxids using
-            fetch_descendents().
+            Should be expanded to include all descendant taxids using
+            expand_taxid().
         virus_tree (Dict[str, Set[str]]): Viral taxonomic tree,
             generated from a viral DB using build_virus_tree().
         virus_host_mapping (Dict[str, Set[str]]): Mapping of virus
@@ -409,7 +373,7 @@ def annotate_virus_db_single(virus_db: pd.DataFrame,
     return virus_db
 
 def annotate_virus_db(virus_db: pd.DataFrame,
-                      host_db: pd.DataFrame,
+                      host_mapping: Dict[str, Set[str]],
                       virus_host_mapping: Dict[str, Set[str]]) -> pd.DataFrame:
     """
     Given a DataFrame of virus taxa (including taxids and parent taxids)
@@ -420,8 +384,8 @@ def annotate_virus_db(virus_db: pd.DataFrame,
     Args:
         virus_db (pd.DataFrame): DataFrame with columns indicating taxid
             and parent taxid for each virus.
-        host_db (pd.DataFrame): DataFrame with columns indicating taxid
-            and name for each host taxon of interest.
+        host_mapping (Dict[str, Set[str]]): Mapping of host names (e.g.
+            "human", "bird") to sets of member taxids.
         virus_host_mapping (Dict[str, Set[str]]): Mapping of virus
             taxids to host taxids, generated using
             get_virus_host_mapping().
@@ -432,12 +396,9 @@ def annotate_virus_db(virus_db: pd.DataFrame,
     """
     # Get viral taxonomic tree
     virus_tree = build_virus_tree(virus_db)
-    # Get dictionary of host taxid sets
-    host_dict_single = host_db.set_index("name")["taxid"].to_dict()
-    host_dict_full = get_host_taxids(host_dict_single)
     # Add annotations for each host group
-    for k in host_dict_full.keys():
-        virus_db = annotate_virus_db_single(virus_db, k, host_dict_full[k],
+    for k in host_mapping.keys():
+        virus_db = annotate_virus_db_single(virus_db, k, host_mapping[k],
                                             virus_tree, virus_host_mapping)
     return virus_db
 
@@ -452,16 +413,22 @@ def main():
     parser.add_argument("virus_db", help="Path to TSV of virus taxids and tree structure.")
     parser.add_argument("host_db", help="Path to TSV of target host taxids and names.")
     parser.add_argument("infection_db", help="Path to TSV from Virus-Host DB giving host information.")
+    parser.add_argument("nodes_db", help="Path to NCBI taxonomy nodes file.")
     parser.add_argument("output_db", help="Output path for host-annotated TSV.")
     args = parser.parse_args()
     # Import inputs
     logger.info("Importing input TSVs.")
     virus_db = pd.read_csv(args.virus_db, sep="\t", dtype=str)
     host_db = pd.read_csv(args.host_db, sep="\t", dtype=str)
+    nodes_db = pd.read_csv(args.nodes_db, sep="\t", dtype=str, header=None
+                           ).iloc[:,[0,2]].rename(columns={0:"taxid",2:"parent_taxid"})
     virus_host_mapping = get_virus_host_mapping(args.infection_db)
+    # Prepare dictionary of host taxids
+    host_dict_single = host_db.set_index("name")["taxid"].to_dict()
+    host_dict_full = get_host_taxids(host_dict_single, nodes_db)
     # Add annotations
     logger.info("Initializing infection-state annotation.")
-    output_db = annotate_virus_db(virus_db, host_db, virus_host_mapping)
+    output_db = annotate_virus_db(virus_db, host_dict_full, virus_host_mapping)
     # Write output
     logger.info("Writing output.")
     output_db.to_csv(args.output_db, sep="\t", index=False)
