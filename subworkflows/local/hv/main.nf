@@ -64,7 +64,6 @@ workflow HV {
             trim_group_ch = group_ch.join(trim_ch.reads, by: 0)
             .map { sample, group, reads -> tuple(sample, reads[0], reads[1], group) }
             .groupTuple(by: 3)
-            trim_group_ch.view()
 
             // Split into multi-sample and single-sample groups
             multi_sample_groups = trim_group_ch.filter { it[0].size() > 1 }
