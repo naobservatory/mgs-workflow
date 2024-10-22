@@ -9,6 +9,6 @@ test-paired-end/work
 test-paired-end/output
 test-paired-end/.nextflow*
 
-test-single-end/work
-test-single-end/output
-test-single-end/.nextflow*
+test-single-read/work
+test-single-read/output
+test-single-read/.nextflow*
