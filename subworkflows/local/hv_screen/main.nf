@@ -6,7 +6,11 @@ include { BOWTIE2 as BOWTIE2_HV } from "../../../modules/local/bowtie2" addParam
 include { EXTRACT_UNCONC_READ_IDS } from "../../../modules/local/extractUnconcReadIDs"
 include { EXTRACT_UNCONC_READS } from "../../../modules/local/extractUnconcReads"
 include { COMBINE_MAPPED_BOWTIE2_READS } from "../../../modules/local/combineMappedBowtie2Reads"
-include { FASTP } from "../../../modules/local/fastp"
+if (params.single_end) {
+    include { FASTP_SINGLE as FASTP } from "../../../modules/local/fastp"
+} else {
+    include { FASTP_PAIRED as FASTP } from "../../../modules/local/fastp"
+}
 include { BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
 include { PROCESS_BOWTIE2_SAM_PAIRED } from "../../../modules/local/processBowtie2Sam"
 
