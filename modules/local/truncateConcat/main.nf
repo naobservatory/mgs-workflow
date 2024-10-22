@@ -1,5 +1,5 @@
 // Truncate concatenated read files for trial run
-process TRUNCATE_CONCAT {
+process TRUNCATE_CONCAT_PAIRED {
     label "single"
     label "BBTools"
     input:
@@ -18,3 +18,23 @@ process TRUNCATE_CONCAT {
         zcat !{reads[1]} | head -n ${n_lines} | gzip -c > ${o2}
         '''
 }
+
+// Truncate concatenated read files for trial run
+process TRUNCATE_CONCAT_SINGLE {
+    label "single"
+    label "BBTools"
+    input:
+        tuple val(sample), path(reads)
+        val n_reads
+    output:
+        tuple val(sample), path("${sample}_trunc.fastq.gz"), emit: reads
+    shell:
+        '''
+        echo "Number of output reads: !{n_reads}"
+        n_lines=$(expr !{n_reads} \\* 4)
+        echo "Number of output lines: ${n_lines}"
+        o=!{sample}_trunc.fastq.gz
+        zcat !{reads[0]} | head -n ${n_lines} | gzip -c > ${o}
+        '''
+}
+
