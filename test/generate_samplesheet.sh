@@ -9,6 +9,7 @@ forward_suffix=""
 reverse_suffix=""
 s3=0
 output_path="samplesheet.csv"  # Default output path
+group_file=""  # Optional parameter for the group file
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -33,6 +34,10 @@ while [[ $# -gt 0 ]]; do
             output_path="$2"
             shift 2
             ;;
+        --group_file)  # Optional group file
+            group_file="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -43,7 +48,7 @@ done
 # Check if all required parameters are provided
 if [[ -z "$dir_path" || -z "$forward_suffix" || -z "$reverse_suffix" ]]; then
     echo "Error: dir_path, forward_suffix, and reverse_suffix are required."
-    echo "Usage: $0 --dir_path <path> --forward_suffix <suffix> --reverse_suffix <suffix> [--s3] [--output_path <path>]"
+    echo "Usage: $0 --dir_path <path> --forward_suffix <suffix> --reverse_suffix <suffix> [--s3] [--output_path <path>] [--group_file <path>]"
     exit 1
 fi
 
@@ -54,6 +59,7 @@ echo "forward_suffix: $forward_suffix"
 echo "reverse_suffix: $reverse_suffix"
 echo "s3: $s3"
 echo "output_path: $output_path"
+echo "group_file: $group_file"
 
 #### EXAMPLES ####
 
@@ -76,7 +82,10 @@ echo "output_path: $output_path"
 
 ##### Script #####
 
-echo "sample,fastq_1,fastq_2" > "$output_path"
+# Create a temporary file for the initial samplesheet
+temp_samplesheet=$(mktemp)
+
+echo "sample,fastq_1,fastq_2" > "$temp_samplesheet"
 
 # Ensure dir_path ends with a '/'
 if [[ "$dir_path" != */ ]]; then
@@ -91,14 +100,25 @@ else
     listing=$(ls ${dir_path} | awk '{print $1}')
 fi
 
-
 echo "$listing" | grep "${forward_suffix}\.fastq\.gz$" | while read -r forward_read; do
     sample=$(echo "$forward_read" | sed -E "s/${forward_suffix}\.fastq\.gz$//")
     reverse_read=$(echo "$listing" | grep "${sample}${reverse_suffix}\.fastq\.gz$")
     # If sample + reverse_suffix exists in s3_listing, then add to samplesheet
     if [ -n "$reverse_read" ]; then
-        echo "$sample,${dir_path}${forward_read},${dir_path}${reverse_read}" >> "$output_path"
+        echo "$sample,${dir_path}${forward_read},${dir_path}${reverse_read}" >> "$temp_samplesheet"
     fi
 done
 
-echo "CSV file '$output_path' has been created."
+# Check if group file is provided
+if [[ -n "$group_file" ]]; then
+    # Perform left join with group file
+    awk -F',' 'NR==FNR{a[$1]=$2; next} FNR==1{print $0",group"} FNR>1{print $0","(a[$1]?a[$1]:"NA")}' "$group_file" "$temp_samplesheet" > "$output_path"
+    echo "CSV file '$output_path' has been created with group information."
+else
+    # If no group file, just use the temporary samplesheet as the final output
+    mv "$temp_samplesheet" "$output_path"
+    echo "CSV file '$output_path' has been created without group information."
+fi
+
+# Remove temporary file if it still exists
+[ -f "$temp_samplesheet" ] && rm "$temp_samplesheet"
