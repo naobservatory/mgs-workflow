@@ -15,16 +15,13 @@ include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
 
 workflow RAW {
     take:
-        samplesheet
+        samplesheet_ch
         n_reads_trunc
     main:
-        concat_ch = samplesheet.map { sample, read1, read2 ->
-            tuple(sample, [read1, read2])
-        }
         if ( n_reads_trunc > 0 ) {
-            out_ch = TRUNCATE_CONCAT(concat_ch, n_reads_trunc)
+            out_ch = TRUNCATE_CONCAT(samplesheet_ch, n_reads_trunc)
         } else {
-            out_ch = concat_ch
+            out_ch = samplesheet_ch
         }
         qc_ch = QC(out_ch, params.stage_label)
     emit:
