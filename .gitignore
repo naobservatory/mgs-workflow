@@ -2,7 +2,13 @@
 work/*
 output/*
 *.swp
-test/work
-test/output
-test/.nextflow*
+
 *.Rhistory
+
+test-paired-end/work
+test-paired-end/output
+test-paired-end/.nextflow*
+
+test-single-end/work
+test-single-end/output
+test-single-end/.nextflow*
