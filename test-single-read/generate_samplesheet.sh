@@ -4,10 +4,10 @@
 ##### Input parameters #####
 
 # Initialize variables
-dir_path="raw/"
+dir_path="s3://nao-mgs-simon/test_single_read/raw/"
 forward_suffix=""
 reverse_suffix=""
-s3=0
+s3=1
 single_end=1
 
 # Parse command-line arguments

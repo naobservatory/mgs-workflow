@@ -4,10 +4,10 @@
 ##### Input parameters #####
 
 # Initialize variables
-dir_path=""
-forward_suffix=""
-reverse_suffix=""
-s3=""
+dir_path="s3://nao-mgs-simon/test_paired_end/raw/"
+forward_suffix="_1"
+reverse_suffix="_2"
+s3="1"
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -51,7 +51,7 @@ echo "s3: $s3"
 
 #### EXAMPLES ####
 
-# dir_path="" # Cannot share this as it's restricted, but imagine the read looks like this 
+# dir_path="" # Cannot share this as it's restricted, but imagine the read looks like this
 # forward_suffix="_S[0-9]_L[0-9][0-9][0-9]_R1_001"
 # reverse_suffix="_S[0-9]_L[0-9][0-9][0-9]_R2_001"
 # s3=1
