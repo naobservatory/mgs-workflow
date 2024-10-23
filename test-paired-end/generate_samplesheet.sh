@@ -25,7 +25,11 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --s3)
-            s3="$2"
+            s3=1
+            shift
+            ;;
+        --output_path)
+            output_path="$2"
             shift 2
             ;;
         *)
@@ -36,9 +40,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check if all required parameters are provided
-if [[ -z "$dir_path" || -z "$forward_suffix" || -z "$reverse_suffix" || -z "$s3" ]]; then
-    echo "Error: All parameters are required."
-    echo "Usage: $0 --dir_path <path> --forward_suffix <suffix> --reverse_suffix <suffix> --s3 <0|1>"
+if [[ -z "$dir_path" || -z "$forward_suffix" || -z "$reverse_suffix" ]]; then
+    echo "Error: dir_path, forward_suffix, and reverse_suffix are required."
+    echo "Usage: $0 --dir_path <path> --forward_suffix <suffix> --reverse_suffix <suffix> [--s3] [--output_path <path>]"
     exit 1
 fi
 
@@ -48,6 +52,7 @@ echo "dir_path: $dir_path"
 echo "forward_suffix: $forward_suffix"
 echo "reverse_suffix: $reverse_suffix"
 echo "s3: $s3"
+echo "output_path: $output_path"
 
 #### EXAMPLES ####
 
@@ -70,7 +75,12 @@ echo "s3: $s3"
 
 ##### Script #####
 
-echo "sample,fastq_1,fastq_2" > samplesheet.csv
+echo "sample,fastq_1,fastq_2" > "$output_path"
+
+# Ensure dir_path ends with a '/'
+if [[ "$dir_path" != */ ]]; then
+    dir_path="${dir_path}/"
+fi
 
 listing=0
 
@@ -86,9 +96,8 @@ echo "$listing" | grep "${forward_suffix}\.fastq\.gz$" | while read -r forward_r
     reverse_read=$(echo "$listing" | grep "${sample}${reverse_suffix}\.fastq\.gz$")
     # If sample + reverse_suffix exists in s3_listing, then add to samplesheet
     if [ -n "$reverse_read" ]; then
-        echo "$sample,${dir_path}${forward_read},${dir_path}${reverse_read}" >> samplesheet.csv
+        echo "$sample,${dir_path}${forward_read},${dir_path}${reverse_read}" >> "$output_path"
     fi
 done
 
-
-echo "CSV file 'samplesheet.csv' has been created."
+echo "CSV file '$output_path' has been created."
