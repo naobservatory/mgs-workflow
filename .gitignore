@@ -14,3 +14,4 @@ test-single-read/output
 test-single-read/.nextflow*
 
 analysis_files/*
+mgs-results/
