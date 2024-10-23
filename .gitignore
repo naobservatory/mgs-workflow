@@ -12,3 +12,5 @@ test-paired-end/.nextflow*
 test-single-read/work
 test-single-read/output
 test-single-read/.nextflow*
+
+analysis_files/*
