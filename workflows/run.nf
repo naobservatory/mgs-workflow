@@ -39,11 +39,11 @@ workflow RUN {
             .map{row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2))}
     }
     RAW(samplesheet, params.n_reads_trunc)
-    // CLEAN(RAW.out.reads, params.adapters)
+    CLEAN(RAW.out.reads, params.adapters)
 
     // Process output
-    // qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
-    // PROCESS_OUTPUT(qc_ch)
+    qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
+    PROCESS_OUTPUT(qc_ch)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -61,8 +61,10 @@ workflow RUN {
         time_ch >> "logging"
         version_ch >> "logging"
 
-        RAW.out.reads >> "results/raw_reads"
-        RAW.out.qc >> "results/raw_qc"
+        PROCESS_OUTPUT.out.basic >> "results/qc"
+        PROCESS_OUTPUT.out.adapt >> "results/qc"
+        PROCESS_OUTPUT.out.qbase >> "results/qc"
+        PROCESS_OUTPUT.out.qseqs >> "results/qc"
         // Intermediate files
         // CLEAN.out.reads >> "intermediates/reads/cleaned"
         // QC
