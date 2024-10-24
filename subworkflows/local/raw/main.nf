@@ -8,7 +8,6 @@
 
 include { QC } from "../../../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem)
 include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
-include { CONCAT_GZIPPED } from "../../../modules/local/concatGzipped" addParams(r1_suffix: params.r1_suffix, r2_suffix: params.r2_suffix)
 
 /***********
 | WORKFLOW |
@@ -16,18 +15,19 @@ include { CONCAT_GZIPPED } from "../../../modules/local/concatGzipped" addParams
 
 workflow RAW {
     take:
-        libraries_ch
-        raw_dir_path
+        samplesheet
         n_reads_trunc
     main:
-        concat_ch = CONCAT_GZIPPED(raw_dir_path, libraries_ch)
+        concat_ch = samplesheet.map { sample, read1, read2 ->
+            tuple(sample, [read1, read2])
+        }
         if ( n_reads_trunc > 0 ) {
             out_ch = TRUNCATE_CONCAT(concat_ch, n_reads_trunc)
         } else {
             out_ch = concat_ch
         }
-        qc_ch = QC(out_ch.reads, params.stage_label)
+        qc_ch = QC(out_ch, params.stage_label)
     emit:
-        reads = out_ch.reads
+        reads = out_ch
         qc = qc_ch.qc
 }
