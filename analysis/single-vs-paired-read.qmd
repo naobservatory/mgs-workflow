@@ -1,4 +1,3 @@
-
 ---
 title: "Checking if single-read version of mgs-workflow works"
 author: "Simon Grimm"
@@ -24,9 +23,7 @@ title-block-banner: black
 ```{r}
 # Print current working directory
 cat("Current working directory:", getwd(), "\n")
-
-````
-
+```
 
 ```{r}
 #| label: load-packages
@@ -40,13 +37,13 @@ library(fastqcr)
 library(RColorBrewer)
 # library(ggpubr)
 # library(ggbeeswarm)
+```
 
+```{r}
 # Import auxiliary scripts
-source("scripts/aux_plot-theme.R")
-source("scripts/aux_functions.R")
+source("analysis/scripts/aux_plot-theme.R")
+source("analysis/scripts/aux_functions.R")
 
-# Print current working directory
-cat("Current working directory:", getwd(), "\n")
 
 
 # Scales and palettes
@@ -60,8 +57,8 @@ scale_shape_loc <- purrr::partial(scale_shape_discrete, name = "Location")
 
 ```{r}
 # Data input paths
-single_end_dir <- "../mgs-results/single_end"
-paired_end_dir <- "../mgs-results/paired_end"
+single_end_dir <- "mgs-results/single_end"
+paired_end_dir <- "mgs-results/paired_end"
 
 se_output_dir <- file.path(single_end_dir, "output")
 pe_output_dir <- file.path(paired_end_dir, "output")
@@ -80,27 +77,31 @@ basic_stats <- read_tsv(basic_stats_path, show_col_types = FALSE)
 # Print the first few rows to verify the data
 print(head(basic_stats))
 
-
-
-adapter_stats_paths <- file.path(se_qc_dir, "qc_adapter_stats.tsv.gz")
-quality_base_stats_paths <- file.path(se_qc_dir, "qc_quality_base_stats.tsv.gz")
-quality_seq_stats_paths <- file.path(se_qc_dir, "qc_quality_sequence_stats.tsv.gz")
+adapter_stats_path <- file.path(se_qc_dir, "qc_adapter_stats.tsv.gz")
+quality_base_stats_path <- file.path(se_qc_dir, "qc_quality_base_stats.tsv.gz")
+quality_seq_stats_path <- file.path(se_qc_dir, "qc_quality_sequence_stats.tsv.gz")
 
 ```
 
 ```{r}
-# Import QC data
-library(tidyverse)
-
 stages <- c("raw_concat", "cleaned")
-
-basic_stats <- lapply(basic_stats_paths, read_tsv, show_col_types = FALSE)
-
+basic_stats_se <- read_tsv(basic_stats_path, show_col_types = FALSE)
 ```
 
+Loading adapter stats
 
+```{r}
+ adapter_stats <- read_tsv(adapter_stats_path, show_col_types = FALSE)
+# %>%
+#  arrange(sample) %>%
+#   mutate(stage = factor(stage, levels = stages),
+#          read_pair = fct_inorder(as.character(read_pair)))
+```
 
-
+```{r}
+# Display the first few rows of adapter_stats
+print(adapter_stats)
+```
 
 ## Adapters
 
@@ -112,9 +113,9 @@ Adapter levels in the raw reads were moderate, and were very effectively removed
 #| edit-manually: true
 #| fig-width: 10
 
-g_qual <- ggplot(mapping=aes(color=location, linetype=read_pair,
+g_qual <- ggplot(mapping=aes(linetype=read_pair,
                          group=interaction(sample,read_pair))) +
-  scale_color_loc() + scale_linetype_discrete(name = "Read Pair") +
+  scale_color_loc() +
   guides(color=guide_legend(nrow=2,byrow=TRUE),
          linetype = guide_legend(nrow=2,byrow=TRUE)) +
   theme_base
