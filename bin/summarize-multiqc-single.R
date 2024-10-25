@@ -49,7 +49,26 @@ process_n_bases <- function(n_bases_vec){
 }
 
 split_sample <- function(tab, sample_col_in="sample", sample_col_out="sample", split_char = "_", states=pipeline_states){
-    tab_out <- tab %>% mutate(read_pair = 1)
+    # Purge state descriptors
+    samples <- tab[[sample_col_in]]
+    for (s in states){
+        samples <- gsub(s, "", samples)
+    }
+    if (paired_end) {
+        samples <- gsub("__", "_", samples)
+        samples_split <- samples %>% str_split(split_char)
+        read_pairs <- sapply(samples_split, last)
+        sample_ids <- sapply(samples_split, function(x) head(x, -1) %>% paste(collapse = split_char))
+
+        # Write output
+        tab_out <- tab %>% mutate(read_pair = read_pairs)
+        tab_out[[sample_col_out]] <- sample_ids
+    } else {
+        samples <- gsub("_", "", samples)
+        # Write output
+        tab_out <- tab %>% mutate(read_pair = 1)
+        tab_out[[sample_col_out]] <- samples
+    }
     return(tab_out)
 }
 
@@ -65,13 +84,29 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
               n_read_pairs = total_sequences[1],
               percent_duplicates = mean(percent_duplicates))
   # Read in basic stats from fastqc TSV
-  tab_tsv <- fastqc_tsv %>% mutate(sample=Sample) %>%
-    split_sample %>%
-    mutate(n_bases_approx = process_n_bases(`Total Bases`)) %>%
-    select(sample, read_pair, n_bases_approx, per_base_sequence_quality:adapter_content) %>%
-    group_by(sample) %>% summarize_all(function(x) paste(x, collapse="/")) %>%
-    select(-read_pair)
-  print(tab_tsv)
+  if (paired_end){
+    tab_tsv <- fastqc_tsv %>%
+        mutate(sample = Sample) %>%
+        split_sample() %>%
+        mutate(n_bases_approx = process_n_bases(`Total Bases`)) %>%
+        select(sample, read_pair, n_bases_approx, per_base_sequence_quality:adapter_content) %>%
+        group_by(sample) %>%
+        summarize_all(function(x) paste(x, collapse = "/")) %>%
+        select(-read_pair)
+        print(tab_tsv)
+        tab_tsv = tab_tsv %>%
+        mutate(n_bases_approx = n_bases_approx %>% str_split("/") %>% sapply(as.numeric) %>% colSums())
+
+  } else {
+    tab_tsv <- fastqc_tsv %>%
+        mutate(sample = Sample) %>%
+        split_sample() %>%
+        mutate(n_bases_approx = process_n_bases(`Total Bases`)) %>%
+        select(-read_pair)
+        print(tab_tsv)
+  }
+
+
   # Combine
   tab <- tab_json %>% inner_join(tab_tsv, by="sample")
   return(tab)
