@@ -37,7 +37,7 @@ workflow RAW {
             } else {
                 out_ch = concat_ch
             }
-            qc_ch = QC(out_ch, params.stage_label)
+            qc_ch = QC(out_ch, params.stage_label, params.read_type)
     emit:
         reads = out_ch
         qc = qc_ch.qc

@@ -14,10 +14,11 @@ workflow QC {
     take:
         reads
         stage_label
+        read_type
     main:
         fastqc_ch = FASTQC(reads)
         multiqc_ch = MULTIQC(stage_label, fastqc_ch.zip.collect().ifEmpty([]))
-        process_ch = SUMMARIZE_MULTIQC_SINGLE(multiqc_ch.data)
+        process_ch = SUMMARIZE_MULTIQC_SINGLE(multiqc_ch.data, read_type)
     emit:
         qc = process_ch
 }

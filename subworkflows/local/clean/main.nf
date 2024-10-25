@@ -23,7 +23,7 @@ workflow CLEAN {
         adapter_path
     main:
         fastp_ch = FASTP(reads_ch, adapter_path)
-        qc_ch = QC(fastp_ch.reads, params.stage_label)
+        qc_ch = QC(fastp_ch.reads, params.stage_label, params.read_type)
     emit:
         reads = fastp_ch.reads
         qc = qc_ch.qc
