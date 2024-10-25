@@ -11,8 +11,8 @@ option_list = list(
               help="Path to multiqc data directory."),
   make_option(c("-s", "--stage"), type="character", default=NULL,
               help="Stage descriptor."),
-  make_option(c("-p", "--paired"), type="logical", default=TRUE,
-              help="Paired end?"
+  make_option(c("-r", "--read_type"), type="character", default=paired_end,
+              help="Read type (single_end or paired_end)."),
   make_option(c("-o", "--output_dir"), type="character", default=NULL,
               help="Path to output directory.")
 )
@@ -20,7 +20,7 @@ opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
 
 # Set paired-end flag
-paired_end <- opt$paired
+paired_end <- opt$read_type == "paired_end" # set to TRUE if paired-end, FALSE if single-end
 
 # Set input and output paths
 multiqc_json_path <- file.path(opt$input_dir, "multiqc_data.json")
