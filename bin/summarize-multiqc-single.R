@@ -102,6 +102,7 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
         mutate(sample = Sample) %>%
         split_sample() %>%
         mutate(n_bases_approx = process_n_bases(`Total Bases`)) %>%
+        select(sample, read_pair, n_bases_approx, per_base_sequence_quality:adapter_content) %>%
         select(-read_pair)
         print(tab_tsv)
   }
