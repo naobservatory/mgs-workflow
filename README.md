@@ -66,7 +66,7 @@ The goal of this phase is to sensitively, specifically, and efficiently identify
 Following HV status assignment, information for each read pair is processed into a TSV file available in the output directory as `hv_hits_putative_collapsed.tsv.gz`. Finally, the number of read pairs mapping to each detected HV taxon is counted and output as `hv_clade_counts.tsv.gz` for downstream use.
 
 [^filter]: We've found in past investigations that the two aligners detect different contaminant sequences, and aligning against both is more effective at avoiding false positives than either in isolation.
-[^threshold]: Specifically, Kraken-unassigned read pairs are classed as human-viral if, for either read in the pair, $S/ln(L) >= T$, where $S$ is the best-match Bowtie2 alignment score for that read, $L$ is the length of the read, and $T$ is the value of `params.bt2_score_threshold` specified in the config file.
+[^threshold]: Specifically, Kraken-unassigned read pairs are classed as human-viral if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
 
 #### Taxonomic profiling phase
 

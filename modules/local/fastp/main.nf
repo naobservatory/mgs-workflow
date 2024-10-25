@@ -1,5 +1,5 @@
 process FASTP_PAIRED {
-    label "large"
+    label "max"
     label "fastp"
     input:
         // reads is a list of two files: forward/reverse reads
@@ -33,7 +33,7 @@ process FASTP_PAIRED {
 }
 
 process FASTP_SINGLE {
-    label "large"
+    label "max"
     label "fastp"
     input:
         // reads contains only one file
