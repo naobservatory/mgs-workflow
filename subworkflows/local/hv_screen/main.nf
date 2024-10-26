@@ -6,9 +6,9 @@ include { BOWTIE2 as BOWTIE2_HV } from "../../../modules/local/bowtie2" addParam
 include { EXTRACT_UNCONC_READ_IDS } from "../../../modules/local/extractUnconcReadIDs"
 include { EXTRACT_UNCONC_READS } from "../../../modules/local/extractUnconcReads"
 include { COMBINE_MAPPED_BOWTIE2_READS } from "../../../modules/local/combineMappedBowtie2Reads"
-if (params.single_end) {
+if (params.read_type == "single_end") {
     include { FASTP_SINGLE as FASTP } from "../../../modules/local/fastp"
-} else {
+} else if (params.read_type == "paired_end") {
     include { FASTP_PAIRED as FASTP } from "../../../modules/local/fastp"
 }
 include { BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
