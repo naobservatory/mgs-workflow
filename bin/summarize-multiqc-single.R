@@ -11,7 +11,7 @@ option_list = list(
               help="Path to multiqc data directory."),
   make_option(c("-s", "--stage"), type="character", default=NULL,
               help="Stage descriptor."),
-  make_option(c("-r", "--read_type"), type="character", default=paired_end,
+  make_option(c("-r", "--read_type"), type="character", default="paired_end",
               help="Read type (single_end or paired_end)."),
   make_option(c("-o", "--output_dir"), type="character", default=NULL,
               help="Path to output directory.")
@@ -52,10 +52,10 @@ split_sample <- function(tab, sample_col_in="sample", sample_col_out="sample", s
     # Purge state descriptors
     samples <- tab[[sample_col_in]]
     for (s in states){
-        samples <- gsub(s, "", samples)
+        samples <- gsub(paste0("_", s), "", samples)
     }
     if (paired_end) {
-        samples <- gsub("__", "_", samples)
+        # samples <- gsub("__", "_", samples)
         samples_split <- samples %>% str_split(split_char)
         read_pairs <- sapply(samples_split, last)
         sample_ids <- sapply(samples_split, function(x) head(x, -1) %>% paste(collapse = split_char))
@@ -64,13 +64,14 @@ split_sample <- function(tab, sample_col_in="sample", sample_col_out="sample", s
         tab_out <- tab %>% mutate(read_pair = read_pairs)
         tab_out[[sample_col_out]] <- sample_ids
     } else {
-        samples <- gsub("_", "", samples)
+        # samples <- gsub("_(?=[^_]*$)", "", samples, perl=TRUE) # Remove trailing "_"
         # Write output
         tab_out <- tab %>% mutate(read_pair = 1)
         tab_out[[sample_col_out]] <- samples
     }
     return(tab_out)
 }
+
 
 basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
   # Read in basic stats from multiqc JSON
