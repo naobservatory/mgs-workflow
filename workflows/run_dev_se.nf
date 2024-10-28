@@ -41,6 +41,9 @@ workflow RUN_DEV_SE {
     RAW(samplesheet, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
 
+    // Taxonomic profiling
+    PROFILE(CLEAN.out.reads, kraken_db_path, params.n_reads_profile, params.ref_dir)
+
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
     PROCESS_OUTPUT(qc_ch)
@@ -65,4 +68,7 @@ workflow RUN_DEV_SE {
         PROCESS_OUTPUT.out.adapt >> "results/qc"
         PROCESS_OUTPUT.out.qbase >> "results/qc"
         PROCESS_OUTPUT.out.qseqs >> "results/qc"
+
+        PROFILE.out.bracken >> "results/taxonomy"
+        PROFILE.out.kraken >> "results/taxonomy"
 }
