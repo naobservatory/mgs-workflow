@@ -11,7 +11,12 @@ if (params.read_type == "single_end") {
 } else if (params.read_type == "paired_end") {
     include { FASTP_PAIRED as FASTP } from "../../../modules/local/fastp"
 }
-include { BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
+
+if (params.read_type == "single_end") {
+    include { BBDUK_SINGLE as BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
+} else if (params.read_type == "paired_end") {
+    include { BBDUK_PAIRED as BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
+}
 include { PROCESS_BOWTIE2_SAM_PAIRED } from "../../../modules/local/processBowtie2Sam"
 
 /***********
