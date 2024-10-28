@@ -6,11 +6,17 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include {
-    SUBSET_READS_${params.read_type == 'paired_end' ? 'PAIRED' : 'SINGLE'}_TARGET as SUBSET_READS_TARGET
-} from "../../../modules/local/subsetReads" addParams(suffix: "fastq")
 
-include { BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
+if (params.read_type == "single_end") {
+    include { SUBSET_READS_SINGLE_TARGET as SUBSET_READS_TARGET } from "../../../modules/local/subsetReads" addParams(suffix: "fastq")
+} else if (params.read_type == "paired_end") {
+    include { SUBSET_READS_PAIRED_TARGET as SUBSET_READS_TARGET } from "../../../modules/local/subsetReads" addParams(suffix: "fastq")
+}
+if (params.read_type == "single_end") {
+    include { BBDUK_SINGLE as BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
+} else if (params.read_type == "paired_end") {
+    include { BBDUK_PAIRED as BBDUK } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
+}
 include { TAXONOMY as TAXONOMY_RIBO } from "../../../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: 1, kraken_memory: "${params.kraken_memory}")
 include { TAXONOMY as TAXONOMY_NORIBO } from "../../../subworkflows/local/taxonomy" addParams(dedup_rc: false, classification_level: "D", read_fraction: 1, kraken_memory: "${params.kraken_memory}")
 include { MERGE_TAXONOMY_RIBO } from "../../../modules/local/mergeTaxonomyRibo"
