@@ -8,7 +8,6 @@ dir_path=""
 forward_suffix=""
 reverse_suffix=""
 s3=0
-single_end=0
 output_path="samplesheet.csv"  # Default output path
 
 # Parse command-line arguments
@@ -25,10 +24,6 @@ while [[ $# -gt 0 ]]; do
         --reverse_suffix)
             reverse_suffix="$2"
             shift 2
-            ;;
-        --single_end)
-            single_end=1
-            shift
             ;;
         --s3)
             s3=1
@@ -62,7 +57,7 @@ echo "output_path: $output_path"
 
 #### EXAMPLES ####
 
-# dir_path="" # Cannot share this as it's restricted, but imagine the read looks like this
+# dir_path="" # Cannot share this as it's restricted, but imagine the read looks like this 
 # forward_suffix="_S[0-9]_L[0-9][0-9][0-9]_R1_001"
 # reverse_suffix="_S[0-9]_L[0-9][0-9][0-9]_R2_001"
 # s3=1
