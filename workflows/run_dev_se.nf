@@ -38,6 +38,9 @@ workflow RUN_DEV_SE {
             .splitCsv(header: true)
             .map{row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2))}
     }
+    // Prepare Kraken DB
+    kraken_db_path = "${params.ref_dir}/results/kraken_db"
+// Preprocessing
     RAW(samplesheet, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
 
