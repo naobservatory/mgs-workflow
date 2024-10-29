@@ -79,7 +79,9 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
     group_by(sample) %>% summarize_all(function(x) paste(x, collapse="/")) %>%
     select(-read_pair)
   print(tab_tsv)
-  tab_tsv_2 = tab_tsv %>%
+  nba_test <- tab_tsv %>% pull(n_bases_approx) %>% str_split("/") %>% sapply(as.numeric)
+  print(nba_test)
+  tab_tsv_2 <- tab_tsv %>%
     mutate(n_bases_approx = n_bases_approx %>% str_split("/") %>% sapply(as.numeric) %>% colSums())
   # Combine
   tab <- tab_json %>% inner_join(tab_tsv_2, by="sample")
