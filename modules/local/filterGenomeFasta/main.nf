@@ -10,6 +10,6 @@ process FILTER_GENOME_FASTA {
     shell:
         '''
         zcat !{collated_genomes} | grep "^>" | grep -vif !{patterns_exclude} | sed 's/>//' > names.txt
-        seqtk subseq !{collated_genomes} names.txt | gzip -c > human-viral-genomes-filtered.fasta.gz
+        seqtk subseq !{collated_genomes} names.txt | gzip -c > !{params.name}.fasta.gz
         '''
 }
