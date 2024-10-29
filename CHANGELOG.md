@@ -8,6 +8,10 @@
   - BBtools: Extract the fragment length as well as the number of duplicates from the taxonomic workflow and add them to the `hv_hits_putative_collapsed.tsv.gz`.
   - Bowtie2: Conduct a duplication analysis on the aligned reads, then add the number of duplicates and fragment length to the `hv_hits_putative_collapsed.tsv.gz`.
 
+# v2.3.3
+
+- Added validation workflow for post-hoc BLAST validation of putative HV reads.
+
 # v2.3.2
 - Fixed subsetReads to run on all reads when the number of reads per sample is below the set threshold.
 
