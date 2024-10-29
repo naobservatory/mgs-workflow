@@ -2,7 +2,7 @@
 process COLLAPSE_HV {
     label "tidyverse"
     cpus 1
-    memory "16.GB"
+    memory "32.GB"
     input:
         path(hv_hits_filtered)
     output:

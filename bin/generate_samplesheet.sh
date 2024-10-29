@@ -11,6 +11,7 @@ s3=0
 output_path="samplesheet.csv"  # Default output path
 group_file=""  # Optional parameter for the group file
 
+
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -69,6 +70,7 @@ echo "s3: $s3"
 echo "output_path: $output_path"
 echo "group_file: $group_file"
 
+
 #### EXAMPLES ####
 
 # dir_path="" # Cannot share this as it's restricted, but imagine the read looks like this 
@@ -94,6 +96,7 @@ echo "group_file: $group_file"
 temp_samplesheet=$(mktemp)
 
 echo "sample,fastq_1,fastq_2" > "$temp_samplesheet"
+
 
 # Ensure dir_path ends with a '/'
 if [[ "$dir_path" != */ ]]; then
@@ -130,3 +133,4 @@ fi
 
 # Remove temporary file if it still exists
 [ -f "$temp_samplesheet" ] && rm "$temp_samplesheet"
+

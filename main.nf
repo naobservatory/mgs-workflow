@@ -1,5 +1,6 @@
 include { RUN } from "./workflows/run"
 include { RUN2 } from "./workflows/run2"
+include { RUN_VALIDATION } from "./workflows/run_validation"
 include { INDEX } from "./workflows/index"
 
 // Configure working and output directories
@@ -10,8 +11,8 @@ workflow {
         INDEX()
     } else if (params.mode == "run") {
         RUN()
-    } else if (params.mode == "run2") {
-        RUN2()
+    } else if (params.mode == "run_validation") {
+        RUN_VALIDATION()
     }
 }
 

@@ -1,7 +1,8 @@
 // Filter HV reads by alignment score
 process FILTER_HV {
     label "tidyverse"
-    label "single"
+    cpus 1
+    memory "16.GB"
     input:
         path(hv_hits)
         val(score_threshold)

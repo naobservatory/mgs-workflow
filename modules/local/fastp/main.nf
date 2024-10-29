@@ -1,5 +1,5 @@
 process FASTP {
-    label "large"
+    label "max"
     label "fastp"
     input:
         // reads is a list of two files: forward/reverse reads
