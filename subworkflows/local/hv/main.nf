@@ -68,7 +68,7 @@ workflow HV {
             // Split into multi-sample and single-sample groups
             multi_sample_groups = trim_group_ch.filter { it[0].size() > 1 }
             single_sample_groups = trim_group_ch.filter { it[0].size() == 1 }
-                .map { samples, fwd_list, rev_list, group -> tuple(samples[0], [fwd_list[0], rev_list[0]]) }
+                .map { samples, fwd_list, rev_list, group -> tuple(group[0], [fwd_list[0], rev_list[0]]) }
             
             grouped_ch = CONCAT_GROUP(multi_sample_groups).mix(single_sample_groups)
         } else {
