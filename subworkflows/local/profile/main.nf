@@ -38,7 +38,7 @@ workflow PROFILE {
 
             // These are already subsetted to target number
             single_sample_groups = subset_group_ch.filter { it[0].size() == 1 }
-                .map { samples, fwd_list, rev_list, group -> tuple(group[0], [fwd_list[0], rev_list[0]]) }
+                .map { samples, fwd_list, rev_list, group -> tuple(group, [fwd_list[0], rev_list[0]]) }
             
             // Concatenate multi-sample groups
             grouped_samples = CONCAT_GROUP(multi_sample_groups)
