@@ -57,7 +57,7 @@ if [[ -z "$dir_path" || -z "$forward_suffix" || -z "$reverse_suffix" ]]; then
     echo -e "\nOptional arguments:"
     echo -e "  --s3                      Use if files are stored in S3 bucket"
     echo -e "  --output_path <path>      Output path for samplesheet [default: samplesheet.csv]"
-    echo -e "  --group_file <path>       Path to group file for sample grouping [header column must be named 'sample,group']"
+    echo -e "  --group_file <path>       Path to group file for sample grouping [header column must have the names 'sample,group' in that order; additional columns may be included, however they will be ignored by the script]"
     exit 1
 fi
 
