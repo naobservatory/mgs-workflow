@@ -11,23 +11,24 @@ option_list = list(
               help="Path to multiqc data directory."),
   make_option(c("-s", "--stage"), type="character", default=NULL,
               help="Stage descriptor."),
+  make_option(c("-S", "--sample"), type="character", default=NULL,
+              help="Sample ID."),
   make_option(c("-o", "--output_dir"), type="character", default=NULL,
               help="Path to output directory.")
 )
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
 
-# Set input and output paths
+# Set input paths
 multiqc_json_path <- file.path(opt$input_dir, "multiqc_data.json")
 fastqc_tsv_path <- file.path(opt$input_dir, "multiqc_fastqc.txt")
-out_path_basic <- file.path(opt$output_dir, paste0(opt$stage, "_qc_basic_stats.tsv.gz"))
-out_path_adapters <- file.path(opt$output_dir, paste0(opt$stage, "_qc_adapter_stats.tsv.gz"))
-out_path_quality_base <- file.path(opt$output_dir, paste0(opt$stage, "_qc_quality_base_stats.tsv.gz"))
-out_path_quality_sequence <- file.path(opt$output_dir, paste0(opt$stage, "_qc_quality_sequence_stats.tsv.gz"))
 
-# Specify state descriptors
-pipeline_states <- c("bbduk_noribo2", "bbduk_noribo", "bbmap_nohuman", "bbmap_noref", "dedup", "fastp", "trunc")
-pipeline_states <- c("dedup", "fastp", "trunc", "ribo_initial_bbduk_pass", "ribo_secondary_bbduk_pass")
+# Set output paths
+id_out <- paste0(opt$stage, "_", opt$sample)
+out_path_basic <- file.path(opt$output_dir, paste0(id_out, "_qc_basic_stats.tsv.gz"))
+out_path_adapters <- file.path(opt$output_dir, paste0(id_out, "_qc_adapter_stats.tsv.gz"))
+out_path_quality_base <- file.path(opt$output_dir, paste0(id_out, "_qc_quality_base_stats.tsv.gz"))
+out_path_quality_sequence <- file.path(opt$output_dir, paste0(id_out, "_qc_quality_sequence_stats.tsv.gz"))
 
 #=====================#
 # AUXILIARY FUNCTIONS #
@@ -43,61 +44,37 @@ process_n_bases <- function(n_bases_vec){
   return(val_out)
 }
 
-split_sample <- function(tab, sample_col_in="sample", sample_col_out="sample", split_char = "_", states=pipeline_states){
-    # Purge state descriptors
-    samples <- tab[[sample_col_in]]
-    for (s in states){
-        samples <- gsub(s, "", samples)
-    }
-    samples <- gsub("__", "_", samples)
-    # Split and extract read pairs and IDs
-    samples_split <- samples %>% str_split(split_char)
-    read_pairs <- sapply(samples_split, last)
-    sample_ids <- sapply(samples_split, function(x) head(x, -1) %>% paste(collapse=split_char))
-    # Write output
-    tab_out <- tab %>% mutate(read_pair = read_pairs)
-    tab_out[[sample_col_out]] <- sample_ids
-    return(tab_out)
-}
-
 basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
   # Read in basic stats from multiqc JSON
   stats_json <- multiqc_json$report_general_stats_data
-  tab_json <- lapply(names(stats_json), 
-                     function(x) stats_json[[x]] %>% mutate(sample=x)) %>% bind_rows() %>%
-    split_sample %>%
-    group_by(sample) %>%
+  tab_json <- lapply(names(stats_json),
+                     function(x) stats_json[[x]] %>% mutate(file=x)) %>% bind_rows() %>%
     summarize(percent_gc = mean(percent_gc),
               mean_seq_len = mean(avg_sequence_length),
               n_read_pairs = total_sequences[1],
               percent_duplicates = mean(percent_duplicates))
   # Read in basic stats from fastqc TSV
-  tab_tsv <- fastqc_tsv %>% mutate(sample=Sample) %>%
-    split_sample %>%
+  tab_tsv <- fastqc_tsv %>%
     mutate(n_bases_approx = process_n_bases(`Total Bases`)) %>%
-    select(sample, read_pair, n_bases_approx, per_base_sequence_quality:adapter_content) %>%
-    group_by(sample) %>% summarize_all(function(x) paste(x, collapse="/")) %>%
-    select(-read_pair)
-  print(tab_tsv)
-  tab_tsv_2 = tab_tsv %>%
+    select(n_bases_approx, per_base_sequence_quality:adapter_content) %>%
+    summarize_all(function(x) paste(x, collapse="/")) %>%
     mutate(n_bases_approx = n_bases_approx %>% str_split("/") %>% sapply(as.numeric) %>% colSums())
   # Combine
-  tab <- tab_json %>% inner_join(tab_tsv_2, by="sample")
-  return(tab)
+  return(bind_cols(tab_json, tab_tsv))
 }
 
 extract_adapter_data_single <- function(adapter_dataset){
   # Convert a single JSON adapter dataset into a tibble
   data <- lapply(1:length(adapter_dataset$name), function(n)
-    adapter_dataset$data[[n]] %>% as.data.frame %>% 
-      mutate(sample=adapter_dataset$name[n])) %>%
+    adapter_dataset$data[[n]] %>% as.data.frame %>%
+      mutate(filename=adapter_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(position=V1, pc_adapters=V2) %>%
-    separate_wider_delim("sample", " - ", names=c("sample", "adapter")) %>%
-    split_sample
+    separate_wider_delim("filename", " - ", names=c("file", "adapter"))
   return(data)
 }
-
+# NB: Current paired version can't distinguish or annotate forward vs reverse reads in these plots.
+# TODO: Restore this functionality (will require workflow restructuring).
 
 extract_adapter_data <- function(multiqc_json){
   # Extract adapter data from multiqc JSON
@@ -110,10 +87,9 @@ extract_per_base_quality_single <- function(per_base_quality_dataset){
   # Convert a single JSON per-base-quality dataset into a tibble
   data <- lapply(1:length(per_base_quality_dataset$name), function(n)
     per_base_quality_dataset$data[[n]] %>% as.data.frame %>% 
-      mutate(sample=per_base_quality_dataset$name[n])) %>%
+      mutate(file=per_base_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
-    rename(position=V1, mean_phred_score=V2) %>%
-    split_sample
+    rename(position=V1, mean_phred_score=V2)
   return(data)
 }
 
@@ -128,10 +104,9 @@ extract_per_sequence_quality_single <- function(per_sequence_quality_dataset){
   # Convert a single JSON per-sequence-quality dataset into a tibble
   data <- lapply(1:length(per_sequence_quality_dataset$name), function(n)
     per_sequence_quality_dataset$data[[n]] %>% as.data.frame %>% 
-      mutate(sample=per_sequence_quality_dataset$name[n])) %>%
+      mutate(file=per_sequence_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
-    rename(mean_phred_score=V1, n_sequences=V2) %>%
-    split_sample
+    rename(mean_phred_score=V1, n_sequences=V2)
   return(data)
 }
 
@@ -153,10 +128,11 @@ multiqc_json <- fromJSON(multiqc_json_lines_sub)
 fastqc_tsv <- readr::read_tsv(fastqc_tsv_path, show_col_types = FALSE)
 
 # Process
-basic_info <- basic_info_fastqc(fastqc_tsv, multiqc_json) %>% mutate(stage = opt$stage)
-adapters <- extract_adapter_data(multiqc_json) %>% mutate(stage = opt$stage)
-per_base_quality <- extract_per_base_quality(multiqc_json) %>% mutate(stage = opt$stage)
-per_sequence_quality <- extract_per_sequence_quality(multiqc_json) %>% mutate(stage = opt$stage)
+add_info <- function(tab) mutate(tab, stage=opt$stage, sample=opt$sample)
+basic_info <- basic_info_fastqc(fastqc_tsv, multiqc_json) %>% add_info
+adapters <- extract_adapter_data(multiqc_json) %>% add_info
+per_base_quality <- extract_per_base_quality(multiqc_json) %>% add_info
+per_sequence_quality <- extract_per_sequence_quality(multiqc_json) %>% add_info
 
 # Write tables
 write_tsv(basic_info, out_path_basic)
