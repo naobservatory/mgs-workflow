@@ -1,3 +1,4 @@
+include { BLAST_FLOW } from "./workflows/blast"
 include { RUN } from "./workflows/run"
 include { RUN2 } from "./workflows/run2"
 include { RUN_VALIDATION } from "./workflows/run_validation"
@@ -13,7 +14,10 @@ workflow {
         RUN()
     } else if (params.mode == "run_validation") {
         RUN_VALIDATION()
+    } else if (params.mode == "blast") {
+        BLAST_FLOW()
     }
+
 }
 
 output {
