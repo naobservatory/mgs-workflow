@@ -9,8 +9,11 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { BASECALL_POD_5} from "../modules/local/dorado"
-include { BAM_TO_FASTQ} from "../modules/local/samtools"
+include { BATCH_POD_5 } from "../modules/local/batchPod5"
+include { BASECALL_POD_5 } from "../modules/local/dorado"
+include { DEMUX_POD_5 } from "../modules/local/dorado"
+include { BAM_TO_FASTQ } from "../modules/local/samtools"
+
 /*****************
 | MAIN WORKFLOWS |
 *****************/
@@ -22,15 +25,22 @@ workflow BASECALL {
         start_time = new Date()
         start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
 
+        // Batching
+        // batch_pod5_ch = BATCH_POD_5(params.pod_5_dir, params.batch_size)
+        //    .flatten()
+
         // Basecalling
-        // TODO: Could parallelise batching in future
-        pod_5_dir = params.pod5_dir
-        // calls_bam = params.calls_bam
+        bam_ch = BASECALL_POD_5(params.pod_5_dir, params.kit)
 
-        bam_ch = BASECALL_POD_5(pod_5_dir)
+        // Demultiplexing
+        demux_ch = DEMUX_POD_5(bam_ch.bam, params.kit)
 
-        fastq_ch = BAM_TO_FASTQ(bam_ch, params.nanopore_run)
+        // Convert to FASTQ
+        fastq_ch = BAM_TO_FASTQ(demux_ch.demux_bam, params.nanopore_run)
+
+
 
     publish:
-        fastq_ch >> "raw/${params.nanopore_run}.fastq.gz"
+        fastq_ch >> "raw"
+        bam_ch.summary >> "summary"
 }
