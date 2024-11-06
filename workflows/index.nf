@@ -15,7 +15,7 @@ include { JOIN_RIBO_REF } from "../modules/local/joinRiboRef"
 include { DOWNLOAD_BLAST_DB } from "../modules/local/downloadBlastDB" addParams(db: "nt")
 include { MAKE_HUMAN_INDEX } from "../subworkflows/local/makeHumanIndex"
 include { MAKE_CONTAMINANT_INDEX } from "../subworkflows/local/makeContaminantIndex"
-include { MAKE_HUMAN_VIRUS_INDEX } from "../subworkflows/local/makeHumanVirusIndex"
+include { MAKE_VIRUS_INDEX } from "../subworkflows/local/makeVirusIndex"
 include { EXTRACT_TARBALL as EXTRACT_KRAKEN_DB } from "../modules/local/extractTarball"
 
 /****************
@@ -30,15 +30,15 @@ workflow INDEX {
     MAKE_VIRUS_TAXONOMY_DB(params.taxonomy_url, params.virus_host_db_url, params.host_taxon_db, params.virus_taxid, params.viral_taxids_exclude)
     // Get reference DB of viral genomes of interest
     MAKE_VIRUS_GENOME_DB(MAKE_VIRUS_TAXONOMY_DB.out.db, params.genome_patterns_exclude, params.host_taxa_screen)
-    // ...
-//    // Build alignment indexes
-//    MAKE_HUMAN_INDEX(params.human_url)
-//    MAKE_CONTAMINANT_INDEX(params.cow_url, params.pig_url, params.mouse_url, params.carp_url, params.ecoli_url, params.contaminants)
-//    MAKE_HUMAN_VIRUS_INDEX(MAKE_HUMAN_VIRUS_DB.out.taxids, params.hv_patterns_exclude)
-//    // Other index files
-//    JOIN_RIBO_REF(params.ssu_url, params.lsu_url)
-//    DOWNLOAD_BLAST_DB()
-//    EXTRACT_KRAKEN_DB(params.kraken_db, "kraken_db", true)
+    // Build viral alignment index
+    MAKE_VIRUS_INDEX(MAKE_VIRUS_GENOME_DB.out.fasta)
+    // Build other alignment indices
+    MAKE_HUMAN_INDEX(params.human_url)
+    MAKE_CONTAMINANT_INDEX(params.cow_url, params.pig_url, params.mouse_url, params.carp_url, params.ecoli_url, params.contaminants)
+    // Other index files
+    JOIN_RIBO_REF(params.ssu_url, params.lsu_url)
+    DOWNLOAD_BLAST_DB()
+    EXTRACT_KRAKEN_DB(params.kraken_db, "kraken_db", true)
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "index-params.json")
@@ -47,8 +47,8 @@ workflow INDEX {
     publish:
         // Saved inputs
         params_ch >> "input"
-        time_ch >> "input"
-        version_ch >> "input"
+        time_ch >> "logging"
+        version_ch >> "logging"
         // Taxonomy and virus databases
         MAKE_VIRUS_TAXONOMY_DB.out.db >> "results"
         MAKE_VIRUS_TAXONOMY_DB.out.nodes >> "results"
@@ -56,17 +56,14 @@ workflow INDEX {
         // Virus genome database
         MAKE_VIRUS_GENOME_DB.out.fasta >> "results"
         MAKE_VIRUS_GENOME_DB.out.metadata >> "results"
-        // ...
-//        // Alignment indexes
-//        MAKE_HUMAN_INDEX.out.bbm >> "results"
-//        MAKE_HUMAN_INDEX.out.bt2 >> "results"
-//        MAKE_CONTAMINANT_INDEX.out.bbm >> "results"
-//        MAKE_CONTAMINANT_INDEX.out.bt2 >> "results"
-//        MAKE_HUMAN_VIRUS_INDEX.out.bt2 >> "results"
-//        MAKE_HUMAN_VIRUS_INDEX.out.filtered >> "results"
-//        MAKE_HUMAN_VIRUS_INDEX.out.mapping >> "results"
-//        // Other reference files & directories
-//        JOIN_RIBO_REF.out.ribo_ref >> "results"
-//        DOWNLOAD_BLAST_DB.out.db >> "results"
-//        EXTRACT_KRAKEN_DB.out >> "results"
+        // Alignment indexes
+        MAKE_HUMAN_INDEX.out.bbm >> "results"
+        MAKE_HUMAN_INDEX.out.bt2 >> "results"
+        MAKE_CONTAMINANT_INDEX.out.bbm >> "results"
+        MAKE_CONTAMINANT_INDEX.out.bt2 >> "results"
+        MAKE_VIRUS_INDEX.out.bt2 >> "results"
+        // Other reference files & directories
+        JOIN_RIBO_REF.out.ribo_ref >> "results"
+        DOWNLOAD_BLAST_DB.out.db >> "results"
+        EXTRACT_KRAKEN_DB.out >> "results"
 }
