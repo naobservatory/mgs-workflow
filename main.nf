@@ -3,9 +3,6 @@ include { RUN2 } from "./workflows/run2"
 include { RUN_VALIDATION } from "./workflows/run_validation"
 include { INDEX } from "./workflows/index"
 
-// Configure working and output directories
-pubDir  = "${params.base_dir}/output"
-
 workflow {
     if (params.mode == "index") {
         INDEX()
@@ -17,6 +14,13 @@ workflow {
 }
 
 output {
-    directory "${pubDir}"
-    mode "copy"
+    "input" {
+        path "input"
+    }
+    "logging" {
+        path "logging"
+    }
+    "results" {
+        path "results"
+    }
 }
