@@ -60,8 +60,9 @@ workflow TAXONOMY {
             }
 
         } else if (params.read_type == "single_end") {
+            // No merging in single read version
+            summarize_bbmerge_ch = Channel.empty()
             // Deduplicate reads (if applicable)
-
             if (params.dedup_rc) {
                 dedup_ch = CLUMPIFY_SINGLE(subset_ch)
             } else {
@@ -81,20 +82,13 @@ workflow TAXONOMY {
         bracken_label_ch = LABEL_BRACKEN_REPORTS(bracken_ch)
         bracken_merge_ch = MERGE_BRACKEN(bracken_label_ch.collect().ifEmpty([]))
 
-        if (params.read_type == "paired_end") {
-            emit:
-                kraken_output = kraken_ch.output
-                kraken_reports = kraken_merge_ch
-                bracken = bracken_merge_ch
-                bbmerge_summary = summarize_bbmerge_ch
-                dedup_summary = summarize_dedup_ch
-        }
 
-        else if (params.read_type == "single_end") {
-            emit:
-                kraken_output = kraken_ch.output
-                kraken_reports = kraken_merge_ch
-                bracken = bracken_merge_ch
-                dedup_summary = summarize_dedup_ch
-        }
+        emit:
+            kraken_output = kraken_ch.output
+            kraken_reports = kraken_merge_ch
+            bracken = bracken_merge_ch
+            bbmerge_summary = summarize_bbmerge_ch
+            dedup_summary = summarize_dedup_ch
+
+
 }
