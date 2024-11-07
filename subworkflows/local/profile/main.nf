@@ -6,7 +6,6 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-
 if (params.read_type == "single_end") {
     include { SUBSET_READS_SINGLE_TARGET as SUBSET_READS_TARGET } from "../../../modules/local/subsetReads" addParams(suffix: "fastq")
 } else if (params.read_type == "paired_end") {

@@ -82,7 +82,6 @@ workflow TAXONOMY {
         bracken_label_ch = LABEL_BRACKEN_REPORTS(bracken_ch)
         bracken_merge_ch = MERGE_BRACKEN(bracken_label_ch.collect().ifEmpty([]))
 
-
         emit:
             kraken_output = kraken_ch.output
             kraken_reports = kraken_merge_ch
