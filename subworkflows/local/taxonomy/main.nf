@@ -11,13 +11,13 @@ if (params.read_type == "paired_end") {
 } else if (params.read_type == "single_end") {
     include { SUBSET_READS_SINGLE as SUBSET_READS } from "../../../modules/local/subsetReads" addParams(suffix: "fastq")
 }
-include { BBMERGE } from "../../../modules/local/bbmerge" // probalby  skippable in single read version
-include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge" // probalby  skippable in single read version
-include { SUMMARIZE_DEDUP } from "../../../modules/local/summarizeDedup" // probalby  no change needed in single read version
-include { CLUMPIFY_PAIRED } from "../../../modules/local/clumpify" // already has a single read version.
-include { JOIN_FASTQ } from "../../../modules/local/joinFastq" // probably not needed in single read version
-include { CLUMPIFY_SINGLE } from "../../../modules/local/clumpify" // already has a single read version.
-include { KRAKEN } from "../../../modules/local/kraken" addParams(mem: "${params.kraken_memory}") // probs not changes needed
+include { BBMERGE } from "../../../modules/local/bbmerge"
+include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
+include { SUMMARIZE_DEDUP } from "../../../modules/local/summarizeDedup"
+include { CLUMPIFY_PAIRED } from "../../../modules/local/clumpify"
+include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
+include { CLUMPIFY_SINGLE } from "../../../modules/local/clumpify"
+include { KRAKEN } from "../../../modules/local/kraken" addParams(mem: "${params.kraken_memory}")
 include { LABEL_KRAKEN_REPORTS } from "../../../modules/local/labelKrakenReports"
 include { MERGE_TSVS as MERGE_KRAKEN_REPORTS } from "../../../modules/local/mergeTsvs" addParams(name: "kraken_reports")
 include { MERGE_TSVS as MERGE_BRACKEN } from "../../../modules/local/mergeTsvs" addParams(name: "bracken_reports")
