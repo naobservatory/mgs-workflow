@@ -3,7 +3,7 @@
 ***************************/
 
 include { SUBSET_READS_PAIRED_MERGED } from "../../../modules/local/subsetReads" addParams(suffix: "fasta")
-include { BLAST_PAIRED_NT } from "../../../modules/local/blast" addParams(cpus: params.blast_cpus, mem: params.blast_mem)
+include { BLAST_PAIRED_LOCAL } from "../../../modules/local/blast" addParams(cpus: params.blast_cpus, mem: params.blast_mem)
 include { FILTER_BLAST } from "../../../modules/local/filterBlast" addParams(mem: params.blast_filter_mem)
 include { PAIR_BLAST } from "../../../modules/local/pairBlast"
 
@@ -11,20 +11,21 @@ include { PAIR_BLAST } from "../../../modules/local/pairBlast"
 | WORKFLOW |
 ***********/
 
-workflow BLAST_HV {
+workflow BLAST_VIRAL {
     take:
-        hv_fasta
-        blast_nt_dir
+        viral_fasta
+        blast_db_dir
+        blast_db_prefix
         read_fraction
     main:
-        // Subset HV reads for BLAST
+        // Subset viral reads for BLAST
         if ( read_fraction < 1 ) {
-            subset_ch = SUBSET_READS_PAIRED_MERGED(hv_fasta, read_fraction)
+            subset_ch = SUBSET_READS_PAIRED_MERGED(viral_fasta, read_fraction)
         } else {
-            subset_ch = hv_fasta
+            subset_ch = viral_fasta
         }
-        // BLAST putative HV hits against nt
-        blast_ch = BLAST_PAIRED_NT(subset_ch, blast_nt_dir)
+        // BLAST putative viral hits against prepared DB
+        blast_ch = BLAST_PAIRED_LOCAL(subset_ch, blast_db_dir, blast_db_prefix)
         // Process BLAST output
         filter_ch = FILTER_BLAST(blast_ch)
         pair_ch = PAIR_BLAST(filter_ch)

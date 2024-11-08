@@ -6,7 +6,7 @@ process MERGE_SAM_KRAKEN {
     input:
         tuple val(sample), path(kraken_processed), path(sam_processed)
     output:
-        path("${sample}_hv_hits_putative.tsv.gz")
+        path("${sample}_virus_hits_putative.tsv.gz")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -26,6 +26,6 @@ process MERGE_SAM_KRAKEN {
                        adj_score_rev = best_alignment_score_rev/log(query_len_rev),
                        sample="!{sample}")
         }
-        write_tsv(mrg, "!{sample}_hv_hits_putative.tsv.gz")
+        write_tsv(mrg, "!{sample}_virus_hits_putative.tsv.gz")
         '''
 }

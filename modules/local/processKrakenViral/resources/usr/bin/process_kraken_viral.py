@@ -22,25 +22,6 @@ def open_by_suffix(filename, mode="r"):
     else:
         return open(filename, mode)
 
-# I/O functions
-
-def get_virus_db(virus_path):
-    """Generate data frame of human virus taxids."""
-    df_viruses = pd.read_csv(virus_path, sep="\t").rename(columns={0:"taxid", 1:"name"})
-    return(df_viruses)
-
-def get_parents(nodes_path):
-    """Convert a nodes DMP file into a dictionary of child:parent taxon mappings."""
-    parents = {}  # child_taxid -> parent_taxid
-    with open(nodes_path) as inf:
-        for line in inf:
-            child_taxid, parent_taxid, rank, *_ = \
-            line.replace("\t|\n", "").split("\t|\t")
-            child_taxid = int(child_taxid)
-            parent_taxid = int(parent_taxid)
-            parents[child_taxid] = parent_taxid
-    return(parents)
-
 # Per-line processing functions for Kraken output
 
 def extract_assignment(name_and_taxid):
@@ -49,16 +30,7 @@ def extract_assignment(name_and_taxid):
     name, taxid = re.findall(pattern, name_and_taxid)[0]
     return(name, int(taxid))
 
-def screen_assignment(taxid, parents, virus_db):
-    """Check whether a read has been assigned to a human-infecting virus."""
-    virus_taxids = virus_db["taxid"].unique()
-    while taxid not in [0,1,2]:
-        if taxid in virus_taxids: return(True)
-        if taxid not in parents.keys(): return(False) # Return False for missing taxids
-        taxid = parents[taxid]
-    return(False)
-
-def process_line(kraken_line, parents, virus_db):
+def process_line(kraken_line, virus_db, host_column):
     """Extract information from one line of a kraken DB and return a processed string."""
     # Strip and split line
     line = kraken_line.strip()
@@ -67,8 +39,9 @@ def process_line(kraken_line, parents, virus_db):
     # Process fields
     classified = True if is_classified == "C" else False if is_classified == "U" else "NA"
     assigned_name, assigned_taxid = extract_assignment(name_and_taxid)
-    assigned_hv = screen_assignment(assigned_taxid, parents, virus_db)
-    fields = [classified, seq_id, assigned_name, assigned_taxid, assigned_hv, length, encoded_hits]
+    host_virus_match = virus_db[virus_db["taxid"] == assigned_taxid][host_column]
+    assigned_host_virus = "0" if len(host_virus_match) == 0 else host_virus_match.iloc[0]
+    fields = [classified, seq_id, assigned_name, assigned_taxid, assigned_host_virus, length, encoded_hits]
     return(fields)
 
 def join_line(fields):
@@ -77,15 +50,15 @@ def join_line(fields):
 
 # Whole-file processing functions
 
-def process_kraken(kraken_path, out_path, parents, virus_db):
+def process_kraken(kraken_path, out_path, virus_db, host_column):
     """Process Kraken2 output into a TSV containing additional assignment information."""
     with open_by_suffix(kraken_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Write headings
-        headers = ["classified", "seq_id", "assigned_name", "assigned_taxid", "assigned_hv", "length", "encoded_hits"]
+        headers = ["kraken_classified", "seq_id", "kraken_assigned_name", "kraken_assigned_taxid", "kraken_assigned_host_virus", "kraken_length", "kraken_encoded_hits"]
         header_line = join_line(headers)
         outf.write(header_line)
         for line in inf:
-            processed_line = process_line(line, parents, virus_db)
+            processed_line = process_line(line, virus_db, host_column)
             joined_line = join_line(processed_line)
             outf.write(joined_line)
 
@@ -95,13 +68,13 @@ def main():
     # Parse arguments
     parser = argparse.ArgumentParser(description="Process Kraken2 output into a TSV with additional information.")
     parser.add_argument("kraken_output", help="Path to Kraken2 output file.")
-    parser.add_argument("virus_names", help="Path to TSV file giving taxids and names of human-infecting viruses.")
-    parser.add_argument("nodes_dmp", help="Path to DMP file specifying tree structure.")
+    parser.add_argument("virus_db", help="Path to TSV file giving viral taxonomic information.")
+    parser.add_argument("host_taxon", help="Virus host taxon to screen against (e.g. human, vertebrate).")
     parser.add_argument("output_path", help="Output path for processed data frame.")
     args = parser.parse_args()
     kraken_path = args.kraken_output
-    virus_path = args.virus_names
-    nodes_path = args.nodes_dmp
+    virus_path = args.virus_db
+    host_taxon = args.host_taxon
     out_path = args.output_path
     # Start time tracking
     print_log("Starting process.")
@@ -109,20 +82,16 @@ def main():
     # Print parameters
     print_log("Kraken file path: {}".format(kraken_path))
     print_log("Virus DB path: {}".format(virus_path))
-    print_log("Taxonomy nodes path: {}".format(nodes_path))
+    print_log("Host taxon: {}".format(host_taxon))
     print_log("Output path: {}".format(out_path))
     # Extract virus taxids
-    print_log("Importing virus DB...")
-    df_viruses = get_virus_db(virus_path)
-    virus_taxids = list(df_viruses["taxid"])
-    print_log("Virus DB imported. {} total viral taxids.".format(len(virus_taxids)))
-    # Extract node mapping
-    print_log("Importing taxid tree structure...")
-    parents = get_parents(nodes_path)
-    print_log("Tree structure imported.")
+    print_log("Importing viral DB file...")
+    virus_db = pd.read_csv(virus_path, sep="\t", dtype=str)
+    print_log("Virus DB imported. {} total viral taxids.".format(len(virus_db)))
     # Process Kraken2 output
     print_log("Processing kraken2 output...")
-    process_kraken(kraken_path, out_path, parents, df_viruses)
+    host_column = "infection_status_" + host_taxon
+    process_kraken(kraken_path, out_path, virus_db, host_column)
     print_log("File processed.")
     # Finish time tracking
     end_time = time.time()

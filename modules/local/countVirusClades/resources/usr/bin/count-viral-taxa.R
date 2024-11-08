@@ -6,7 +6,7 @@ library(tidyverse)
 # Set arguments
 option_list = list(
   make_option(c("--reads"), type="character", default=NULL,
-              help="Path to TSV file of human-infecting virus read data."),
+              help="Path to TSV file of host-infecting virus read data."),
   make_option(c("--taxa"), type="character", default=NULL,
               help="Path to database of viral taxonomic relationships"),
   make_option(c("--output"), type="character", default=NULL,
