@@ -5,11 +5,12 @@ process FILTER_GENOME_FASTA {
     input:
         path(collated_genomes)
         path(patterns_exclude)
+        val(name_pattern)
     output:
-        path("${params.name}.fasta.gz")
+        path("${name_pattern}.fasta.gz")
     shell:
         '''
         zcat !{collated_genomes} | grep "^>" | grep -vif !{patterns_exclude} | sed 's/>//' > names.txt
-        seqtk subseq !{collated_genomes} names.txt | gzip -c > !{params.name}.fasta.gz
+        seqtk subseq !{collated_genomes} names.txt | gzip -c > !{name_pattern}.fasta.gz
         '''
 }

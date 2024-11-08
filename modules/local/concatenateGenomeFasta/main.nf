@@ -4,7 +4,7 @@ process CONCATENATE_GENOME_FASTA {
     label "seqtk"
     input:
         path(genome_dir)
-        path(gid_file)
+        path(path_file)
     output:
         path("genomes.fasta.gz")
     shell:
@@ -12,18 +12,11 @@ process CONCATENATE_GENOME_FASTA {
         # Diagnostics
         echo "Genome directory contains" $(ls !{genome_dir} | wc -l) "files, beginning with:"
         ls -1 !{genome_dir} | head
-        echo "GID file contains" $(cat !{gid_file} | wc -l) "patterns, beginning with:"
-        head !{gid_file}
-        # Get list of matching filenames and save to file
-        while read pattern; do 
-            ls -1 !{genome_dir}/*${pattern}* >> filenames_match.txt
-            #find !{genome_dir} -type f -name "*${pattern}*" >> filenames_match.txt
-        done < !{gid_file}
-        echo "Temporary file contains" $(cat filenames_match.txt | wc -l) "filepaths, beginning with:"
-        head filenames_match.txt
-        # Concatenate
-        if [[ -s filenames_match.txt ]]; then
-            cat $(cat filenames_match.txt) > genomes.fasta.gz
+        echo "Filepath file contains" $(cat !{path_file} | wc -l) "paths, beginning with:"
+        head !{path_file}
+        # Concatenate files listed by paths
+        if [[ -s !{path_file} ]]; then
+            cat $(cat !{path_file}) > genomes.fasta.gz
         else
             echo "No matching files found!"
             exit 1

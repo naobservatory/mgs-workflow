@@ -12,7 +12,7 @@ import java.time.LocalDateTime
 include { MAKE_VIRUS_TAXONOMY_DB } from "../subworkflows/local/makeVirusTaxonomyDB"
 include { MAKE_VIRUS_GENOME_DB } from "../subworkflows/local/makeVirusGenomeDB"
 include { JOIN_RIBO_REF } from "../modules/local/joinRiboRef"
-include { DOWNLOAD_BLAST_DB } from "../modules/local/downloadBlastDB" addParams(db: "nt")
+include { DOWNLOAD_BLAST_DB } from "../modules/local/downloadBlastDB" addParams(db: "core_nt")
 include { MAKE_HUMAN_INDEX } from "../subworkflows/local/makeHumanIndex"
 include { MAKE_CONTAMINANT_INDEX } from "../subworkflows/local/makeContaminantIndex"
 include { MAKE_VIRUS_INDEX } from "../subworkflows/local/makeVirusIndex"

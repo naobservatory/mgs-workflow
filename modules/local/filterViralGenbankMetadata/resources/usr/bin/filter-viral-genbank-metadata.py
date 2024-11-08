@@ -36,7 +36,8 @@ def main():
     parser.add_argument("virus_db", help="Path to TSV of virus taxa, annotated with infection status.")
     parser.add_argument("host_taxa", help="Space-separated list of host taxon names to filter to.")
     parser.add_argument("output_db", help="Output path to filtered metadata TSV.")
-    parser.add_argument("output_gid", help="Output path to filtered list of genome IDs.")
+    parser.add_argument("output_accessions", help="Output path to filtered list of genome accessions.")
+    parser.add_argument("output_paths", help="Output path to filtered list of genome filepaths.")
     args = parser.parse_args()
     # Import inputs
     logger.info("Importing input TSVs.")
@@ -54,7 +55,8 @@ def main():
     # Write output
     logger.info("Writing output.")
     meta_db_filtered.to_csv(args.output_db, sep="\t", index=False)
-    meta_db_filtered["assembly_accession"].to_csv(args.output_gid, index=False, header=False)
+    meta_db_filtered["assembly_accession"].to_csv(args.output_accessions, index=False, header=False)
+    meta_db_filtered["local_filename"].to_csv(args.output_paths, index=False, header=False)
     logger.info("Script complete.")
 
 if __name__ == "__main__":
