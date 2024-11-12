@@ -27,6 +27,7 @@ include { COUNT_HV_CLADES } from "../../../modules/local/countHvClades"
 include { BBDUK_HITS } from "../../../modules/local/bbduk" addParams(suffix: params.bbduk_suffix)
 include { CUTADAPT } from "../../../modules/local/cutadapt"
 include { TRIMMOMATIC } from "../../../modules/local/trimmomatic" addParams(encoding: params.encoding)
+include { CONCAT_GROUP } from "../../../modules/local/concatGroup"
 
 /***********
 | WORKFLOW |
@@ -35,6 +36,7 @@ include { TRIMMOMATIC } from "../../../modules/local/trimmomatic" addParams(enco
 workflow HV {
     take:
         reads_ch
+        group_ch
         ref_dir
         kraken_db_ch
         aln_score_threshold
@@ -56,8 +58,25 @@ workflow HV {
         // Carry out stringent adapter removal with Cutadapt and Trimmomatic
         adapt_ch = CUTADAPT(bbduk_ch.fail, adapter_path)
         trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path)
+
+        if (params.grouping) {
+            // Join samplesheet with trimmed_reads and update fastq files
+            trim_group_ch = group_ch.join(trim_ch.reads, by: 0)
+            .map { sample, group, reads -> tuple(sample, reads[0], reads[1], group) }
+            .groupTuple(by: 3)
+
+            // Split into multi-sample and single-sample groups
+            multi_sample_groups = trim_group_ch.filter { it[0].size() > 1 }
+            single_sample_groups = trim_group_ch.filter { it[0].size() == 1 }
+                .map { samples, fwd_list, rev_list, group -> tuple(group, [fwd_list[0], rev_list[0]]) }
+            
+            grouped_ch = CONCAT_GROUP(multi_sample_groups).mix(single_sample_groups)
+        } else {
+            grouped_ch = trim_ch.reads
+        }
+
         // Run Bowtie2 against an HV database and process output
-        bowtie2_ch = BOWTIE2_HV(trim_ch.reads, bt2_hv_index_path, "--no-unal --no-sq --score-min G,1,1")
+        bowtie2_ch = BOWTIE2_HV(grouped_ch, bt2_hv_index_path, "--no-unal --no-sq --score-min G,1,1")
         bowtie2_sam_ch = PROCESS_BOWTIE2_SAM_PAIRED(bowtie2_ch.sam, genomeid_map_path)
         alignment_dup_summary = COUNT_ALIGNMENT_DUPLICATES(bowtie2_sam_ch)
         bowtie2_unconc_ids_ch = EXTRACT_UNCONC_READ_IDS(bowtie2_ch.sam)

@@ -11,9 +11,9 @@ import java.time.LocalDateTime
 
 include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
 include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
-include { HV } from "../subworkflows/local/hv" addParams(min_kmer_hits: "3", k: "21", bbduk_suffix: "hv", encoding: "${params.quality_encoding}", fuzzy_match: "${params.fuzzy_match_alignment_duplicates}")
+include { HV } from "../subworkflows/local/hv" addParams(min_kmer_hits: "3", k: "21", bbduk_suffix: "hv", encoding: "${params.quality_encoding}", fuzzy_match: "${params.fuzzy_match_alignment_duplicates}", grouping: params.grouping)
 include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
-include { PROFILE } from "../subworkflows/local/profile" addParams(min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo", kraken_memory: "${params.kraken_memory}")
+include { PROFILE } from "../subworkflows/local/profile" addParams(min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo", kraken_memory: "${params.kraken_memory}", grouping: params.grouping)
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 nextflow.preview.output = true
 
@@ -27,24 +27,35 @@ workflow RUN {
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
     // Prepare samplesheet
-    samplesheet = Channel
-        .fromPath(params.sample_sheet)
-        .splitCsv(header: true)
-        .map{row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2))}
+    if ( params.grouping ) {
+        samplesheet = Channel
+            .fromPath(params.sample_sheet)
+            .splitCsv(header: true)
+            .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2), row.group) }
+        samplesheet_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, [read1, read2]) }
+        group_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, group) }
+    } else {
+        samplesheet = Channel
+            .fromPath(params.sample_sheet)
+            .splitCsv(header: true)
+            .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2)) }
+        samplesheet_ch = samplesheet.map { sample, read1, read2 -> tuple(sample, [read1, read2]) }
+        group_ch = Channel.empty()
+    }
     // Prepare Kraken DB
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     // Preprocessing
-    RAW(samplesheet, params.n_reads_trunc)
+    RAW(samplesheet_ch, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
     // Extract and count human-viral reads
-    HV(CLEAN.out.reads, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters)
+    HV(RAW.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters)
     // BLAST validation on human-viral reads (optional)
     if ( params.blast_hv_fraction > 0 ) {
         blast_nt_path = "${params.ref_dir}/results/nt"
         BLAST_HV(HV.out.fasta, blast_nt_path, params.blast_hv_fraction)
     }
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, kraken_db_path, params.n_reads_profile, params.ref_dir)
+    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir)
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
     PROCESS_OUTPUT(qc_ch)
