@@ -30,7 +30,7 @@ def extract_assignment(name_and_taxid):
     name, taxid = re.findall(pattern, name_and_taxid)[0]
     return(name, int(taxid))
 
-def process_line(kraken_line, virus_db, host_column):
+def process_line(kraken_line, virus_status_dict):
     """Extract information from one line of a kraken DB and return a processed string."""
     # Strip and split line
     line = kraken_line.strip()
@@ -39,8 +39,12 @@ def process_line(kraken_line, virus_db, host_column):
     # Process fields
     classified = True if is_classified == "C" else False if is_classified == "U" else "NA"
     assigned_name, assigned_taxid = extract_assignment(name_and_taxid)
-    host_virus_match = virus_db[virus_db["taxid"] == assigned_taxid][host_column]
-    assigned_host_virus = "0" if len(host_virus_match) == 0 else host_virus_match.iloc[0]
+    try:
+        assigned_host_virus = virus_status_dict[assigned_taxid]
+    except KeyError:
+        print_log("No key found for taxid {} ({}); assigning infection status 0.".format(assigned_taxid, assigned_name))
+        print(assigned_taxid)
+        assigned_host_virus = "0"
     fields = [classified, seq_id, assigned_name, assigned_taxid, assigned_host_virus, length, encoded_hits]
     return(fields)
 
@@ -50,7 +54,7 @@ def join_line(fields):
 
 # Whole-file processing functions
 
-def process_kraken(kraken_path, out_path, virus_db, host_column):
+def process_kraken(kraken_path, out_path, virus_status_dict):
     """Process Kraken2 output into a TSV containing additional assignment information."""
     with open_by_suffix(kraken_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Write headings
@@ -58,7 +62,7 @@ def process_kraken(kraken_path, out_path, virus_db, host_column):
         header_line = join_line(headers)
         outf.write(header_line)
         for line in inf:
-            processed_line = process_line(line, virus_db, host_column)
+            processed_line = process_line(line, virus_status_dict)
             joined_line = join_line(processed_line)
             outf.write(joined_line)
 
@@ -84,14 +88,17 @@ def main():
     print_log("Virus DB path: {}".format(virus_path))
     print_log("Host taxon: {}".format(host_taxon))
     print_log("Output path: {}".format(out_path))
+    host_column = "infection_status_" + host_taxon
+    print_log("Host taxon search column: {}".format(host_column))
     # Extract virus taxids
     print_log("Importing viral DB file...")
     virus_db = pd.read_csv(virus_path, sep="\t", dtype=str)
     print_log("Virus DB imported. {} total viral taxids.".format(len(virus_db)))
+    virus_status_dict = {taxid: status for taxid, status in
+                         zip(virus_db["taxid"], virus_db[host_column])}
     # Process Kraken2 output
     print_log("Processing kraken2 output...")
-    host_column = "infection_status_" + host_taxon
-    process_kraken(kraken_path, out_path, virus_db, host_column)
+    process_kraken(kraken_path, out_path, virus_status_dict)
     print_log("File processed.")
     # Finish time tracking
     end_time = time.time()

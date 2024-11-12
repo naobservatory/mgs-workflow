@@ -83,31 +83,27 @@ def extract_optional_fields(opt_list):
     out["mate_alignment_score"] = extract_option(opt_list, "YS")
     return(out)
 
-def extract_viral_taxid(genome_id, genbank_metadata, viral_db):
+def extract_viral_taxid(genome_id, genbank_metadata, viral_taxids):
     """Extract taxid from the appropriate field of Genbank metadata."""
-    meta = genbank_metadata[genbank_metadata["genome_id"] == genome_id]
-    if len(meta) < 1:
-        print(genome_id)
-        print(genbank_metadata["genome_id"].head())
-        raise ValueError("No matching genome ID found.")
-    taxid = meta["taxid"].iloc[0]
-    if taxid in viral_db["taxid"].values:
-        return taxid
-    else:
-        species_taxid = meta["species_taxid"].iloc[0]
-        if species_taxid in viral_db["taxid"].values:
-            return species_taxid
-        else:
+    try:
+        taxid, species_taxid = genbank_metadata[genome_id]
+        if taxid in viral_taxids:
             return taxid
+        if species_taxid in viral_taxids:
+            return species_taxid
+        return taxid
+    except KeyError:
+        msg = "No matching genome ID found: {}".format(genome_id)
+        raise ValueError(msg)
 
-def process_sam_alignment(sam_line, genbank_metadata, viral_db, paired):
+def process_sam_alignment(sam_line, genbank_metadata, viral_taxids, paired):
     """Process a SAM alignment line."""
     fields_in = sam_line.strip().split("\t")
     out = {}
     out["query_name"] = fields_in[0]
     out.update(process_sam_flags(fields_in[1]))
     out["genome_id"] = fields_in[2]
-    out["taxid"] = int(extract_viral_taxid(fields_in[2], genbank_metadata, viral_db))
+    out["taxid"] = int(extract_viral_taxid(fields_in[2], genbank_metadata, viral_taxids))
     out["ref_start"] = int(fields_in[3]) - 1 # Convert from 1-indexing to 0-indexing
     out["map_qual"] = int(fields_in[4])
     out["cigar"] = fields_in[5]
@@ -242,7 +238,7 @@ def write_sam_headers_paired(out_file):
     out_file.write(header_line)
     return None
 
-def process_paired_sam(sam_path, out_path, genbank_metadata, viral_db):
+def process_paired_sam(sam_path, out_path, genbank_metadata, viral_taxids):
     """Process paired SAM file into a TSV."""
     with open_by_suffix(sam_path) as inf, open_by_suffix(out_path, "w") as outf:
         head = write_sam_headers_paired(outf) # Write headers
@@ -251,7 +247,7 @@ def process_paired_sam(sam_path, out_path, genbank_metadata, viral_db):
         rev_line = get_next_alignment(inf)
         while True:
             if fwd_line is not None: # If forward line exists
-                fwd_dict = process_sam_alignment(fwd_line, genbank_metadata, viral_db, True)
+                fwd_dict = process_sam_alignment(fwd_line, genbank_metadata, viral_taxids, True)
                 if fwd_dict["pair_status"] not in ["UU", "UP", "CP", "DP"]:
                     raise ValueError("Invalid pair status: {}, {}".format(fwd_dict["query_name"], fwd_dict["pair_status"]))
                 elif fwd_dict["pair_status"] == "UU":
@@ -266,7 +262,7 @@ def process_paired_sam(sam_path, out_path, genbank_metadata, viral_db):
                 else:
                     if rev_line is None:
                         raise ValueError("Forward read is paired but reverse read is missing: {}".format(fwd_dict["query_name"]))
-                    rev_dict = process_sam_alignment(rev_line, genbank_metadata, viral_db, True)
+                    rev_dict = process_sam_alignment(rev_line, genbank_metadata, viral_taxids, True)
                     if rev_dict["query_name"] != fwd_dict["query_name"]:
                         msg = "Alignments should be paired but read IDs mismatch: {}, {}"
                         raise ValueError(msg.format(fwd_dict["query_name"], rev_dict["query_name"]))
@@ -281,7 +277,7 @@ def process_paired_sam(sam_path, out_path, genbank_metadata, viral_db):
                     rev_line = get_next_alignment(inf)
                     continue
             elif rev_line is not None:
-                rev_dict = process_sam_alignment(rev_line, genbank_metadata, viral_db, True)
+                rev_dict = process_sam_alignment(rev_line, genbank_metadata, viral_taxids, True)
                 msg = "Invalid data: reverse line exists without forward line: {}".format(rev_dict["query_name"])
                 raise ValueError(msg)
             else:
@@ -318,14 +314,20 @@ def main():
     # Import metadata and viral DB
     print_log("Importing Genmank metadata file...")
     meta_db = pd.read_csv(meta_path, sep="\t", dtype=str)
+    gid_taxid_dict = {genome_id: [taxid, species_taxid]
+                      for genome_id, taxid, species_taxid in
+                      zip(meta_db["genome_id"],meta_db["taxid"],
+                          meta_db["species_taxid"])}
     print_log("Importing viral DB file...")
     virus_db = pd.read_csv(vdb_path, sep="\t", dtype=str)
+    virus_taxa = set(virus_db["taxid"].values)
+    print_log("Imported {} virus taxa.".format(len(virus_taxa)))
     # Process SAM
     print_log("Processing SAM file...")
     if paired:
-        process_paired_sam(sam_path, out_path, meta_db, virus_db)
+        process_paired_sam(sam_path, out_path, gid_taxid_dict, virus_taxa)
     else:
-        process_unpaired_sam(sam_path, out_path, meta_db, virus_db)
+        process_unpaired_sam(sam_path, out_path, gid_taxid_dict, virus_taxa)
     print_log("File processed.")
     # Finish time tracking
     end_time = time.time()

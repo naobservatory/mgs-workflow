@@ -16,8 +16,8 @@ process COLLAPSE_VIRUS_READS {
             return(max(x, na.rm = TRUE))
         }
         rmax_assign <- function(x){
-            if (all(is.na(x)) return(NA)
-            if any(x==1) return(1)
+            if (all(is.na(x))) return(NA)
+            if (any(x==1)) return(1)
             return(max(x, na.rm = TRUE))
         }
         collapse <- function(x) ifelse(all(x == x[1]), x[1], paste(x, collapse="/"))
