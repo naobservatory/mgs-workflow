@@ -4,10 +4,11 @@ process COPY_FILE {
     label "single"
     input:
         path(file_path)
+        val(outpath)
     output:
-        path("${params.outpath}"), emit: file
+        path("${outpath}"), emit: file
     shell:
         '''
-        cp !{file_path} !{params.outpath}
+        cp !{file_path} !{outpath}
         '''
 }

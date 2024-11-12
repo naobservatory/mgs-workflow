@@ -5,8 +5,9 @@ process MERGE_TSVS {
     memory "16.GB"
     input:
         path(tsvs)
+        val(name)
     output:
-        path("${params.name}.tsv.gz")
+        path("${name}.tsv.gz")
     shell:
         '''
         #!/usr/bin/env Rscript
@@ -18,6 +19,6 @@ process MERGE_TSVS {
         tab_out <- bind_rows(tabs)
         print(dim(tab_out))
         sapply(tabs, nrow) %>% sum %>% print
-        write_tsv(tab_out, "!{params.name}.tsv.gz")
+        write_tsv(tab_out, "!{name}.tsv.gz")
         '''
 }

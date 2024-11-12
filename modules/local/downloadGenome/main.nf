@@ -4,11 +4,12 @@ process DOWNLOAD_GENOME {
     label "single"
     input:
         val(genome_url)
+        val(name)
     output:
-        path("${params.name}.fasta.gz"), emit: genome
+        path("${name}.fasta.gz"), emit: genome
     shell:
         '''
-        path=!{params.name}.fasta.gz
+        path=!{name}.fasta.gz
         wget !{genome_url} -O ${path}
         '''
 }

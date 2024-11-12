@@ -6,7 +6,7 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { QC } from "../../../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem, stage_label: params.stage_label)
+include { QC } from "../../../subworkflows/local/qc"
 include { FASTP } from "../../../modules/local/fastp"
 
 /***********
@@ -17,9 +17,12 @@ workflow CLEAN {
     take:
         reads_ch
         adapter_path
+        fastqc_cpus
+        fastqc_mem
+        stage_label
     main:
         fastp_ch = FASTP(reads_ch, adapter_path)
-        qc_ch = QC(fastp_ch.reads)
+        qc_ch = QC(fastp_ch.reads, fastqc_cpus, fastqc_mem, stage_label)
     emit:
         reads = fastp_ch.reads
         qc = qc_ch.qc
