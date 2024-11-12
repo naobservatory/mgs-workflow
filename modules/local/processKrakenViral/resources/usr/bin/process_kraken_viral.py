@@ -28,7 +28,7 @@ def extract_assignment(name_and_taxid):
     """Extract assigned name and taxid (if any) from kraken DB field."""
     pattern = "^(.*) [(]taxid ([0-9]+)[)]$"
     name, taxid = re.findall(pattern, name_and_taxid)[0]
-    return(name, int(taxid))
+    return(name, taxid)
 
 def process_line(kraken_line, virus_status_dict):
     """Extract information from one line of a kraken DB and return a processed string."""
@@ -42,8 +42,6 @@ def process_line(kraken_line, virus_status_dict):
     try:
         assigned_host_virus = virus_status_dict[assigned_taxid]
     except KeyError:
-        print_log("No key found for taxid {} ({}); assigning infection status 0.".format(assigned_taxid, assigned_name))
-        print(assigned_taxid)
         assigned_host_virus = "0"
     fields = [classified, seq_id, assigned_name, assigned_taxid, assigned_host_virus, length, encoded_hits]
     return(fields)
