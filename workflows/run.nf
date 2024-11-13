@@ -11,8 +11,8 @@ import java.time.LocalDateTime
 
 include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
 include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
-include { HV } from "../subworkflows/local/hv" addParams(min_kmer_hits: "3", k: "21", bbduk_suffix: "hv", encoding: "${params.quality_encoding}", fuzzy_match: "${params.fuzzy_match_alignment_duplicates}", grouping: params.grouping)
-include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
+include { EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReads" addParams(min_kmer_hits: "3", k: "21", bbduk_suffix: "viral", encoding: "${params.quality_encoding}", fuzzy_match: "${params.fuzzy_match_alignment_duplicates}", grouping: params.grouping)
+include { BLAST_VIRAL } from "../subworkflows/local/blastViral" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
 include { PROFILE } from "../subworkflows/local/profile" addParams(min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo", kraken_memory: "${params.kraken_memory}", grouping: params.grouping)
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 nextflow.preview.output = true
@@ -48,11 +48,12 @@ workflow RUN {
     RAW(samplesheet_ch, params.n_reads_trunc)
     CLEAN(RAW.out.reads, params.adapters)
     // Extract and count human-viral reads
-    HV(RAW.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters)
-    // BLAST validation on human-viral reads (optional)
+    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon)
+    // BLAST validation on host-viral reads (optional)
     if ( params.blast_hv_fraction > 0 ) {
-        blast_nt_path = "${params.ref_dir}/results/nt"
-        BLAST_HV(HV.out.fasta, blast_nt_path, params.blast_hv_fraction)
+        blast_db_path = "${params.ref_dir}/results/core_nt"
+        blast_db_prefix = "core_nt"
+        BLAST_VIRAL(EXTRACT_VIRAL_READS.out.fasta, blast_db_path, blast_db_prefix, params.blast_hv_fraction)
     }
     // Taxonomic profiling
     PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir)
@@ -67,7 +68,7 @@ workflow RUN {
     publish:
         // Saved inputs
         Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
-        Channel.fromPath("${params.ref_dir}/input/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
+        Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
         Channel.fromPath(params.sample_sheet) >> "input"
         Channel.fromPath(params.adapters) >> "input"
         params_ch >> "input"
@@ -76,14 +77,13 @@ workflow RUN {
         // Intermediate files
         CLEAN.out.reads >> "intermediates/reads/cleaned"
         // QC
-        PROCESS_OUTPUT.out.basic >> "results/qc"
-        PROCESS_OUTPUT.out.adapt >> "results/qc"
-        PROCESS_OUTPUT.out.qbase >> "results/qc"
-        PROCESS_OUTPUT.out.qseqs >> "results/qc"
+        PROCESS_OUTPUT.out.basic >> "results"
+        PROCESS_OUTPUT.out.adapt >> "results"
+        PROCESS_OUTPUT.out.qbase >> "results"
+        PROCESS_OUTPUT.out.qseqs >> "results"
         // Final results
-        HV.out.tsv >> "results/hv"
-        HV.out.counts >> "results/hv"
-
-        PROFILE.out.bracken >> "results/taxonomy"
-        PROFILE.out.kraken >> "results/taxonomy"
+        EXTRACT_VIRAL_READS.out.tsv >> "results"
+        EXTRACT_VIRAL_READS.out.counts >> "results"
+        PROFILE.out.bracken >> "results"
+        PROFILE.out.kraken >> "results"
 }

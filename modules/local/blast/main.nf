@@ -1,11 +1,12 @@
-// BLAST paired reads against NT and return a single output file
-process BLAST_PAIRED_NT {
+// BLAST paired reads against a downloaded DB and return a single output file
+process BLAST_PAIRED_LOCAL {
     label "BLAST"
     cpus "${params.cpus}"
     memory "${params.mem}"
     input:
         path(gzipped_reads)
-        path(blast_nt_dir)
+        path(blast_db_dir)
+        val(db_prefix)
     output:
         path("hits.blast.gz")
     shell:
@@ -14,7 +15,7 @@ process BLAST_PAIRED_NT {
         in1=!{gzipped_reads[0]}
         in2=!{gzipped_reads[1]}
         out=hits.blast
-        db=!{blast_nt_dir}/nt
+        db=!{blast_db_dir}/!{db_prefix}
         threads=!{task.cpus}
         # Concatenate and decompress inputs
         cat ${in1} ${in2} | zcat > reads.fasta

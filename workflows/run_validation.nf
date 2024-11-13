@@ -9,8 +9,8 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { MAKE_HV_FASTA } from "../modules/local/makeHvFasta"
-include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
+include { MAKE_VIRUS_READS_FASTA } from "../modules/local/makeVirusReadsFasta"
+include { BLAST_VIRAL } from "../subworkflows/local/blastViral" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
 nextflow.preview.output = true
 
 /*****************
@@ -24,11 +24,12 @@ workflow RUN_VALIDATION {
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
     // Define input
     collapsed_ch = params.hv_tsv_collapsed
-    // Extract HV reads into FASTA format
-    fasta_ch = MAKE_HV_FASTA(collapsed_ch)
-    // BLAST validation on human-viral reads
+    // Extract virus reads into FASTA format
+    fasta_ch = MAKE_VIRUS_READS_FASTA(collapsed_ch)
+    // BLAST validation on host-viral reads
     if ( params.blast_hv_fraction > 0 ) {
-        blast_nt_path = "${params.ref_dir}/results/nt"
+        blast_db_path = "${params.ref_dir}/results/core_nt"
+        blast_db_prefix = "core_nt"
         BLAST_HV(fasta_ch, blast_nt_path, params.blast_hv_fraction)
     }
     // Publish results (NB: BLAST workflow has its own publish directive)
