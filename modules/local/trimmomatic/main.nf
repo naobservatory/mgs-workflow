@@ -5,7 +5,7 @@ process TRIMMOMATIC {
         // reads is a list of two files: forward/reverse reads
         tuple val(sample), path(reads)
         path(adapters)
-        val(encoding}
+        val(encoding)
     output:
         tuple val(sample), path("${sample}_trimmomatic_{1,2}.fastq.gz"), emit: reads
         tuple val(sample), path("${sample}_trimmomatic_unpaired_{1,2}.fastq.gz"), emit: unpaired

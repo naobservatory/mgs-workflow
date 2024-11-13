@@ -57,7 +57,7 @@ workflow EXTRACT_VIRAL_READS {
         bbm_other_index_path = "${ref_dir}/results/bbm-other-index"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
         // Run initial screen against viral genomes with BBDuk
-        bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, suffix)
+        bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // Carry out stringent adapter removal with Cutadapt and Trimmomatic
         adapt_ch = CUTADAPT(bbduk_ch.fail, adapter_path)
         trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path, encoding)

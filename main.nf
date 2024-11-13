@@ -1,5 +1,4 @@
 include { RUN } from "./workflows/run"
-include { RUN2 } from "./workflows/run2"
 include { RUN_VALIDATION } from "./workflows/run_validation"
 include { INDEX } from "./workflows/index"
 
