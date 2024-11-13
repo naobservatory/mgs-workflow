@@ -5,15 +5,16 @@ process SUBSET_READS_PAIRED {
     input:
         tuple val(sample), path(reads)
         val readFraction
+        val suffix
     output:
-        tuple val(sample), path("${sample}_subset_{1,2}.${params.suffix}.gz")
+        tuple val(sample), path("${sample}_subset_{1,2}.${suffix}.gz")
     shell:
         '''
         # Define input/output
         in1=!{reads[0]}
         in2=!{reads[1]}
-        out1=!{sample}_subset_1.!{params.suffix}.gz
-        out2=!{sample}_subset_2.!{params.suffix}.gz
+        out1=!{sample}_subset_1.!{suffix}.gz
+        out2=!{sample}_subset_2.!{suffix}.gz
         # Count reads for validation
         echo "Input reads: $(zcat ${in1} | wc -l | awk '{ print $1/4 }')"
         # Carry out subsetting
@@ -32,15 +33,16 @@ process SUBSET_READS_PAIRED_MERGED {
     input:
         path(reads)
         val readFraction
+        val suffix
     output:
-        path("reads_subset_{1,2}.${params.suffix}.gz")
+        path("reads_subset_{1,2}.${suffix}.gz")
     shell:
         '''
         # Define input/output
         in1=!{reads[0]}
         in2=!{reads[1]}
-        out1=reads_subset_1.!{params.suffix}.gz
-        out2=reads_subset_2.!{params.suffix}.gz
+        out1=reads_subset_1.!{suffix}.gz
+        out2=reads_subset_2.!{suffix}.gz
         # Count reads for validation
         echo "Input reads: $(zcat ${in1} | wc -l | awk '{ print $1/4 }')"
         # Carry out subsetting
@@ -59,15 +61,16 @@ process SUBSET_READS_PAIRED_TARGET {
     input:
         tuple val(sample), path(reads)
         val readTarget
+        val suffix
     output:
-        tuple val(sample), path("${sample}_subset_{1,2}.${params.suffix}.gz")
+        tuple val(sample), path("${sample}_subset_{1,2}.${suffix}.gz")
     shell:
         '''
         # Define input/output
         in1=!{reads[0]}
         in2=!{reads[1]}
-        out1=!{sample}_subset_1.!{params.suffix}.gz
-        out2=!{sample}_subset_2.!{params.suffix}.gz
+        out1=!{sample}_subset_1.!{suffix}.gz
+        out2=!{sample}_subset_2.!{suffix}.gz
         # Count reads and compute target fraction
         n_reads=$(zcat ${in1} | wc -l | awk '{ print $1/4 }')
         echo "Input reads: ${n_reads}"

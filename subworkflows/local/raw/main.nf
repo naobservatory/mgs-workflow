@@ -6,7 +6,7 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { QC } from "../../../subworkflows/local/qc" addParams(fastqc_cpus: params.fastqc_cpus, fastqc_mem: params.fastqc_mem)
+include { QC } from "../../../subworkflows/local/qc"
 include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
 
 /***********
@@ -15,18 +15,18 @@ include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
 
 workflow RAW {
     take:
-        samplesheet
+        samplesheet_ch
         n_reads_trunc
+        fastqc_cpus
+        fastqc_mem
+        stage_label
     main:
-        concat_ch = samplesheet.map { sample, read1, read2 ->
-            tuple(sample, [read1, read2])
-        }
         if ( n_reads_trunc > 0 ) {
-            out_ch = TRUNCATE_CONCAT(concat_ch, n_reads_trunc)
+            out_ch = TRUNCATE_CONCAT(samplesheet_ch, n_reads_trunc)
         } else {
-            out_ch = concat_ch
+            out_ch = samplesheet_ch
         }
-        qc_ch = QC(out_ch, params.stage_label)
+        qc_ch = QC(out_ch, fastqc_cpus, fastqc_mem, stage_label)
     emit:
         reads = out_ch
         qc = qc_ch.qc

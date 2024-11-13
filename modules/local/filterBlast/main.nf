@@ -2,9 +2,10 @@
 process FILTER_BLAST {
     label "tidyverse"
     cpus 1
-    memory "${params.mem}"
+    memory "${mem}"
     input:
         path(blast_hits)
+        val(mem)
     output:
         path("blast_hits_filtered.tsv.gz")
     shell:
