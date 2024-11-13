@@ -119,7 +119,7 @@ class NextflowAnalyzer:
                     }
             with open(workflow.file_path) as f:
                 content = f.read()
-                depend_matches = re.finditer(r'\s*include\s+{\s*(.*?)\s*}\s+from\s+[\'"](.*)/(.*)[\'"]\s*', content)
+                depend_matches = re.finditer(r'\s*include\s+{\s*(\S*).*}\s+from\s+[\'"](\S*)/(\S*)[\'"]\s*', content)
                 for match in depend_matches:
                     item = match.group(1)
                     dirpath = match.group(2)
@@ -184,6 +184,10 @@ def generate_nextflow_report(analyzer: NextflowAnalyzer, output_file: str):
         f.write(f"Unused Processes: {len(analyzer.unused_components['processes'])}\n\n")
         # Workflow summary
         report_workflows(analyzer, f)
+        # Module summary
+        report_modules(analyzer, f)
+        # Standalone processes summary
+        report_standalone_processes(analyzer, f)
 
 def report_workflows(analyzer: NextflowAnalyzer, output_stream):
     """Write workflow section of Nextflow report."""
@@ -237,100 +241,108 @@ def report_workflows(analyzer: NextflowAnalyzer, output_stream):
             output_stream.write("Not called by any workflow.\n")
         output_stream.write("\n")
 
+def report_modules(analyzer: NextflowAnalyzer, output_stream):
+    """Write module section of Nextflow report."""
+    output_stream.write("===============\n")
+    output_stream.write("=== Modules ===\n")
+    output_stream.write("===============\n\n")
+    if not analyzer.modules:
+        output_stream.write("No modules in pipeline.\n\n")
+    for name in sorted(analyzer.modules.keys()):
+        module = analyzer.modules[name]
+        # Basic module information
+        output_stream.write(f"Module: {name}\n")
+        output_stream.write(f"Location: {module.path.relative_to(analyzer.pipeline_dir)}\n")
+        # Processes in module
+        if module.processes:
+            output_stream.write("Contains processes:\n")
+            for proc_name, process in sorted(module.processes.items()):
+                usage_status = " (UNUSED)" if proc_name in analyzer.unused_components['processes'] else ""
+                output_stream.write(f"\t- {proc_name}{usage_status}\n")
+        else:
+            output_stream.write("Contains no processes.\n")
+        # Parent workflows
+        called_by = [
+            workflow for workflow in analyzer.workflow_dependencies.keys()
+            if name in analyzer.workflow_dependencies[workflow]["modules"]
+            ]
+        if called_by:
+            output_stream.write("Used by workflows:\n")
+            for workflow in sorted(called_by):
+                output_stream.write(f"\t- {workflow}\n")
+        else:
+            output_stream.write("Not used by any workflow.\n")
+        output_stream.write("\n")
+
+def report_standalone_processes(analyzer: NextflowAnalyzer, output_stream):
+    """Write standalone processes section of Nextflow report."""
+    output_stream.write("============================\n")
+    output_stream.write("=== Standalone Processes ===\n")
+    output_stream.write("============================\n\n")
+    if not analyzer.standalone_processes:
+        output_stream.write("No standalone processes in pipeline.\n\n")
+    for name in sorted(analyzer.standalone_processes.keys()):
+        process = analyzer.standalone_processes[name]
+        # Basic process information
+        output_stream.write(f"Process: {name}\n")
+        output_stream.write(f"Location: {process.file_path.relative_to(analyzer.pipeline_dir)}\n")
+        # Parent workflows
+        called_by = [
+            workflow for workflow in analyzer.workflow_dependencies.keys()
+            if name in analyzer.workflow_dependencies[workflow]["processes"]
+            ]
+        if called_by:
+            output_stream.write("Used by workflows:\n")
+            for workflow in sorted(called_by):
+                output_stream.write(f"\t- {workflow}\n")
+        else:
+            output_stream.write("Not used by any workflow.\n")
+        output_stream.write("\n")
+
+
+
+
+
+
+
 # TODO: Add missing sections to report: modules, processes, unused components
 
-
-#class NextflowAnalyzer:
-#
-#    def generate_report(self, output_file: str):
-#        """Generate a detailed human-readable report of the analysis."""
-#
-#        with open(output_file, 'w') as f:
-#
-#            for name in workflow_order:
-#
-#            # Modules section
-#            f.write("\n=== Modules ===\n")
-#            for name, module in sorted(self.modules.items()):
-#                f.write(f"\nModule: {name}\n")
-#                f.write(f"Location: {module.path.relative_to(self.pipeline_dir)}\n")
-#
-#                # List all processes in this module
-#                if module.processes:
-#                    f.write("Contains processes:\n")
-#                    for proc_name, process in sorted(module.processes.items()):
-#                        usage_status = "UNUSED" if proc_name in unused['module_processes'].get(name, []) else "used"
-#                        f.write(f"  - {proc_name} ({usage_status})\n")
-#                else:
-#                    f.write("Contains no processes\n")
-#
-#                # List workflows that use this module
-#                using_workflows = [
-#                    workflow for workflow, deps in self.workflow_dependencies.items()
-#                    if name in deps['modules']
-#                ]
-#                if using_workflows:
-#                    f.write("Used by workflows:\n")
-#                    for workflow in sorted(using_workflows):
-#                        f.write(f"  - {workflow}\n")
-#                else:
-#                    f.write("Not used by any workflow\n")
-#
-#            # Standalone processes section
-#            if self.standalone_processes:
-#                f.write("\n=== Standalone Processes ===\n")
-#                for name, process in sorted(self.standalone_processes.items()):
-#                    f.write(f"\nProcess: {name}\n")
-#                    f.write(f"Location: {process.file_path.relative_to(self.pipeline_dir)}:{process.line_number}\n")
-#
-#                    # List workflows that use this process
-#                    using_workflows = [
-#                        workflow for workflow, deps in self.workflow_dependencies.items()
-#                        if name in deps['processes']
-#                    ]
-#                    if using_workflows:
-#                        f.write("Used by workflows:\n")
-#                        for workflow in sorted(using_workflows):
-#                            f.write(f"  - {workflow}\n")
-#                    else:
-#                        f.write("Not used by any workflow\n")
-#
 #            # Unused components summary
-#            f.write("\n=== Unused Components Summary ===\n")
+#            output_stream.write("\n=== Unused Components Summary ===\n")
 #
 #            if unused['modules']:
-#                f.write("\nUnused modules:\n")
+#                output_stream.write("\nUnused modules:\n")
 #                for module in sorted(unused['modules']):
-#                    f.write(f"  - {module}\n")
+#                    output_stream.write(f"  - {module}\n")
 #            else:
-#                f.write("\nNo unused modules found\n")
+#                output_stream.write("\nNo unused modules found\n")
 #
 #            if unused['processes']:
-#                f.write("\nUnused standalone processes:\n")
+#                output_stream.write("\nUnused standalone processes:\n")
 #                for process in sorted(unused['processes']):
-#                    f.write(f"  - {process}\n")
+#                    output_stream.write(f"  - {process}\n")
 #            else:
-#                f.write("\nNo unused standalone processes found\n")
+#                output_stream.write("\nNo unused standalone processes found\n")
 #
 #            unused_module_processes = {
 #                module: procs for module, procs in unused['module_processes'].items()
 #                if procs
 #            }
 #            if unused_module_processes:
-#                f.write("\nUnused processes within modules:\n")
+#                output_stream.write("\nUnused processes within modules:\n")
 #                for module, processes in sorted(unused_module_processes.items()):
-#                    f.write(f"  Module {module}:\n")
+#                    output_stream.write(f"  Module {module}:\n")
 #                    for process in sorted(processes):
-#                        f.write(f"    - {process}\n")
+#                        output_stream.write(f"    - {process}\n")
 #            else:
-#                f.write("\nNo unused module processes found\n")
+#                output_stream.write("\nNo unused module processes found\n")
 #
 #            if unused['subworkflows']:
-#                f.write("\nUnused subworkflows:\n")
+#                output_stream.write("\nUnused subworkflows:\n")
 #                for workflow in sorted(unused['subworkflows']):
-#                    f.write(f"  - {workflow}\n")
+#                    output_stream.write(f"  - {workflow}\n")
 #            else:
-#                f.write("\nNo unused subworkflows found\n")
+#                output_stream.write("\nNo unused subworkflows found\n")
 
 #=============================================================================
 # Run script
@@ -343,8 +355,8 @@ def parse_args():
     )
     parser.add_argument("-d", "--pipeline_dir", default=os.getcwd(),
                         help="Path to the Nextflow pipeline directory (default: current working directory)")
-    parser.add_argument("-o", "--output_path", default="workflow_report.txt",
-                        help="Path to output file for detailed report (default: workflow_report.txt)")
+    parser.add_argument("-o", "--output_path", default="pipeline_report.txt",
+                        help="Path to output file for detailed report (default: pipeline_report.txt)")
     return parser.parse_args()
 
 def main():
