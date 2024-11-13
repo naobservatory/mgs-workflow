@@ -188,6 +188,8 @@ def generate_nextflow_report(analyzer: NextflowAnalyzer, output_file: str):
         report_modules(analyzer, f)
         # Standalone processes summary
         report_standalone_processes(analyzer, f)
+        # Unused components summary
+        report_unused_components(analyzer, f)
 
 def report_workflows(analyzer: NextflowAnalyzer, output_stream):
     """Write workflow section of Nextflow report."""
@@ -299,50 +301,44 @@ def report_standalone_processes(analyzer: NextflowAnalyzer, output_stream):
             output_stream.write("Not used by any workflow.\n")
         output_stream.write("\n")
 
-
-
-
-
-
-
-# TODO: Add missing sections to report: modules, processes, unused components
-
-#            # Unused components summary
-#            output_stream.write("\n=== Unused Components Summary ===\n")
-#
-#            if unused['modules']:
-#                output_stream.write("\nUnused modules:\n")
-#                for module in sorted(unused['modules']):
-#                    output_stream.write(f"  - {module}\n")
-#            else:
-#                output_stream.write("\nNo unused modules found\n")
-#
-#            if unused['processes']:
-#                output_stream.write("\nUnused standalone processes:\n")
-#                for process in sorted(unused['processes']):
-#                    output_stream.write(f"  - {process}\n")
-#            else:
-#                output_stream.write("\nNo unused standalone processes found\n")
-#
-#            unused_module_processes = {
-#                module: procs for module, procs in unused['module_processes'].items()
-#                if procs
-#            }
-#            if unused_module_processes:
-#                output_stream.write("\nUnused processes within modules:\n")
-#                for module, processes in sorted(unused_module_processes.items()):
-#                    output_stream.write(f"  Module {module}:\n")
-#                    for process in sorted(processes):
-#                        output_stream.write(f"    - {process}\n")
-#            else:
-#                output_stream.write("\nNo unused module processes found\n")
-#
-#            if unused['subworkflows']:
-#                output_stream.write("\nUnused subworkflows:\n")
-#                for workflow in sorted(unused['subworkflows']):
-#                    output_stream.write(f"  - {workflow}\n")
-#            else:
-#                output_stream.write("\nNo unused subworkflows found\n")
+def report_unused_components(analyzer: NextflowAnalyzer, output_stream):
+    """Write unused components section of Nextflow report."""
+    output_stream.write("=========================\n")
+    output_stream.write("=== Unused Components ===\n")
+    output_stream.write("=========================\n\n")
+    unused = analyzer.unused_components
+    # Unused workflows
+    if unused["workflows"]:
+        output_stream.write("Unused workflows:\n")
+        for name in sorted(unused["workflows"]):
+            path = analyzer.workflows[name].file_path.relative_to(analyzer.pipeline_dir)
+            output_stream.write(f"\t- {name} ({path})\n")
+        output_stream.write("\n")
+    else:
+        output_stream.write("No unused workflows found.\n\n")
+    # Unused modules
+    if unused["modules"]:
+        output_stream.write("Unused modules:\n")
+        for name in sorted(unused["modules"]):
+            path = analyzer.modules[name].path.relative_to(analyzer.pipeline_dir)
+            output_stream.write(f"\t- {name} ({path})\n")
+        output_stream.write("\n")
+    else:
+        output_stream.write("No unused modules found.\n\n")
+    # Unused processes
+    if unused["processes"]:
+        output_stream.write("Unused processes:\n")
+        for name in sorted(unused["processes"]):
+            if name in analyzer.standalone_processes.keys():
+                path = analyzer.standalone_processes[name].file_path.relative_to(analyzer.pipeline_dir)
+            else:
+                parent_module = [module for module in analyzer.modules.keys()
+                                 if name in analyzer.modules[module].processes][0]
+                path = analyzer.modules[parent_module].path.relative_to(analyzer.pipeline_dir)
+            output_stream.write(f"\t- {name} ({path})\n")
+        output_stream.write("\n")
+    else:
+        output_stream.write("No unused processes found.\n\n")
 
 #=============================================================================
 # Run script
