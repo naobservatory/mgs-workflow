@@ -12,7 +12,7 @@ import java.time.LocalDateTime
 include { MAKE_VIRUS_TAXONOMY_DB } from "../subworkflows/local/makeVirusTaxonomyDB"
 include { MAKE_VIRUS_GENOME_DB } from "../subworkflows/local/makeVirusGenomeDB"
 include { JOIN_RIBO_REF } from "../modules/local/joinRiboRef"
-include { DOWNLOAD_BLAST_DB } from "../modules/local/downloadBlastDB" addParams(db: "core_nt")
+include { DOWNLOAD_BLAST_DB } from "../modules/local/downloadBlastDB"
 include { MAKE_HUMAN_INDEX } from "../subworkflows/local/makeHumanIndex"
 include { MAKE_CONTAMINANT_INDEX } from "../subworkflows/local/makeContaminantIndex"
 include { MAKE_VIRUS_INDEX } from "../subworkflows/local/makeVirusIndex"
@@ -37,7 +37,7 @@ workflow INDEX {
     MAKE_CONTAMINANT_INDEX(params.cow_url, params.pig_url, params.mouse_url, params.carp_url, params.ecoli_url, params.contaminants)
     // Other index files
     JOIN_RIBO_REF(params.ssu_url, params.lsu_url)
-    DOWNLOAD_BLAST_DB()
+    DOWNLOAD_BLAST_DB("core_nt")
     EXTRACT_KRAKEN_DB(params.kraken_db, "kraken_db", true)
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))

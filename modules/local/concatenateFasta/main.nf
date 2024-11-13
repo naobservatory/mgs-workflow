@@ -4,11 +4,12 @@ process CONCATENATE_FASTA_GZIPPED {
     label "base"
     input:
         path(files)
+        val(name)
     output:
-        path("${params.name}.fasta.gz")
+        path("${name}.fasta.gz")
     shell:
         '''
-        cat !{files} > !{params.name}.fasta.gz
+        cat !{files} > !{name}.fasta.gz
         '''
 }
 
@@ -18,11 +19,13 @@ process CONCATENATE_FASTA_GZIPPED_DIR {
     label "base"
     input:
         path(dir)
+        val(name)
+        val(suffix)
     output:
-        path("${params.name}.fasta.gz")
+        path("${name}.fasta.gz")
     shell:
         '''
-        cat !{dir}/*.!{params.suffix} > !{params.name}.fasta.gz
+        cat !{dir}/*.!{suffix} > !{name}.fasta.gz
         '''
 }
 // Concatenate gzipped FASTA files within a directory of subdirectories
@@ -31,10 +34,12 @@ process CONCATENATE_FASTA_GZIPPED_DIR_DEEP {
     label "base"
     input:
         path(dir)
+        val(name)
+        val(suffix)
     output:
-        path("${params.name}.fasta.gz")
+        path("${name}.fasta.gz")
     shell:
         '''
-        cat !{dir}/*/*.!{params.suffix} > !{params.name}.fasta.gz
+        cat !{dir}/*/*.!{suffix} > !{name}.fasta.gz
         '''
 }
