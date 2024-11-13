@@ -27,6 +27,7 @@ include { COLLAPSE_VIRUS_READS } from "../../../modules/local/collapseVirusReads
 include { ADD_FRAG_DUP_TO_VIRUS_READS } from "../../../modules/local/addFragDupToVirusReads"
 include { MAKE_VIRUS_READS_FASTA } from "../../../modules/local/makeVirusReadsFasta"
 include { COUNT_VIRUS_CLADES } from "../../../modules/local/countVirusClades"
+include { CONCAT_GROUP } from "../../../modules/local/concatGroup"
 
 /***********
 | WORKFLOW |
@@ -35,6 +36,7 @@ include { COUNT_VIRUS_CLADES } from "../../../modules/local/countVirusClades"
 workflow EXTRACT_VIRAL_READS {
     take:
         reads_ch
+        group_ch
         ref_dir
         kraken_db_ch
         aln_score_threshold
@@ -55,8 +57,22 @@ workflow EXTRACT_VIRAL_READS {
         // Carry out stringent adapter removal with Cutadapt and Trimmomatic
         adapt_ch = CUTADAPT(bbduk_ch.fail, adapter_path)
         trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path)
+        // Grouping for deduplication
+        if (params.grouping) {
+            // Join samplesheet with trimmed_reads and update fastq files
+            trim_group_ch = group_ch.join(trim_ch.reads, by: 0)
+            .map { sample, group, reads -> tuple(sample, reads[0], reads[1], group) }
+            .groupTuple(by: 3)
+            // Split into multi-sample and single-sample groups
+            multi_sample_groups = trim_group_ch.filter { it[0].size() > 1 }
+            single_sample_groups = trim_group_ch.filter { it[0].size() == 1 }
+                .map { samples, fwd_list, rev_list, group -> tuple(group, [fwd_list[0], rev_list[0]]) }
+            grouped_ch = CONCAT_GROUP(multi_sample_groups).mix(single_sample_groups)
+        } else {
+            grouped_ch = trim_ch.reads
+        }
         // Run Bowtie2 against a viral database and process output
-        bowtie2_ch = BOWTIE2_VIRUS(trim_ch.reads, bt2_virus_index_path, "--no-unal --no-sq --score-min G,1,1")
+        bowtie2_ch = BOWTIE2_VIRUS(grouped_ch, bt2_virus_index_path, "--no-unal --no-sq --score-min G,1,1")
         bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path)
         alignment_dup_summary = COUNT_ALIGNMENT_DUPLICATES(bowtie2_sam_ch)
         bowtie2_unconc_ids_ch = EXTRACT_UNCONC_READ_IDS(bowtie2_ch.sam)
