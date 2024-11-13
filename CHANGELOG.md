@@ -1,6 +1,7 @@
 # v2.5.0
 - Reintroduced user-specified sample grouping and concatenation (e.g. across sequencing lanes) for deduplication in PROFILE and EXTRACT_VIRAL_READS.
 - Generalised pipeline to detect viruses infecting arbitrary host taxa (not just human-infecting viruses) as specified by `ref/host-taxa.tsv` and config parameters.
+- Configured index workflow to enable hard-exclusion of specific virus taxa (primarily phages) from being marked as infecting ost taxa of interest.
 - Updated pipeline output code to match changes made in latest Nextflow update (24.10.0).
 - Created a new script `bin/analyze-pipeline.py` to analyze pipeline structure and identify unused workflows and modules.
 - Cleaned up unused workflows and modules made obsolete in this and previous updates.
