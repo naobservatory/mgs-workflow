@@ -1,3 +1,6 @@
+# v2.5.2 (in progress)
+- Removed redundant subsetting statement from TAXONOMY workflow.
+
 # v2.5.1
 - Enabled extraction of BBDuk-subset putatively-host-viral raw reads for downstream chimera detection.
 - Added back viral read fields accidentally being discarded by COLLAPSE_VIRUS_READS.
