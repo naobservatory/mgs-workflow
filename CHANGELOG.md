@@ -1,3 +1,7 @@
+# v2.5.1
+- Enabled extraction of BBDuk-subset putatively-host-viral raw reads for downstream chimera detection.
+- Added back viral read fields accidentally being discarded by COLLAPSE_VIRUS_READS.
+
 # v2.5.0
 - Reintroduced user-specified sample grouping and concatenation (e.g. across sequencing lanes) for deduplication in PROFILE and EXTRACT_VIRAL_READS.
 - Generalised pipeline to detect viruses infecting arbitrary host taxa (not just human-infecting viruses) as specified by `ref/host-taxa.tsv` and config parameters.
