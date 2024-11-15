@@ -15,6 +15,7 @@ include { EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReads"
 include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 include { PROFILE } from "../subworkflows/local/profile"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
+include { EXTRACT_RAW_READS_FROM_PROCESSED } from "../modules/local/extractRawReadsFromProcessed"
 nextflow.preview.output = true
 
 /*****************
@@ -49,6 +50,9 @@ workflow RUN {
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned")
     // Extract and count human-viral reads
     EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "3", "21", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", "${params.kraken_memory}", params.grouping)
+    // Process intermediate output for chimera detection
+    raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(RAW.out.reads, by: 0)
+    EXTRACT_RAW_READS_FROM_PROCESSED(raw_processed_ch, "raw_viral_subset")
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
         blast_db_path = "${params.ref_dir}/results/core_nt"
@@ -76,6 +80,7 @@ workflow RUN {
         version_ch >> "logging"
         // Intermediate files
         CLEAN.out.reads >> "intermediates/reads/cleaned"
+        EXTRACT_RAW_READS_FROM_PROCESSED.out.reads >> "intermediates/reads/raw_viral"
         // QC
         PROCESS_OUTPUT.out.basic >> "results"
         PROCESS_OUTPUT.out.adapt >> "results"
