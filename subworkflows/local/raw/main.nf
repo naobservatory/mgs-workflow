@@ -23,7 +23,7 @@ workflow RAW {
         single_end
     main:
         if ( n_reads_trunc > 0 ) {
-            out_ch = TRUNCATE_CONCAT(samplesheet_ch, n_reads_trunc)
+            out_ch = TRUNCATE_CONCAT(samplesheet_ch, n_reads_trunc, single_end)
         } else {
             out_ch = samplesheet_ch
         }

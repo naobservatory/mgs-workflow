@@ -5,14 +5,14 @@ process TRUNCATE_CONCAT {
     input:
         tuple val(sample), path(reads)
         val n_reads
+        val single_end
     output:
 
         tuple val(sample), path({
-                reads.size() == 1 ?
+            single_end ?
                     "${sample}_trunc.fastq.gz" :
                     "${sample}_trunc_{1,2}.fastq.gz"
-            }),
-            emit: reads
+            }), emit: reads
     shell:
         '''
         echo "Number of output reads: !{n_reads}"
