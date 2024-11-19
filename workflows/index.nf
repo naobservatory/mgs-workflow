@@ -27,11 +27,11 @@ workflow INDEX {
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
     // Build viral taxonomy and infection DB
-    MAKE_VIRUS_TAXONOMY_DB(params.taxonomy_url, params.virus_host_db_url, params.host_taxon_db, params.virus_taxid, params.viral_taxids_exclude)
+//    MAKE_VIRUS_TAXONOMY_DB(params.taxonomy_url, params.virus_host_db_url, params.host_taxon_db, params.virus_taxid, params.viral_taxids_exclude)
     // Get reference DB of viral genomes of interest
-    MAKE_VIRUS_GENOME_DB(params.ncbi_viral_params, MAKE_VIRUS_TAXONOMY_DB.out.db, params.genome_patterns_exclude, params.host_taxa_screen)
+//    MAKE_VIRUS_GENOME_DB(params.ncbi_viral_params, MAKE_VIRUS_TAXONOMY_DB.out.db, params.genome_patterns_exclude, params.host_taxa_screen)
     // Build viral alignment index
-    MAKE_VIRUS_INDEX(MAKE_VIRUS_GENOME_DB.out.fasta)
+//    MAKE_VIRUS_INDEX(MAKE_VIRUS_GENOME_DB.out.fasta)
     // Build other alignment indices
     MAKE_HUMAN_INDEX(params.human_url)
     MAKE_CONTAMINANT_INDEX(params.genome_urls, params.contaminants)
@@ -50,18 +50,18 @@ workflow INDEX {
         time_ch >> "logging"
         version_ch >> "logging"
         // Taxonomy and virus databases
-        MAKE_VIRUS_TAXONOMY_DB.out.db >> "results"
-        MAKE_VIRUS_TAXONOMY_DB.out.nodes >> "results"
-        MAKE_VIRUS_TAXONOMY_DB.out.names >> "results"
+//        MAKE_VIRUS_TAXONOMY_DB.out.db >> "results"
+//       MAKE_VIRUS_TAXONOMY_DB.out.nodes >> "results"
+//        MAKE_VIRUS_TAXONOMY_DB.out.names >> "results"
         // Virus genome database
-        MAKE_VIRUS_GENOME_DB.out.fasta >> "results"
-        MAKE_VIRUS_GENOME_DB.out.metadata >> "results"
+//        MAKE_VIRUS_GENOME_DB.out.fasta >> "results"
+//        MAKE_VIRUS_GENOME_DB.out.metadata >> "results"
         // Alignment indexes
         MAKE_HUMAN_INDEX.out.bbm >> "results"
         MAKE_HUMAN_INDEX.out.bt2 >> "results"
         MAKE_CONTAMINANT_INDEX.out.bbm >> "results"
         MAKE_CONTAMINANT_INDEX.out.bt2 >> "results"
-        MAKE_VIRUS_INDEX.out.bt2 >> "results"
+//        MAKE_VIRUS_INDEX.out.bt2 >> "results"
         // Other reference files & directories
         JOIN_RIBO_REF.out.ribo_ref >> "results"
         DOWNLOAD_BLAST_DB.out.db >> "results"
