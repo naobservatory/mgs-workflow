@@ -8,6 +8,6 @@ process DOWNLOAD_VIRUS_HOST_DB {
         path("virus-host-db.tsv")
     shell:
         '''
-        curl -sS --retry 3 !{virus_host_db_url} > virus-host-db.tsv
+        curl -sS !{virus_host_db_url} > virus-host-db.tsv
         '''
 }
