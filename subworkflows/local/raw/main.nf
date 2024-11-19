@@ -7,12 +7,7 @@
 ***************************/
 
 include { QC } from "../../../subworkflows/local/qc"
-if (params.single_end) {
-    include { TRUNCATE_CONCAT_SINGLE as TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
-} else {
-    include { TRUNCATE_CONCAT_PAIRED as TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
-}
-
+include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
 
 /***********
 | WORKFLOW |
