@@ -2,11 +2,13 @@ process DOWNLOAD_BLAST_DB {
     label "BLAST2"
     label "max"
     errorStrategy "terminate"
+    input:
+        val(db)
     output:
-        path("${params.db}"), emit: db
+        path("${db}"), emit: db
     shell:
         '''
-        db="!{params.db}"
+        db="!{db}"
         mkdir ${db}
         cd ${db}
         ln -s $(which curl) /usr/local/bin/curl

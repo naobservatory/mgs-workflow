@@ -15,3 +15,4 @@ test-single-read/.nextflow*
 
 analysis_files/*
 mgs-results/
+pipeline_report.txt

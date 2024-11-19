@@ -1,3 +1,16 @@
+# v2.5.0
+- Reintroduced user-specified sample grouping and concatenation (e.g. across sequencing lanes) for deduplication in PROFILE and EXTRACT_VIRAL_READS.
+- Generalised pipeline to detect viruses infecting arbitrary host taxa (not just human-infecting viruses) as specified by `ref/host-taxa.tsv` and config parameters.
+- Configured index workflow to enable hard-exclusion of specific virus taxa (primarily phages) from being marked as infecting ost taxa of interest.
+- Updated pipeline output code to match changes made in latest Nextflow update (24.10.0).
+- Created a new script `bin/analyze-pipeline.py` to analyze pipeline structure and identify unused workflows and modules.
+- Cleaned up unused workflows and modules made obsolete in this and previous updates.
+- Moved module scripts from `bin` to module directories.
+- Modified trace filepath to be predictable across runs.
+- Removed addParams calls when importing dependencies (deprecated in latest Nextflow update).
+- Switched from nt to core_nt for BLAST validation.
+- Reconfigured QC subworkflow to run FASTQC and MultiQC on each pair of input files separately (fixes bug arising from allowing arbitrary filenames for forward and reverse read files).
+
 # v2.4.0
 - Created a new output directory where we put log files called `logging`. 
 - Added the trace file from Nextflow to the `logging` directory which can be used for understanding cpu, memory usage, and other infromation like runtime. After running the pipeline, `plot-timeline-script.R` can be used to generate a useful summary plot of the runtime for each process in the pipeline.
@@ -9,7 +22,6 @@
   - Bowtie2: Conduct a duplication analysis on the aligned reads, then add the number of duplicates and fragment length to the `hv_hits_putative_collapsed.tsv.gz`.
 
 # v2.3.3
-
 - Added validation workflow for post-hoc BLAST validation of putative HV reads.
 
 # v2.3.2
