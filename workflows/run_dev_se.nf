@@ -11,9 +11,6 @@ import java.time.LocalDateTime
 
 include { RAW } from "../subworkflows/local/raw"
 include { CLEAN } from "../subworkflows/local/clean"
-include { EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReads"
-include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
-include { PROFILE } from "../subworkflows/local/profile"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 nextflow.preview.output = true
 
@@ -27,10 +24,7 @@ workflow RUN_DEV_SE {
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
 
-    // Determine read type based on samplesheet header
-    single_end = file(params.sample_sheet).readLines()[0].contains('fastq_2') ? false : true
-
-    println "Single end mode: ${single_end}"
+    single_end = file(params.sample_sheet).readLines()[0].split(',').contains('fastq_2') ? false : true
 
     // Prepare samplesheet
     if (single_end) {
@@ -85,7 +79,7 @@ workflow RUN_DEV_SE {
     publish:
         // Saved inputs
         Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
-        Channel.fromPath("${params.ref_dir}/input/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
+        Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
         Channel.fromPath(params.sample_sheet) >> "input"
         Channel.fromPath(params.adapters) >> "input"
         params_ch >> "input"
