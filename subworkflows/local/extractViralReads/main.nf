@@ -110,4 +110,5 @@ workflow EXTRACT_VIRAL_READS {
         tsv = collapsed_frag_dup_ch
         fasta = fasta_ch
         counts = count_ch
+        bbduk_match = bbduk_ch.fail
 }

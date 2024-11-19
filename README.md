@@ -129,6 +129,7 @@ If the pipeline runs to completion, the following output files are expected.
     4. `pipeline-version-index.txt`: Version of pipeline used to generate index directory (`params.ref_dir`).
 3. `output/intermediates`: Intermediate files produced by key stages in the run workflow, saved for nonstandard downstream analysis.
     1. `reads/cleaned`: Directory containing paired FASTQ files for cleaned reads (i.e. the output of the preprocessing phase described above).
+    2. `reads/raw_viral`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk.
 4. `output/results`: Directory containing processed results files for standard downstream analysis.
     1. `qc_basic_stats.tsv.gz`: Summary statistics for each sample at each stage of the preprocessing phase (`stage`), including:
         - GC content (`percent GC`);
