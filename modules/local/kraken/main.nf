@@ -2,10 +2,11 @@
 process KRAKEN {
     label "Kraken2"
     cpus 16
-    memory "${params.mem}"
+    memory "${mem}"
     input:
         tuple val(sample), path(reads)
         path db_path
+        val mem
     output:
         tuple val(sample), path("${sample}.output"), emit: output
         tuple val(sample), path("${sample}.report"), emit: report

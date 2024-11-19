@@ -1,6 +1,6 @@
 # Nucleic Acid Observatory Viral Metagenomics Pipeline
 
-This Nextflow pipeline is designed to process metagenomic sequencing data, characterize overall taxonomic composition, and identify and quantify reads mapping to human-infecting viruses. It was developed as part of the [Nucleic Acid Observatory](https://naobservatory.org/) project.
+This Nextflow pipeline is designed to process metagenomic sequencing data, characterize overall taxonomic composition, and identify and quantify reads mapping to viruses infecting certain host taxa of interest. It was developed as part of the [Nucleic Acid Observatory](https://naobservatory.org/) project.
 
 ## Pipeline description
 
@@ -11,7 +11,7 @@ The pipeline currently consists of two workflows, an **index** workflow and a **
 The run workflow then consists of five phases:
 
 1. A **preprocessing phase**, in which input files undergo adapter & quality trimming.
-2. A **viral identification phase**, in which a custom multi-step pipeline based around BBDuk, Bowtie2 and Kraken2 is used to sensitively and specifically identify human-infecting virus (HV) reads in the input data for downstream analysis.
+2. A **viral identification phase**, in which a custom multi-step pipeline based around BBDuk, Bowtie2 and Kraken2 is used to sensitively and specifically identify reads from viruses infecting specific host taxa of interest ("host-infecting virus reads", or HV reads).
 3. A **taxonomic profiling phase**, in which a random subset of reads (default 1M/sample) undergo ribosomal classification with BBDuk, followed by broader taxonomic classification with Kraken2.
 4. An optional **BLAST validation phase**, in which putative HV reads from phase 2 are checked against nt to evaluate the sensitivity and specificity of the HV identification process.
 5. A final **QC and output phase**, in which FASTQC, MultiQC and other tools are used to assess the quality of the data produced by the pipeline at various steps and produce summarized output data for downstream analysis and visualization.
@@ -25,6 +25,7 @@ A slight simplification of the overall process is given by this diagram:
 The index workflow generates static index files from reference data. These reference data and indices don't depend on the reads processed by the run workflow, so a set of indices built by the index workflow can be used by multiple instantiations of the run workflow — no need to rebuild indices for every set of reads. The index workflow should be run once per reasonable length of time, balancing two considerations: Many of these index/reference files are derived from publicly available reference genomes or other resources, and should thus be updated and re-run periodically as new versions of these become available; however, to keep results comparable across datasets analyzed with the run workflow, this should be done relatively rarely.
 
 Key inputs to the index workflow include:
+- A TSV specifying names and taxonomic IDs (taxids) for host taxa for which to search for host-infecting viruses.
 - A URL linking to a suitable Kraken2 database for taxonomic profiling (typically the [latest release](https://benlangmead.github.io/aws-indexes/k2) of the `k2_standard` database).
 - URLS for up-to-date releases of reference genomes for various common contaminant species that can confound the identification of HV reads (currently [human](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9606), [cow](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9913), [pig](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9823), [carp](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=7962)[^carp], [mouse](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=10090), [*E. coli*](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=562)).
 - URLs to sequence databases for small and large ribosomal subunits from [SILVA](https://www.arb-silva.de/download/arb-files/).
@@ -33,9 +34,8 @@ Key inputs to the index workflow include:
 [^carp]: The carp genome is included as a last-ditch attempt to [capture any remaining Illumina adapter sequences](https://dgg32.medium.com/carp-in-the-soil-1168818d2191) before moving on to HV identification. I'm not especially confident this is helpful.
 
 Given these inputs, the index workflow:
-- Obtains an up-to-date list of human-infecting viruses and their corresponding taxids from VirusHostDB, incorporates information about their taxonomic structure (in particular, their parent taxid) from NCBI, and generates a tab-separated database of human-infecting viral taxa.
-- Generates a similar TSV for all viral taxa, including those that don't infect humans.
-- Makes Bowtie2 indices from (1) all human-infecting viral genomes in Genbank[^genbank], (2) the human genome, (3) common non-human contaminants, plus BBMap indices for (2) and (3).
+- Generates a TSV of viral taxa, incorporating taxonomic information from NCBI, and annotates each taxon with infection status for each host taxon of interest (using Virus-Host-DB).
+- Makes Bowtie2 indices from (1) all host-infecting viral genomes in Genbank[^genbank], (2) the human genome, (3) common non-human contaminants, plus BBMap indices for (2) and (3).
 - Downloads and extracts local copies of (1) the BLAST nt database, (2) the specified Kraken2 DB, (3) the SILVA rRNA reference files.
 
 [^genbank]: Excluding transgenic, contaminated, or erroneous sequences, which are excluded according to a list of sequence ID patterns specified in the config file.
@@ -50,23 +50,24 @@ The run workflow begins by undergoing cleaning by [FASTP](https://github.com/Ope
 
 #### Viral identification phase
 
-The goal of this phase is to sensitively, specifically, and efficiently identify reads arising from human-infecting viruses. It uses a multi-step process designed to keep computational costs low while minimizing false-positive and false-negative errors.
+The goal of this phase is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It uses a multi-step process designed to keep computational costs low while minimizing false-positive and false-negative errors.
 
-1. To begin with, the cleaned reads produced by the preprocessing phase are screened against a database of human-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least three 21-mers matching any human-viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative human-viral reads while discarding the vast majority of non-HV reads, reducing the cost associated with the rest of this phase.
-2. Surviving reads undergo additional adapter trimming with [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) & [Trimmomatic](https://github.com/timflutre/trimmomatic), and [FASTP](https://github.com/OpenGene/fastp) to remove any residual adapter contamination that might lead to false positive results.
+1. To begin with, the cleaned reads produced by the preprocessing phase are screened against a database of host-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least three 21-mers matching any host-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative host-infecting viral reads while discarding the vast majority of non-HV reads, reducing the cost associated with the rest of this phase.
+2. Surviving reads undergo additional adapter trimming with [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) & [Trimmomatic](https://github.com/timflutre/trimmomatic) to remove any residual adapter contamination that might lead to false positive results.
 3. Next, reads are aligned to the previously-mentioned database of HV genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative HV reads as possible. The SAM and FASTQ files are processed to generate new read files containing any read pair for which at least one read matches the HV database.
 4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using both Bowtie2 and [BBMap](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmap-guide/) in series[^filter]. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
-5. Surviving read pairs are merged into single sequences through a combination of [BBMerge](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmerge-guide/) (which aligns and merges read pairs with significant overlap) and end-to-end concatenation (with an intervening "N" base, for those read pairs BBMerge is unable to merge).
-6. Merged reads undergo deduplication with [Clumpify](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/clumpify-guide/), which identifies and collapses groups of reads that are identical modulo some specified error rate.
-7. Deduplicated reads are passed to [Kraken2](https://ccb.jhu.edu/software/kraken2/) for taxonomic assignment, using the reference database obtained in the index workflow. We record whether each read was (1) assigned to a human-infecting virus taxon with Kraken, (2) assigned to a non-HV taxon with Kraken, or (3) not assigned to any taxon. All reads in category (2) are filtered out.
-8. Finally, reads are assigned a final HV status if they:
-    - Are given matching HV assignments by both Bowtie2 and Kraken2; or
+5. Surviving read pairs are deduplicated with [Clumpify](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/clumpify-guide/)[^dedup] and merged into single sequences through a combination of [BBMerge](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmerge-guide/)[^merge]. Read pairs that fail to merge with BBMerge are concatenated end-to-end with an intervening "N" base.
+6. Deduplicated and merged reads are passed to [Kraken2](https://ccb.jhu.edu/software/kraken2/) for taxonomic assignment, using the reference database obtained in the index workflow. We record whether each read was (1) assigned to a host-infecting virus taxon with Kraken, (2) assigned to a non-HV taxon with Kraken, or (3) not assigned to any taxon. All reads in category (2) are filtered out.
+7. Finally, reads are assigned a final HV status if they:
+    - Are classified as HV by both Bowtie2 and Kraken2; or
     - Are unassigned by Kraken and align to an HV taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
 
-Following HV status assignment, information for each read pair is processed into a TSV file available in the output directory as `hv_hits_putative_collapsed.tsv.gz`. Finally, the number of read pairs mapping to each detected HV taxon is counted and output as `hv_clade_counts.tsv.gz` for downstream use.
+Following HV status assignment, information for each read pair is processed into a TSV file available in the output directory as `virus_hits_db.tsv.gz`. Finally, the number of read pairs mapping to each detected HV taxon is counted and output as `virus_clade_counts.tsv.gz` for downstream use.
 
 [^filter]: We've found in past investigations that the two aligners detect different contaminant sequences, and aligning against both is more effective at avoiding false positives than either in isolation.
-[^threshold]: Specifically, Kraken-unassigned read pairs are classed as human-viral if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
+[^dedup]: Which identifies and collapses groups of reads that are identical modulo some specified error rate.
+[^merge]: Which aligns and merges read pairs with significant overlap. 
+[^threshold]: Specifically, Kraken-unassigned read pairs are classed as HV if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
 
 #### Taxonomic profiling phase
 
@@ -78,7 +79,7 @@ To maintain efficiency, the reads from the preprocessing phase are first subset,
 
 #### BLAST validation phase
 
-To evaluate the performance of the process described in the viral identification phase, it's useful to get some ground-truth information about whether the human-viral assignments made in that subworkflow are correct. To do this, we use [BLASTN](https://blast.ncbi.nlm.nih.gov/Blast.cgi) to align the putative HV reads output by the previous phase against the nt database, then process the output to check whether each sequence had a high-scoring alignment to at least one HV sequence. For computational tractability, this can be performed on only a subset of surviving HV reads (specified by `params.blast_hv_fraction`)[^blast].
+To evaluate the performance of the process described in the viral identification phase, it's useful to get some ground-truth information about whether the HV assignments made in that subworkflow are correct. To do this, we use [BLASTN](https://blast.ncbi.nlm.nih.gov/Blast.cgi) to align the putative HV reads output by the previous phase against the core_nt database, then process the output to check whether each sequence had a high-scoring alignment to at least one HV sequence. For computational tractability, this can be performed on only a subset of surviving HV reads (specified by `params.blast_hv_fraction`)[^blast].
 
 [^blast]: Setting `params.blast_hv_fraction` to 0 skips this step altogether.
 
@@ -97,59 +98,56 @@ If the pipeline runs to completion, the following output files are expected.
 #### Index workflow
 
 1. `output/input/index-params.json`: JSON file giving all the parameters passed to the pipeline (useful for trying to reproduce someone else's results).
-2. `output/input/pipeline-version.txt`: Version of the pipeline with which index directory was created.
-3. `output/input/time.txt`: Start time of index workflow run.
-4. `output/results/nt`: Directory containing extracted BLAST database files for BLASTing against nt.
-5. `output/results/bt2-hv-index`: Directory containing Bowtie2 index for human-infecting viral genomes.
-6. `output/results/bt2-human-index`: Directory containing Bowtie2 index for the human genome.
-7. `output/results/bt2-other-index`: Directory containing Bowtie2 index for other contaminant sequences.
-8. `output/results/bbm-human-index`: Directory containing BBMap index for the human genome.
-9. `output/results/bbm-other-index`: Directory containing BBMap index for other contaminant sequences.
-10. `output/results/kraken_db`: Directory containing Kraken2 reference database (by default, the most recent version of Standard).
-11. `output/results/human-viral-genomes-filtered.fasta.gz`: FASTA file containing human-viral genomes downloaded from viral Genbank (filtered to remove transgenic, contaminated, or erroneous sequences).
-12. `output/results/genomeid-to-taxid.json`: JSON mapping between HV taxids and NCBI genome IDs for the sequences in (8).
-13. `output/results/ribo-ref-concat.fasta.gz`: Reference database of ribosomal LSU and SSU sequences from SILVA.
-14. `output/results/taxonomy-nodes.dmp`: Taxonomy dump file from NCBI mapping between taxids and their parents in the NCBI taxonomy tree structure.
-15. `output/results/taxonomy-names.dmp`: Taxonomy dump file from NCBI mapping between taxids and taxon names.
-16. `output/results/human-virus-db.tsv.gz`: Database generated from (8), (9), (12) and (13) giving, for each human-viral taxon:
-    - The taxid (`taxid`)
-    - The taxid of the parent taxon (`parent_taxid`)
-    - The scientific name (`name`)
-    - The taxonomic rank (`rank`)
-17. `output/results/total-virus-db.tsv.gz`: As (14), but for all viral taxa (including non-human-infecting ones).
+2. `output/logging/pipeline-version.txt`: Version of the pipeline with which index directory was created.
+3. `output/logging/time.txt`: Start time of index workflow run.
+4. `output/logging/trace.txt`: Nextflow trace file containing logging information for each process performed during the workflow run.
+5. `output/results/core_nt`: Directory containing extracted BLAST database files for BLASTing against core_nt.
+6. `output/results/bt2-virus-index`: Directory containing Bowtie2 index for host-infecting viral genomes.
+7. `output/results/bt2-human-index`: Directory containing Bowtie2 index for the human genome.
+8. `output/results/bt2-other-index`: Directory containing Bowtie2 index for other contaminant sequences.
+9. `output/results/bbm-human-index`: Directory containing BBMap index for the human genome.
+10. `output/results/bbm-other-index`: Directory containing BBMap index for other contaminant sequences.
+11. `output/results/kraken_db`: Directory containing Kraken2 reference database (by default, the most recent version of Standard).
+12. `output/results/virus-genomes-filtered.fasta.gz`: FASTA file containg host-infecting viral genomes downloaded from viral Genbank (filtered to remove transgenic, contaminated, or erroneous sequences).
+13. `virus-genome-metadata-gid.tsv.gz`: Genome metadata file generated during download of HV genomes from viral Genbank, annotated additionally with Genome IDs used by Bowtie2 (allowing mapping between genome ID and taxid).
+14. `output/results/ribo-ref-concat.fasta.gz`: Reference database of ribosomal LSU and SSU sequences from SILVA.
+15. `output/results/taxonomy-nodes.dmp`: Taxonomy dump file from NCBI mapping between taxids and their parents in the NCBI taxonomy tree structure.
+16. `output/results/taxonomy-names.dmp`: Taxonomy dump file from NCBI mapping between taxids and taxon names.
+17. `output/results/total-virus-db-annotated.tsv.gz`: Database generated from NCBI taxonomy and Virus-Host-DB giving taxonomy and host-infection information for each viral taxon.
 
 #### Run workflow
 
 1. `output/input`: Directory containing saved input information (useful for trying to reproduce someone else's results)
     1. `adapters.fasta`: FASTA file of adapter sequences used for adapter screening.
-    2. `params.json`: JSON file giving all the parameters passed to the pipeline.
-    3. A CSV file giving sample metadata (filename specified by `params.sample_tab`).
-    4. `index-params.json`: JSON file giving parameters used to generate index directory (`params.ref_dir`).
-2. `output/intermediates`: Intermediate files produced by key stages in the run workflow, saved for nonstandard downstream analysis.
+    2. `run-params.json`: JSON file giving all the parameters passed to the pipeline.
+    3. `index-params.json`: JSON file giving parameters used to generate index directory (`params.ref_dir`).
+    4. `samplesheet.csv`: Copy of the samplesheet file used to configure the pipeline (specified by `params.sample_sheet`).
+2. `output/logging`: Log files containing meta-level information about the pipeline run itself.
+    1. `pipeline-version.txt`: Version of the pipeline used for the run.
+    2. `time.txt`: Start time of the run.
+    3. `trace.txt`: Tab delimited log of all the information for each task run in the pipeline including runtime, memory usage, exit status, etc. Can be used to create an execution timeline using the the script `bin/plot-timeline-script.R` after the pipeline has finished running. More information regarding the trace file format can be found [here](https://www.nextflow.io/docs/latest/reports.html#trace-file).
+    4. `pipeline-version-index.txt`: Version of pipeline used to generate index directory (`params.ref_dir`).
+3. `output/intermediates`: Intermediate files produced by key stages in the run workflow, saved for nonstandard downstream analysis.
     1. `reads/cleaned`: Directory containing paired FASTQ files for cleaned reads (i.e. the output of the preprocessing phase described above).
-3. `output/results`: Directory containing processed results files for standard downstream analysis.
-    1. `hv/hv_hits_putative_collapsed.tsv.gz`: TSV output by the viral identification phase, giving information about each read pair assigned to a human-infecting virus.
-    2. `hv/hv_clade_counts.tsv.gz`: Summary of the previous file giving the number of HV read pairs mapped to each viral taxon. Includes both read pairs mapped directly to that taxon (`n_reads_direct`) and to that taxon plus all descendent taxa (`n_reads_clade`).
-    3. `hv/blast_hits_paired.tsv.gz`: Summarized BLASTN output for putative HV read pairs, giving, for each read pair and subject taxid:
-        - The number of reads in the read pair with high-scoring matches to that taxid (`n_reads`).
-        - The best bitscores of alignments to that taxid for each matching read (`bitscore_max` and `bitscore_min`)[^bitscore].
-    4. `qc/qc_basic_stats.tsv.gz`: Summary statistics for each sample at each stage of the preprocessing phase (`stage`), including:
+    2. `reads/raw_viral`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk.
+4. `output/results`: Directory containing processed results files for standard downstream analysis.
+    1. `qc_basic_stats.tsv.gz`: Summary statistics for each sample at each stage of the preprocessing phase (`stage`), including:
         - GC content (`percent GC`);
         - Average read length (`mean_seq_len`);
         - Number of read pairs (`n_read pairs`);
         - Approximate number of base pairs in reads (`n_bases_approx`);
         - Percent duplicates as measured by FASTQC (`percent_duplicates`);
         - Pass/fail scores for each test conducted by FASTQC.
-    5. `qc/qc_adapter_stats.tsv.gz`: Adapter statistics calculated by FASTQC for each sample and preprocessing stage, given as a percentage of reads containing adapter content (`pc_adapters`) at each position along the read (`position`) for each adapter detected (`adapter`) for each read in the read pair (`read_pair`).
-    6. `qc/qc_quality_base_stats.tsv.gz`: Per-base read-quality statistics calculated by FASTQC for each sample and preprocessing stage, given as the mean Phred score (`mean_phred_score`) at each position along the read (`position`) for each read in the read pair (`read_pair`).
-    7. `qc/qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for each sample and preprocessing stage, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
-    8. `taxonomy/kraken_reports_merged.tsv.gz`: Kraken output reports in TSV format, labeled by sample and ribosomal status.
-    9. `taxonomy/bracken_reports_merged.tsv.gz`: Bracken output reports in TSV format, labeled by sample and ribosomal status.
- 4.  `output/logging`: Directory containing the log files generated by the pipeline.
-    1. `trace-${timestamp}.txt`: Tab delimitied log of all the information for each task run in the pipeline including runtime, memory usage, exit status, etc. Can be used to create an execution timeline using the the script `bin/plot-timeline-script.R` after the pipeline has finished running. More information regarding the trace file format can be found [here](https://www.nextflow.io/docs/latest/reports.html#trace-file).
-    2. `time.txt`: Start time of run workflow.
-    3. `pipeline-version.txt`: Version of pipeline used for run.
-    4. `pipeline-version-index.txt`: Version of pipeline used to generate index directory (`params.ref_dir`).
+    2. `qc_adapter_stats.tsv.gz`: Adapter statistics calculated by FASTQC for each sample and preprocessing stage, given as a percentage of reads containing adapter content (`pc_adapters`) at each position along the read (`position`) for each adapter detected (`adapter`) for each read in the read pair (`read_pair`).
+    3. `qc_quality_base_stats.tsv.gz`: Per-base read-quality statistics calculated by FASTQC for each sample and preprocessing stage, given as the mean Phred score (`mean_phred_score`) at each position along the read (`position`) for each read in the read pair (`read_pair`).
+    4. `qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for each sample and preprocessing stage, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
+    5. `virus_hits_db.tsv.gz`: TSV output by the viral identification phase, giving information about each read pair assigned to a host-infecting virus.
+    6. `virus_clade_counts.tsv.gz`: Summary of the previous file giving the number of HV read pairs mapped to each viral taxon. Includes both read pairs mapped directly to that taxon (`n_reads_direct`) and to that taxon plus all descendent taxa (`n_reads_clade`).
+    3. `blast_hits_paired.tsv.gz`: Summarized BLASTN output for putative HV read pairs, giving, for each read pair and subject taxid:
+        - The number of reads in the read pair with high-scoring matches to that taxid (`n_reads`).
+        - The best bitscores of alignments to that taxid for each matching read (`bitscore_max` and `bitscore_min`)[^bitscore].
+    8. `kraken_reports_merged.tsv.gz`: Kraken output reports in TSV format, labeled by sample and ribosomal status.
+    9. `bracken_reports_merged.tsv.gz`: Bracken output reports in TSV format, labeled by sample and ribosomal status.
 
 [^bitscore]: If only one read aligns to the target, these two fields will be identical. If not, they will give the higher and lower of the best bitscores for the two reads in the pair..
 
@@ -177,7 +175,7 @@ To run the pipeline with a specified profile, run `nextflow run PATH_TO_REPO_DIR
 To run this workflow with full functionality, you need access to the following dependencies:
 
 1. **SDKMAN!:** To install the SDKMAN! Java SDK manager, follow the installation instructions available [here](https://sdkman.io/install).
-2. **Nextflow:** To install the workflow management framework, follow the installation instructions available [here](https://www.nextflow.io/docs/latest/getstarted.html), beginning by installing a recommended Java distribution through SDKMAN!.
+2. **Nextflow:** To install the workflow management framework, follow the installation instructions available [here](https://www.nextflow.io/docs/latest/getstarted.html), beginning by installing a recommended Java distribution through SDKMAN!. Pipeline version 2.5.0+ requires Nextflow version 24.10.0+.
 2. **Docker:** To install Docker Engine for command-line use, follow the installation instructions available [here](https://docs.docker.com/engine/install/) (or [here](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-docker.html) for installation on an AWS EC2 instance).
 3. **AWS CLI:** If not already installed, install the AWS CLI by following the instructions available [here](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
 4. **Git:** To install the Git version control tool, follow the installation instructions available [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
@@ -287,7 +285,7 @@ To run the workflow on another dataset, you need:
 > - Second column: Path to FASTQ file 1 which should be the forward read for this sample
 > - Third column: Path to FASTQ file 2 which should be the reverse read for this sample
 > 
-> The easiest way to get this file is by using the `generate_samplesheet.sh` script. As input, this script takes a path to raw FASTQ files (`dir_path`), and forward (`forward_suffix`) and reverse (`reverse_suffix`) read suffixes, both of which support regex, and an optional output path (`output_path`). Those using data from s3 should make sure to pass the `s3` parameter. As output, the script generates a CSV file named (`samplesheet.csv` by default), which can be used as input for the pipeline.
+> The easiest way to get this file is by using the `generate_samplesheet.sh` script. As input, this script takes a path to raw FASTQ files (`dir_path`), and forward (`forward_suffix`) and reverse (`reverse_suffix`) read suffixes, both of which support regex, and an optional output path (`output_path`). Those using data from s3 should make sure to pass the `s3` parameter. Those who would like to group samples by some metadata can pass a path to a CSV file containing a header column named `sample,group`, where each row gives the sample name and the group to group by (`group_file`) or edit the samplesheet manually after generation (since manually editing the samplesheet will be easier when the groups CSV isn't readily available). As output, the script generates a CSV file named (`samplesheet.csv` by default), which can be used as input for the pipeline.
 
 
 If running on Batch, a good process for starting the pipeline on a new dataset is as follows:

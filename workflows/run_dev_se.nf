@@ -9,11 +9,8 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
-include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
-include { HV } from "../subworkflows/local/hv" addParams(min_kmer_hits: "3", k: "21", bbduk_suffix: "hv", encoding: "${params.quality_encoding}", fuzzy_match: "${params.fuzzy_match_alignment_duplicates}")
-include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
-include { PROFILE } from "../subworkflows/local/profile" addParams(min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo", kraken_memory: "${params.kraken_memory}")
+include { RAW } from "../subworkflows/local/raw"
+include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 nextflow.preview.output = true
 
@@ -26,23 +23,48 @@ workflow RUN_DEV_SE {
     // Start time
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
+
+    single_end = file(params.sample_sheet).readLines()[0].split(',').contains('fastq_2') ? false : true
+
     // Prepare samplesheet
-    if (params.read_type == "single_end") {
-        samplesheet = Channel
-            .fromPath(params.sample_sheet)
-            .splitCsv(header: true)
-            .map{row -> tuple(row.sample, file(row.fastq))}
+    if (single_end) {
+        if (params.grouping) {
+            samplesheet = Channel
+                .fromPath(params.sample_sheet)
+                .splitCsv(header: true)
+                .map { row -> tuple(row.sample, file(row.fastq), row.group) }
+            samplesheet_ch = samplesheet.map { sample, read, group -> tuple(sample, [read]) }
+            group_ch = samplesheet.map { sample, read, group -> tuple(sample, group) }
+        } else {
+            samplesheet = Channel
+                .fromPath(params.sample_sheet)
+                .splitCsv(header: true)
+                .map { row -> tuple(row.sample, file(row.fastq)) }
+            samplesheet_ch = samplesheet.map { sample, read -> tuple(sample, [read]) }
+            group_ch = Channel.empty()
+        }
     } else {
-        samplesheet = Channel
-            .fromPath(params.sample_sheet)
-            .splitCsv(header: true)
-            .map{row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2))}
-    }
-    // Prepare Kraken DB
-    kraken_db_path = "${params.ref_dir}/results/kraken_db"
+        if (params.grouping) {
+            samplesheet = Channel
+                .fromPath(params.sample_sheet)
+                .splitCsv(header: true)
+                .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2), row.group) }
+            samplesheet_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, [read1, read2]) }
+            group_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, group) }
+        } else {
+            samplesheet = Channel
+                .fromPath(params.sample_sheet)
+                .splitCsv(header: true)
+                .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2)) }
+            samplesheet_ch = samplesheet.map { sample, read1, read2 -> tuple(sample, [read1, read2]) }
+            group_ch = Channel.empty()
+            }
+        }
+
+
     // Preprocessing
-    RAW(samplesheet, params.n_reads_trunc)
-    CLEAN(RAW.out.reads, params.adapters)
+    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", single_end)
+    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", single_end)
 
     // Taxonomic profiling
     PROFILE(CLEAN.out.reads, kraken_db_path, params.n_reads_profile, params.ref_dir)
@@ -60,18 +82,17 @@ workflow RUN_DEV_SE {
     publish:
         // Saved inputs
         Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
-        Channel.fromPath("${params.ref_dir}/input/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
+        Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
         Channel.fromPath(params.sample_sheet) >> "input"
         Channel.fromPath(params.adapters) >> "input"
         params_ch >> "input"
         time_ch >> "logging"
         version_ch >> "logging"
-
-        PROCESS_OUTPUT.out.basic >> "results/qc"
-        PROCESS_OUTPUT.out.adapt >> "results/qc"
-        PROCESS_OUTPUT.out.qbase >> "results/qc"
-        PROCESS_OUTPUT.out.qseqs >> "results/qc"
-
-        PROFILE.out.bracken >> "results/taxonomy"
-        PROFILE.out.kraken >> "results/taxonomy"
+        // Intermediate files
+        CLEAN.out.reads >> "intermediates/reads/cleaned"
+        // QC
+        PROCESS_OUTPUT.out.basic >> "results"
+        PROCESS_OUTPUT.out.adapt >> "results"
+        PROCESS_OUTPUT.out.qbase >> "results"
+        PROCESS_OUTPUT.out.qseqs >> "results"
 }
