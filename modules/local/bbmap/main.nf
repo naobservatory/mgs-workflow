@@ -43,7 +43,7 @@ process BBMAP_INDEX {
         mkdir ${odir}
         cp !{reference_fasta} ${odir}/reference.fasta.gz
         cd ${odir}
-        bbmap.sh ref=reference.fasta.gz t=!{task.cpus} -Xmx60g
+        bbmap.sh ref=reference.fasta.gz t=!{task.cpus} -Xmx10g
         #tar -czf human-ref-index.tar.gz human_ref_index
         '''
 }
