@@ -20,14 +20,14 @@ workflow QC {
         fastqc_cpus
         fastqc_mem
         stage_label
-        read_type
+        single_end
     main:
         // 1. Run FASTQC on each pair of read files
         fastqc_ch = FASTQC_LABELED(reads, fastqc_cpus, fastqc_mem)
         // 2. Extract data with MultiQC for each pair of read files
         multiqc_ch = MULTIQC_LABELED(stage_label, fastqc_ch.zip)
         // 3. Summarize MultiQC information for each pair of read files
-        process_ch = SUMMARIZE_MULTIQC_PAIR(multiqc_ch.data, read_type)
+        process_ch = SUMMARIZE_MULTIQC_PAIR(multiqc_ch.data, single_end)
         // 4. Collate MultiQC outputs
         multiqc_basic_ch = process_ch.map{ it[0] }.collect().ifEmpty([])
         multiqc_adapt_ch = process_ch.map{ it[1] }.collect().ifEmpty([])

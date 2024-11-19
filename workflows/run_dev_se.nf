@@ -9,11 +9,11 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { RAW } from "../subworkflows/local/raw" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "raw_concat")
-include { CLEAN } from "../subworkflows/local/clean" addParams(fastqc_cpus: "2", fastqc_mem: "4 GB", stage_label: "cleaned")
-include { HV } from "../subworkflows/local/hv" addParams(min_kmer_hits: "3", k: "21", bbduk_suffix: "hv", encoding: "${params.quality_encoding}", fuzzy_match: "${params.fuzzy_match_alignment_duplicates}")
-include { BLAST_HV } from "../subworkflows/local/blastHV" addParams(blast_cpus: "32", blast_mem: "256 GB", blast_filter_mem: "32 GB")
-include { PROFILE } from "../subworkflows/local/profile" addParams(min_kmer_fraction: "0.4", k: "27", bbduk_suffix: "ribo", kraken_memory: "${params.kraken_memory}")
+include { RAW } from "../subworkflows/local/raw"
+include { CLEAN } from "../subworkflows/local/clean"
+include { EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReads"
+include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
+include { PROFILE } from "../subworkflows/local/profile"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 nextflow.preview.output = true
 
@@ -26,20 +26,51 @@ workflow RUN_DEV_SE {
     // Start time
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
+
+    // Determine read type based on samplesheet header
+    single_end = file(params.sample_sheet).readLines()[0].contains('fastq_2') ? false : true
+
+    println "Single end mode: ${single_end}"
+
     // Prepare samplesheet
-    if (params.read_type == "single_end") {
-        samplesheet = Channel
-            .fromPath(params.sample_sheet)
-            .splitCsv(header: true)
-            .map{row -> tuple(row.sample, file(row.fastq))}
+    if (single_end) {
+        if (params.grouping) {
+            samplesheet = Channel
+                .fromPath(params.sample_sheet)
+                .splitCsv(header: true)
+                .map { row -> tuple(row.sample, file(row.fastq), row.group) }
+            samplesheet_ch = samplesheet.map { sample, read, group -> tuple(sample, [read]) }
+            group_ch = samplesheet.map { sample, read, group -> tuple(sample, group) }
+        } else {
+            samplesheet = Channel
+                .fromPath(params.sample_sheet)
+                .splitCsv(header: true)
+                .map { row -> tuple(row.sample, file(row.fastq)) }
+            samplesheet_ch = samplesheet.map { sample, read -> tuple(sample, [read]) }
+            group_ch = Channel.empty()
+        }
     } else {
-        samplesheet = Channel
-            .fromPath(params.sample_sheet)
-            .splitCsv(header: true)
-            .map{row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2))}
-    }
-    RAW(samplesheet, params.n_reads_trunc)
-    CLEAN(RAW.out.reads, params.adapters)
+        if (params.grouping) {
+            samplesheet = Channel
+                .fromPath(params.sample_sheet)
+                .splitCsv(header: true)
+                .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2), row.group) }
+            samplesheet_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, [read1, read2]) }
+            group_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, group) }
+        } else {
+            samplesheet = Channel
+                .fromPath(params.sample_sheet)
+                .splitCsv(header: true)
+                .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2)) }
+            samplesheet_ch = samplesheet.map { sample, read1, read2 -> tuple(sample, [read1, read2]) }
+            group_ch = Channel.empty()
+            }
+        }
+
+
+    // Preprocessing
+    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", single_end)
+    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", single_end)
 
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
@@ -60,9 +91,11 @@ workflow RUN_DEV_SE {
         params_ch >> "input"
         time_ch >> "logging"
         version_ch >> "logging"
-
-        PROCESS_OUTPUT.out.basic >> "results/qc"
-        PROCESS_OUTPUT.out.adapt >> "results/qc"
-        PROCESS_OUTPUT.out.qbase >> "results/qc"
-        PROCESS_OUTPUT.out.qseqs >> "results/qc"
+        // Intermediate files
+        CLEAN.out.reads >> "intermediates/reads/cleaned"
+        // QC
+        PROCESS_OUTPUT.out.basic >> "results"
+        PROCESS_OUTPUT.out.adapt >> "results"
+        PROCESS_OUTPUT.out.qbase >> "results"
+        PROCESS_OUTPUT.out.qseqs >> "results"
 }

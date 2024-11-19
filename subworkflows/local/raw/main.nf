@@ -7,9 +7,9 @@
 ***************************/
 
 include { QC } from "../../../subworkflows/local/qc"
-if (params.read_type == "single_end") {
+if (params.single_end) {
     include { TRUNCATE_CONCAT_SINGLE as TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
-} else if (params.read_type == "paired_end") {
+} else {
     include { TRUNCATE_CONCAT_PAIRED as TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
 }
 
@@ -25,13 +25,14 @@ workflow RAW {
         fastqc_cpus
         fastqc_mem
         stage_label
+        single_end
     main:
         if ( n_reads_trunc > 0 ) {
             out_ch = TRUNCATE_CONCAT(samplesheet_ch, n_reads_trunc)
         } else {
             out_ch = samplesheet_ch
         }
-        qc_ch = QC(out_ch, fastqc_cpus, fastqc_mem, stage_label)
+        qc_ch = QC(out_ch, fastqc_cpus, fastqc_mem, stage_label, single_end)
     emit:
         reads = out_ch
         qc = qc_ch.qc

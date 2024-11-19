@@ -7,9 +7,9 @@
 ***************************/
 
 include { QC } from "../../../subworkflows/local/qc"
-if (params.read_type == "single_end") {
+if (params.single_end) {
     include { FASTP_SINGLE as FASTP } from "../../../modules/local/fastp"
-} else if (params.read_type == "paired_end") {
+} else {
     include { FASTP_PAIRED as FASTP } from "../../../modules/local/fastp"
 }
 
@@ -25,10 +25,10 @@ workflow CLEAN {
         fastqc_cpus
         fastqc_mem
         stage_label
-        read_type
+        single_end
     main:
         fastp_ch = FASTP(reads_ch, adapter_path)
-        qc_ch = QC(fastp_ch.reads, stage_label, read_type, fastqc_cpus, fastqc_mem)
+        qc_ch = QC(fastp_ch.reads, fastqc_cpus, fastqc_mem, stage_label, single_end)
     emit:
         reads = fastp_ch.reads
         qc = qc_ch.qc
