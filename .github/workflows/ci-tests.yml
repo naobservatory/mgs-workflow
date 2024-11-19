@@ -32,4 +32,4 @@ jobs:
           sudo mv nf-test /usr/local/bin/
 
       - name: Run Tests
-        run: nf-test test tests/main.nf.test
+        run: nf-test test tests/main.nf.test --verbose
