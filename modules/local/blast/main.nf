@@ -1,7 +1,7 @@
 // BLAST paired reads against a downloaded DB and return a single output file
 process BLAST_PAIRED_LOCAL {
     label "BLAST"
-    cpus "${cpus}"
+    cpus 3
     memory "${mem}"
     input:
         path(gzipped_reads)
