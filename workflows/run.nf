@@ -43,24 +43,20 @@ workflow RUN {
         samplesheet_ch = samplesheet.map { sample, read1, read2 -> tuple(sample, [read1, read2]) }
         group_ch = Channel.empty()
     }
-    // Prepare Kraken DB
-    kraken_db_path = "${params.ref_dir}/results/kraken_db"
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat")
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned")
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "3", "21", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", "${params.kraken_memory}", params.grouping)
+    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, params.kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "3", "21", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", "${params.kraken_memory}", params.grouping)
     // Process intermediate output for chimera detection
     raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(RAW.out.reads, by: 0)
     EXTRACT_RAW_READS_FROM_PROCESSED(raw_processed_ch, "raw_viral_subset")
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
-        blast_db_path = "${params.ref_dir}/results/core_nt"
-        blast_db_prefix = "core_nt"
-        BLAST_VIRAL(EXTRACT_VIRAL_READS.out.fasta, blast_db_path, blast_db_prefix, params.blast_viral_fraction, "32", "256 GB", "32 GB")
+        BLAST_VIRAL(EXTRACT_VIRAL_READS.out.fasta, params.blast_db_path, params.blast_db_prefix, params.blast_viral_fraction, "32", params.blast_mem, params.blast_filter_mem)
     }
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", "${params.kraken_memory}", params.grouping)
+    PROFILE(CLEAN.out.reads, group_ch, params.kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", "${params.kraken_memory}", params.grouping)
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
     PROCESS_OUTPUT(qc_ch)
@@ -69,10 +65,13 @@ workflow RUN {
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
     time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
+    index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
+    index_pipeline_version_ch = Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt")
+    .map { file -> file.copyTo("pipeline-version-index.txt") }
     publish:
         // Saved inputs
-        Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
-        Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
+        index_params_ch >> "input"
+        index_pipeline_version_ch >> "logging"
         Channel.fromPath(params.sample_sheet) >> "input"
         Channel.fromPath(params.adapters) >> "input"
         params_ch >> "input"
