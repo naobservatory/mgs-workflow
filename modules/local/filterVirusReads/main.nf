@@ -2,7 +2,7 @@
 process FILTER_VIRUS_READS {
     label "tidyverse"
     cpus 1
-    memory "16.GB"
+    memory "15.GB"
     input:
         path(virus_hits)
         val(score_threshold)

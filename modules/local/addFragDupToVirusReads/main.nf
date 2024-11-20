@@ -2,7 +2,7 @@
 process ADD_FRAG_DUP_TO_VIRUS_READS {
     label "tidyverse"
     cpus 1
-    memory "16.GB"
+    memory "15.GB"
     input:
         path(collapsed_ch)
         path(merged_bbmerge_results)

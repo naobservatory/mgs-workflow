@@ -2,7 +2,7 @@
 process MERGE_TSVS {
     label "tidyverse"
     cpus 1
-    memory "16.GB"
+    memory "15.GB"
     input:
         path(tsvs)
         val(name)

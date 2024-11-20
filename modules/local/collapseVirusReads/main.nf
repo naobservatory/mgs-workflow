@@ -2,7 +2,7 @@
 process COLLAPSE_VIRUS_READS {
     label "tidyverse"
     cpus 1
-    memory "32.GB"
+    memory "15.GB"
     input:
         path(virus_hits_filtered)
     output:

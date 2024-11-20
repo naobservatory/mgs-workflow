@@ -2,7 +2,7 @@
 process MERGE_SAM_KRAKEN {
     label "tidyverse"
     cpus 1
-    memory "16.GB"
+    memory "15.GB"
     input:
         tuple val(sample), path(kraken_processed), path(sam_processed)
     output:

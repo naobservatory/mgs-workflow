@@ -2,7 +2,7 @@
 process MAKE_VIRUS_READS_FASTA {
     label "tidyverse"
     cpus 1
-    memory "16.GB"
+    memory "15.GB"
     input:
         path(virus_hits_db)
     output:
