@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -u
+set -e
 
 ##### Input parameters #####
 
@@ -10,7 +12,7 @@ reverse_suffix=""
 s3=0
 output_path="samplesheet.csv"  # Default output path
 group_file=""  # Optional parameter for the group file
-
+group_across_illumina_lanes=false
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -39,6 +41,10 @@ while [[ $# -gt 0 ]]; do
             group_file="$2"
             shift 2
             ;;
+        --group_across_illumina_lanes)
+            group_across_illumina_lanes=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -58,6 +64,13 @@ if [[ -z "$dir_path" || -z "$forward_suffix" || -z "$reverse_suffix" ]]; then
     echo -e "  --s3                      Use if files are stored in S3 bucket"
     echo -e "  --output_path <path>      Output path for samplesheet [default: samplesheet.csv]"
     echo -e "  --group_file <path>       Path to group file for sample grouping [header column must have the names 'sample,group' in that order; additional columns may be included, however they will be ignored by the script]"
+    echo -e
+    "  --group_across_illumina_lanes   Create groups by assuming that files that differ only by a terminal _Lnnn are the same library split across multiple lanes."
+    exit 1
+fi
+
+if $group_across_illumina_lanes && [[ -n "$group_file" ]]; then
+    echo "Provide at most one of --group_file and --group_across_illumina_lanes"
     exit 1
 fi
 
@@ -69,11 +82,12 @@ echo "reverse_suffix: $reverse_suffix"
 echo "s3: $s3"
 echo "output_path: $output_path"
 echo "group_file: $group_file"
+echo "group_across_illumina_lanes: $group_across_illumina_lanes"
 
 
 #### EXAMPLES ####
 
-# dir_path="" # Cannot share this as it's restricted, but imagine the read looks like this 
+# dir_path="" # Cannot share this as it's restricted, but imagine the read looks like this
 # forward_suffix="_S[0-9]_L[0-9][0-9][0-9]_R1_001"
 # reverse_suffix="_S[0-9]_L[0-9][0-9][0-9]_R2_001"
 # s3=1
@@ -125,6 +139,17 @@ if [[ -n "$group_file" ]]; then
     # Perform left join with group file
     awk -F',' 'NR==FNR{a[$1]=$2; next} FNR==1{print $0",group"} FNR>1{print $0","(a[$1]?a[$1]:"NA")}' "$group_file" "$temp_samplesheet" > "$output_path"
     echo "CSV file '$output_path' has been created with group information."
+elif $group_across_illumina_lanes; then
+    cat "$temp_samplesheet" | tr ',' ' ' | \
+        while read sample fastq_1 fastq_2; do
+            if [[ $sample = "sample" ]]; then
+                echo $sample $fastq_1 $fastq_2 "group"
+            else
+                echo $sample $fastq_1 $fastq_2 \
+                     $(echo "$sample" | sed 's/_L[0-9][0-9][0-9]$//')
+            fi
+        done | tr ' ' ',' > "$output_path"
+    echo "CSV file '$output_path' has been created with grouping across illumina lanes."
 else
     # If no group file, just use the temporary samplesheet as the final output
     mv "$temp_samplesheet" "$output_path"
@@ -133,4 +158,3 @@ fi
 
 # Remove temporary file if it still exists
 [ -f "$temp_samplesheet" ] && rm "$temp_samplesheet"
-
