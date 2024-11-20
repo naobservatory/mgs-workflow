@@ -58,6 +58,11 @@ workflow RUN {
         blast_db_path = "${params.ref_dir}/results/core_nt"
         blast_db_prefix = "core_nt"
         BLAST_VIRAL(EXTRACT_VIRAL_READS.out.fasta, blast_db_path, blast_db_prefix, params.blast_viral_fraction, "32", "256 GB", "32 GB")
+        blast_subset_ch = BLAST_VIRAL.out.blast_subset
+        blast_paired_ch = BLAST_VIRAL.out.blast_paired
+    } else {
+        blast_subset_ch = Channel.empty()
+        blast_paired_ch = Channel.empty()
     }
     // Taxonomic profiling
     PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", "${params.kraken_memory}", params.grouping)
@@ -91,4 +96,7 @@ workflow RUN {
         EXTRACT_VIRAL_READS.out.counts >> "results"
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
+        // Validation output (if any)
+        blast_subset_ch >> "results"
+        blast_paired_ch >> "results"
 }

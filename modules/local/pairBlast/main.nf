@@ -23,7 +23,7 @@ process PAIR_BLAST {
         # Join on query ID and subject taxid
         hits_pair <- full_join(hits_fwd, hits_rev, by=c("qseqid", "staxid"),
                 suffix = c("_fwd", "_rev")) %>%
-            mutate(n_reads = !is.na(bitscore_fwd)+!is.na(bitscore_rev),
+            mutate(n_reads = as.numeric(!is.na(sseqid_fwd))+as.numeric(!is.na(sseqid_rev)),
                 bitscore_max = pmax(bitscore_fwd, bitscore_rev),
                 bitscore_min = pmin(bitscore_fwd, bitscore_rev))
         # Write output
