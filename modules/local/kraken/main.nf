@@ -1,7 +1,7 @@
 // 7.3. Perform taxonomic assignment with Kraken2
 process KRAKEN {
     label "Kraken2"
-    cpus 16
+    cpus 3
     memory "${mem}"
     input:
         tuple val(sample), path(reads)
