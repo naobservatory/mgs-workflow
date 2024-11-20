@@ -33,13 +33,14 @@ process SUBSET_READS_SINGLE {
     input:
         tuple val(sample), path(reads)
         val readFraction
+        val suffix
     output:
-        tuple val(sample), path("${sample}_subset.${params.suffix}.gz")
+        tuple val(sample), path("${sample}_subset.${suffix}.gz")
     shell:
         '''
         # Define input/output
         in=!{reads}
-        out=!{sample}_subset.!{params.suffix}.gz
+        out=!{sample}_subset.!{suffix}.gz
         # Count reads for validation
         echo "Input reads: $(zcat ${in} | wc -l | awk '{ print $1/4 }')"
         # Carry out subsetting
@@ -123,13 +124,14 @@ process SUBSET_READS_SINGLE_TARGET {
     input:
         tuple val(sample), path(reads)
         val readTarget
+        val suffix
     output:
-        tuple val(sample), path("${sample}_subset.${params.suffix}.gz")
+        tuple val(sample), path("${sample}_subset.${suffix}.gz")
     shell:
         '''
         # Define input/output
         in=!{reads}
-        out=!{sample}_subset.!{params.suffix}.gz
+        out=!{sample}_subset.!{suffix}.gz
         # Count reads and compute target fraction
         n_reads=$(zcat ${in} | wc -l | awk '{ print $1/4 }')
         echo "Input reads: ${n_reads}"
