@@ -20,6 +20,7 @@ workflow MAKE_CONTAMINANT_INDEX {
     take:
         genome_urls
         contaminants_path
+        bbmap_mem
     main:
         // Download reference genomes
        ref_ch = channel
@@ -40,7 +41,7 @@ workflow MAKE_CONTAMINANT_INDEX {
         genome_ch = CONCATENATE_FASTA_GZIPPED(combined_ch, "ref_concat")
 
         // Make indexes
-        bbmap_ch = BBMAP_INDEX(genome_ch, "bbm-other-index")
+        bbmap_ch = BBMAP_INDEX(genome_ch, "bbm-other-index", bbmap_mem)
         bowtie2_ch = BOWTIE2_INDEX(genome_ch, "bt2-other-index")
     emit:
         bbm = bbmap_ch

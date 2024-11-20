@@ -33,8 +33,8 @@ workflow INDEX {
     // Build viral alignment index
     MAKE_VIRUS_INDEX(MAKE_VIRUS_GENOME_DB.out.fasta)
     // Build other alignment indices
-    MAKE_HUMAN_INDEX(params.human_url)
-    MAKE_CONTAMINANT_INDEX(params.genome_urls, params.contaminants)
+    MAKE_HUMAN_INDEX(params.human_url, params.bbmap_mem)
+    MAKE_CONTAMINANT_INDEX(params.genome_urls, params.contaminants, params.bbmap_mem)
     // Other index files
     JOIN_RIBO_REF(params.ssu_url, params.lsu_url)
     DOWNLOAD_BLAST_DB(params.blast_db_name)
