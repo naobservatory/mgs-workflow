@@ -27,7 +27,11 @@ include { COLLAPSE_VIRUS_READS } from "../../../modules/local/collapseVirusReads
 include { ADD_FRAG_DUP_TO_VIRUS_READS } from "../../../modules/local/addFragDupToVirusReads"
 include { MAKE_VIRUS_READS_FASTA } from "../../../modules/local/makeVirusReadsFasta"
 include { COUNT_VIRUS_CLADES } from "../../../modules/local/countVirusClades"
-include { CONCAT_GROUP } from "../../../modules/local/concatGroup"
+if (params.single_end) {
+    include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
+} else {
+    include { CONCAT_GROUP_PAIRED as CONCAT_GROUP } from "../../../modules/local/concatGroup"
+}
 
 /***********
 | WORKFLOW |
