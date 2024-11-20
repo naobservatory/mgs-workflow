@@ -12,6 +12,7 @@ import java.time.LocalDateTime
 include { RAW } from "../subworkflows/local/raw"
 include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
+include { PROFILE } from "../subworkflows/local/profile"
 nextflow.preview.output = true
 
 /*****************
@@ -23,8 +24,6 @@ workflow RUN_DEV_SE {
     // Start time
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
-
-    single_end = file(params.sample_sheet).readLines()[0].split(',').contains('fastq_2') ? false : true
 
     // Prepare samplesheet
     if (single_end) {
@@ -60,14 +59,16 @@ workflow RUN_DEV_SE {
             group_ch = Channel.empty()
             }
         }
+    // Prepare Kraken DB
+    kraken_db_path = "${params.ref_dir}/results/kraken_db"
 
 
     // Preprocessing
-    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", single_end)
-    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", single_end)
+    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
+    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
 
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, kraken_db_path, params.n_reads_profile, params.ref_dir)
+    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", "${params.kraken_memory}", params.grouping, params.single_end)
 
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
@@ -95,4 +96,7 @@ workflow RUN_DEV_SE {
         PROCESS_OUTPUT.out.adapt >> "results"
         PROCESS_OUTPUT.out.qbase >> "results"
         PROCESS_OUTPUT.out.qseqs >> "results"
+        // Final results
+        PROFILE.out.bracken >> "results"
+        PROFILE.out.kraken >> "results"
 }
