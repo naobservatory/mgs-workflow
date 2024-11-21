@@ -33,5 +33,8 @@ jobs:
       - name: Run index workflow
         run: nf-test test --tag index --verbose
 
+      - name: Run clean
+        run: nf-test clean
+
       - name: Run run workflow
         run: nf-test test --tag run --verbose
