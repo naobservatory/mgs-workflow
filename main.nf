@@ -9,9 +9,6 @@ workflow {
         RUN()
     } else if (params.mode == "run_validation") {
         RUN_VALIDATION()
-    } else if (params.mode == "test") {
-        INDEX()
-        RUN()
     }
 }
 
