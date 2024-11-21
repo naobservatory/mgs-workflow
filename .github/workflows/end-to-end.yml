@@ -40,5 +40,8 @@ jobs:
           docker rmi $(docker images -q) -f 2>/dev/null || true
           docker system prune -af --volumes
 
+      - name: Clean up nf-test dir
+        run: sudo rm -rf .nf-test
+
       - name: Run run workflow
         run: nf-test test --tag run --verbose
