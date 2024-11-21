@@ -271,9 +271,8 @@ Finally, you can run the test dataset through the pipeline on AWS Batch. To do t
 To run the workflow on another dataset, you need:
 
 1. Accessible raw data files in Gzipped FASTQ format, named appropriately.
-2. A sample sheet file specifying the samples, along with paths to the forward and reverse read files for each sample.
+2. A sample sheet file specifying the samples, along with paths to the forward and reverse read files for each sample.  `generate_samplesheet.sh` (see below) can make this for you.
 3. A config file in a clean launch directory, pointing to:
-    - The directory containing the raw data (`params.raw_dir`).
     - The base directory in which to put the working and output directories (`params.base_dir`).
     - The directory containing the outputs of the reference workflow (`params.ref_dir`).
     - The sample sheet (`params.sample_sheet`).
@@ -286,13 +285,21 @@ To run the workflow on another dataset, you need:
 > - Third column: Path to FASTQ file 2 which should be the reverse read for this sample
 > 
 > The easiest way to get this file is by using the `generate_samplesheet.sh` script. As input, this script takes a path to raw FASTQ files (`dir_path`), and forward (`forward_suffix`) and reverse (`reverse_suffix`) read suffixes, both of which support regex, and an optional output path (`output_path`). Those using data from s3 should make sure to pass the `s3` parameter. Those who would like to group samples by some metadata can pass a path to a CSV file containing a header column named `sample,group`, where each row gives the sample name and the group to group by (`group_file`), edit the samplesheet manually after generation (since manually editing the samplesheet will be easier when the groups CSV isn't readily available), or provide the --group_across_illumina_lanes option if a single library was run across a single Illumina flowcell. As output, the script generates a CSV file named (`samplesheet.csv` by default), which can be used as input for the pipeline.
-
+>
+> For example:
+> ```
+> ../bin/generate_samplesheet.sh \
+>    --s3
+>    --dir_path s3://nao-restricted/MJ-2024-10-21/raw/ \
+>    --forward_suffix _1 \
+>    --reverse_suffix _2
+> ```
 
 If running on Batch, a good process for starting the pipeline on a new dataset is as follows:
 
 1. Process the raw data to have appropriate filenames (see above) and deposit it in an accessible S3 directory.
 2. Create a clean launch directory and copy `configs/run.config` to a file named `nextflow.config` in that directory.
-3. Create a library metadata file in that launch directory, specifying library/sample mappings and any other metadata (see above).
+3. Create a sample sheet in that launch directory (see above)
 4. Edit `nextflow.config` to specify each item in `params` as appropriate, as well as setting `process.queue` to the appropriate Batch queue.
 5. Run `nextflow run PATH_TO_REPO_DIR -resume`.
 6. Navigate to `{params.base_dir}/output` to view and download output files.

@@ -1,4 +1,12 @@
 # v2.5.2 (in progress)
+- Relaxed FASTP quality filtering (`--cut_mean_quality` and `--average_qual` reduced from 25 to 20).
+- Relaxed BBDUK viral filtering (switched from 3 21-mers to 1 24-mer).
+- Overhauled BLAST validation functionality:
+    - BLAST now runs on forward and reverse reads independently
+    - BLAST output filtering no longer assumes specific filename suffixes
+    - Paired BLAST output includes more information
+    - RUN_VALIDATION can now directly take in FASTA files instead of a virus read DB
+    - Fixed issues with publishing BLAST output under new Nextflow version
 - Removed redundant subsetting statement from TAXONOMY workflow.
 
 # v2.5.1
