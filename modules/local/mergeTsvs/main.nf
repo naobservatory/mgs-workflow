@@ -1,8 +1,7 @@
 // Combine multiple TSVs with identical headers into a single output file
 process MERGE_TSVS {
     label "tidyverse"
-    cpus 1
-    memory "15.GB"
+    label "single_large_memory"
     input:
         path(tsvs)
         val(name)

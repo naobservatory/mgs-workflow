@@ -1,11 +1,9 @@
 // Process & filter BLAST output into TSV
 process FILTER_BLAST {
     label "tidyverse"
-    cpus 1
-    memory "${mem}"
+    label "single_xlarge_memory"
     input:
         path(blast_hits)
-        val(mem)
     output:
         path("blast_hits_filtered.tsv.gz")
     shell:

@@ -35,7 +35,6 @@ process BBMAP_INDEX {
     input:
         path(reference_fasta)
         val(outdir)
-        val(bbmap_mem)
     output:
         path("${outdir}")
     shell:
@@ -44,7 +43,7 @@ process BBMAP_INDEX {
         mkdir ${odir}
         cp !{reference_fasta} ${odir}/reference.fasta.gz
         cd ${odir}
-        bbmap.sh ref=reference.fasta.gz t=!{task.cpus} -Xmx!{bbmap_mem}g
+        bbmap.sh ref=reference.fasta.gz t=!{task.cpus} -Xmx!{task.memory.toGiga()}g
         #tar -czf human-ref-index.tar.gz human_ref_index
         '''
 }

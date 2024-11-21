@@ -9,7 +9,11 @@ process DOWNLOAD_GENOME {
     shell:
         '''
         path=!{name}.fasta
-        wget "!{genome_url}" -O ${path}
-        gzip ${path}
+        if [[ "!{genome_url}" == *.gz ]]; then
+            wget "!{genome_url}" -O ${path}.gz
+        else
+            wget "!{genome_url}" -O ${path}
+            gzip ${path}
+        fi
         '''
 }

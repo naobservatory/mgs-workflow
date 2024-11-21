@@ -31,7 +31,6 @@ workflow TAXONOMY {
         dedup_rc
         classification_level
         read_fraction
-        kraken_memory
     main:
         // Subset reads (if applicable)
         if ( read_fraction == 1 ){
@@ -61,7 +60,7 @@ workflow TAXONOMY {
         summarize_dedup_ch = SUMMARIZE_DEDUP(dedup_ch)
 
         // Run Kraken and munge reports
-        kraken_ch = KRAKEN(dedup_ch, kraken_db_ch, kraken_memory)
+        kraken_ch = KRAKEN(dedup_ch, kraken_db_ch)
         kraken_label_ch = LABEL_KRAKEN_REPORTS(kraken_ch.report)
         kraken_merge_ch = MERGE_KRAKEN_REPORTS(kraken_label_ch.collect().ifEmpty([]), "kraken_reports")
         // Run Bracken and munge reports

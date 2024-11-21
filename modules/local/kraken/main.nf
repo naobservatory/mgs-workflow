@@ -1,12 +1,10 @@
 // 7.3. Perform taxonomic assignment with Kraken2
 process KRAKEN {
     label "Kraken2"
-    cpus 3
-    memory "${mem}"
+    label "kraken_resources"
     input:
         tuple val(sample), path(reads)
         path db_path
-        val mem
     output:
         tuple val(sample), path("${sample}.output"), emit: output
         tuple val(sample), path("${sample}.report"), emit: report

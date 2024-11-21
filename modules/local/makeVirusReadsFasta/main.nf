@@ -1,8 +1,7 @@
 // Extract FASTA from virus read TSV
 process MAKE_VIRUS_READS_FASTA {
     label "tidyverse"
-    cpus 1
-    memory "15.GB"
+    label "single_large_memory"
     input:
         path(virus_hits_db)
     output:

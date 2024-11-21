@@ -17,9 +17,6 @@ workflow BLAST_VIRAL {
         blast_db_dir
         blast_db_prefix
         read_fraction
-        blast_cpus
-        blast_mem
-        blast_filter_mem
     main:
         // Subset viral reads for BLAST
         if ( read_fraction < 1 ) {
@@ -28,9 +25,9 @@ workflow BLAST_VIRAL {
             subset_ch = viral_fasta
         }
         // BLAST putative viral hits against prepared DB
-        blast_ch = BLAST_PAIRED_LOCAL(subset_ch, blast_db_dir, blast_db_prefix, blast_cpus, blast_mem)
+        blast_ch = BLAST_PAIRED_LOCAL(subset_ch, blast_db_dir, blast_db_prefix)
         // Process BLAST output
-        filter_ch = FILTER_BLAST(blast_ch, blast_filter_mem)
+        filter_ch = FILTER_BLAST(blast_ch)
         pair_ch = PAIR_BLAST(filter_ch)
     emit:
         blast_raw = blast_ch
