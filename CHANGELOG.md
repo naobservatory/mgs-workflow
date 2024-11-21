@@ -8,6 +8,7 @@
     - RUN_VALIDATION can now directly take in FASTA files instead of a virus read DB
     - Fixed issues with publishing BLAST output under new Nextflow version
 - Removed redundant subsetting statement from TAXONOMY workflow.
+- Added --group_across_illumina_lanes option to generate_samplesheet
 
 # v2.5.1
 - Enabled extraction of BBDuk-subset putatively-host-viral raw reads for downstream chimera detection.
@@ -27,7 +28,7 @@
 - Reconfigured QC subworkflow to run FASTQC and MultiQC on each pair of input files separately (fixes bug arising from allowing arbitrary filenames for forward and reverse read files).
 
 # v2.4.0
-- Created a new output directory where we put log files called `logging`. 
+- Created a new output directory where we put log files called `logging`.
 - Added the trace file from Nextflow to the `logging` directory which can be used for understanding cpu, memory usage, and other infromation like runtime. After running the pipeline, `plot-timeline-script.R` can be used to generate a useful summary plot of the runtime for each process in the pipeline.
 - Removed CONCAT_GZIPPED.
 - Replaced the sample input format with something more similar to nf-core, called `samplesheet.csv`. This new input file can be generated using the script `generate_samplesheet.sh`.
