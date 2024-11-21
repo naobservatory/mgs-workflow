@@ -1,4 +1,4 @@
-name: End-to-end test
+name: End-to-end MGS workflow test
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
       - '*'
       - '!master'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: true
 
 jobs:
   test:

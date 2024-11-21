@@ -1,9 +1,10 @@
 nextflow_pipeline {
 
-    name "Test Workflow main.nf"
+    name "End-to-end test of MGS workflow"
     script "main.nf"
 
-    test("Should run without failures") {
+    test("Test index workflow") {
+        config "tests/index.config"
 
         when {
             params {
@@ -15,7 +16,20 @@ nextflow_pipeline {
         then {
             assert workflow.success
         }
+    }
+    test("Test run workflow") {
+        config "tests/run.config"
 
+        when {
+            params {
+                // define parameters here. Example: 
+                // outdir = "tests/results"
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
     }
 
 }
