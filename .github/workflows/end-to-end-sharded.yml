@@ -1,4 +1,4 @@
-name: End-to-end MGS workflow test
+name: End-to-end MGS workflow test sharded
 
 on:
   push:
@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+      strategy:
+        matrix:
+          shard: [1, 2, 3, 4]
 
     steps:
       - name: Checkout
@@ -30,8 +33,5 @@ jobs:
           wget -qO- https://get.nf-test.com | bash
           sudo mv nf-test /usr/local/bin/
 
-      - name: Run index workflow
-        run: nf-test test --tag index --verbose
-
-      - name: Run run workflow
-        run: nf-test test --tag run --verbose
+      - name: Run Run Tests (Shard ${{ matrix.shard }}/${{ strategy.job-total }})
+        run: nf-test test --tag "End-to-end test of MGS workflow" --shard ${{ matrix.shard }}/${{ strategy.job-total }}

@@ -5,6 +5,7 @@ nextflow_pipeline {
 
     test("Test index workflow") {
         config "tests/index.config"
+        tag "index"
 
         when {
             params {
@@ -19,6 +20,7 @@ nextflow_pipeline {
     }
     test("Test run workflow") {
         config "tests/run.config"
+        tag "run"
 
         when {
             params {
