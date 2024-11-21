@@ -33,8 +33,12 @@ jobs:
       - name: Run index workflow
         run: nf-test test --tag index --verbose
 
-      - name: Run clean
-        run: nf-test clean
+      - name: Clean docker for more space
+        run: |
+          docker kill $(docker ps -q) 2>/dev/null || true
+          docker rm $(docker ps -a -q) 2>/dev/null || true
+          docker rmi $(docker images -q) -f 2>/dev/null || true
+          docker system prune -af --volumes
 
       - name: Run run workflow
         run: nf-test test --tag run --verbose
