@@ -21,7 +21,7 @@ jobs:
           distribution: 'adopt'
 
       - name: Setup Nextflow latest-edge
-        uses: nf-core/setup-nextflow@v3
+        uses: nf-core/setup-nextflow@v1
         with:
           version: "latest-edge"
 
