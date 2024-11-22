@@ -26,7 +26,7 @@ workflow RUN_DEV_SE {
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
 
     // Prepare samplesheet
-    if (single_end) {
+    if (params.single_end) {
         if (params.grouping) {
             samplesheet = Channel
                 .fromPath(params.sample_sheet)
