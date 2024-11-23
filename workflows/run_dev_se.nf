@@ -25,7 +25,7 @@ workflow RUN_DEV_SE {
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
 
     // Prepare samplesheet
-    if (single_end) {
+    if (params.single_end) {
         if (params.grouping) {
             samplesheet = Channel
                 .fromPath(params.sample_sheet)
@@ -61,8 +61,8 @@ workflow RUN_DEV_SE {
 
 
     // Preprocessing
-    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", single_end)
-    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", single_end)
+    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
+    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
 
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
