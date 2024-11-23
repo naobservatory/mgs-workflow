@@ -13,14 +13,14 @@ option_list = list(
               help="Stage descriptor."),
   make_option(c("-S", "--sample"), type="character", default=NULL,
               help="Sample ID."),
-  make_option(c("-r", "--single_end"), type="character", default=FALSE,
+  make_option(c("-r", "--single_end"), type="logical", default=FALSE,
               help="Single-end flag."),
   make_option(c("-o", "--output_dir"), type="character", default=NULL,
               help="Path to output directory.")
 )
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
-single_end <- as.logical(opt$single_end)
+single_end <- opt$single_end
 
 # Set input paths
 multiqc_json_path <- file.path(opt$input_dir, "multiqc_data.json")
@@ -100,7 +100,7 @@ extract_adapter_data <- function(multiqc_json){
 extract_per_base_quality_single <- function(per_base_quality_dataset){
   # Convert a single JSON per-base-quality dataset into a tibble
   data <- lapply(1:length(per_base_quality_dataset$name), function(n)
-    per_base_quality_dataset$data[[n]] %>% as.data.frame %>% 
+    per_base_quality_dataset$data[[n]] %>% as.data.frame %>%
       mutate(file=per_base_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(position=V1, mean_phred_score=V2)
