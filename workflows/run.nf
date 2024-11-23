@@ -28,9 +28,6 @@ workflow RUN {
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
 
-    single_end = file(params.sample_sheet).readLines()[0].split(',').contains('fastq_2') ? false : true
-
-
     // Prepare samplesheet
     if ( params.grouping ) {
         samplesheet = Channel
@@ -50,8 +47,8 @@ workflow RUN {
     // Prepare Kraken DB
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     // Preprocessing
-    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", single_end)
-    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", single_end)
+    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
+    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
     // Extract and count human-viral reads
     EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "3", "21", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", "${params.kraken_memory}", params.grouping)
     // Process intermediate output for chimera detection
