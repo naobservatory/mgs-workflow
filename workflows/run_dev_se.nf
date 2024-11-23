@@ -24,8 +24,6 @@ workflow RUN_DEV_SE {
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
 
-    single_end = file(params.sample_sheet).readLines()[0].split(',').contains('fastq_2') ? false : true
-
     // Prepare samplesheet
     if (single_end) {
         if (params.grouping) {
