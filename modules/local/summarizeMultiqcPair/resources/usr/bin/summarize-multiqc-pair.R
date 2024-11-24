@@ -13,14 +13,23 @@ option_list = list(
               help="Stage descriptor."),
   make_option(c("-S", "--sample"), type="character", default=NULL,
               help="Sample ID."),
-  make_option(c("-r", "--single_end"), type="logical", default=FALSE,
+  make_option(c("-r", "--single_end"), type="character", default=FALSE,
               help="Single-end flag."),
   make_option(c("-o", "--output_dir"), type="character", default=NULL,
               help="Path to output directory.")
 )
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
-single_end <- opt$single_end
+
+# Convert single_end from string to logical
+if (opt$single_end == "true") {
+  single_end <- TRUE
+} else if (opt$single_end == "false") {
+  single_end <- FALSE
+} else {
+  stop("single_end must be 'true' or 'false'")
+}
+
 
 # Set input paths
 multiqc_json_path <- file.path(opt$input_dir, "multiqc_data.json")
