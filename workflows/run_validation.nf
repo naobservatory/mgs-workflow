@@ -28,10 +28,8 @@ workflow RUN_VALIDATION {
     fasta_ch = MAKE_VIRUS_READS_FASTA(collapsed_ch)
     // BLAST validation on host-viral reads
     if ( params.blast_viral_fraction > 0 ) {
-        blast_db_path = "${params.ref_dir}/results/core_nt"
-        blast_db_prefix = "core_nt"
-        BLAST_VIRAL(fasta_ch, blast_nt_path, params.blast_viral_fraction)
-        BLAST_VIRAL(fasta_ch, blast_db_path, blast_db_prefix, params.blast_viral_fraction, "32", "256 GB", "32 GB")
+        blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
+        BLAST_VIRAL(fasta_ch, blast_db_path, params.blast_db_prefix, params.blast_viral_fraction, "32", "256 GB", "32 GB")
     }
     // Publish results (NB: BLAST workflow has its own publish directive)
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))

@@ -1,7 +1,7 @@
 // Filter virus reads by alignment score and assignment status
 process FILTER_VIRUS_READS {
     label "tidyverse"
-    label "single_large_memory"
+    label "single_cpu_16GB_memory"
     input:
         path(virus_hits)
         val(score_threshold)

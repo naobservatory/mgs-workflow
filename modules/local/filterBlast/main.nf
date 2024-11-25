@@ -1,7 +1,7 @@
 // Process & filter BLAST output into TSV
 process FILTER_BLAST {
     label "tidyverse"
-    label "single_xlarge_memory"
+    label "single_cpu_32GB_memory"
     input:
         path(blast_hits)
     output:

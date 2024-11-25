@@ -1,7 +1,7 @@
 // Merge processed SAM and Kraken TSVs and compute length-normalized alignment scores
 process MERGE_SAM_KRAKEN {
     label "tidyverse"
-    label "single_large_memory"
+    label "single_cpu_16GB_memory"
     input:
         tuple val(sample), path(kraken_processed), path(sam_processed)
     output:

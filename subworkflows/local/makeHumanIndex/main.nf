@@ -15,12 +15,8 @@ workflow MAKE_HUMAN_INDEX {
         human_genome_url
     main:
         ref_ch = channel
-            .fromList(human_genome_url.entrySet())
-            .map { entry -> 
-                tuple(entry.value, entry.key)  // (url, name)
-            }
-        downloaded_ch = DOWNLOAD_GENOME(ref_ch)
-        genome_ch = downloaded_ch.collect()
+            .of(tuple(human_genome_url, "human"))  // (url, name)
+        genome_ch = DOWNLOAD_GENOME(ref_ch)
         bbmap_ch = BBMAP_INDEX(genome_ch, "bbm-human-index")
         bowtie2_ch = BOWTIE2_INDEX(genome_ch, "bt2-human-index")
     emit:

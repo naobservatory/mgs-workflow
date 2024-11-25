@@ -7,13 +7,6 @@ nextflow_pipeline {
         config "tests/index.config"
         tag "index"
 
-        when {
-            params {
-                // define parameters here. Example: 
-                // outdir = "tests/results"
-            }
-        }
-
         then {
             assert workflow.success
         }
@@ -22,12 +15,13 @@ nextflow_pipeline {
         config "tests/run.config"
         tag "run"
 
-        when {
-            params {
-                // define parameters here. Example: 
-                // outdir = "tests/results"
-            }
+        then {
+            assert workflow.success
         }
+    }
+    test("Test validation workflow") {
+        config "tests/run_validation.config"
+        tag "validation"
 
         then {
             assert workflow.success

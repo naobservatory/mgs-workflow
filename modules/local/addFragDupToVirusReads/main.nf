@@ -1,7 +1,7 @@
 // Add fragment length and duplication info to viral read DB
 process ADD_FRAG_DUP_TO_VIRUS_READS {
     label "tidyverse"
-    label "small_large_memory"
+    label "single_cpu_16GB_memory"
     input:
         path(collapsed_ch)
         path(merged_bbmerge_results)

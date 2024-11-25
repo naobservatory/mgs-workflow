@@ -14,7 +14,7 @@ include { FILTER_GENOME_FASTA } from "../../../modules/local/filterGenomeFasta"
 
 workflow MAKE_VIRUS_GENOME_DB {
     take:
-        ncbi_viral_params
+        ncbi_viral_params // Parameters for downloading genomic sequences from NCBI's GenBank or RefSeq databases. Any additional sequence-specific options can be provided here, supplementing the default download settings.
         virus_db // TSV giving taxonomic structure and host infection status of virus taxids
         patterns_exclude // File of sequence header patterns to exclude from genome DB
         host_taxa // Tuple of host taxa to include

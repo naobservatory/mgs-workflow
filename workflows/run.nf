@@ -27,6 +27,9 @@ workflow RUN {
     // Start time
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
+    kraken_db_path = "${params.ref_dir}/results/kraken_db"
+    blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
+
     // Prepare samplesheet
     if ( params.grouping ) {
         samplesheet = Channel
@@ -47,16 +50,16 @@ workflow RUN {
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat")
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned")
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, params.kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "3", "21", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping)
+    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "3", "21", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping)
     // Process intermediate output for chimera detection
     raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(RAW.out.reads, by: 0)
     EXTRACT_RAW_READS_FROM_PROCESSED(raw_processed_ch, "raw_viral_subset")
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
-        BLAST_VIRAL(EXTRACT_VIRAL_READS.out.fasta, params.blast_db_path, params.blast_db_prefix, params.blast_viral_fraction)
+        BLAST_VIRAL(EXTRACT_VIRAL_READS.out.fasta, blast_db_path, params.blast_db_prefix, params.blast_viral_fraction)
     }
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, group_ch, params.kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping)
+    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping)
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
     PROCESS_OUTPUT(qc_ch)
