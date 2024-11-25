@@ -42,10 +42,14 @@ workflow RUN_VALIDATION {
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
     time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
+    //    index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
+    index_pipeline_version_ch = Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt")
+    .map { file -> file.copyTo("pipeline-version-index.txt") }
     publish:
         // Saved inputs
-        Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
-        Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
+//        index_params_ch >> "input"
+        index_pipeline_version_ch >> "logging"
+        // Saved outputs
         params_ch >> "input"
         time_ch >> "logging"
         version_ch >> "logging"
