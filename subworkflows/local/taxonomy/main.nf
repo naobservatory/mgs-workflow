@@ -6,7 +6,6 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { SUBSET_READS_PAIRED } from "../../../modules/local/subsetReads"
 include { BBMERGE } from "../../../modules/local/bbmerge"
 include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
 include { SUMMARIZE_DEDUP } from "../../../modules/local/summarizeDedup"
@@ -30,20 +29,12 @@ workflow TAXONOMY {
         kraken_db_ch
         dedup_rc
         classification_level
-        read_fraction
     main:
-        // Subset reads (if applicable)
-        if ( read_fraction == 1 ){
-            subset_ch = reads_ch
-        } else {
-            subset_ch = SUBSET_READS_PAIRED(reads_ch, read_fraction, "fastq")
-        }
-
          // Deduplicate reads (if applicable)
         if ( dedup_rc ){
-            paired_dedup_ch = CLUMPIFY_PAIRED(subset_ch)
+            paired_dedup_ch = CLUMPIFY_PAIRED(reads_ch)
         } else {
-            paired_dedup_ch = subset_ch
+            paired_dedup_ch = reads_ch
         }
         // Prepare reads
         merged_ch = BBMERGE(paired_dedup_ch)

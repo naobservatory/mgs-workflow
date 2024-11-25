@@ -50,13 +50,18 @@ workflow RUN {
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat")
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned")
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "3", "21", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping)
+    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping)
     // Process intermediate output for chimera detection
     raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(RAW.out.reads, by: 0)
     EXTRACT_RAW_READS_FROM_PROCESSED(raw_processed_ch, "raw_viral_subset")
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
         BLAST_VIRAL(EXTRACT_VIRAL_READS.out.fasta, blast_db_path, params.blast_db_prefix, params.blast_viral_fraction)
+        blast_subset_ch = BLAST_VIRAL.out.blast_subset
+        blast_paired_ch = BLAST_VIRAL.out.blast_paired
+    } else {
+        blast_subset_ch = Channel.empty()
+        blast_paired_ch = Channel.empty()
     }
     // Taxonomic profiling
     PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping)
@@ -93,4 +98,7 @@ workflow RUN {
         EXTRACT_VIRAL_READS.out.counts >> "results"
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
+        // Validation output (if any)
+        blast_subset_ch >> "results"
+        blast_paired_ch >> "results"
 }
