@@ -1,6 +1,6 @@
 // Extract NCBI taxonomy archive and access nodes and names files
 process EXTRACT_NCBI_TAXONOMY {
-    label "base"
+    label "unzip"
     label "single"
     input:
         path(taxonomy_zip)

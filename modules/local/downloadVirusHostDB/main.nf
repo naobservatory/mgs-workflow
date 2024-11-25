@@ -1,7 +1,7 @@
 // Download entire VirusHostDB
 process DOWNLOAD_VIRUS_HOST_DB {
     label "single"
-    label "base"
+    label "curl"
     input:
         val(virus_host_db_url)
     output:

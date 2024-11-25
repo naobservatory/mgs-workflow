@@ -1,14 +1,11 @@
 // BLAST paired reads against a downloaded DB and return a single output file
 process BLAST_PAIRED_LOCAL {
     label "BLAST"
-    cpus "${cpus}"
-    memory "${mem}"
+    label "blast_resources"
     input:
         path(gzipped_reads)
         path(blast_db_dir)
         val(db_prefix)
-        val(cpus)
-        val(mem)
     output:
         path("hits.blast.gz")
     shell:
@@ -34,14 +31,11 @@ process BLAST_PAIRED_LOCAL {
 // BLAST a single input FASTA file against a downloaded DB and return a single output file
 process BLAST_LOCAL {
     label "BLAST"
-    cpus "${cpus}"
-    memory "${mem}"
+    label "blast_resources"
     input:
         path(gzipped_reads_fasta)
         path(blast_db_dir)
         val(db_prefix)
-        val(cpus)
-        val(mem)
     output:
         path("hits.blast.gz")
     shell:

@@ -19,9 +19,6 @@ workflow BLAST_VIRAL {
         blast_db_dir
         blast_db_prefix
         read_fraction
-        blast_cpus
-        blast_mem
-        blast_filter_mem
     main:
         // Subset viral reads for BLAST
         if ( read_fraction < 1 ) {
@@ -30,11 +27,11 @@ workflow BLAST_VIRAL {
             subset_ch = viral_fasta
         }
         // BLAST forward and reverse reads separately against prepared DB
-        blast_ch_1 = BLAST_LOCAL_FWD(subset_ch.map{it[0]}, blast_db_dir, blast_db_prefix, blast_cpus, blast_mem)
-        blast_ch_2 = BLAST_LOCAL_REV(subset_ch.map{it[1]}, blast_db_dir, blast_db_prefix, blast_cpus, blast_mem)
+        blast_ch_1 = BLAST_LOCAL_FWD(subset_ch.map{it[0]}, blast_db_dir, blast_db_prefix)
+        blast_ch_2 = BLAST_LOCAL_REV(subset_ch.map{it[1]}, blast_db_dir, blast_db_prefix)
         // Filter BLAST output (keeping forward and reverse separate)
-        filter_ch_1 = FILTER_BLAST_FWD(blast_ch_1, blast_filter_mem, 5)
-        filter_ch_2 = FILTER_BLAST_REV(blast_ch_2, blast_filter_mem, 5)
+        filter_ch_1 = FILTER_BLAST_FWD(blast_ch_1, 5)
+        filter_ch_2 = FILTER_BLAST_REV(blast_ch_2, 5)
         // Combine alignment information across pairs
         filter_out_1 = filter_ch_1.map{ file ->
             def newFile = file.parent / "fwd_${file.name}"
