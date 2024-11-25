@@ -3,7 +3,7 @@
 - Added nf-test configurable end-to-end testing:
     - Implemented test suite in `tests/main.nf.test`
     - Added Github Actions workflow in `.github/workflows/end-to-end.yml`
-- Updated test dataset with new sample data in `test-data/samplesheet.csv`. The old test dataset, `test` has been removed.
+- Updated test dataset with new sample data in `test-data/samplesheet.csv`. The old test dataset, `test` has been removed, for this new dataset.
 - Relaxed FASTP quality filtering (`--cut_mean_quality` and `--average_qual` reduced from 25 to 20).
 - Relaxed BBDUK viral filtering (switched from 3 21-mers to 1 24-mer).
 - Overhauled BLAST validation functionality:
