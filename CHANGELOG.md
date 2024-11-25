@@ -1,5 +1,6 @@
 # v2.5.2 (in progress)
 - Externalized resource specifications to `resources.config`, removing hardcoded CPU/memory values
+- Renamed `index-params.json` to `params-index.json` to avoid clash with Github Actions
 - Added nf-test configurable end-to-end testing:
     - Implemented test suite in `tests/main.nf.test`
     - Added Github Actions workflow in `.github/workflows/end-to-end.yml`
