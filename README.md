@@ -315,7 +315,7 @@ If running on Batch, a good process for starting the pipeline on a new dataset i
 
 ## Run tests using `nf-test` before making pull requests
 
-During the development process, we now request that users run the pipeline using `nf-test` locally before making pull requests (a test will be run automatically on the PR, but it's often useful to run it locally first). To do this, you need to make sure that you have a big enough ec2-instance. We recommend the `m8g.xlarge` with at least `32GB` of EBS storage, as this machine closely reflects the VMs on Github Actions. Once you have an instance, run `nf-test run tests/main.test.nf`, which will run all workflows of the pipeline and check that they run to completion. If you want to run a specific workflow, you use the following commands:
+During the development process, we now request that users run the pipeline using `nf-test` locally before making pull requests (a test will be run automatically on the PR, but it's often useful to run it locally first). To do this, you need to make sure that you have a big enough ec2-instance. We recommend the `m5.xlarge` with at least `32GB` of EBS storage, as this machine closely reflects the VMs on Github Actions. Once you have an instance, run `nf-test run tests/main.test.nf`, which will run all workflows of the pipeline and check that they run to completion. If you want to run a specific workflow, you use the following commands:
 
 ```
 nf-test run --tag index  # Runs the index workflow
