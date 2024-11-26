@@ -34,9 +34,9 @@ workflow RUN {
     check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
     if (params.grouping != check_grouping) {
         if (params.grouping && !check_grouping) {
-            throw new Exception("Grouping column not found in samplesheet")
+            throw new Exception("Grouping enabled in config file, but group column absent from samplesheet.")
         } else if (!params.grouping && check_grouping) {
-            throw new Exception("Grouping column found in samplesheet but not requested")
+            throw new Exception("Grouping is not enabled in config file, but group column is present in the samplesheet.")
         }
     }
 
