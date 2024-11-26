@@ -15,6 +15,8 @@
     - Fixed issues with publishing BLAST output under new Nextflow version
 - Removed redundant subsetting statement from TAXONOMY workflow.
 - Added --group_across_illumina_lanes option to generate_samplesheet
+- Added tags to published files to facilitate S3 auto-cleanup
+- Added S3 lifecycle configuration file to `ref`, along with a script in `bin` to add it to an S3 bucket
 
 # v2.5.1
 - Enabled extraction of BBDuk-subset putatively-host-viral raw reads for downstream chimera detection.
