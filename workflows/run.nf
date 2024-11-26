@@ -30,6 +30,16 @@ workflow RUN {
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
+    // Check if grouping column exists in samplesheet
+    check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
+    if (params.grouping != check_grouping) {
+        if (params.grouping && !check_grouping) {
+            throw new Exception("Grouping enabled in config file, but group column absent from samplesheet.")
+        } else if (!params.grouping && check_grouping) {
+            throw new Exception("Grouping is not enabled in config file, but group column is present in the samplesheet.")
+        }
+    }
+
     // Prepare samplesheet
     if ( params.grouping ) {
         samplesheet = Channel

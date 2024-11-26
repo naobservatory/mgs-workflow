@@ -1,4 +1,5 @@
 # v2.5.2 (in progress)
+- Added logic to check if `grouping` variable in `nextflow.config` matches the input samplesheet, if it doesn't, the code throws an error.
 - Externalized resource specifications to `resources.config`, removing hardcoded CPU/memory values
 - Renamed `index-params.json` to `params-index.json` to avoid clash with Github Actions
 - Added nf-test configurable end-to-end testing:
