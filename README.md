@@ -259,7 +259,7 @@ cp REPO_DIR/configs/run.config nextflow.config
 ```
 
 2. Edit `nextflow.config` to set `params.ref_dir` to the index directory you chose or created above (specifically `PATH_TO_REF_DIR/output`). 
-3. Then set the samplesheet path to the test dataset samplesheet `test-data/samplesheet.csv`. 
+3. Then set the samplesheet path to the test dataset samplesheet `${projectDir}/test-data/samplesheet.csv`. 
 4. Within this directory, run `nextflow run -profile ec2_local .. -resume`. Wait for the workflow to finish. 
 5. Inspect the `output` directory to view the processed output files.
 
