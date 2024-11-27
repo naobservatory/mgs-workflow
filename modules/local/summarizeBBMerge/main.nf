@@ -1,5 +1,5 @@
 process SUMMARIZE_BBMERGE {
-    label "base"
+    label "coreutils_gzip_gawk"
     label "single"
     input:
         tuple val(sample), path(merged)

@@ -1,0 +1,43 @@
+{
+    "Rules": [
+        {
+            "ID": "Delete intermediate outputs after 14 days",
+            "Filter": {
+                "Tag": {
+                    "Key": "nextflow_file_class",
+                    "Value": "intermediate"
+                }
+            },
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 14
+            }
+        },
+        {
+            "ID": "Delete temporary workdir files after 1 week",
+            "Filter": {
+                "Tag": {
+                    "Key": "nextflow.io/temporary",
+                    "Value": "true"
+                }
+            },
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 7
+            }
+        },
+        {
+            "ID": "Delete workdir logging files after 4 weeks",
+            "Filter": {
+                "Tag": {
+                    "Key": "nextflow.io/metadata",
+                    "Value": "true"
+                }
+            },
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 28
+            }
+        }
+    ]
+}

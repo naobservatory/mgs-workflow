@@ -27,7 +27,6 @@ workflow PROFILE {
         min_kmer_fraction
         k
         bbduk_suffix
-        kraken_memory
         grouping
     main:
         // Randomly subset reads to target number
@@ -55,8 +54,8 @@ workflow PROFILE {
         ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
         ribo_ch = BBDUK(grouped_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix)
         // Run taxonomic profiling separately on ribo and non-ribo reads
-        tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.fail, kraken_db_ch, false, "D", 1, kraken_memory)
-        tax_noribo_ch = TAXONOMY_NORIBO(ribo_ch.reads, kraken_db_ch, false, "D", 1, kraken_memory)
+        tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.fail, kraken_db_ch, false, "D")
+        tax_noribo_ch = TAXONOMY_NORIBO(ribo_ch.reads, kraken_db_ch, false, "D")
         // Merge ribo and non-ribo outputs
         kr_ribo = tax_ribo_ch.kraken_reports.collectFile(name: "kraken_reports_ribo.tsv.gz")
         kr_noribo = tax_noribo_ch.kraken_reports.collectFile(name: "kraken_reports_noribo.tsv.gz")

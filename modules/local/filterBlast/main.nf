@@ -1,11 +1,10 @@
 // Process & filter BLAST output into TSV
 process FILTER_BLAST {
     label "tidyverse"
-    cpus 1
-    memory "${mem}"
+    label "single_cpu_32GB_memory"
     input:
         path(blast_hits)
-        val(mem)
+        val(max_rank)
     output:
         path("blast_hits_filtered.tsv.gz")
     shell:
@@ -25,9 +24,7 @@ process FILTER_BLAST {
         # Rank hits for each query and filter for high-ranking hits
         blast_hits_ranked <- blast_hits_best %>% 
           group_by(qseqid) %>% mutate(rank = dense_rank(desc(bitscore)))
-        blast_hits_highrank <- blast_hits_ranked %>% filter(rank <= 5) %>%
-            mutate(read_pair = str_split(qseqid, "_") %>% sapply(nth, n=-1),
-                   seq_id = str_split(qseqid, "_") %>% sapply(nth, n=1))
+        blast_hits_highrank <- blast_hits_ranked %>% filter(rank <= !{max_rank})
         # Write output
         write_tsv(blast_hits_highrank, "blast_hits_filtered.tsv.gz")
         '''

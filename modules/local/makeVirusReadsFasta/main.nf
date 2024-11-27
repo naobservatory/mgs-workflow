@@ -1,8 +1,7 @@
 // Extract FASTA from virus read TSV
 process MAKE_VIRUS_READS_FASTA {
     label "tidyverse"
-    cpus 1
-    memory "16.GB"
+    label "single_cpu_16GB_memory"
     input:
         path(virus_hits_db)
     output:
@@ -13,8 +12,8 @@ process MAKE_VIRUS_READS_FASTA {
         library(tidyverse)
         tab <- read_tsv("!{virus_hits_db}", col_names = TRUE, show_col_types = FALSE) %>%
             mutate(seq_head = paste0(">", seq_id),
-                   header1 = paste0(seq_head, "_1"),
-                   header2 = paste0(seq_head, "_2"))
+                   header1 = paste0(seq_head, " 1"),
+                   header2 = paste0(seq_head, " 2"))
         fasta_1_tab <- select(tab, header=header1, seq=query_seq_fwd)
         fasta_2_tab <- select(tab, header=header2, seq=query_seq_rev)
         fasta_1_out <- do.call(paste, c(fasta_1_tab, sep="\n")) %>% paste(collapse="\n")

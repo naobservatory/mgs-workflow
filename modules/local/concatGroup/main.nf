@@ -1,6 +1,6 @@
 // Copy a file to a new location with a custom path
 process CONCAT_GROUP {
-    label "base"
+    label "coreutils"
     label "single"
     input:
         tuple val(samples), path(fastq_1_list), path(fastq_2_list), val(group)
