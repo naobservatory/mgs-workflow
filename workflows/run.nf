@@ -97,8 +97,8 @@ workflow RUN {
         time_ch >> "logging"
         version_ch >> "logging"
         // Intermediate files
-        CLEAN.out.reads >> "intermediates/reads/cleaned"
-        EXTRACT_RAW_READS_FROM_PROCESSED.out.reads >> "intermediates/reads/raw_viral"
+        CLEAN.out.reads >> "reads_cleaned"
+        EXTRACT_RAW_READS_FROM_PROCESSED.out.reads >> "reads_raw_viral"
         // QC
         PROCESS_OUTPUT.out.basic >> "results"
         PROCESS_OUTPUT.out.adapt >> "results"

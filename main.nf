@@ -15,11 +15,22 @@ workflow {
 output {
     "input" {
         path "input"
+        tags nextflow_file_class: "publish"
     }
     "logging" {
         path "logging"
+        tags nextflow_file_class: "publish"
     }
     "results" {
         path "results"
+        tags nextflow_file_class: "publish"
+    }
+    reads_cleaned {
+        path "intermediates/reads/cleaned"
+        tags nextflow_file_class: "intermediate"
+    }
+    reads_raw_viral {
+        path "intermediates/reads/raw_viral"
+        tags nextflow_file_class: "intermediate"
     }
 }
