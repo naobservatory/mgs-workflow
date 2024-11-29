@@ -1,14 +1,28 @@
-# v2.5.2 (in progress)
-- Relaxed FASTP quality filtering (`--cut_mean_quality` and `--average_qual` reduced from 25 to 20).
-- Relaxed BBDUK viral filtering (switched from 3 21-mers to 1 24-mer).
+# v2.5.2
+- Changes to default read filtering:
+    - Relaxed FASTP quality filtering (`--cut_mean_quality` and `--average_qual` reduced from 25 to 20).
+    - Relaxed BBDUK viral filtering (switched from 3 21-mers to 1 24-mer).
 - Overhauled BLAST validation functionality:
     - BLAST now runs on forward and reverse reads independently
     - BLAST output filtering no longer assumes specific filename suffixes
     - Paired BLAST output includes more information
     - RUN_VALIDATION can now directly take in FASTA files instead of a virus read DB
     - Fixed issues with publishing BLAST output under new Nextflow version
-- Removed redundant subsetting statement from TAXONOMY workflow.
-- Added --group_across_illumina_lanes option to generate_samplesheet
+- Implemented nf-test for end-to-end testing of pipeline functionality
+    - Implemented test suite in `tests/main.nf.test`
+    - Reconfigured INDEX workflow to enable generation of miniature index directories for testing
+    - Added Github Actions workflow in `.github/workflows/end-to-end.yml`
+    - Pull requests will now fail if any of INDEX, RUN, or RUN_VALIDATION crashes when run on test data.
+    - Generated first version of new, curated test dataset for testing RUN workflow. Samplesheet and config file are available in `test-data`. The previous test dataset in `test` has been removed.
+- Implemented S3 auto-cleanup:
+    - Added tags to published files to facilitate S3 auto-cleanup
+    - Added S3 lifecycle configuration file to `ref`, along with a script in `bin` to add it to an S3 bucket
+- Minor changes
+    - Added logic to check if `grouping` variable in `nextflow.config` matches the input samplesheet, if it doesn't, the code throws an error.
+    - Externalized resource specifications to `resources.config`, removing hardcoded CPU/memory values
+    - Renamed `index-params.json` to `params-index.json` to avoid clash with Github Actions
+    - Removed redundant subsetting statement from TAXONOMY workflow.
+    - Added --group_across_illumina_lanes option to generate_samplesheet
 
 # v2.5.1
 - Enabled extraction of BBDuk-subset putatively-host-viral raw reads for downstream chimera detection.

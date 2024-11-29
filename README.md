@@ -179,6 +179,7 @@ To run this workflow with full functionality, you need access to the following d
 2. **Docker:** To install Docker Engine for command-line use, follow the installation instructions available [here](https://docs.docker.com/engine/install/) (or [here](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-docker.html) for installation on an AWS EC2 instance).
 3. **AWS CLI:** If not already installed, install the AWS CLI by following the instructions available [here](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
 4. **Git:** To install the Git version control tool, follow the installation instructions available [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
+5. **nf-test**: To install nf-test, follow the install instructions available [here](https://www.nf-test.com/docs/getting-started/).
 
 #### 2. Configure AWS & Docker
 
@@ -245,25 +246,33 @@ Wait for the workflow to run to completion; this is likely to take several hours
 
 ### Testing & validation
 
-To confirm that the pipeline works in your hands, we provide a small test dataset (`test/raw`) to run through the run workflow. This can be used to test any of the pipeline profiles described above.
+To confirm that the pipeline works in your hands, we provide a small test dataset (`s3://nao-testing/gold-standard-test/raw/`) to run through the run workflow. This can be used to test any of the pipeline profiles described above.
 
 If your EC2 instance has the resources to handle it, the simplest way to start using the pipeline is to run the test data through it locally on that instance (i.e. without using S3). To do this:
 
-1. Navigate to the `test` directory.
-2. Edit `nextflow.config` to set `params.ref_dir` to the index directory you chose or created above (specifically `PATH_TO_REF_DIR/output`).
-3. Still within the `test` directory, run `nextflow run -profile ec2_local .. -resume`.
-4. Wait for the workflow to finish. Inspect the `output` directory to view the processed output files.
+1. Create a new directory outside the repo directory and copy over the run workflow config file as `nextflow.config` in that directory:
+
+```
+mkdir launch
+cd launch
+cp REPO_DIR/configs/run.config nextflow.config
+```
+
+2. Edit `nextflow.config` to set `params.ref_dir` to the index directory you chose or created above (specifically `PATH_TO_REF_DIR/output`). 
+3. Then set the samplesheet path to the test dataset samplesheet `${projectDir}/test-data/samplesheet.csv`. 
+4. Within this directory, run `nextflow run -profile ec2_local .. -resume`. Wait for the workflow to finish. 
+5. Inspect the `output` directory to view the processed output files.
 
 If this is successful, the next level of complexity is to run the workflow with a working directory on S3. To do this:
 
-1. Within the `test` directory, edit `nextflow.config` to set `params.base_dir` to the S3 directory of your choice.
-2. Still within that directory, run `nextflow run -profile ec2_s3 .. -resume`.
+1. Edit `nextflow.config` to set `params.base_dir` to the S3 directory of your choice. 
+2. Still within that directory, run `nextflow run -profile ec2_s3 .. -resume`. 
 3. Wait for the workflow to finish, and inspect the output on S3.
 
 Finally, you can run the test dataset through the pipeline on AWS Batch. To do this, configure Batch as described [here](https://data.securebio.org/wills-public-notebook/notebooks/2024-06-11_batch.html) (steps 1-3), then:
 
-1. Within the `test` directory, edit `nextflow.config` to set `params.base_dir` to a different S3 directory of your choice and `process.queue` to the name of your Batch job queue.
-2. Still within that directory, run `nextflow run -profile batch .. -resume` (or simply `nextflow run .. -resume`).
+1. Edit `nextflow.config` to set `params.base_dir` to a different S3 directory of your choice and `process.queue` to the name of your Batch job queue. 
+2. Still within that directory, run `nextflow run -profile batch .. -resume` (or simply `nextflow run .. -resume`). 
 3. Wait for the workflow to finish, and inspect the output on S3.
 
 ### Running on new data
@@ -303,6 +312,25 @@ If running on Batch, a good process for starting the pipeline on a new dataset i
 4. Edit `nextflow.config` to specify each item in `params` as appropriate, as well as setting `process.queue` to the appropriate Batch queue.
 5. Run `nextflow run PATH_TO_REPO_DIR -resume`.
 6. Navigate to `{params.base_dir}/output` to view and download output files.
+
+## Run tests using `nf-test` before making pull requests
+
+During the development process, we now request that users run the pipeline using `nf-test` locally before making pull requests (a test will be run automatically on the PR, but it's often useful to run it locally first). To do this, you need to make sure that you have a big enough ec2-instance. We recommend the `m5.xlarge` with at least `32GB` of EBS storage, as this machine closely reflects the VMs on Github Actions. Once you have an instance, run `nf-test run tests/main.test.nf`, which will run all workflows of the pipeline and check that they run to completion. If you want to run a specific workflow, you use the following commands:
+
+```
+nf-test run --tag index  # Runs the index workflow
+nf-test run --tag run     # Runs the run workflow
+nf-test run --tag validation # Runs the validation workflow
+```
+
+Importantly, make sure to periodically delete docker images to free up space on your instance. You can do this by running the following command, although note that this will delete all docker images:
+
+```
+docker kill $(docker ps -q) 2>/dev/null || true
+docker rm $(docker ps -a -q) 2>/dev/null || true
+docker rmi $(docker images -q) -f 2>/dev/null || true
+docker system prune -af --volumes
+```
 
 # Troubleshooting
 

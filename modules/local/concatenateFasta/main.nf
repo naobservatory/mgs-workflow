@@ -1,7 +1,7 @@
 // Concatenate gzipped FASTA files
 process CONCATENATE_FASTA_GZIPPED {
     label "single"
-    label "base"
+    label "coreutils"
     input:
         path(files)
         val(name)
@@ -16,7 +16,7 @@ process CONCATENATE_FASTA_GZIPPED {
 // Concatenate gzipped FASTA files within a directory
 process CONCATENATE_FASTA_GZIPPED_DIR {
     label "single"
-    label "base"
+    label "coreutils"
     input:
         path(dir)
         val(name)
@@ -31,7 +31,7 @@ process CONCATENATE_FASTA_GZIPPED_DIR {
 // Concatenate gzipped FASTA files within a directory of subdirectories
 process CONCATENATE_FASTA_GZIPPED_DIR_DEEP {
     label "single"
-    label "base"
+    label "coreutils"
     input:
         path(dir)
         val(name)

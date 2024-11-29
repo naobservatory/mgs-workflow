@@ -7,3 +7,6 @@ test/output
 test/.nextflow*
 *.Rhistory
 pipeline_report.txt
+
+.nf-test/
+.nf-test.log

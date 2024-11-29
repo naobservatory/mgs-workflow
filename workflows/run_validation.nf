@@ -34,19 +34,23 @@ workflow RUN_VALIDATION {
     }
     // BLAST validation on host-viral reads
     if ( params.blast_viral_fraction > 0 ) {
-        blast_db_path = "${params.ref_dir}/results/core_nt"
-        blast_db_prefix = "core_nt"
-        BLAST_VIRAL(fasta_ch, blast_db_path, blast_db_prefix, params.blast_viral_fraction, "32", "256 GB", "32 GB")
+        blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
+        BLAST_VIRAL(fasta_ch, blast_db_path, params.blast_db_prefix, params.blast_viral_fraction)
     }
     // Publish results (NB: BLAST workflow has its own publish directive)
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
     time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
+    index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
+    .map { file -> file.copyTo("${workDir}/params-index.json") }
+    index_pipeline_version_ch = Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt")
+    .map { file -> file.copyTo("${workDir}/pipeline-version-index.txt") }
     publish:
         // Saved inputs
-        Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
-        Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
+        index_params_ch >> "input"
+        index_pipeline_version_ch >> "logging"
+        // Saved outputs
         params_ch >> "input"
         time_ch >> "logging"
         version_ch >> "logging"

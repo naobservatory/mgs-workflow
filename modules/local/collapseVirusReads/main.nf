@@ -1,8 +1,7 @@
 // Collapse separate read pair entries in viral read DB
 process COLLAPSE_VIRUS_READS {
     label "tidyverse"
-    cpus 1
-    memory "32.GB"
+    label "single_cpu_32GB_memory"
     input:
         path(virus_hits_filtered)
     output:
