@@ -40,6 +40,9 @@ workflow RUN {
         }
     }
 
+    // Whether the underlying data is paired-end or single-end
+    single_end = new File(params.sample_sheet).text.readLines()[0].contains('fastq_2') ? false : true
+
     // Prepare samplesheet
     if ( params.grouping ) {
         samplesheet = Channel
@@ -57,8 +60,8 @@ workflow RUN {
         group_ch = Channel.empty()
     }
     // Preprocessing
-    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
-    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
+    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", single_end)
+    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", single_end)
     // Extract and count human-viral reads
     EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping)
     // Process intermediate output for chimera detection
