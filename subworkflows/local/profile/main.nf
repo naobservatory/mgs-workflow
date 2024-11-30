@@ -6,7 +6,7 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-if (params.single_end) {
+if (single_end) {
     include { SUBSET_READS_SINGLE_TARGET as SUBSET_READS_TARGET } from "../../../modules/local/subsetReads"
     include { BBDUK_SINGLE as BBDUK } from "../../../modules/local/bbduk"
     include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
