@@ -14,7 +14,9 @@ workflow MAKE_HUMAN_INDEX {
     take:
         human_genome_url
     main:
-        genome_ch = DOWNLOAD_GENOME(human_genome_url, "human_genome")
+        ref_ch = channel
+            .of(tuple(human_genome_url, "human"))  // (url, name)
+        genome_ch = DOWNLOAD_GENOME(ref_ch)
         bbmap_ch = BBMAP_INDEX(genome_ch, "bbm-human-index")
         bowtie2_ch = BOWTIE2_INDEX(genome_ch, "bt2-human-index")
     emit:

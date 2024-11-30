@@ -25,7 +25,7 @@ process BBDUK_PAIRED {
         ref=!{contaminant_ref}
         io="in=${in1} in2=${in2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats}"
         # Define parameters
-        par="minkmerfraction=!{min_kmer_fraction} k=!{k} t=!{task.cpus} -Xmx30g"
+        par="minkmerfraction=!{min_kmer_fraction} k=!{k} t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
         # Execute
         bbduk.sh ${io} ${par}
         '''
@@ -87,7 +87,7 @@ process BBDUK_HITS {
         ref=!{contaminant_ref}
         io="in=${in1} in2=${in2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats}"
         # Define parameters
-        par="minkmerhits=!{min_kmer_hits} k=!{k} t=!{task.cpus} -Xmx30g"
+        par="minkmerhits=!{min_kmer_hits} k=!{k} t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
         # Execute
         bbduk.sh ${io} ${par}
         '''
@@ -112,7 +112,7 @@ process BBDUK_MASK {
         out=!{label}_masked.fasta.gz
         stats=!{label}_mask.stats.txt
         ref=!{contaminant_ref}
-        par="k=!{k} hdist=1 mink=8 mm=f rcomp=t maskmiddle=t mask=N t=!{task.cpus} -Xmx30g"
+        par="k=!{k} hdist=1 mink=8 mm=f rcomp=t maskmiddle=t mask=N t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
         # Execute
         bbduk.sh in=${in} out=${out} ref=${ref} stats=${stats} ${par}
         '''

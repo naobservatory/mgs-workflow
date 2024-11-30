@@ -1,0 +1,39 @@
+nextflow_pipeline {
+
+    name "End-to-end test of MGS workflow"
+    script "main.nf"
+
+    test("Test index workflow") {
+        config "tests/index.config"
+        tag "index"
+
+        then {
+            assert workflow.success
+        }
+    }
+    test("Test run workflow") {
+        config "tests/run.config"
+        tag "run"
+
+        then {
+            assert workflow.success
+        }
+    }
+    test("Test single-end run workflow") {
+        config "tests/run_dev_se.config"
+        tag "run_dev_se"
+
+        then {
+            assert workflow.success
+        }
+    }
+    test("Test validation workflow") {
+        config "tests/run_validation.config"
+        tag "validation"
+
+        then {
+            assert workflow.success
+        }
+    }
+
+}

@@ -20,7 +20,16 @@ option_list = list(
 )
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
-single_end <- as.logical(opt$single_end)
+
+# Convert single_end from string to logical
+if (opt$single_end == "true") {
+  single_end <- TRUE
+} else if (opt$single_end == "false") {
+  single_end <- FALSE
+} else {
+  stop("single_end must be 'true' or 'false'")
+}
+
 
 # Set input paths
 multiqc_json_path <- file.path(opt$input_dir, "multiqc_data.json")
@@ -100,7 +109,7 @@ extract_adapter_data <- function(multiqc_json){
 extract_per_base_quality_single <- function(per_base_quality_dataset){
   # Convert a single JSON per-base-quality dataset into a tibble
   data <- lapply(1:length(per_base_quality_dataset$name), function(n)
-    per_base_quality_dataset$data[[n]] %>% as.data.frame %>% 
+    per_base_quality_dataset$data[[n]] %>% as.data.frame %>%
       mutate(file=per_base_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(position=V1, mean_phred_score=V2)
