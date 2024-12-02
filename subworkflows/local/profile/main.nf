@@ -6,7 +6,8 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-if (single_end) {
+
+if (params.single_end) {
     include { SUBSET_READS_SINGLE_TARGET as SUBSET_READS_TARGET } from "../../../modules/local/subsetReads"
     include { BBDUK_SINGLE as BBDUK } from "../../../modules/local/bbduk"
     include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
@@ -40,6 +41,8 @@ workflow PROFILE {
         grouping
         single_end
     main:
+
+
         // Randomly subset reads to target number
         subset_ch = SUBSET_READS_TARGET(reads_ch, n_reads, "fastq")
 
@@ -75,8 +78,8 @@ workflow PROFILE {
         ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
         ribo_ch = BBDUK(grouped_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix)
         // Run taxonomic profiling separately on ribo and non-ribo reads
-        tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.fail, kraken_db_ch, false, "D")
-        tax_noribo_ch = TAXONOMY_NORIBO(ribo_ch.reads, kraken_db_ch, false, "D")
+        tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.fail, kraken_db_ch, false, "D", single_end)
+        tax_noribo_ch = TAXONOMY_NORIBO(ribo_ch.reads, kraken_db_ch, false, "D", single_end)
         // Merge ribo and non-ribo outputs
         kr_ribo = tax_ribo_ch.kraken_reports.collectFile(name: "kraken_reports_ribo.tsv.gz")
         kr_noribo = tax_noribo_ch.kraken_reports.collectFile(name: "kraken_reports_noribo.tsv.gz")

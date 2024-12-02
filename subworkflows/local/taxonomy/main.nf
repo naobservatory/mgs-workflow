@@ -35,22 +35,23 @@ workflow TAXONOMY {
         kraken_db_ch
         dedup_rc
         classification_level
+        single_end
     main:
-        if (params.single_end) {
+        if (single_end) {
             // No merging in single read version
             summarize_bbmerge_ch = Channel.empty()
             // Deduplicate reads (if applicable)
-            if (params.dedup_rc) {
-                dedup_ch = CLUMPIFY_SINGLE(subset_ch)
+            if (dedup_rc) {
+                dedup_ch = CLUMPIFY_SINGLE(reads_ch)
             } else {
-                dedup_ch = subset_ch
+                dedup_ch = reads_ch
             }
         } else {
             // Deduplicate reads (if applicable)
             if ( dedup_rc ){
-                paired_dedup_ch = CLUMPIFY_PAIRED(subset_ch)
+                paired_dedup_ch = CLUMPIFY_PAIRED(reads_ch)
             } else {
-                paired_dedup_ch = subset_ch
+                paired_dedup_ch = reads_ch
             }
             // Prepare reads
             merged_ch = BBMERGE(paired_dedup_ch)

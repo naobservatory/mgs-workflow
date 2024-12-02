@@ -1,5 +1,5 @@
 // Copy a file to a new location with a custom path
-process CONCAT_GROUP {
+process CONCAT_GROUP_PAIRED {
     label "coreutils"
     label "single"
     input:
