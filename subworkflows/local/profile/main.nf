@@ -86,7 +86,6 @@ workflow PROFILE {
         br_ribo = tax_ribo_ch.bracken.collectFile(name: "bracken_reports_ribo.tsv.gz")
         br_noribo = tax_noribo_ch.bracken.collectFile(name: "bracken_reports_noribo.tsv.gz")
         merge_ch = MERGE_TAXONOMY_RIBO(kr_ribo, kr_noribo, br_ribo, br_noribo)
-
     emit:
         bracken = merge_ch.bracken
         kraken = merge_ch.kraken
