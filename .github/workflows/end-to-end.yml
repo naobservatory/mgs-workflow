@@ -44,3 +44,6 @@ jobs:
 
       - name: Run run_validation workflow
         run: nf-test test --tag validation --verbose
+
+      - name: Run run_dev_se workflow
+        run: nf-test test --tag run_dev_se --verbose
