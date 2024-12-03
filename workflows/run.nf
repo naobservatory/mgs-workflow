@@ -18,6 +18,7 @@ include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 include { EXTRACT_RAW_READS_FROM_PROCESSED } from "../modules/local/extractRawReadsFromProcessed"
 nextflow.preview.output = true
 
+
 /*****************
 | MAIN WORKFLOWS |
 *****************/
