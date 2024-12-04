@@ -3,8 +3,9 @@ name: End-to-end MGS workflow test
 on: [pull_request]
 
 jobs:
-  test:
+  test-index:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -28,19 +29,56 @@ jobs:
 
       - name: Run index workflow
         run: nf-test test --tag index --verbose
+  test-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
 
-      - name: Clean docker for more space
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+
+      - name: Setup Nextflow latest (stable)
+        uses: nf-core/setup-nextflow@v1
+        with:
+          version: "latest"
+
+      - name: Install nf-test
         run: |
-          docker kill $(docker ps -q) 2>/dev/null || true
-          docker rm $(docker ps -a -q) 2>/dev/null || true
-          docker rmi $(docker images -q) -f 2>/dev/null || true
-          docker system prune -af --volumes
-
-      - name: Clean up nf-test dir
-        run: sudo rm -rf .nf-test
+          wget -qO- https://get.nf-test.com | bash
+          sudo mv nf-test /usr/local/bin/
 
       - name: Run run workflow
         run: nf-test test --tag run --verbose
+
+  test-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+
+      - name: Setup Nextflow latest (stable)
+        uses: nf-core/setup-nextflow@v1
+        with:
+          version: "latest"
+
+      - name: Install nf-test
+        run: |
+          wget -qO- https://get.nf-test.com | bash
+          sudo mv nf-test /usr/local/bin/
 
       - name: Run run_validation workflow
         run: nf-test test --tag validation --verbose
