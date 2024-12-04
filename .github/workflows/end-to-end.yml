@@ -56,8 +56,6 @@ jobs:
       - name: Run run workflow
         run: nf-test test --tag run --verbose
 
-      - name: Run run_validation workflow
-        run: nf-test test --tag validation --verbose
   test-validation:
     runs-on: ubuntu-latest
     timeout-minutes: 5
