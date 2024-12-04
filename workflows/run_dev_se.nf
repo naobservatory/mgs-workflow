@@ -73,11 +73,14 @@ workflow RUN_DEV_SE {
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
     time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
-
+    index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
+    .map { file -> file.copyTo("${params.base_dir}/work/params-index.json") }
+    index_pipeline_version_ch = Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt")
+    .map { file -> file.copyTo("${params.base_dir}/work/pipeline-version-index.txt") }
     publish:
         // Saved inputs
-        Channel.fromPath("${params.ref_dir}/input/index-params.json") >> "input"
-        Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt").collectFile(name: "pipeline-version-index.txt") >> "logging"
+        index_params_ch >> "input"
+        index_pipeline_version_ch >> "logging"
         Channel.fromPath(params.sample_sheet) >> "input"
         Channel.fromPath(params.adapters) >> "input"
         params_ch >> "input"
