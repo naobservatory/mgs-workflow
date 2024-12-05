@@ -20,9 +20,10 @@ workflow CLEAN {
         fastqc_cpus
         fastqc_mem
         stage_label
+        single_end
     main:
-        fastp_ch = FASTP(reads_ch, adapter_path)
-        qc_ch = QC(fastp_ch.reads, fastqc_cpus, fastqc_mem, stage_label)
+        fastp_ch = FASTP(reads_ch, adapter_path, single_end)
+        qc_ch = QC(fastp_ch.reads, fastqc_cpus, fastqc_mem, stage_label, single_end)
     emit:
         reads = fastp_ch.reads
         qc = qc_ch.qc
