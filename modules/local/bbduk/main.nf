@@ -54,7 +54,7 @@ process BBDUK_SINGLE {
         ref=!{contaminant_ref}
         io="in=${in} ref=${ref} out=${op} outm=${of} stats=${stats}"
         # Define parameters
-        par="minkmerfraction=!{min_kmer_fraction} k=!{k} t=!{task.cpus} -Xmx30g"
+        par="minkmerfraction=!{min_kmer_fraction} k=!{k} t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
         # Execute
         bbduk.sh ${io} ${par}
         '''
