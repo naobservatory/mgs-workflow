@@ -6,14 +6,10 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-if (params.single_end) {
-    include { SUBSET_READS_SINGLE as SUBSET_READS } from "../../../modules/local/subsetReads"
-} else {
-    include { SUBSET_READS_PAIRED as SUBSET_READS } from "../../../modules/local/subsetReads" //addParams(suffix: "fastq")
+if (!params.single_end) {
     include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
     include { BBMERGE } from "../../../modules/local/bbmerge"
     include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
-
 }
 include { SUMMARIZE_DEDUP } from "../../../modules/local/summarizeDedup"
 include { CLUMPIFY_PAIRED } from "../../../modules/local/clumpify"
