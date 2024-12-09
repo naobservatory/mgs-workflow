@@ -7,7 +7,11 @@
 ***************************/
 
 include { QC } from "../../../subworkflows/local/qc"
-include { FASTP } from "../../../modules/local/fastp"
+if (params.single_end) {
+    include { FASTP_SINGLE as FASTP } from "../../../modules/local/fastp"
+} else {
+    include { FASTP_PAIRED as FASTP } from "../../../modules/local/fastp"
+}
 
 /***********
 | WORKFLOW |
