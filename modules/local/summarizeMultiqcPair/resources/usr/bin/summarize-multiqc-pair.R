@@ -13,11 +13,23 @@ option_list = list(
               help="Stage descriptor."),
   make_option(c("-S", "--sample"), type="character", default=NULL,
               help="Sample ID."),
+  make_option(c("-r", "--single_end"), type="character", default=FALSE,
+              help="Single-end flag."),
   make_option(c("-o", "--output_dir"), type="character", default=NULL,
               help="Path to output directory.")
 )
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
+
+# Convert single_end from string to logical
+if (opt$single_end == "true") {
+  single_end <- TRUE
+} else if (opt$single_end == "false") {
+  single_end <- FALSE
+} else {
+  stop("single_end must be 'true' or 'false'")
+}
+
 
 # Set input paths
 multiqc_json_path <- file.path(opt$input_dir, "multiqc_data.json")
@@ -29,7 +41,7 @@ out_path_basic <- file.path(opt$output_dir, paste0(id_out, "_qc_basic_stats.tsv.
 out_path_adapters <- file.path(opt$output_dir, paste0(id_out, "_qc_adapter_stats.tsv.gz"))
 out_path_quality_base <- file.path(opt$output_dir, paste0(id_out, "_qc_quality_base_stats.tsv.gz"))
 out_path_quality_sequence <- file.path(opt$output_dir, paste0(id_out, "_qc_quality_sequence_stats.tsv.gz"))
-
+out_path_lengths <- file.path(opt$output_dir, paste0(id_out, "_qc_length_stats.tsv.gz"))
 #=====================#
 # AUXILIARY FUNCTIONS #
 #=====================#
@@ -57,8 +69,19 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
   tab_tsv <- fastqc_tsv %>%
     mutate(n_bases_approx = process_n_bases(`Total Bases`)) %>%
     select(n_bases_approx, per_base_sequence_quality:adapter_content) %>%
-    summarize_all(function(x) paste(x, collapse="/")) %>%
-    mutate(n_bases_approx = n_bases_approx %>% str_split("/") %>% sapply(as.numeric) %>% colSums())
+    summarize_all(function(x) paste(x, collapse="/"))
+
+  if (single_end) {
+    tab_tsv <- tab_tsv %>%
+      mutate(n_bases_approx = n_bases_approx %>% as.numeric)
+  } else {
+    tab_tsv <- tab_tsv %>%
+      mutate(n_bases_approx = n_bases_approx %>%
+             str_split("/") %>%
+             sapply(as.numeric) %>%
+             colSums())
+  }
+
   # Combine
   return(bind_cols(tab_json, tab_tsv))
 }
@@ -73,6 +96,18 @@ extract_adapter_data_single <- function(adapter_dataset){
     separate_wider_delim("filename", " - ", names=c("file", "adapter"))
   return(data)
 }
+
+extract_length_data_single <- function(length_dataset){
+  # Convert a single JSON length dataset into a tibble
+  data <- lapply(1:length(length_dataset$name), function(n)
+    length_dataset$data[[n]] %>% as.data.frame %>%
+      mutate(filename=length_dataset$name[n])) %>%
+    bind_rows() %>% as_tibble %>%
+    rename(length=V1, n_sequences=V2) %>%
+    rename(file = filename)
+  return(data)
+}
+
 # NB: Current paired version can't distinguish or annotate forward vs reverse reads in these plots.
 # TODO: Restore this functionality (will require workflow restructuring).
 
@@ -83,10 +118,17 @@ extract_adapter_data <- function(multiqc_json){
   return(data_out)
 }
 
+extract_length_data <- function(multiqc_json){
+  # Extract length data from multiqc JSON
+  datasets <- multiqc_json$report_plot_data$fastqc_sequence_length_distribution_plot$datasets$lines
+  data_out <- lapply(datasets, extract_length_data_single) %>% bind_rows()
+  return(data_out)
+}
+
 extract_per_base_quality_single <- function(per_base_quality_dataset){
   # Convert a single JSON per-base-quality dataset into a tibble
   data <- lapply(1:length(per_base_quality_dataset$name), function(n)
-    per_base_quality_dataset$data[[n]] %>% as.data.frame %>% 
+    per_base_quality_dataset$data[[n]] %>% as.data.frame %>%
       mutate(file=per_base_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(position=V1, mean_phred_score=V2)
@@ -103,7 +145,7 @@ extract_per_base_quality <- function(multiqc_json){
 extract_per_sequence_quality_single <- function(per_sequence_quality_dataset){
   # Convert a single JSON per-sequence-quality dataset into a tibble
   data <- lapply(1:length(per_sequence_quality_dataset$name), function(n)
-    per_sequence_quality_dataset$data[[n]] %>% as.data.frame %>% 
+    per_sequence_quality_dataset$data[[n]] %>% as.data.frame %>%
       mutate(file=per_sequence_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(mean_phred_score=V1, n_sequences=V2)
@@ -130,7 +172,8 @@ fastqc_tsv <- readr::read_tsv(fastqc_tsv_path, show_col_types = FALSE)
 # Process
 add_info <- function(tab) mutate(tab, stage=opt$stage, sample=opt$sample)
 basic_info <- basic_info_fastqc(fastqc_tsv, multiqc_json) %>% add_info
-adapters <- extract_adapter_data(multiqc_json) %>% add_info
+adapters <- extract_adapter_data(multiqc_json) %>% add_info()
+lengths <- extract_length_data(multiqc_json) %>% add_info()
 per_base_quality <- extract_per_base_quality(multiqc_json) %>% add_info
 per_sequence_quality <- extract_per_sequence_quality(multiqc_json) %>% add_info
 
@@ -139,3 +182,4 @@ write_tsv(basic_info, out_path_basic)
 write_tsv(adapters, out_path_adapters)
 write_tsv(per_base_quality, out_path_quality_base)
 write_tsv(per_sequence_quality, out_path_quality_sequence)
+write_tsv(lengths, out_path_lengths)
