@@ -38,9 +38,6 @@ process FASTP {
             o=!{sample}_fastp.fastq.gz
             io="--in1 !{reads[0]} --out1 ${o} --failed_out ${of} --html ${oh} --json ${oj} --adapter_fasta ${ad}"
         fi
-        par="--cut_front --cut_tail --correction --detect_adapter_for_pe --trim_poly_x --cut_mean_quality 25 --average_qual 25 --qualified_quality_phred 20 --verbose --dont_eval_duplication --thread !{task.cpus} --low_complexity_filter"
-
-
         par="--cut_front --cut_tail --correction --detect_adapter_for_pe --trim_poly_x --cut_mean_quality 20 --average_qual 20 --qualified_quality_phred 20 --verbose --dont_eval_duplication --thread !{task.cpus} --low_complexity_filter"
         # Execute
         fastp ${io} ${par}
