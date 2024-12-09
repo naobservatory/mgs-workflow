@@ -93,4 +93,5 @@ workflow RUN_DEV_SE {
         PROCESS_OUTPUT.out.adapt >> "results"
         PROCESS_OUTPUT.out.qbase >> "results"
         PROCESS_OUTPUT.out.qseqs >> "results"
+        PROCESS_OUTPUT.out.lengths >> "results"
 }
