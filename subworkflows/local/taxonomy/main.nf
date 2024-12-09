@@ -1,4 +1,4 @@
-/***********************************************************
+`/***********************************************************
 | SUBWORKFLOW: TAXONOMIC PROFILING WITH KRAKEN AND BRACKEN |
 ***********************************************************/
 
@@ -36,12 +36,7 @@ workflow TAXONOMY {
         if (single_end) {
             // No merging in single read version
             summarize_bbmerge_ch = Channel.empty()
-            // Deduplicate reads (if applicable)
-            if (dedup_rc) {
-                dedup_ch = CLUMPIFY_SINGLE(reads_ch)
-            } else {
-                dedup_ch = reads_ch
-            }
+            single_read_ch = reads_ch
         } else {
             // Deduplicate reads (if applicable)
             if ( dedup_rc ){
@@ -53,14 +48,16 @@ workflow TAXONOMY {
             merged_ch = BBMERGE(paired_dedup_ch)
             // Only want to summarize the merged elements
             summarize_bbmerge_ch = SUMMARIZE_BBMERGE(merged_ch.reads.map{sample, files -> [sample, files[0]]})
-            joined_ch = JOIN_FASTQ(merged_ch.reads)
-            // Deduplicate reads (if applicable)
-            if ( dedup_rc ){
-                dedup_ch = CLUMPIFY_SINGLE(joined_ch)
-            } else {
-                dedup_ch = joined_ch
-            }
+            single_read_ch = JOIN_FASTQ(merged_ch.reads)
         }
+
+        // Deduplicate reads (if applicable)
+        if (dedup_rc) {
+                dedup_ch = CLUMPIFY_SINGLE(single_read_ch)
+            } else {
+                dedup_ch = single_read_ch 
+        }
+
         // Summarize last of the output
         summarize_dedup_ch = SUMMARIZE_DEDUP(dedup_ch)
 
