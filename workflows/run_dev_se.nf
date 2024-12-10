@@ -62,7 +62,6 @@ workflow RUN_DEV_SE {
     // Prepare Kraken DB
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
 
-
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
