@@ -1,4 +1,4 @@
-`/***********************************************************
+/***********************************************************
 | SUBWORKFLOW: TAXONOMIC PROFILING WITH KRAKEN AND BRACKEN |
 ***********************************************************/
 
@@ -55,7 +55,7 @@ workflow TAXONOMY {
         if (dedup_rc) {
                 dedup_ch = CLUMPIFY_SINGLE(single_read_ch)
             } else {
-                dedup_ch = single_read_ch 
+                dedup_ch = single_read_ch
         }
 
         // Summarize last of the output
