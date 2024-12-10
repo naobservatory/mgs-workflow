@@ -6,11 +6,13 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { BBMERGE } from "../../../modules/local/bbmerge"
-include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
+if (!params.single_end) {
+    include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
+    include { BBMERGE } from "../../../modules/local/bbmerge"
+    include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
+}
 include { SUMMARIZE_DEDUP } from "../../../modules/local/summarizeDedup"
 include { CLUMPIFY_PAIRED } from "../../../modules/local/clumpify"
-include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
 include { CLUMPIFY_SINGLE } from "../../../modules/local/clumpify"
 include { KRAKEN } from "../../../modules/local/kraken"
 include { LABEL_KRAKEN_REPORTS } from "../../../modules/local/labelKrakenReports"
@@ -29,23 +31,35 @@ workflow TAXONOMY {
         kraken_db_ch
         dedup_rc
         classification_level
+        single_end
     main:
-         // Deduplicate reads (if applicable)
-        if ( dedup_rc ){
-            paired_dedup_ch = CLUMPIFY_PAIRED(reads_ch)
+        if (single_end) {
+            // No merging in single read version
+            summarize_bbmerge_ch = Channel.empty()
+            // Deduplicate reads (if applicable)
+            if (dedup_rc) {
+                dedup_ch = CLUMPIFY_SINGLE(reads_ch)
+            } else {
+                dedup_ch = reads_ch
+            }
         } else {
-            paired_dedup_ch = reads_ch
-        }
-        // Prepare reads
-        merged_ch = BBMERGE(paired_dedup_ch)
-        // Only want to summarize the merged elements
-        summarize_bbmerge_ch = SUMMARIZE_BBMERGE(merged_ch.reads.map{sample, files -> [sample, files[0]]})
-        joined_ch = JOIN_FASTQ(merged_ch.reads)
-        // Deduplicate reads (if applicable)
-        if ( dedup_rc ){
-            dedup_ch = CLUMPIFY_SINGLE(joined_ch)
-        } else {
-            dedup_ch = joined_ch
+            // Deduplicate reads (if applicable)
+            if ( dedup_rc ){
+                paired_dedup_ch = CLUMPIFY_PAIRED(reads_ch)
+            } else {
+                paired_dedup_ch = reads_ch
+            }
+            // Prepare reads
+            merged_ch = BBMERGE(paired_dedup_ch)
+            // Only want to summarize the merged elements
+            summarize_bbmerge_ch = SUMMARIZE_BBMERGE(merged_ch.reads.map{sample, files -> [sample, files[0]]})
+            joined_ch = JOIN_FASTQ(merged_ch.reads)
+            // Deduplicate reads (if applicable)
+            if ( dedup_rc ){
+                dedup_ch = CLUMPIFY_SINGLE(joined_ch)
+            } else {
+                dedup_ch = joined_ch
+            }
         }
         // Summarize last of the output
         summarize_dedup_ch = SUMMARIZE_DEDUP(dedup_ch)
