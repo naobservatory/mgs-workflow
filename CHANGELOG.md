@@ -1,3 +1,6 @@
+# v2.5.3 (under development)
+- Updated tags to prevent inappropriate S3 auto-cleanup
+
 # v2.5.2
 - Changes to default read filtering:
     - Relaxed FASTP quality filtering (`--cut_mean_quality` and `--average_qual` reduced from 25 to 20).
