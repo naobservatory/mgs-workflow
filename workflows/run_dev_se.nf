@@ -25,6 +25,7 @@ workflow RUN_DEV_SE {
     // Start time
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
+    kraken_db_path = "${params.ref_dir}/results/kraken_db"
 
     // Check if grouping column exists in samplesheet
     check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
@@ -34,8 +35,6 @@ workflow RUN_DEV_SE {
         } else if (!params.grouping && check_grouping) {
             throw new Exception("Grouping is not enabled in config file, but group column is present in the samplesheet.")
         }
-    // Prepare Kraken DB
-    kraken_db_path = "${params.ref_dir}/results/kraken_db"
     }
 
     // Load samplesheet
