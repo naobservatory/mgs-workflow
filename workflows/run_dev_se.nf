@@ -12,6 +12,7 @@ import java.time.LocalDateTime
 include { RAW } from "../subworkflows/local/raw"
 include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
+include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
 
 /*****************
@@ -24,41 +25,20 @@ workflow RUN_DEV_SE {
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
 
-    // Prepare samplesheet
-    if (params.single_end) {
-        if (params.grouping) {
-            samplesheet = Channel
-                .fromPath(params.sample_sheet)
-                .splitCsv(header: true)
-                .map { row -> tuple(row.sample, file(row.fastq), row.group) }
-            samplesheet_ch = samplesheet.map { sample, read, group -> tuple(sample, [read]) }
-            group_ch = samplesheet.map { sample, read, group -> tuple(sample, group) }
-        } else {
-            samplesheet = Channel
-                .fromPath(params.sample_sheet)
-                .splitCsv(header: true)
-                .map { row -> tuple(row.sample, file(row.fastq)) }
-            samplesheet_ch = samplesheet.map { sample, read -> tuple(sample, [read]) }
-            group_ch = Channel.empty()
+    // Check if grouping column exists in samplesheet
+    check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
+    if (params.grouping != check_grouping) {
+        if (params.grouping && !check_grouping) {
+            throw new Exception("Grouping enabled in config file, but group column absent from samplesheet.")
+        } else if (!params.grouping && check_grouping) {
+            throw new Exception("Grouping is not enabled in config file, but group column is present in the samplesheet.")
         }
-    } else {
-        if (params.grouping) {
-            samplesheet = Channel
-                .fromPath(params.sample_sheet)
-                .splitCsv(header: true)
-                .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2), row.group) }
-            samplesheet_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, [read1, read2]) }
-            group_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, group) }
-        } else {
-            samplesheet = Channel
-                .fromPath(params.sample_sheet)
-                .splitCsv(header: true)
-                .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2)) }
-            samplesheet_ch = samplesheet.map { sample, read1, read2 -> tuple(sample, [read1, read2]) }
-            group_ch = Channel.empty()
-            }
-        }
+    }
 
+    // Load samplesheet
+    LOAD_SAMPLESHET(params.sample_sheet)
+    samplesheet_ch = LOAD_SAMPLESHET.out.samplesheet
+    group_ch = LOAD_SAMPLESHET.out.group
 
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
