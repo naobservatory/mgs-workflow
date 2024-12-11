@@ -7,7 +7,11 @@
 ***************************/
 
 include { QC } from "../../../subworkflows/local/qc"
-include { TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
+if (params.single_end) {
+    include { TRUNCATE_CONCAT_SINGLE as TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
+} else {
+    include { TRUNCATE_CONCAT_PAIRED as TRUNCATE_CONCAT } from "../../../modules/local/truncateConcat"
+}
 
 /***********
 | WORKFLOW |
@@ -23,7 +27,7 @@ workflow RAW {
         single_end
     main:
         if ( n_reads_trunc > 0 ) {
-            out_ch = TRUNCATE_CONCAT(samplesheet_ch, n_reads_trunc, single_end)
+            out_ch = TRUNCATE_CONCAT(samplesheet_ch, n_reads_trunc)
         } else {
             out_ch = samplesheet_ch
         }
