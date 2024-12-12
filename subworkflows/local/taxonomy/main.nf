@@ -6,11 +6,9 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-if (!params.single_end) {
-    include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
-    include { BBMERGE } from "../../../modules/local/bbmerge"
-    include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
-}
+include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
+include { BBMERGE } from "../../../modules/local/bbmerge"
+include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
 include { SUMMARIZE_DEDUP } from "../../../modules/local/summarizeDedup"
 include { CLUMPIFY_PAIRED } from "../../../modules/local/clumpify"
 include { CLUMPIFY_SINGLE } from "../../../modules/local/clumpify"
