@@ -19,14 +19,16 @@ if (params.single_end) {
     include { CONCAT_GROUP_PAIRED as CONCAT_GROUP } from "../../../modules/local/concatGroup"
 }
 
-if (params.ont) {
-    include { MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
-}
-
 include { BBDUK_HITS } from "../../../modules/local/bbduk"
 include { TAXONOMY as TAXONOMY_RIBO } from "../../../subworkflows/local/taxonomy"
 include { TAXONOMY as TAXONOMY_NORIBO } from "../../../subworkflows/local/taxonomy"
 include { MERGE_TAXONOMY_RIBO } from "../../../modules/local/mergeTaxonomyRibo"
+if (params.ont) {
+    include { MINIMAP2_ONT as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
+    include { MINIMAP2_ONT as MINIMAP2_RIBO } from "../../../modules/local/minimap2"
+    include { SAMTOOLS_FILTER} from "../../../modules/local/samtools"
+    include { SAMTOOLS_SEPARATE } from "../../../modules/local/samtools"
+}
 
 /****************
 | MAIN WORKFLOW |
@@ -44,9 +46,9 @@ workflow PROFILE {
         bbduk_suffix
         grouping
         single_end
+        minimap2_human_index
+        minimap2_ribo_index
     main:
-
-
         // Randomly subset reads to target number
         subset_ch = SUBSET_READS_TARGET(reads_ch, n_reads, "fastq")
 
@@ -78,9 +80,22 @@ workflow PROFILE {
         } else {
             grouped_ch = subset_ch
         }
+
+        if (params.human_read_filtering) {
+            minimap2_ch = MINIMAP2_HUMAN(grouped_ch, minimap2_human_index, "human")
+            grouped_ch = SAMTOOLS_FILTER(minimap2_ch, "human")
+        }
+
         // Separate ribosomal reads
-        ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
-        ribo_ch = BBDUK(grouped_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix)
+        if (params.ont) {
+            mapped_ch = MINIMAP2_RIBO(grouped_ch, minimap2_ribo_index, "ribo")
+            ribo_ch = SAMTOOLS_SEPARATE(mapped_ch, "ribo")
+        } else {
+            ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
+            ribo_ch = BBDUK(grouped_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix)
+        }
+
+
         // Run taxonomic profiling separately on ribo and non-ribo reads
         tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.fail, kraken_db_ch, false, "D", single_end)
         tax_noribo_ch = TAXONOMY_NORIBO(ribo_ch.reads, kraken_db_ch, false, "D", single_end)
@@ -94,3 +109,4 @@ workflow PROFILE {
         bracken = merge_ch.bracken
         kraken = merge_ch.kraken
 }
+

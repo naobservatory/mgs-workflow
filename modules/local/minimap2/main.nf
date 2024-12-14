@@ -1,5 +1,5 @@
-// Detection and removal of contaminant reads
-process MINIMAP2 {
+// Detection and removal of contaminant reads, using indices created for ONT cDNA data
+process MINIMAP2_ONT {
     label "large"
     label "minimap2"
     input:
@@ -14,8 +14,6 @@ process MINIMAP2 {
         i=!{reads}
         o=!{sample}_!{suffix}_minimap2.sam
         ref=!{contaminant_ref}
-        minimap2 -t $(nproc) -ax map-ont ${ref} ${i} -o ${o}
+        minimap2 -a ${ref} ${i} -o ${o}
         '''
 }
-
-# Reference to use: https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz
