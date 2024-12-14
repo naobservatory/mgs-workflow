@@ -26,6 +26,9 @@ workflow RUN_DEV_SE {
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
+    // Will want to add these indices to the index workflow
+    minimap2_human_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
+    minimap2_ribo_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-ribo-index/ribo-ref-concat-unique.mmi"
 
     // Check if grouping column exists in samplesheet
     check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
@@ -46,8 +49,10 @@ workflow RUN_DEV_SE {
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
 
+
+
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end)
+    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index)
 
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
