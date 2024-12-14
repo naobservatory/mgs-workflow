@@ -10,16 +10,17 @@
 if (params.single_end) {
     include { SUBSET_READS_SINGLE_TARGET as SUBSET_READS_TARGET } from "../../../modules/local/subsetReads"
     include { BBDUK_SINGLE as BBDUK } from "../../../modules/local/bbduk"
+    include { BBDUK_HITS_SINGLE as BBDUK_HITS } from "../../../modules/local/bbduk"
     include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
     include { SUBSET_READS_SINGLE_TARGET; SUBSET_READS_SINGLE_TARGET as SUBSET_READS_TARGET_GROUP } from "../../../modules/local/subsetReads"
 } else {
     include { SUBSET_READS_PAIRED_TARGET as SUBSET_READS_TARGET } from "../../../modules/local/subsetReads"
     include { SUBSET_READS_PAIRED_TARGET; SUBSET_READS_PAIRED_TARGET as SUBSET_READS_TARGET_GROUP } from "../../../modules/local/subsetReads"
     include { BBDUK_PAIRED as BBDUK } from "../../../modules/local/bbduk"
+    include { BBDUK_HITS_PAIRED as BBDUK_HITS } from "../../../modules/local/bbduk"
     include { CONCAT_GROUP_PAIRED as CONCAT_GROUP } from "../../../modules/local/concatGroup"
 }
 
-include { BBDUK_HITS } from "../../../modules/local/bbduk"
 include { TAXONOMY as TAXONOMY_RIBO } from "../../../subworkflows/local/taxonomy"
 include { TAXONOMY as TAXONOMY_NORIBO } from "../../../subworkflows/local/taxonomy"
 include { MERGE_TAXONOMY_RIBO } from "../../../modules/local/mergeTaxonomyRibo"

@@ -2,12 +2,6 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { BBDUK_HITS } from "../../../modules/local/bbduk"
-include { CUTADAPT } from "../../../modules/local/cutadapt"
-include { TRIMMOMATIC } from "../../../modules/local/trimmomatic"
-include { BOWTIE2 as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
-include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
-include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
 include { PROCESS_VIRAL_BOWTIE2_SAM } from "../../../modules/local/processViralBowtie2Sam"
 include { COUNT_ALIGNMENT_DUPLICATES } from "../../../modules/local/countAlignmentDuplicates"
 include { EXTRACT_UNCONC_READ_IDS } from "../../../modules/local/extractUnconcReadIDs"
@@ -29,8 +23,20 @@ include { MAKE_VIRUS_READS_FASTA } from "../../../modules/local/makeVirusReadsFa
 include { COUNT_VIRUS_CLADES } from "../../../modules/local/countVirusClades"
 if (params.single_end) {
     include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
+    include { BBDUK_HITS_SINGLE as BBDUK_HITS } from "../../../modules/local/bbduk"
+    include { CUTADAPT_SINGLE as CUTADAPT } from "../../../modules/local/cutadapt"
+    include { TRIMMOMATIC_SINGLE as TRIMMOMATIC } from "../../../modules/local/trimmomatic"
+    include { BOWTIE2_SINGLE as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
+    include { BOWTIE2_SINGLE as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
+    include { BOWTIE2_SINGLE as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
 } else {
     include { CONCAT_GROUP_PAIRED as CONCAT_GROUP } from "../../../modules/local/concatGroup"
+    include { BBDUK_HITS_PAIRED as BBDUK_HITS } from "../../../modules/local/bbduk"
+    include { CUTADAPT_PAIRED as CUTADAPT } from "../../../modules/local/cutadapt"
+    include { TRIMMOMATIC_PAIRED as TRIMMOMATIC } from "../../../modules/local/trimmomatic"
+    include { BOWTIE2_PAIRED as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
+    include { BOWTIE2_PAIRED as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
+    include { BOWTIE2_PAIRED as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
 }
 
 /***********
@@ -100,7 +106,7 @@ workflow EXTRACT_VIRAL_READS {
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
         bowtie2_kraken_merged_ch = MERGE_SAM_KRAKEN(kraken_output_ch.combine(bowtie2_sam_ch, by: 0))
         merged_ch = MERGE_TSVS_BOWTIE2_KRAKEN(bowtie2_kraken_merged_ch.collect().ifEmpty([]), "bowtie2_kraken_merged")
-        merged_bbmerge_results = MERGE_TSVS_BBMERGE(tax_ch.bbmerge_summary.collect().ifEmpty([]), "bbmerge")
+        merged_bbmerge_results = MERGE_TSVS_BBMERGE(tax_ch.bbmerge_summary, "bbmerge") //collect().ifEmpty([]), "bbmerge")
         merged_dedup_results = MERGE_TSVS_DEDUP(tax_ch.dedup_summary.collect().ifEmpty([]), "dedup")
         merged_alignment_dup_results = MERGE_TSVS_ALIGNMENT_DUPLICATES(alignment_dup_summary.collect().ifEmpty([]), "alignment_duplicates")
         // Filter and process putative hit TSV
