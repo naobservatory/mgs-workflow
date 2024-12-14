@@ -285,6 +285,16 @@ def process_paired_sam(sam_path, out_path, genbank_metadata, viral_taxids):
 
 # TODO: Process unpaired SAM
 
+def process_single_sam(sam_path, out_path, genbank_metadata, viral_taxids):
+    """Process paired SAM file into a TSV."""
+    with open_by_suffix(sam_path) as inf, open_by_suffix(out_path, "w") as outf:
+        head = write_sam_headers_paired(outf) # Write headers
+        # Process file & generate content
+        for line in inf:
+            fwd_dict = process_sam_alignment(line, genbank_metadata, viral_taxids, False)
+            outf.write()
+
+
 # Main function
 def main():
     # Parse arguments
@@ -327,7 +337,7 @@ def main():
     if paired:
         process_paired_sam(sam_path, out_path, gid_taxid_dict, virus_taxa)
     else:
-        process_unpaired_sam(sam_path, out_path, gid_taxid_dict, virus_taxa)
+        process_single_sam(sam_path, out_path, gid_taxid_dict, virus_taxa)
     print_log("File processed.")
     # Finish time tracking
     end_time = time.time()
