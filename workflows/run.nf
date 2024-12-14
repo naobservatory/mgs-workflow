@@ -16,6 +16,7 @@ include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 include { PROFILE } from "../subworkflows/local/profile"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 include { EXTRACT_RAW_READS_FROM_PROCESSED } from "../modules/local/extractRawReadsFromProcessed"
+include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
 
 /*****************
@@ -40,22 +41,11 @@ workflow RUN {
         }
     }
 
-    // Prepare samplesheet
-    if ( params.grouping ) {
-        samplesheet = Channel
-            .fromPath(params.sample_sheet)
-            .splitCsv(header: true)
-            .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2), row.group) }
-        samplesheet_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, [read1, read2]) }
-        group_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, group) }
-    } else {
-        samplesheet = Channel
-            .fromPath(params.sample_sheet)
-            .splitCsv(header: true)
-            .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2)) }
-        samplesheet_ch = samplesheet.map { sample, read1, read2 -> tuple(sample, [read1, read2]) }
-        group_ch = Channel.empty()
-    }
+    // Load samplesheet
+    LOAD_SAMPLESHET(params.sample_sheet)
+    samplesheet_ch = LOAD_SAMPLESHET.out.samplesheet
+    group_ch = LOAD_SAMPLESHET.out.group
+
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
