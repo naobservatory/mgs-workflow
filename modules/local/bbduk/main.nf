@@ -61,7 +61,7 @@ process BBDUK_SINGLE {
 }
 
 // Detection and removal of contaminant reads (use minkmerhits instead of minkmerfraction)
-process BBDUK_HITS {
+process BBDUK_HITS_PAIRED {
     label "large"
     label "BBTools"
     input:
@@ -86,6 +86,35 @@ process BBDUK_HITS {
         stats=!{sample}_!{suffix}_bbduk.stats.txt
         ref=!{contaminant_ref}
         io="in=${in1} in2=${in2} ref=${ref} out=${op1} out2=${op2} outm=${of1} outm2=${of2} stats=${stats}"
+        # Define parameters
+        par="minkmerhits=!{min_kmer_hits} k=!{k} t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
+        # Execute
+        bbduk.sh ${io} ${par}
+        '''
+}
+
+process BBDUK_HITS_SINGLE {
+    label "large"
+    label "BBTools"
+    input:
+        tuple val(sample), path(reads)
+        path(contaminant_ref)
+        val(min_kmer_hits)
+        val(k)
+        val(suffix)
+    output:
+        tuple val(sample), path("${sample}_${suffix}_bbduk_pass.fastq.gz"), emit: reads
+        tuple val(sample), path("${sample}_${suffix}_bbduk_fail.fastq.gz"), emit: fail
+        tuple val(sample), path("${sample}_${suffix}_bbduk.stats.txt"), emit: log
+    shell:
+        '''
+        # Define input/output
+        in=!{reads}
+        op=!{sample}_!{suffix}_bbduk_pass.fastq.gz
+        of=!{sample}_!{suffix}_bbduk_fail.fastq.gz
+        stats=!{sample}_!{suffix}_bbduk.stats.txt
+        ref=!{contaminant_ref}
+        io="in=${in} ref=${ref} out=${op} outm=${of} stats=${stats}"
         # Define parameters
         par="minkmerhits=!{min_kmer_hits} k=!{k} t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
         # Execute

@@ -1,4 +1,4 @@
-process CUTADAPT {
+process CUTADAPT_PAIRED {
     label "cutadapt"
     label "large"
     input:
@@ -25,6 +25,33 @@ process CUTADAPT {
         '''
 }
 
+process CUTADAPT_SINGLE {
+    label "cutadapt"
+    label "large"
+    input:
+        // single read file
+        tuple val(sample), path(read)
+        path(adapters)
+    output:
+        tuple val(sample), path("${sample}_cutadapt.fastq.gz"), emit: reads
+        tuple val(sample), path("${sample}_cutadapt_log.txt"), emit: log
+    shell:
+        /* Explanation of cutadapt parameters:
+        -b to trim any adapter in the adapters file from either end of the read
+        -j number of cpu cores
+        -m to drop reads that are <20 bp after trimming
+        -e 0.33 To allow up to a 33% error rate in the matching region between an adapter
+            and the read
+        --action=trim to trim adapters and up/downstream sequence
+        */
+        '''
+        par="-b file:!{adapters} -j !{task.cpus} -m 20 -e 0.33 --action=trim"
+        out="-o !{sample}_cutadapt.fastq.gz"
+        log="!{sample}_cutadapt_log.txt"
+        cutadapt ${par} ${out} !{read} > ${log}
+        '''
+}
+
 process CUTADAPT_MASK {
     label "cutadapt"
     label "large"
@@ -36,7 +63,7 @@ process CUTADAPT_MASK {
         path("${label}_cutadapt_masked.fasta.gz"), emit: masked
         path("${label}_cutadapt_log.txt"), emit: log
     shell:
-        ''' 
+        '''
         out=!{label}_cutadapt_masked.fasta.gz
         log=!{label}_cutadapt_log.txt
         cutadapt --action=mask -b file:!{adapters} -j !{task.cpus} -e 0.2 -o ${out} !{seq_db} > ${log}
