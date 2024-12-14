@@ -27,6 +27,16 @@ nextflow_pipeline {
             assert workflow.success
         }
     }
+
+    test("Test Oxford Nanopore run workflow") {
+        config "tests/run_dev_ont.config"
+        tag "run_dev_ont"
+
+        then {
+            assert workflow.success
+        }
+    }
+
     test("Test validation workflow") {
         config "tests/run_validation.config"
         tag "validation"

@@ -5,23 +5,17 @@ process MINIMAP2 {
     input:
         tuple val(sample), path(reads)
         path(contaminant_ref)
-        // val(k)
         val(suffix)
     output:
-        tuple val(sample), path("${sample}_${suffix}_minimap2_contam.fastq.gz"), emit: sam
+        tuple val(sample), path("${sample}_${suffix}_minimap2.sam"), emit: sam
     shell:
         '''
         # Define input/output
-        in=!{reads}
-        op=!{sample}_!{suffix}_minimap2_pass.fastq.gz
-        of=!{sample}_!{suffix}_minimap2_fail.fastq.gz
-
+        i=!{reads}
+        o=!{sample}_!{suffix}_minimap2.sam
         ref=!{contaminant_ref}
-        io="ref=${ref} in=${in} out=${op} outm=${of} stats=${stats}"
-        var="-ax map-ont"
-        # Define parameters
-        # // par="t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
-        # Execute
-        minimap2 ${io} ${var}
+        minimap2 -t $(nproc) -ax map-ont ${ref} ${i} -o ${o}
         '''
 }
+
+# Reference to use: https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz
