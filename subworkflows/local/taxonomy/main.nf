@@ -51,9 +51,14 @@ workflow TAXONOMY {
 
         // Deduplicate reads (if applicable)
         if (dedup_rc) {
-                dedup_ch = CLUMPIFY_SINGLE(single_read_ch)
-            } else {
+            if (params.ont) {
+                // Currently not deduplicating ONT reads, might want to change
                 dedup_ch = single_read_ch
+            } else {
+                dedup_ch = CLUMPIFY_SINGLE(single_read_ch)
+            }
+        } else {
+            dedup_ch = single_read_ch
         }
 
         // Summarize last of the output
