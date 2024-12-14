@@ -14,6 +14,8 @@ include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 include { PROFILE } from "../subworkflows/local/profile"
 include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
+include { EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReads"
+include { EXTRACT_RAW_READS_FROM_PROCESSED } from "../modules/local/extractRawReadsFromProcessed"
 nextflow.preview.output = true
 
 /*****************
@@ -45,6 +47,13 @@ workflow RUN_DEV_SE {
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
+
+    // Extract and count human-viral reads
+    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
+
+    // Process intermediate output for chimera detection
+    raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(RAW.out.reads, by: 0)
+    EXTRACT_RAW_READS_FROM_PROCESSED(raw_processed_ch, "raw_viral_subset")
 
     // Taxonomic profiling
     PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end)
@@ -79,6 +88,9 @@ workflow RUN_DEV_SE {
         PROCESS_OUTPUT.out.qbase >> "results"
         PROCESS_OUTPUT.out.qseqs >> "results"
         // Final results
+                // Final results
+        EXTRACT_VIRAL_READS.out.tsv >> "results"
+        EXTRACT_VIRAL_READS.out.counts >> "results"
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
 }
