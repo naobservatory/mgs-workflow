@@ -16,7 +16,7 @@ include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 include { PROFILE } from "../subworkflows/local/profile"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 include { EXTRACT_RAW_READS_FROM_PROCESSED } from "../modules/local/extractRawReadsFromProcessed"
-include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
+include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
 
 /*****************
