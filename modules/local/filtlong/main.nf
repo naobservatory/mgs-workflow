@@ -6,7 +6,7 @@ process FILTLONG {
     output:
         tuple val(sample), path("${sample}_filtlong.fastq.gz"), emit: reads
     shell:
-        // Filter reads based on length (min 100 bp) and mean quality (min 99%, i.e, a Phred score of 20)
+        // Filter reads based on length (min 100 bp) and mean average base quality (min 90%, i.e, a Phred score of 10)
         '''
         o=!{sample}_filtlong.fastq.gz
         i=!{reads[0]}
