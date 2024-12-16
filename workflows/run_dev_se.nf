@@ -21,24 +21,10 @@ nextflow.preview.output = true
 
 // Complete primary workflow
 workflow RUN_DEV_SE {
-    // Start time
-    start_time = new Date()
-    start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
-
-    // Check if grouping column exists in samplesheet
-    check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
-    if (params.grouping != check_grouping) {
-        if (params.grouping && !check_grouping) {
-            throw new Exception("Grouping enabled in config file, but group column absent from samplesheet.")
-        } else if (!params.grouping && check_grouping) {
-            throw new Exception("Grouping is not enabled in config file, but group column is present in the samplesheet.")
-        }
-    }
-
     // Load samplesheet
-    LOAD_SAMPLESHET(params.sample_sheet)
-    samplesheet_ch = LOAD_SAMPLESHET.out.samplesheet
-    group_ch = LOAD_SAMPLESHET.out.group
+    LOAD_SAMPLESHEET(params.sample_sheet)
+    samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
+    group_ch = LOAD_SAMPLESHEET.out.group
 
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)

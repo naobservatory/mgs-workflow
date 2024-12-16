@@ -3,22 +3,24 @@
 ***********/
 
 workflow LOAD_SAMPLESHEET {
-    // Start time
-    start_time = new Date()
-    start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
-
-    // Check if grouping column exists in samplesheet
-    check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
-    if (params.grouping != check_grouping) {
-        if (params.grouping && !check_grouping) {
-            throw new Exception("Grouping enabled in config file, but group column absent from samplesheet.")
-        } else if (!params.grouping && check_grouping) {
-            throw new Exception("Grouping is not enabled in config file, but group column is present in the samplesheet.")
-        }
-    }
     take:
         sample_sheet
     main:
+        // Start time
+        start_time = new Date()
+        start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
+
+        // Check if grouping column exists in samplesheet
+        check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
+        if (params.grouping != check_grouping) {
+            if (params.grouping && !check_grouping) {
+                throw new Exception("Grouping enabled in config file, but group column absent from samplesheet.")
+            } else if (!params.grouping && check_grouping) {
+                throw new Exception("Grouping is not enabled in config file, but group column is present in the samplesheet.")
+            }
+        }
+
+
         if (params.single_end) {
             if (params.grouping) {
                 samplesheet = Channel
