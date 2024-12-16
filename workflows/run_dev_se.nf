@@ -37,7 +37,7 @@ workflow RUN_DEV_SE {
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
-    time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
+    time_ch = Channel.of(params.start_time_str + "\n").collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
     index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
     .map { file -> file.copyTo("${params.base_dir}/work/params-index.json") }
