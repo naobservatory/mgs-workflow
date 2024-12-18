@@ -33,6 +33,7 @@ workflow RUN {
     LOAD_SAMPLESHEET(params.sample_sheet)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     group_ch = LOAD_SAMPLESHEET.out.group
+    start_time_str = LOAD_SAMPLESHEET.out.start_time_str
 
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
@@ -59,7 +60,7 @@ workflow RUN {
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
-    time_ch = Channel.of(params.start_time_str + "\n").collectFile(name: "time.txt")
+    time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
     index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
     .map { file -> file.copyTo("${params.base_dir}/work/params-index.json") }

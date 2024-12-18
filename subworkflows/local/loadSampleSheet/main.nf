@@ -57,4 +57,5 @@ workflow LOAD_SAMPLESHEET {
     emit:
         samplesheet = samplesheet_ch
         group = group_ch
+        start_time_str = start_time_str
 }
