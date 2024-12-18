@@ -4,7 +4,7 @@
 
 include { FASTQC_LABELED } from "../../../modules/local/fastqc"
 include { MULTIQC_LABELED } from "../../../modules/local/multiqc"
-include { SUMMARIZE_MULTIQC_PAIR } from "../../../modules/local/summarizeMultiqcPair"
+include { SUMMARIZE_MULTIQC } from "../../../modules/local/summarizeMultiqc"
 include { MERGE_TSVS as MERGE_MULTIQC_BASIC } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_MULTIQC_ADAPT } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_MULTIQC_QBASE } from "../../../modules/local/mergeTsvs"
