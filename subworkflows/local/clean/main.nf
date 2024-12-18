@@ -10,7 +10,11 @@ include { QC } from "../../../subworkflows/local/qc"
 if (params.ont) {
     include { FILTLONG as FILTER_READS } from "../../../modules/local/filtlong"
 } else {
-    include { FASTP as FILTER_READS } from "../../../modules/local/fastp"
+    if (params.single_end) {
+        include { FASTP_SINGLE as FILTER_READS } from "../../../modules/local/fastp"
+    } else {
+        include { FASTP_PAIRED as FILTER_READS } from "../../../modules/local/fastp"
+    }
 }
 
 /***********
