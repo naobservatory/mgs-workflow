@@ -16,6 +16,7 @@ include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 include { PROFILE } from "../subworkflows/local/profile"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 include { EXTRACT_RAW_READS_FROM_PROCESSED } from "../modules/local/extractRawReadsFromProcessed"
+include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
 
 /*****************
@@ -40,27 +41,16 @@ workflow RUN {
         }
     }
 
-    // Prepare samplesheet
-    if ( params.grouping ) {
-        samplesheet = Channel
-            .fromPath(params.sample_sheet)
-            .splitCsv(header: true)
-            .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2), row.group) }
-        samplesheet_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, [read1, read2]) }
-        group_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, group) }
-    } else {
-        samplesheet = Channel
-            .fromPath(params.sample_sheet)
-            .splitCsv(header: true)
-            .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2)) }
-        samplesheet_ch = samplesheet.map { sample, read1, read2 -> tuple(sample, [read1, read2]) }
-        group_ch = Channel.empty()
-    }
+    // Load samplesheet
+    LOAD_SAMPLESHET(params.sample_sheet)
+    samplesheet_ch = LOAD_SAMPLESHET.out.samplesheet
+    group_ch = LOAD_SAMPLESHET.out.group
+
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping)
+    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
     // Process intermediate output for chimera detection
     raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(RAW.out.reads, by: 0)
     EXTRACT_RAW_READS_FROM_PROCESSED(raw_processed_ch, "raw_viral_subset")
@@ -74,7 +64,7 @@ workflow RUN {
         blast_paired_ch = Channel.empty()
     }
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping)
+    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end)
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
     PROCESS_OUTPUT(qc_ch)

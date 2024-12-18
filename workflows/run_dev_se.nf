@@ -12,6 +12,8 @@ import java.time.LocalDateTime
 include { RAW } from "../subworkflows/local/raw"
 include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
+include { PROFILE } from "../subworkflows/local/profile"
+include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
 
 /*****************
@@ -23,46 +25,34 @@ workflow RUN_DEV_SE {
     // Start time
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
+    kraken_db_path = "${params.ref_dir}/results/kraken_db"
+    // Will want to add these indices to the index workflow
+    minimap2_human_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
+    minimap2_ribo_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-ribo-index/ribo-ref-concat-unique.mmi"
 
-    // Prepare samplesheet
-    if (params.single_end) {
-        if (params.grouping) {
-            samplesheet = Channel
-                .fromPath(params.sample_sheet)
-                .splitCsv(header: true)
-                .map { row -> tuple(row.sample, file(row.fastq), row.group) }
-            samplesheet_ch = samplesheet.map { sample, read, group -> tuple(sample, [read]) }
-            group_ch = samplesheet.map { sample, read, group -> tuple(sample, group) }
-        } else {
-            samplesheet = Channel
-                .fromPath(params.sample_sheet)
-                .splitCsv(header: true)
-                .map { row -> tuple(row.sample, file(row.fastq)) }
-            samplesheet_ch = samplesheet.map { sample, read -> tuple(sample, [read]) }
-            group_ch = Channel.empty()
+    // Check if grouping column exists in samplesheet
+    check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
+    if (params.grouping != check_grouping) {
+        if (params.grouping && !check_grouping) {
+            throw new Exception("Grouping enabled in config file, but group column absent from samplesheet.")
+        } else if (!params.grouping && check_grouping) {
+            throw new Exception("Grouping is not enabled in config file, but group column is present in the samplesheet.")
         }
-    } else {
-        if (params.grouping) {
-            samplesheet = Channel
-                .fromPath(params.sample_sheet)
-                .splitCsv(header: true)
-                .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2), row.group) }
-            samplesheet_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, [read1, read2]) }
-            group_ch = samplesheet.map { sample, read1, read2, group -> tuple(sample, group) }
-        } else {
-            samplesheet = Channel
-                .fromPath(params.sample_sheet)
-                .splitCsv(header: true)
-                .map { row -> tuple(row.sample, file(row.fastq_1), file(row.fastq_2)) }
-            samplesheet_ch = samplesheet.map { sample, read1, read2 -> tuple(sample, [read1, read2]) }
-            group_ch = Channel.empty()
-            }
-        }
+    }
 
+    // Load samplesheet
+    LOAD_SAMPLESHET(params.sample_sheet)
+    samplesheet_ch = LOAD_SAMPLESHET.out.samplesheet
+    group_ch = LOAD_SAMPLESHET.out.group
 
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
+
+
+
+    // Taxonomic profiling
+    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index)
 
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
@@ -94,4 +84,8 @@ workflow RUN_DEV_SE {
         PROCESS_OUTPUT.out.qbase >> "results"
         PROCESS_OUTPUT.out.qseqs >> "results"
         PROCESS_OUTPUT.out.lengths >> "results"
+
+        // Final results
+        PROFILE.out.bracken >> "results"
+        PROFILE.out.kraken >> "results"
 }
