@@ -33,7 +33,7 @@ workflow CLEAN {
         if (params.ont) {
             filter_ch = FILTER_READS(reads_ch)
         } else {
-            filter_ch = FILTER_READS(reads_ch, adapter_path, single_end)
+            filter_ch = FILTER_READS(reads_ch, adapter_path)
         }
         qc_ch = QC(filter_ch.reads, fastqc_cpus, fastqc_mem, stage_label, single_end)
     emit:
