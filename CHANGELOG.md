@@ -1,17 +1,13 @@
-# v2.5.3
-- Added support for single-end read processing:
-    - Restructured RAW and CLEAN workflows to handle both single-end and paired-end reads
-    - Added new FASTP_SINGLE process alongside existing FASTP_PAIRED
-    - Added new TRUNCATE_CONCAT_SINGLE process alongside existing TRUNCATE_CONCAT_PAIRED
-    - Added single-end logic to QC and RAW subworkflows
+# v2.5.3 (in progress)
+- Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing 
+- Began development of single-end read processing (still in progress)
+    - Restructured RAW, CLEAN, and QC workflows to handle both single-end and paired-end reads
+    - Added new FASTP_SINGLE and TRUNCATE_CONCAT_SINGLE processes to handle single-end reads
     - Created separate end-to-end test workflow for single-end processing (which will be removed once single-end processing is fully integrated)
-- Improved samplesheet handling:
-    - Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing
     - Modified samplesheet handling to support both single-end and paired-end data
     - Updated generate_samplesheet.sh to handle single-end data with --single_end flag
-- Configuration updates:
     - Added read_type.config to handle single-end vs paired-end settings (set automatically based on samplesheet format)
-    - Created run_dev_se.config and run_dev_se.nf for single-end and paired-end development testing (which will be removed once single-end processing is fully integrated)
+    - Created run_dev_se.config and run_dev_se.nf for single-end development testing (which will be removed once single-end processing is fully integrated)
     - Added single-end samplesheet to test-data
 
 # v2.5.2
