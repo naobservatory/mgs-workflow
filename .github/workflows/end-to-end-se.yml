@@ -28,5 +28,8 @@ jobs:
           wget -qO- https://get.nf-test.com | bash
           sudo mv nf-test /usr/local/bin/
 
-      - name: Run run_dev_se workflow
+      - name: Run run_dev_se workflow on single-end data
         run: nf-test test --tag run_dev_se --verbose
+
+      - name: Run run_dev_se workflow on ONT data
+      run: nf-test test --tag run_dev_se_ont --verbose
