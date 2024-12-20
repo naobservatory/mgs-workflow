@@ -1,2 +1,2 @@
 sample,fastq_1,fastq_2
-gold_standard,s3://nao-testing/gold-standard-test/test_output_raw/gold_standard_R1.fastq.gz,s3://nao-testing/gold-standard-test/test_output_raw/gold_standard_R2.fastq.gz
+gold_standard,s3://nao-testing/gold-standard-test/raw/gold_standard_R1.fastq.gz,s3://nao-testing/gold-standard-test/raw/gold_standard_R2.fastq.gz
