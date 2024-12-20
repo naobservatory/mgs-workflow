@@ -1,3 +1,15 @@
+# v2.5.3 (in progress)
+- Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing 
+- Began development of single-end read processing (still in progress)
+    - Restructured RAW, CLEAN, and QC workflows to handle both single-end and paired-end reads
+    - Added new FASTP_SINGLE and TRUNCATE_CONCAT_SINGLE processes to handle single-end reads
+    - Created separate end-to-end test workflow for single-end processing (which will be removed once single-end processing is fully integrated)
+    - Modified samplesheet handling to support both single-end and paired-end data
+    - Updated generate_samplesheet.sh to handle single-end data with --single_end flag
+    - Added read_type.config to handle single-end vs paired-end settings (set automatically based on samplesheet format)
+    - Created run_dev_se.config and run_dev_se.nf for single-end development testing (which will be removed once single-end processing is fully integrated)
+    - Added single-end samplesheet to test-data
+
 # v2.5.2
 - Changes to default read filtering:
     - Relaxed FASTP quality filtering (`--cut_mean_quality` and `--average_qual` reduced from 25 to 20).

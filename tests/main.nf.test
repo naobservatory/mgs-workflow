@@ -19,6 +19,14 @@ nextflow_pipeline {
             assert workflow.success
         }
     }
+    test("Test single-end run workflow") {
+        config "tests/run_dev_se.config"
+        tag "run_dev_se"
+
+        then {
+            assert workflow.success
+        }
+    }
     test("Test validation workflow") {
         config "tests/run_validation.config"
         tag "validation"
