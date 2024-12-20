@@ -13,7 +13,7 @@ include { RAW } from "../subworkflows/local/raw"
 include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 include { PROFILE } from "../subworkflows/local/profile"
-include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
+include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
 
 /*****************

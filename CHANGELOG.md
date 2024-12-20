@@ -1,8 +1,8 @@
 # v2.5.3 (in progress)
-- Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing 
+- Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing
 - Began development of single-end read processing (still in progress)
-    - Restructured RAW, CLEAN, and QC workflows to handle both single-end and paired-end reads
-    - Added new FASTP_SINGLE and TRUNCATE_CONCAT_SINGLE processes to handle single-end reads
+    - Restructured RAW, CLEAN, QC, TAXONOMY, and PROFILE workflows to handle both single-end and paired-end reads
+    - Added new FASTP_SINGLE, TRUNCATE_CONCAT_SINGLE, BBDUK_SINGLE, CONCAT_GROUP_SINGLE, SUBSET_READS_SINGLE and SUBSET_READS_SINGLE_TARGET processes to handle single-end reads
     - Created separate end-to-end test workflow for single-end processing (which will be removed once single-end processing is fully integrated)
     - Modified samplesheet handling to support both single-end and paired-end data
     - Updated generate_samplesheet.sh to handle single-end data with --single_end flag
