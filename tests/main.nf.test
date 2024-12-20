@@ -36,4 +36,26 @@ nextflow_pipeline {
         }
     }
 
+    test("Test run workflow output") {
+        config "tests/run.config"
+        tag "run_output"
+
+        then {
+            assert workflow.success
+            assert snapshot(
+                path("${launchDir}/output/results/bracken_reports_merged.tsv.gz"),
+                path("${launchDir}/output/results/kraken_reports_merged.tsv.gz"),
+                path("${launchDir}/output/results/qc_adapter_stats.tsv.gz"),
+                path("${launchDir}/output/results/qc_basic_stats.tsv.gz"),
+                path("${launchDir}/output/results/qc_quality_base_stats.tsv.gz"),
+                path("${launchDir}/output/results/qc_quality_sequence_stats.tsv.gz"),
+                path("${launchDir}/output/results/virus_clade_counts.tsv.gz"),
+                path("${launchDir}/output/results/virus_hits_db.tsv.gz"),
+                path("${launchDir}/output/results/blast_hits_paired.tsv.gz"),
+                path("${launchDir}/output/results/virus_hits_1.fasta.gz"),
+                path("${launchDir}/output/results/virus_hits_2.fasta.gz"),
+            ).match("run_output")
+        }
+
+    }
 }

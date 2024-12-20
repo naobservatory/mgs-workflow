@@ -318,10 +318,13 @@ If running on Batch, a good process for starting the pipeline on a new dataset i
 During the development process, we now request that users run the pipeline using `nf-test` locally before making pull requests (a test will be run automatically on the PR, but it's often useful to run it locally first). To do this, you need to make sure that you have a big enough ec2-instance. We recommend the `m5.xlarge` with at least `32GB` of EBS storage, as this machine closely reflects the VMs on Github Actions. Once you have an instance, run `nf-test run tests/main.test.nf`, which will run all workflows of the pipeline and check that they run to completion. If you want to run a specific workflow, you use the following commands:
 
 ```
-nf-test run --tag index  # Runs the index workflow
-nf-test run --tag run     # Runs the run workflow
-nf-test run --tag validation # Runs the validation workflow
+nf-test test --tag index  # Runs the index workflow
+nf-test test --tag run     # Runs the run workflow
+nf-test test --tag validation # Runs the validation workflow
+nf-test test --tag run_output # Runs the run workflow with the test that verifies that the output files are correct
 ```
+
+The intended results for the run workflow can be found in following directory `test-data/gold-standard-results`. Should the `run_output` test fail, you can diff the resulting files of that test, with the files in this folder to find the differences.
 
 Importantly, make sure to periodically delete docker images to free up space on your instance. You can do this by running the following command, although note that this will delete all docker images:
 
