@@ -10,4 +10,3 @@ pipeline_report.txt
 
 .nf-test/
 .nf-test.log
-test-data/trunc.csv
