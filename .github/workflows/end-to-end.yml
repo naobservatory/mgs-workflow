@@ -83,4 +83,3 @@ jobs:
 
       - name: Run run_validation workflow
         run: nf-test test --tag validation --verbose
-
