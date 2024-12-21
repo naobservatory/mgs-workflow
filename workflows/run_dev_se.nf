@@ -12,6 +12,7 @@ import java.time.LocalDateTime
 include { RAW } from "../subworkflows/local/raw"
 include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
+include { PROFILE } from "../subworkflows/local/profile"
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
 
@@ -27,9 +28,16 @@ workflow RUN_DEV_SE {
     group_ch = LOAD_SAMPLESHEET.out.group
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
 
+    // Load kraken db path
+    kraken_db_path = "${params.ref_dir}/results/kraken_db"
+
+
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
+
+    // Taxonomic profiling
+    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end)
 
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
@@ -60,4 +68,7 @@ workflow RUN_DEV_SE {
         PROCESS_OUTPUT.out.adapt >> "results"
         PROCESS_OUTPUT.out.qbase >> "results"
         PROCESS_OUTPUT.out.qseqs >> "results"
+        // Final results
+        PROFILE.out.bracken >> "results"
+        PROFILE.out.kraken >> "results"
 }
