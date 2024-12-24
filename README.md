@@ -179,7 +179,7 @@ To run this workflow with full functionality, you need access to the following d
 2. **Docker:** To install Docker Engine for command-line use, follow the installation instructions available [here](https://docs.docker.com/engine/install/) (or [here](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-docker.html) for installation on an AWS EC2 instance).
 3. **AWS CLI:** If not already installed, install the AWS CLI by following the instructions available [here](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
 4. **Git:** To install the Git version control tool, follow the installation instructions available [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
-5. **nf-test**: To install nf-test, follow the install instructions available [here](https://www.nf-test.com/docs/getting-started/).
+5. **nf-test**: To install nf-test, follow the install instructions available [here](https://www.nf-test.com/installation/).
 
 #### 2. Configure AWS & Docker
 
