@@ -2,6 +2,34 @@
 
 This Nextflow pipeline is designed to process metagenomic sequencing data, characterize overall taxonomic composition, and identify and quantify reads mapping to viruses infecting certain host taxa of interest. It was developed as part of the [Nucleic Acid Observatory](https://naobservatory.org/) project.
 
+<!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
+
+- [Pipeline description](#pipeline-description)
+   * [Overview](#overview)
+   * [Index workflow](#index-workflow)
+   * [Run workflow](#run-workflow)
+      + [Preprocessing phase](#preprocessing-phase)
+      + [Viral identification phase](#viral-identification-phase)
+      + [Taxonomic profiling phase](#taxonomic-profiling-phase)
+      + [BLAST validation phase](#blast-validation-phase)
+      + [QC and output phase](#qc-and-output-phase)
+   * [Pipeline outputs](#pipeline-outputs)
+      + [Index workflow](#index-workflow-1)
+      + [Run workflow](#run-workflow-1)
+- [Using the workflow](#using-the-workflow)
+   * [Profiles and modes](#profiles-and-modes)
+   * [Installation & setup](#installation--setup)
+      + [1. Install dependencies](#1-install-dependencies)
+      + [2. Configure AWS & Docker](#2-configure-aws--docker)
+      + [3. Clone this repository](#3-clone-this-repository)
+      + [4. Run index/reference workflow](#4-run-indexreference-workflow)
+   * [Testing & validation](#testing--validation)
+   * [Running on new data](#running-on-new-data)
+- [Run tests using `nf-test` before making pull requests](#run-tests-using-nf-test-before-making-pull-requests)
+- [Troubleshooting](#troubleshooting)
+
+<!-- TOC end -->
+
 ## Pipeline description
 
 ### Overview
@@ -332,7 +360,7 @@ docker rmi $(docker images -q) -f 2>/dev/null || true
 docker system prune -af --volumes
 ```
 
-# Troubleshooting
+## Troubleshooting
 
 When attempting to run a released version of the pipeline, the most common sources of errors are AWS permission issues. Before debugging a persistent error in-depth, make sure that you have all the permissions specified in Step 0 of [our Batch workflow guide](https://data.securebio.org/wills-public-notebook/notebooks/2024-06-11_batch.html). Next, make sure Nextflow has access to your AWS credentials, such as by running `eval "$(aws configure export-credentials --format env)"`.
 
