@@ -7,10 +7,14 @@
 ***************************/
 
 include { QC } from "../../../subworkflows/local/qc"
-if (params.single_end) {
-    include { FASTP_SINGLE as FASTP } from "../../../modules/local/fastp"
+if (params.ont) {
+    include { FILTLONG as FILTER_READS } from "../../../modules/local/filtlong"
 } else {
-    include { FASTP_PAIRED as FASTP } from "../../../modules/local/fastp"
+    if (params.single_end) {
+        include { FASTP_SINGLE as FILTER_READS } from "../../../modules/local/fastp"
+    } else {
+        include { FASTP_PAIRED as FILTER_READS } from "../../../modules/local/fastp"
+    }
 }
 
 /***********
@@ -26,9 +30,13 @@ workflow CLEAN {
         stage_label
         single_end
     main:
-        fastp_ch = FASTP(reads_ch, adapter_path)
-        qc_ch = QC(fastp_ch.reads, fastqc_cpus, fastqc_mem, stage_label, single_end)
+        if (params.ont) {
+            filter_ch = FILTER_READS(reads_ch)
+        } else {
+            filter_ch = FILTER_READS(reads_ch, adapter_path)
+        }
+        qc_ch = QC(filter_ch.reads, fastqc_cpus, fastqc_mem, stage_label, single_end)
     emit:
-        reads = fastp_ch.reads
+        reads = filter_ch.reads
         qc = qc_ch.qc
 }
