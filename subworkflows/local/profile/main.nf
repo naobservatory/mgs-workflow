@@ -26,8 +26,10 @@ include { MERGE_TAXONOMY_RIBO } from "../../../modules/local/mergeTaxonomyRibo"
 if (params.ont) {
     include { MINIMAP2_ONT as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
     include { MINIMAP2_ONT as MINIMAP2_RIBO } from "../../../modules/local/minimap2"
+    include { MINIMAP2_ONT as MINIMAP2_HV } from "../../../modules/local/minimap2"
     include { SAMTOOLS_FILTER} from "../../../modules/local/samtools"
     include { SAMTOOLS_SEPARATE } from "../../../modules/local/samtools"
+    include { SAMTOOLS_KEEP_AS_SAM } from "../../../modules/local/samtools"
 }
 
 /****************
@@ -48,6 +50,7 @@ workflow PROFILE {
         single_end
         minimap2_human_index
         minimap2_ribo_index
+        minimap2_hv_index
     main:
         // Randomly subset reads to target number
         subset_ch = SUBSET_READS_TARGET(reads_ch, n_reads, "fastq")
@@ -86,6 +89,9 @@ workflow PROFILE {
             grouped_ch = SAMTOOLS_FILTER(minimap2_ch, "human")
         }
 
+        // Identify HV reads
+        minimap2_hv_sam = MINIMAP2_HV(grouped_ch, minimap2_hv_index, "hv")
+        minimap2_hv_sam = SAMTOOLS_KEEP_AS_SAM(minimap2_hv_sam, "hv")
         // Separate ribosomal reads
         if (params.ont) {
             mapped_ch = MINIMAP2_RIBO(grouped_ch, minimap2_ribo_index, "ribo")
@@ -94,7 +100,6 @@ workflow PROFILE {
             ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
             ribo_ch = BBDUK(grouped_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix)
         }
-
 
         // Run taxonomic profiling separately on ribo and non-ribo reads
         tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.fail, kraken_db_ch, false, "D", single_end)
@@ -108,5 +113,6 @@ workflow PROFILE {
     emit:
         bracken = merge_ch.bracken
         kraken = merge_ch.kraken
+        hv_sam = minimap2_hv_sam
 }
 
