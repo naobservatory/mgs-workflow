@@ -1,4 +1,4 @@
-# v2.5.3 (in progress)
+# v2.5.3
 - Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing
 - Testing infrastructure
   - Split up the tests in `End-to-end MGS workflow test` so that they can be run in parallel on Github Actions.
@@ -9,7 +9,6 @@
     - Created separate end-to-end test workflow for single-end processing (which will be removed once single-end processing is fully integrated)
     - Modified samplesheet handling to support both single-end and paired-end data
     - Updated generate_samplesheet.sh to handle single-end data with --single_end flag
-    - 
     - Added read_type.config to handle single-end vs paired-end settings (set automatically based on samplesheet format)
     - Created run_dev_se.config and run_dev_se.nf for single-end development testing (which will be removed once single-end processing is fully integrated)
     - Added single-end samplesheet to test-data
