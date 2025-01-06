@@ -1,0 +1,53 @@
+nextflow_workflow {
+
+    name "Test workflow EXTRACT_VIRAL_READS_STREAMED"
+    script "subworkflows/local/extractViralReadsStreamed/main.nf"
+    workflow "EXTRACT_VIRAL_READS_STREAMED"
+    config "tests/run.config"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "test-data/samplesheet.csv"
+                """
+            }
+        }
+    }
+
+    test("Should run without failures") {
+        when {
+            params {
+            }
+            workflow {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = LOAD_SAMPLESHEET.out.group
+                input[2] = "${params.ref_dir}"
+                input[3] = "${params.ref_dir}/results/kraken_db"
+                input[4] = "${params.bt2_score_threshold}"
+                input[5] = "${params.adapters}"
+                input[6] = "${params.host_taxon}"
+                input[7] = "1"
+                input[8] = "24"
+                input[9] = "viral"
+                input[10] = "${params.quality_encoding}"
+                input[11] = "${params.fuzzy_match_alignment_duplicates}"
+                input[12] = "${params.grouping}"
+                input[13] = "${params.single_end}"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Output should have a nonzero number of lines divisible by eight
+            // (for an interleaved FASTQ file)
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def total_output_lines = countGzipLines(workflow.out.test_out[0][1])
+            assert total_output_lines > 0
+            assert total_output_lines % 8 == 0
+        }
+    }
+}

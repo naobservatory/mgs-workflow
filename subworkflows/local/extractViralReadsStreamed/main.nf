@@ -5,6 +5,7 @@
 ***************************/
 
 include { BBDUK_HITS_STREAMED } from "../../../modules/local/bbduk"
+include { CUTADAPT_STREAMED } from "../../../modules/local/cutadapt"
 
 /***********
 | WORKFLOW |
@@ -38,6 +39,8 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
         // Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS_STREAMED(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
+        // Carry out stringent adapter removal with Cutadapt and Trimmomatic
+        adapt_ch = CUTADAPT_STREAMED(bbduk_ch.fail, adapter_path)
     emit:
-        test_out = bbduk_ch
+        test_out = adapt_ch.reads
 }
