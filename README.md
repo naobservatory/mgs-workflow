@@ -2,6 +2,34 @@
 
 This Nextflow pipeline is designed to process metagenomic sequencing data, characterize overall taxonomic composition, and identify and quantify reads mapping to viruses infecting certain host taxa of interest. It was developed as part of the [Nucleic Acid Observatory](https://naobservatory.org/) project.
 
+<!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
+
+- [Pipeline description](#pipeline-description)
+   * [Overview](#overview)
+   * [Index workflow](#index-workflow)
+   * [Run workflow](#run-workflow)
+      + [Preprocessing phase](#preprocessing-phase)
+      + [Viral identification phase](#viral-identification-phase)
+      + [Taxonomic profiling phase](#taxonomic-profiling-phase)
+      + [BLAST validation phase](#blast-validation-phase)
+      + [QC and output phase](#qc-and-output-phase)
+   * [Pipeline outputs](#pipeline-outputs)
+      + [Index workflow](#index-workflow-1)
+      + [Run workflow](#run-workflow-1)
+- [Using the workflow](#using-the-workflow)
+   * [Profiles and modes](#profiles-and-modes)
+   * [Installation & setup](#installation--setup)
+      + [1. Install dependencies](#1-install-dependencies)
+      + [2. Configure AWS & Docker](#2-configure-aws--docker)
+      + [3. Clone this repository](#3-clone-this-repository)
+      + [4. Run index/reference workflow](#4-run-indexreference-workflow)
+   * [Testing & validation](#testing--validation)
+   * [Running on new data](#running-on-new-data)
+- [Run tests using `nf-test` before making pull requests](#run-tests-using-nf-test-before-making-pull-requests)
+- [Troubleshooting](#troubleshooting)
+
+<!-- TOC end -->
+
 ## Pipeline description
 
 ### Overview
@@ -179,7 +207,7 @@ To run this workflow with full functionality, you need access to the following d
 2. **Docker:** To install Docker Engine for command-line use, follow the installation instructions available [here](https://docs.docker.com/engine/install/) (or [here](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-docker.html) for installation on an AWS EC2 instance).
 3. **AWS CLI:** If not already installed, install the AWS CLI by following the instructions available [here](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
 4. **Git:** To install the Git version control tool, follow the installation instructions available [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
-5. **nf-test**: To install nf-test, follow the install instructions available [here](https://www.nf-test.com/docs/getting-started/).
+5. **nf-test**: To install nf-test, follow the install instructions available [here](https://www.nf-test.com/installation/).
 
 #### 2. Configure AWS & Docker
 
@@ -318,10 +346,13 @@ If running on Batch, a good process for starting the pipeline on a new dataset i
 During the development process, we now request that users run the pipeline using `nf-test` locally before making pull requests (a test will be run automatically on the PR, but it's often useful to run it locally first). To do this, you need to make sure that you have a big enough ec2-instance. We recommend the `m5.xlarge` with at least `32GB` of EBS storage, as this machine closely reflects the VMs on Github Actions. Once you have an instance, run `nf-test run tests/main.test.nf`, which will run all workflows of the pipeline and check that they run to completion. If you want to run a specific workflow, you use the following commands:
 
 ```
-nf-test run --tag index  # Runs the index workflow
-nf-test run --tag run     # Runs the run workflow
-nf-test run --tag validation # Runs the validation workflow
+nf-test test --tag index  # Runs the index workflow
+nf-test test --tag run     # Runs the run workflow
+nf-test test --tag validation # Runs the validation workflow
+nf-test test --tag run_output # Runs the run workflow with the test that verifies that the output files are correct
 ```
+
+The intended results for the run workflow can be found in following directory `test-data/gold-standard-results`. Should the `run_output` test fail, you can diff the resulting files of that test, with the files in this folder to find the differences.
 
 Importantly, make sure to periodically delete docker images to free up space on your instance. You can do this by running the following command, although note that this will delete all docker images:
 
@@ -332,7 +363,7 @@ docker rmi $(docker images -q) -f 2>/dev/null || true
 docker system prune -af --volumes
 ```
 
-# Troubleshooting
+## Troubleshooting
 
 When attempting to run a released version of the pipeline, the most common sources of errors are AWS permission issues. Before debugging a persistent error in-depth, make sure that you have all the permissions specified in Step 0 of [our Batch workflow guide](https://data.securebio.org/wills-public-notebook/notebooks/2024-06-11_batch.html). Next, make sure Nextflow has access to your AWS credentials, such as by running `eval "$(aws configure export-credentials --format env)"`.
 

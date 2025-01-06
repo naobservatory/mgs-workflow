@@ -1,17 +1,17 @@
 # v2.5.3
-- Added support for single-end read processing:
-    - Restructured RAW and CLEAN workflows to handle both single-end and paired-end reads
-    - Added new FASTP_SINGLE process alongside existing FASTP_PAIRED
-    - Added new TRUNCATE_CONCAT_SINGLE process alongside existing TRUNCATE_CONCAT_PAIRED
-    - Added single-end logic to QC and RAW subworkflows
+- Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing
+- Updated tags to prevent inappropriate S3 auto-cleanup
+- Testing infrastructure
+  - Split up the tests in `End-to-end MGS workflow test` so that they can be run in parallel on Github Actions.
+  - Implemented an end-to-end test that checks if the RUN workflow produces the correct output. The correct output for the test has been saved in `test-data/gold-standard-results` so that the user can diff the output of their test with the correct output to check where their pipeline might be failing.
+- Began development of single-end read processing (still in progress)
+    - Restructured RAW, CLEAN, QC, TAXONOMY, and PROFILE workflows to handle both single-end and paired-end reads
+    - Added new FASTP_SINGLE, TRUNCATE_CONCAT_SINGLE, BBDUK_SINGLE, CONCAT_GROUP_SINGLE, SUBSET_READS_SINGLE and SUBSET_READS_SINGLE_TARGET processes to handle single-end reads
     - Created separate end-to-end test workflow for single-end processing (which will be removed once single-end processing is fully integrated)
-- Improved samplesheet handling:
-    - Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing
     - Modified samplesheet handling to support both single-end and paired-end data
     - Updated generate_samplesheet.sh to handle single-end data with --single_end flag
-- Configuration updates:
     - Added read_type.config to handle single-end vs paired-end settings (set automatically based on samplesheet format)
-    - Created run_dev_se.config and run_dev_se.nf for single-end and paired-end development testing (which will be removed once single-end processing is fully integrated)
+    - Created run_dev_se.config and run_dev_se.nf for single-end development testing (which will be removed once single-end processing is fully integrated)
     - Added single-end samplesheet to test-data
 
 # v2.5.2
