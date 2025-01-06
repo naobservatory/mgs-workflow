@@ -93,6 +93,37 @@ process BBDUK_HITS {
         '''
 }
 
+// Streamed version of BBDUK_HITS that returns an interleaved file
+process BBDUK_HITS_STREAMED {
+    label "small"
+    label "BBTools"
+    input:
+        tuple val(sample), path(reads)
+        path(contaminant_ref)
+        val(min_kmer_hits)
+        val(k)
+        val(suffix)
+    output:
+        tuple val(sample), path("${sample}_${suffix}_bbduk_pass.fastq.gz"), emit: reads
+        tuple val(sample), path("${sample}_${suffix}_bbduk_fail.fastq.gz"), emit: fail
+        tuple val(sample), path("${sample}_${suffix}_bbduk.stats.txt"), emit: log
+    shell:
+        '''
+        # Define input/output
+        in1=!{reads[0]}
+        in2=!{reads[1]}
+        op=!{sample}_!{suffix}_bbduk_pass.fastq.gz
+        of=!{sample}_!{suffix}_bbduk_fail.fastq.gz
+        stats=!{sample}_!{suffix}_bbduk.stats.txt
+        ref=!{contaminant_ref}
+        io="in=<(cat ${in1}) in2=<(cat ${in2}) ref=${ref} out=${op1} outm=${of1} stats=${stats}"
+        # Define parameters
+        par="minkmerhits=!{min_kmer_hits} k=!{k} t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
+        # Execute
+        bbduk.sh ${io} ${par}
+        '''
+}
+
 // Masking contaminant kmers in a sequence database
 process BBDUK_MASK {
     label "large"
