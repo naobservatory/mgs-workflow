@@ -35,6 +35,6 @@ process INTERLEAVE_FASTQ_CAT {
         tuple val(sample), path("${sample}_interleaved.fastq.gz")
     shell:
         '''
-        paste <(cat !{reads[0]} | paste - - - - | cut -f1,2 ) <(cat !{reads[1]} | paste - - - -| cut -f1,2 ) | tr "\t" "\n" > "!{sample}_interleaved.fastq.gz"
+        paste <(cat !{reads[0]} | paste - - - - ) <(cat !{reads[1]} | paste - - - - ) | tr "\t" "\n" > "!{sample}_interleaved.fastq.gz"
         '''
 }

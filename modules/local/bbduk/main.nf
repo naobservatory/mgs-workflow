@@ -104,6 +104,7 @@ process BBDUK_HITS_STREAMED {
         val(k)
         val(suffix)
     output:
+        tuple val(sample), path("${sample}_${suffix}_bbduk_in_{1,2}.fastq.gz"), emit: input
         tuple val(sample), path("${sample}_${suffix}_bbduk_pass.fastq.gz"), emit: reads
         tuple val(sample), path("${sample}_${suffix}_bbduk_fail.fastq.gz"), emit: fail
         tuple val(sample), path("${sample}_${suffix}_bbduk.stats.txt"), emit: log
@@ -116,11 +117,14 @@ process BBDUK_HITS_STREAMED {
         of=!{sample}_!{suffix}_bbduk_fail.fastq.gz
         stats=!{sample}_!{suffix}_bbduk.stats.txt
         ref=!{contaminant_ref}
-        io="in=<(cat ${in1}) in2=<(cat ${in2}) ref=${ref} out=${op1} outm=${of1} stats=${stats}"
+        io="in=stdin.fastq ref=${ref} out=${op} outm=${of} stats=${stats}"
         # Define parameters
-        par="minkmerhits=!{min_kmer_hits} k=!{k} t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
+        par="minkmerhits=!{min_kmer_hits} k=!{k} interleaved=t t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
         # Execute
-        bbduk.sh ${io} ${par}
+        paste <(zcat !{reads[0]} | paste - - - - ) <(zcat !{reads[1]} | paste - - - -) | tr "\t" "\n" | bbduk.sh ${io} ${par}
+        # Move inputs for testing
+        mv ${in1} !{sample}_!{suffix}_bbduk_in_1.fastq.gz
+        mv ${in2} !{sample}_!{suffix}_bbduk_in_2.fastq.gz
         '''
 }
 
