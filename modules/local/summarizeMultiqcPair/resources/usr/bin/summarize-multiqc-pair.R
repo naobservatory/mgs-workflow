@@ -13,11 +13,23 @@ option_list = list(
               help="Stage descriptor."),
   make_option(c("-S", "--sample"), type="character", default=NULL,
               help="Sample ID."),
+  make_option(c("-r", "--single_end"), type="character", default=FALSE,
+              help="Single-end flag."),
   make_option(c("-o", "--output_dir"), type="character", default=NULL,
               help="Path to output directory.")
 )
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
+
+# Convert single_end from string to logical
+if (opt$single_end == "true") {
+  single_end <- TRUE
+} else if (opt$single_end == "false") {
+  single_end <- FALSE
+} else {
+  stop("single_end must be 'true' or 'false'")
+}
+
 
 # Set input paths
 multiqc_json_path <- file.path(opt$input_dir, "multiqc_data.json")
@@ -57,8 +69,19 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
   tab_tsv <- fastqc_tsv %>%
     mutate(n_bases_approx = process_n_bases(`Total Bases`)) %>%
     select(n_bases_approx, per_base_sequence_quality:adapter_content) %>%
-    summarize_all(function(x) paste(x, collapse="/")) %>%
-    mutate(n_bases_approx = n_bases_approx %>% str_split("/") %>% sapply(as.numeric) %>% colSums())
+    summarize_all(function(x) paste(x, collapse="/"))
+
+  if (single_end) {
+    tab_tsv <- tab_tsv %>%
+      mutate(n_bases_approx = n_bases_approx %>% as.numeric)
+  } else {
+    tab_tsv <- tab_tsv %>%
+      mutate(n_bases_approx = n_bases_approx %>%
+             str_split("/") %>%
+             sapply(as.numeric) %>%
+             colSums())
+  }
+
   # Combine
   return(bind_cols(tab_json, tab_tsv))
 }
@@ -86,7 +109,7 @@ extract_adapter_data <- function(multiqc_json){
 extract_per_base_quality_single <- function(per_base_quality_dataset){
   # Convert a single JSON per-base-quality dataset into a tibble
   data <- lapply(1:length(per_base_quality_dataset$name), function(n)
-    per_base_quality_dataset$data[[n]] %>% as.data.frame %>% 
+    per_base_quality_dataset$data[[n]] %>% as.data.frame %>%
       mutate(file=per_base_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(position=V1, mean_phred_score=V2)
@@ -103,7 +126,7 @@ extract_per_base_quality <- function(multiqc_json){
 extract_per_sequence_quality_single <- function(per_sequence_quality_dataset){
   # Convert a single JSON per-sequence-quality dataset into a tibble
   data <- lapply(1:length(per_sequence_quality_dataset$name), function(n)
-    per_sequence_quality_dataset$data[[n]] %>% as.data.frame %>% 
+    per_sequence_quality_dataset$data[[n]] %>% as.data.frame %>%
       mutate(file=per_sequence_quality_dataset$name[n])) %>%
     bind_rows() %>% as_tibble %>%
     rename(mean_phred_score=V1, n_sequences=V2)
