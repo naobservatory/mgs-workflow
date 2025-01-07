@@ -6,6 +6,7 @@
 
 include { BBDUK_HITS_STREAMED } from "../../../modules/local/bbduk"
 include { CUTADAPT_STREAMED } from "../../../modules/local/cutadapt"
+include { BOWTIE2_STREAMED as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
 
 /***********
 | WORKFLOW |
@@ -41,6 +42,11 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         bbduk_ch = BBDUK_HITS_STREAMED(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // Carry out stringent adapter removal with Cutadapt and Trimmomatic
         adapt_ch = CUTADAPT_STREAMED(bbduk_ch.fail, adapter_path)
+        // NB: Dropping Trimmomatic here for now; note that this will produce additional false positives until this is replaced (in active development in another branch)
+        trim_ch = adapt_ch
+        // NB: No grouping, all readwise (i.e. no dedup)
+        // Run Bowtie2 against a viral database and process output
+        bowtie2_ch = BOWTIE2_VIRUS(trim_ch.reads, bt2_virus_index_path, "--score-min G,1,1", true, "virus")
     emit:
-        test_out = adapt_ch.reads
+        test_out = bowtie2_ch.reads_unmapped
 }

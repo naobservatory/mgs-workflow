@@ -25,6 +25,52 @@ process BOWTIE2 {
         '''
 }
 
+// Run Bowtie2 on streamed interleaved input and return mapped and unmapped reads
+// NB: This handles non-concordant alignments correctly for this use case (including them with the aligned rather than unaligned reads), so we can skip some downstream processing steps
+process BOWTIE2_STREAMED {
+    label "bowtie2_samtools"
+    label "small"
+    input:
+        tuple val(sample), path(reads_interleaved)
+        path(index_dir)
+        val(par_string)
+        val(remove_sq)
+        val(suffix)
+    output:
+        tuple val(sample), path("${sample}_${suffix}_bowtie2_mapped.sam.gz"), emit: sam
+        tuple val(sample), path("${sample}_${suffix}_bowtie2_mapped.fastq.gz"), emit: reads_mapped
+        tuple val(sample), path("${sample}_${suffix}_bowtie2_unmapped.fastq.gz"), emit: reads_unmapped
+        tuple val(sample), path("${sample}_${suffix}_bowtie2_in.fastq.gz"), emit: input
+    shell:
+        '''
+        set -euo pipefail
+        # Prepare inputs
+        idx="!{index_dir}/bt2_index"
+        sam="!{sample}_!{suffix}_bowtie2_mapped.sam.gz"
+        al="!{sample}_!{suffix}_bowtie2_mapped.fastq.gz"
+        un="!{sample}_!{suffix}_bowtie2_unmapped.fastq.gz"
+        io="-x ${idx} --interleaved -"
+        par="--threads !{task.cpus} --local --very-sensitive-local !{par_string}"
+        # Run pipeline
+        zcat !{reads_interleaved} \\
+            | bowtie2 ${par} ${io} \\
+            | tee \\
+                >(samtools view -u -f 12 - \\
+                    | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
+                        -0 /dev/null -s /dev/null - \\
+                    | gzip -c > ${un}) \\
+                >(samtools view -u -F 12 - \\
+                    | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
+                        -0 /dev/null -s /dev/null - \\
+                    | gzip -c > ${al}) \\
+            | samtools view -h -F 12 - \\
+            !{ remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
+        # Move input files for testing
+        in2="!{sample}_!{suffix}_bowtie2_in.fastq.gz"
+        mv !{reads_interleaved} ${in2}
+        '''
+}
+
 // Generate a Bowtie2 index from an input file
 process BOWTIE2_INDEX {
     label "Bowtie2"
