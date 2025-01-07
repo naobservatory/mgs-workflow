@@ -3,39 +3,23 @@ nextflow_process {
     name "Test process KRAKEN_STREAMED"
     script "modules/local/kraken/main.nf"
     process "KRAKEN_STREAMED"
-    config "tests/run.config"
+    config "tests/run_dev_se.config"
 
     setup {
         run("LOAD_SAMPLESHEET") {
             script "subworkflows/local/loadSampleSheet/main.nf"
             process {
                 """
-                input[0] = "test-data/samplesheet.csv"
+                input[0] = "test-data/single-end-samplesheet.csv"
                 """
             }
         }
-        run("INTERLEAVE_FASTQ_SEQTK") {
-            script "modules/local/interleaveFastq/main.nf"
+        run("COPY_FILE") {
+            script "modules/local/copyFile/main.nf"
             process {
                 """
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                """
-            }
-        }
-        run("BBMERGE_STREAMED") {
-            script "modules/local/bbmerge/main.nf"
-            process {
-                """
-                input[0] = INTERLEAVE_FASTQ_SEQTK.out
-                """
-            }
-        }
-        run("JOIN_FASTQ_STREAMED") {
-            script "modules/local/joinFastq/main.nf"
-            process {
-                """
-                input[0] = BBMERGE_STREAMED.out.reads
-                input[1] = false
+                input[1] = "input.fastq.gz"
                 """
             }
         }
@@ -46,7 +30,7 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = JOIN_FASTQ_STREAMED.out.reads
+                input[0] = COPY_FILE.out
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 '''
             }
