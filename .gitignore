@@ -3,6 +3,9 @@ work/*
 output/*
 *.swp
 *.swo
+*.swn
+*.swm
+*.swl
 test/work
 test/output
 test/.nextflow*

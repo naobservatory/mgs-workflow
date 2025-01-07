@@ -17,3 +17,21 @@ process LABEL_KRAKEN_REPORTS {
         write_tsv(tab, "!{sample}_labeled.report.tsv.gz")
         '''
 }
+
+// Label Kraken2 reports with sample IDs (streamed Python version)
+process LABEL_KRAKEN_REPORTS_STREAMED {
+    label "biopython"
+    label "single"
+    input:
+        tuple val(sample), path(report)
+    output:
+        path("${sample}_labeled.report.tsv.gz"), emit: report
+        path("${sample}_in.report.tsv.gz"), emit: input
+    shell:
+        '''
+        # Run labeling script
+        label_kraken_reports.py !{report} !{sample} !{sample}_labeled.report.tsv.gz
+        # Link input files for testing
+        ln -s !{report} !{sample}_in.report.tsv.gz
+        '''
+}
