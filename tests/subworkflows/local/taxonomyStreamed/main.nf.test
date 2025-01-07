@@ -1,0 +1,50 @@
+nextflow_workflow {
+
+    name "Test workflow TAXONOMY_STREAMED"
+    script "subworkflows/local/taxonomyStreamed/main.nf"
+    workflow "TAXONOMY_STREAMED"
+    config "tests/run.config"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "test-data/samplesheet.csv"
+                """
+            }
+        }
+        run("INTERLEAVE_FASTQ_SEQTK") {
+            script "modules/local/interleaveFastq/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                """
+            }
+        }
+    }
+
+    test("Should run without failures") {
+        when {
+            params {
+            }
+            workflow {
+                '''
+                input[0] = INTERLEAVE_FASTQ_SEQTK.out
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                input[2] = "D"
+                input[3] = false
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Read output should have a nonzero number of lines divisible by four
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def total_output_lines = countGzipLines(workflow.out.test_out_reads[0][1][0])
+            assert total_output_lines > 0
+            assert total_output_lines % 4 == 0
+        }
+    }
+}
