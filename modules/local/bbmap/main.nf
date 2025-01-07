@@ -28,6 +28,57 @@ process BBMAP {
         '''
 }
 
+// Run BBMap on streamed interleaved input and return mapped and unmapped reads
+// NB: This is configured to work the same way as BOWTIE2_STREAMED, returning a SAM file that is then partitioned to find mapped and unmapped reads
+process BBMAP_STREAMED {
+    label "bbtools_samtools"
+    label "small"
+    input:
+        tuple val(sample), path(reads_interleaved)
+        path(index_dir)
+        val(suffix)
+        val(remove_sq)
+        val(debug)
+    output:
+        tuple val(sample), path("${sample}_${suffix}_bbmap_mapped.sam.gz"), emit: sam
+        tuple val(sample), path("${sample}_${suffix}_bbmap_mapped.fastq.gz"), emit: reads_mapped
+        tuple val(sample), path("${sample}_${suffix}_bbmap_unmapped.fastq.gz"), emit: reads_unmapped
+        tuple val(sample), path("${sample}_${suffix}_bbmap_in.fastq.gz"), emit: input
+        tuple val(sample), path("${sample}_${suffix}_bbmap.stats.txt"), emit: stats
+    shell:
+        '''
+        set -euo pipefail
+        # Prepare inputs
+        idx="!{index_dir}"
+        sam="!{sample}_!{suffix}_bbmap_mapped.sam.gz"
+        al="!{sample}_!{suffix}_bbmap_mapped.fastq.gz"
+        un="!{sample}_!{suffix}_bbmap_unmapped.fastq.gz"
+        stats=!{sample}_!{suffix}_bbmap.stats.txt
+        io="in=stdin.fastq path=${idx} statsfile=${stats} out=stdout.sam"
+        par="minid=0.8 maxindel=4 bwr=0.25 bw=25 quickmatch interleaved minhits=2 t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
+        # Run pipeline
+        zcat !{reads_interleaved} \\
+            | bbmap.sh ${io} ${par} \\
+            | tee \\
+                !{ debug ? ">(gzip -c > test_all.sam.gz)" : "" } \\
+                >(samtools view -u -f 12 - \\
+                    !{ debug ? "| tee >(samtools view -h - | gzip -c > test_unmapped.sam.gz)" : "" } \\
+                    | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
+                        -0 /dev/stdout -s /dev/stdout - \\
+                    | gzip -c > ${un}) \\
+                >(samtools view -u -G 12 - \\
+                    !{ debug ? "| tee >(samtools view -h - | gzip -c > test_mapped.sam.gz)" : "" } \\
+                    | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
+                        -0 /dev/stdout -s /dev/stdout - \\
+                    | gzip -c > ${al}) \\
+            | samtools view -h -G 12 - \\
+            !{ remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
+        # Link input files for testing
+        in2="!{sample}_!{suffix}_bbmap_in.fastq.gz"
+        ln -s !{reads_interleaved} ${in2}
+        '''
+}
+
 // Generate a BBMap index from an input file
 process BBMAP_INDEX {
     label "BBTools"

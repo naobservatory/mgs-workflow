@@ -9,6 +9,8 @@ include { CUTADAPT_STREAMED } from "../../../modules/local/cutadapt"
 include { BOWTIE2_STREAMED as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
 include { BOWTIE2_STREAMED as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
 include { BOWTIE2_STREAMED as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
+include { BBMAP_STREAMED as BBMAP_HUMAN } from "../../../modules/local/bbmap"
+include { BBMAP_STREAMED as BBMAP_OTHER } from "../../../modules/local/bbmap"
 
 /***********
 | WORKFLOW |
@@ -54,6 +56,8 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         // 4. Filter contaminants
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, "", "human", false, false)
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, "", "other", false, false)
+        human_bbm_ch = BBMAP_HUMAN(other_bt2_ch.reads_unmapped, bbm_human_index_path, "human", false, false)
+        other_bbm_ch = BBMAP_OTHER(human_bbm_ch.reads_unmapped, bbm_other_index_path, "other", false, false)
     emit:
-        test_out = other_bt2_ch.reads_unmapped
+        test_out = other_bbm_ch.reads_unmapped
 }
