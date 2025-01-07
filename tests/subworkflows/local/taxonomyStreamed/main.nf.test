@@ -42,7 +42,7 @@ nextflow_workflow {
             assert workflow.success
             // Read output should have a nonzero number of lines divisible by four
             def countGzipLines = { file -> path(file).linesGzip.size() }
-            def total_output_lines = countGzipLines(workflow.out.test_out_reads[0][1][0])
+            def total_output_lines = countGzipLines(workflow.out.test_out_reads[0][1])
             assert total_output_lines > 0
             assert total_output_lines % 4 == 0
         }
