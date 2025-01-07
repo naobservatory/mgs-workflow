@@ -49,7 +49,7 @@ process CUTADAPT_STREAMED {
         log="!{sample}_cutadapt_log.txt"
         par="-b file:!{adapters} -B file:!{adapters} -j !{task.cpus} -m 20 -e 0.33 --action=trim --interleaved"
         zcat !{reads_interleaved} | cutadapt ${par} - 2> ${log} | gzip -c > ${output}
-        mv !{reads_interleaved} !{sample}_cutadapt_in.fastq.gz
+        ln -s !{reads_interleaved} !{sample}_cutadapt_in.fastq.gz
         '''
 }
 

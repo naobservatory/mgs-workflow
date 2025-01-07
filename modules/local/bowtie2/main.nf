@@ -71,7 +71,7 @@ process BOWTIE2_STREAMED {
             !{ remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
         # Move input files for testing
         in2="!{sample}_!{suffix}_bowtie2_in.fastq.gz"
-        mv !{reads_interleaved} ${in2}
+        ln -s !{reads_interleaved} ${in2}
         '''
 }
 

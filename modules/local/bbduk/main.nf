@@ -123,8 +123,8 @@ process BBDUK_HITS_STREAMED {
         # Execute
         paste <(zcat !{reads[0]} | paste - - - - ) <(zcat !{reads[1]} | paste - - - -) | tr "\t" "\n" | bbduk.sh ${io} ${par}
         # Move inputs for testing
-        mv ${in1} !{sample}_!{suffix}_bbduk_in_1.fastq.gz
-        mv ${in2} !{sample}_!{suffix}_bbduk_in_2.fastq.gz
+        ln -s ${in1} !{sample}_!{suffix}_bbduk_in_1.fastq.gz
+        ln -s ${in2} !{sample}_!{suffix}_bbduk_in_2.fastq.gz
         '''
 }
 
