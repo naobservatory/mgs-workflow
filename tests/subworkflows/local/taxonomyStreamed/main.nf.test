@@ -3,28 +3,27 @@ nextflow_workflow {
     name "Test workflow TAXONOMY_STREAMED"
     script "subworkflows/local/taxonomyStreamed/main.nf"
     workflow "TAXONOMY_STREAMED"
-    config "tests/run.config"
-
-    setup {
-        run("LOAD_SAMPLESHEET") {
-            script "subworkflows/local/loadSampleSheet/main.nf"
-            process {
-                """
-                input[0] = "test-data/samplesheet.csv"
-                """
-            }
-        }
-        run("INTERLEAVE_FASTQ_SEQTK") {
-            script "modules/local/interleaveFastq/main.nf"
-            process {
-                """
-                input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                """
-            }
-        }
-    }
 
     test("Should run without failures on paired (interleaved) input") {
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "test-data/samplesheet.csv"
+                    """
+                }
+            }
+            run("INTERLEAVE_FASTQ_SEQTK") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    """
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    """
+                }
+            }
+        }
         when {
             params {
             }
@@ -48,6 +47,55 @@ nextflow_workflow {
             // Merged read count should equal input read count
             def input_read_lines = countGzipLines(workflow.out.input_reads[0][1])
             assert single_read_lines == input_read_lines / 2
+        }
+    }
+
+    test("Should run without failures on unpaired input") {
+        config "tests/run_dev_se.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "test-data/single-end-samplesheet.csv"
+                    """
+                }
+            }
+            run("COPY_FILE") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    """
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = "input.fastq.gz"
+                    """
+                }
+            }
+        }
+        when {
+            params {}
+            workflow {
+                '''
+                input[0] = COPY_FILE.out
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                input[2] = "D"
+                input[3] = true
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Read output should have a nonzero number of lines divisible by four
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def single_read_lines = countGzipLines(workflow.out.single_reads[0][1])
+            assert single_read_lines > 0
+            assert single_read_lines % 4 == 0
+            // "Merged" reads should exactly equal input reads
+            def input_read_md5 = path(workflow.out.input_reads[0][1]).md5
+            def single_read_md5 = path(workflow.out.single_reads[0][1]).md5
+            assert single_read_md5 == input_read_md5
+            def input_read_lines = countGzipLines(workflow.out.input_reads[0][1])
+            assert single_read_lines == input_read_lines
         }
     }
 }
