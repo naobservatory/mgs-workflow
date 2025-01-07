@@ -47,6 +47,9 @@ nextflow_workflow {
             // Merged read count should equal input read count
             def input_read_lines = countGzipLines(workflow.out.input_reads[0][1])
             assert single_read_lines == input_read_lines / 2
+            // Kraken output lines should match input reads
+            def kraken_output_lines = countGzipLines(workflow.out.kraken_output[0][1])
+            assert kraken_output_lines == single_read_lines / 4
         }
     }
 
@@ -96,6 +99,9 @@ nextflow_workflow {
             assert single_read_md5 == input_read_md5
             def input_read_lines = countGzipLines(workflow.out.input_reads[0][1])
             assert single_read_lines == input_read_lines
+            // Kraken output lines should match input reads
+            def kraken_output_lines = countGzipLines(workflow.out.kraken_output[0][1])
+            assert kraken_output_lines == single_read_lines / 4
         }
     }
 }

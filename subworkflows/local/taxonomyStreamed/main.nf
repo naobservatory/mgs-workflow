@@ -8,12 +8,12 @@
 
 include { BBMERGE_STREAMED as BBMERGE } from "../../../modules/local/bbmerge"
 include { JOIN_FASTQ_STREAMED as JOIN_FASTQ } from "../../../modules/local/joinFastq"
+include { KRAKEN_STREAMED as KRAKEN } from "../../../modules/local/kraken"
 
 include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
 include { SUMMARIZE_DEDUP } from "../../../modules/local/summarizeDedup"
 include { CLUMPIFY_PAIRED } from "../../../modules/local/clumpify"
 include { CLUMPIFY_SINGLE } from "../../../modules/local/clumpify"
-include { KRAKEN } from "../../../modules/local/kraken"
 include { LABEL_KRAKEN_REPORTS } from "../../../modules/local/labelKrakenReports"
 include { MERGE_TSVS as MERGE_KRAKEN_REPORTS } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_BRACKEN } from "../../../modules/local/mergeTsvs"
@@ -43,6 +43,8 @@ workflow TAXONOMY_STREAMED {
             // Summarize the merged elements
             summarize_bbmerge_ch = SUMMARIZE_BBMERGE(merged_ch.reads)
         }
+        // Run Kraken and merge reports
+        kraken_ch = KRAKEN(single_read_ch, kraken_db_ch)
 
 //        // Run Kraken and munge reports
 //        kraken_ch = KRAKEN(dedup_ch, kraken_db_ch)
@@ -56,7 +58,7 @@ workflow TAXONOMY_STREAMED {
         input_reads = reads_ch
         single_reads = single_read_ch
         bbmerge_summary = summarize_bbmerge_ch
-//        kraken_output = kraken_ch.output
+        kraken_output = kraken_ch.output
 //        kraken_reports = kraken_merge_ch
 //        bracken = bracken_merge_ch
 //        dedup_summary = summarize_dedup_ch

@@ -1,0 +1,64 @@
+nextflow_process {
+
+    name "Test process KRAKEN_STREAMED"
+    script "modules/local/kraken/main.nf"
+    process "KRAKEN_STREAMED"
+    config "tests/run.config"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "test-data/samplesheet.csv"
+                """
+            }
+        }
+        run("INTERLEAVE_FASTQ_SEQTK") {
+            script "modules/local/interleaveFastq/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                """
+            }
+        }
+        run("BBMERGE_STREAMED") {
+            script "modules/local/bbmerge/main.nf"
+            process {
+                """
+                input[0] = INTERLEAVE_FASTQ_SEQTK.out
+                """
+            }
+        }
+        run("JOIN_FASTQ_STREAMED") {
+            script "modules/local/joinFastq/main.nf"
+            process {
+                """
+                input[0] = BBMERGE_STREAMED.out.reads
+                input[1] = false
+                """
+            }
+        }
+    }
+
+    test("Should run without failures and read counts should match") {
+        when {
+            params {}
+            process {
+                '''
+                input[0] = JOIN_FASTQ_STREAMED.out.reads
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output lines should match input reads
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines = countGzipLines(process.out.output[0][1])
+            def input_reads  = countGzipLines(process.out.input[0][1]) / 4
+            assert output_lines == input_reads
+        }
+    }
+}
