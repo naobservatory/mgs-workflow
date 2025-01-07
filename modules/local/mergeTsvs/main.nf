@@ -21,3 +21,18 @@ process MERGE_TSVS {
         write_tsv(tab_out, "!{name}.tsv.gz")
         '''
 }
+
+// Concatenate multiple TSVs (streamed version with Python)
+process MERGE_TSVS_STREAMED {
+    label "biopython"
+    label "single"
+    input:
+        path(tsvs)
+        val(name)
+    output:
+        path("${name}.tsv.gz")
+    shell:
+        '''
+        merge_tsvs.py -o !{name}.tsv.gz !{tsvs}
+        '''
+}
