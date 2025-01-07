@@ -39,22 +39,11 @@ workflow TAXONOMY_STREAMED {
             // NB: No deduplication in streamed version
             // Merge and concatenate input reads
             merged_ch = BBMERGE(reads_ch)
-            single_read_ch = JOIN_FASTQ(merged_ch.reads, false)
-            // Only want to summarize the merged elements
-            //summarize_bbmerge_ch = SUMMARIZE_BBMERGE(merged_ch.reads.map{sample, files -> [sample, files[0]]})
-            //single_read_ch = JOIN_FASTQ(merged_ch.reads)
+            single_read_ch = JOIN_FASTQ(merged_ch.reads, false).reads
+            // Summarize the merged elements
+            summarize_bbmerge_ch = SUMMARIZE_BBMERGE(merged_ch.reads)
         }
 
-//        // Deduplicate reads (if applicable)
-//        if (dedup_rc) {
-//                dedup_ch = CLUMPIFY_SINGLE(single_read_ch)
-//            } else {
-//                dedup_ch = single_read_ch
-//        }
-//
-//        // Summarize last of the output
-//        summarize_dedup_ch = SUMMARIZE_DEDUP(dedup_ch)
-//
 //        // Run Kraken and munge reports
 //        kraken_ch = KRAKEN(dedup_ch, kraken_db_ch)
 //        kraken_label_ch = LABEL_KRAKEN_REPORTS(kraken_ch.report)
@@ -64,10 +53,11 @@ workflow TAXONOMY_STREAMED {
 //        bracken_label_ch = LABEL_BRACKEN_REPORTS(bracken_ch)
 //        bracken_merge_ch = MERGE_BRACKEN(bracken_label_ch.collect().ifEmpty([]), "bracken_reports")
     emit:
-        test_out_reads = single_read_ch.reads
+        input_reads = reads_ch
+        single_reads = single_read_ch
+        bbmerge_summary = summarize_bbmerge_ch
 //        kraken_output = kraken_ch.output
 //        kraken_reports = kraken_merge_ch
 //        bracken = bracken_merge_ch
-//        bbmerge_summary = summarize_bbmerge_ch
 //        dedup_summary = summarize_dedup_ch
 }

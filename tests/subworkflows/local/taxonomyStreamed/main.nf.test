@@ -24,7 +24,7 @@ nextflow_workflow {
         }
     }
 
-    test("Should run without failures") {
+    test("Should run without failures on paired (interleaved) input") {
         when {
             params {
             }
@@ -42,9 +42,12 @@ nextflow_workflow {
             assert workflow.success
             // Read output should have a nonzero number of lines divisible by four
             def countGzipLines = { file -> path(file).linesGzip.size() }
-            def total_output_lines = countGzipLines(workflow.out.test_out_reads[0][1])
-            assert total_output_lines > 0
-            assert total_output_lines % 4 == 0
+            def single_read_lines = countGzipLines(workflow.out.single_reads[0][1])
+            assert single_read_lines > 0
+            assert single_read_lines % 4 == 0
+            // Merged read count should equal input read count
+            def input_read_lines = countGzipLines(workflow.out.input_reads[0][1])
+            assert single_read_lines == input_read_lines / 2
         }
     }
 }

@@ -1,0 +1,56 @@
+nextflow_process {
+
+    name "Test process SUMMARIZE_BBMERGE_STREAMED"
+    script "modules/local/summarizeBBMerge/main.nf"
+    process "SUMMARIZE_BBMERGE_STREAMED"
+    config "tests/run.config"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "test-data/samplesheet.csv"
+                """
+            }
+        }
+        run("INTERLEAVE_FASTQ_SEQTK") {
+            script "modules/local/interleaveFastq/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                """
+            }
+        }
+        run("BBMERGE_STREAMED") {
+            script "modules/local/bbmerge/main.nf"
+            process {
+                """
+                input[0] = INTERLEAVE_FASTQ_SEQTK.out
+                """
+            }
+        }
+    }
+
+    test("Should run without failures and read counts should match") {
+        when {
+            params {}
+            process {
+                '''
+                input[0] = BBMERGE_STREAMED.out.reads
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output file should be nonempty
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines = countGzipLines(process.out.summary[0][1])
+            assert output_lines > 0
+            // Total input and output read counts should match
+            def input_lines = countGzipLines(process.out.input[0][1])
+            assert output_lines == input_lines / 4 + 1
+        }
+    }
+}
