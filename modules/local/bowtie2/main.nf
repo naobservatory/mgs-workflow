@@ -34,8 +34,9 @@ process BOWTIE2_STREAMED {
         tuple val(sample), path(reads_interleaved)
         path(index_dir)
         val(par_string)
-        val(remove_sq)
         val(suffix)
+        val(remove_sq)
+        val(debug)
     output:
         tuple val(sample), path("${sample}_${suffix}_bowtie2_mapped.sam.gz"), emit: sam
         tuple val(sample), path("${sample}_${suffix}_bowtie2_mapped.fastq.gz"), emit: reads_mapped
@@ -55,15 +56,18 @@ process BOWTIE2_STREAMED {
         zcat !{reads_interleaved} \\
             | bowtie2 ${par} ${io} \\
             | tee \\
+                !{ debug ? ">(gzip -c > test_all.sam.gz)" : "" } \\
                 >(samtools view -u -f 12 - \\
+                    !{ debug ? "| tee >(samtools view -h - | gzip -c > test_unmapped.sam.gz)" : "" } \\
                     | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
-                        -0 /dev/null -s /dev/null - \\
+                        -0 /dev/stdout -s /dev/stdout - \\
                     | gzip -c > ${un}) \\
-                >(samtools view -u -F 12 - \\
+                >(samtools view -u -G 12 - \\
+                    !{ debug ? "| tee >(samtools view -h - | gzip -c > test_mapped.sam.gz)" : "" } \\
                     | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
-                        -0 /dev/null -s /dev/null - \\
+                        -0 /dev/stdout -s /dev/stdout - \\
                     | gzip -c > ${al}) \\
-            | samtools view -h -F 12 - \\
+            | samtools view -h -G 12 - \\
             !{ remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
         # Move input files for testing
         in2="!{sample}_!{suffix}_bowtie2_in.fastq.gz"
