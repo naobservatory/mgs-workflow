@@ -28,10 +28,7 @@ workflow RUN_DEV_SE {
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     // Will want to add these indices to the index workflow
     minimap2_human_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
-    minimap2_ribo_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-hv-index/virus-genomes-filtered.mmi"
-
-    // Will want to turn into an mmi and add to the index workflow
-    hv_index = "s3://nao-mgs-wb/index/20241209/output/results/virus-genomes-filtered.fasta.gz"
+    minimap2_ribo_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-ribo-index/ribo-ref-concat-unique.mmi"
 
     // Check if grouping column exists in samplesheet
     check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
@@ -49,11 +46,13 @@ workflow RUN_DEV_SE {
     group_ch = LOAD_SAMPLESHET.out.group
 
     // Preprocessing
-    RAW(samplesheet_ch, params.n_reads_trunc, "8", "16 GB", "raw_concat", params.single_end)
-    CLEAN(RAW.out.reads, params.adapters, "8", "16 GB", "cleaned", params.single_end)
+    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
+    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
+
+
 
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index, hv_index)
+    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index)
 
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
@@ -89,5 +88,4 @@ workflow RUN_DEV_SE {
         // Final results
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
-        PROFILE.out.hv_sam >> "results"
 }

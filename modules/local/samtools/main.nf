@@ -15,39 +15,6 @@ process SAMTOOLS_FILTER {
         '''
 }
 
-process SAMTOOLS_KEEP {
-    label "samtools"
-    input:
-        tuple val(sample), path(sam)
-        val(suffix)
-    output:
-        tuple val(sample), path("${sample}_${suffix}.fastq.gz"), emit: reads
-    shell:
-        '''
-        in=!{sam}
-        out=!{sample}_!{suffix}.fastq.gz
-        var="fastq -n -F 4"
-        samtools ${var} ${in} > ${out}
-        '''
-}
-
-
-process SAMTOOLS_KEEP_AS_SAM {
-    label "samtools"
-    input:
-        tuple val(sample), path(sam)
-        val(suffix)
-    output:
-        tuple val(sample), path("${sample}_${suffix}.sam"), emit: sam
-    shell:
-        '''
-        in=!{sam}
-        out=!{sample}_!{suffix}.sam
-        var="view -h -F 4"
-        samtools ${var} ${in} > ${out}
-        '''
-}
-
 // Return matching and non-matching reads separately
 process SAMTOOLS_SEPARATE {
     label "samtools"
