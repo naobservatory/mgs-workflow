@@ -1,0 +1,104 @@
+nextflow_process {
+
+    name "Test process MERGE_TSVS_STREAMED"
+    script "modules/local/mergeTsvs/main.nf"
+    process "MERGE_TSVS_STREAMED"
+    config "tests/run.config"
+
+    setup {
+        run("COPY_FILE_BARE", alias: "COPY_FILE_1") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/gold-standard-results/qc_basic_stats.tsv.gz"
+                input[1] = "input_tsv_1.tsv.gz"
+                """
+            }
+        }
+        run("COPY_FILE_BARE", alias: "COPY_FILE_2") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/gold-standard-results/qc_basic_stats.tsv.gz"
+                input[1] = "input_tsv_2.tsv.gz"
+                """
+            }
+        }
+        run("COPY_FILE_BARE", alias: "COPY_FILE_3") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/gold-standard-results/qc_basic_stats.tsv.gz"
+                input[1] = "input_tsv_3.tsv.gz"
+                """
+            }
+        }
+    }
+
+    test("Should run without failures on a single input TSV") {
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = COPY_FILE_1.out
+                input[1] = "test_single"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output lines should match input lines (plus header)
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines = countGzipLines(process.out.output[0])
+            def input_lines = countGzipLines(process.out.input[0])
+            assert output_lines == input_lines
+        }
+    }
+
+    test("Should run without failures on two input TSVs") {
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = COPY_FILE_1.out.combine(COPY_FILE_2.out)
+                input[1] = "test_single"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output lines should match input lines (plus header)
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines = countGzipLines(process.out.output[0])
+            def input_lines = countGzipLines(process.out.input[0])
+            assert output_lines == input_lines * 2 - 1
+        }
+    }
+
+    test("Should run without failures on three input TSVs") {
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = COPY_FILE_1.out.combine(COPY_FILE_2.out).combine(COPY_FILE_3.out)
+                input[1] = "test_single"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output lines should match input lines (plus header)
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines = countGzipLines(process.out.output[0])
+            def input_lines = countGzipLines(process.out.input[0])
+            assert output_lines == input_lines * 3 - 2
+        }
+    }
+
+}

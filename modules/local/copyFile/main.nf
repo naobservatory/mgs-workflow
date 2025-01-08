@@ -12,3 +12,18 @@ process COPY_FILE {
         cp !{file} !{sample}_!{outname}
         '''
 }
+
+// Copy a file without sample annotation
+process COPY_FILE_BARE {
+    label "single"
+    label "coreutils"
+    input:
+        tuple path(file)
+        val(outname)
+    output:
+        path("${outname}")
+    shell:
+        '''
+        cp !{file} !{outname}
+        '''
+}

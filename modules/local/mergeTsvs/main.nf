@@ -30,9 +30,11 @@ process MERGE_TSVS_STREAMED {
         path(tsvs)
         val(name)
     output:
-        path("${name}.tsv.gz")
+        path("${name}.tsv.gz"), emit: output
+        path("${name}_in_0.tsv.gz"), emit: input
     shell:
         '''
         merge_tsvs.py -o !{name}.tsv.gz !{tsvs}
+        ln -s !{tsvs[0]} !{name}_in_0.tsv.gz # Link input to output for testing
         '''
 }
