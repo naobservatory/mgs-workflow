@@ -11,6 +11,7 @@ include { BOWTIE2_STREAMED as BOWTIE2_HUMAN } from "../../../modules/local/bowti
 include { BOWTIE2_STREAMED as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
 include { BBMAP_STREAMED as BBMAP_HUMAN } from "../../../modules/local/bbmap"
 include { BBMAP_STREAMED as BBMAP_OTHER } from "../../../modules/local/bbmap"
+include { TAXONOMY_STREAMED as TAXONOMY } from "../../../subworkflows/local/taxonomyStreamed"
 
 /***********
 | WORKFLOW |
@@ -58,6 +59,10 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, "", "other", false, false)
         human_bbm_ch = BBMAP_HUMAN(other_bt2_ch.reads_unmapped, bbm_human_index_path, "human", false, false)
         other_bbm_ch = BBMAP_OTHER(human_bbm_ch.reads_unmapped, bbm_other_index_path, "other", false, false)
+        // 5. Run Kraken on filtered viral candidates
+        tax_ch = TAXONOMY(other_bbm_ch.reads_unmapped, kraken_db_ch, "F", single_end)
     emit:
-        test_out = other_bbm_ch.reads_unmapped
+        bbduk_match = bbduk_ch.fail
+        reads_test  = other_bbm_ch.reads_unmapped
+        kraken_test = tax_ch.kraken_output
 }

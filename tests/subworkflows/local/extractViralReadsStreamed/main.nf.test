@@ -35,7 +35,7 @@ nextflow_workflow {
                 input[10] = "${params.quality_encoding}"
                 input[11] = "${params.fuzzy_match_alignment_duplicates}"
                 input[12] = "${params.grouping}"
-                input[13] = "${params.single_end}"
+                input[13] = params.single_end
                 '''
             }
         }
@@ -45,9 +45,12 @@ nextflow_workflow {
             // Output should have a nonzero number of lines divisible by eight
             // (for an interleaved FASTQ file)
             def countGzipLines = { file -> path(file).linesGzip.size() }
-            def total_output_lines = countGzipLines(workflow.out.test_out[0][1])
+            def total_output_lines = countGzipLines(workflow.out.reads_test[0][1])
             assert total_output_lines > 0
             assert total_output_lines % 8 == 0
+            // Kraken output from taxonomy workflow should match lines in test reads
+            def kraken_lines = countGzipLines(workflow.out.kraken_test[0][1])
+            assert kraken_lines == total_output_lines / 8
         }
     }
 }
