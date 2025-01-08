@@ -89,9 +89,6 @@ workflow PROFILE {
             grouped_ch = SAMTOOLS_FILTER(minimap2_ch, "human")
         }
 
-        // Identify HV reads
-        minimap2_hv_sam = MINIMAP2_HV(grouped_ch, minimap2_hv_index, "hv")
-        minimap2_hv_sam = SAMTOOLS_KEEP_AS_SAM(minimap2_hv_sam, "hv")
         // Separate ribosomal reads
         if (params.ont) {
             mapped_ch = MINIMAP2_RIBO(grouped_ch, minimap2_ribo_index, "ribo")
@@ -113,6 +110,6 @@ workflow PROFILE {
     emit:
         bracken = merge_ch.bracken
         kraken = merge_ch.kraken
-        hv_sam = minimap2_hv_sam
+
 }
 

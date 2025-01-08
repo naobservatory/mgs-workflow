@@ -12,6 +12,11 @@ import java.time.LocalDateTime
 include { RAW } from "../subworkflows/local/raw"
 include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
+if (params.ont) {
+    include { EXTRACT_VIRAL_READS_ONT } from "../subworkflows/local/extractViralReadsONT"
+} else {
+    include { EXTRACT_VIRAL_READS_SHORT } from "../subworkflows/local/extractViralReadsShort"
+}
 include { PROFILE } from "../subworkflows/local/profile"
 include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
@@ -54,6 +59,9 @@ workflow RUN_DEV_SE {
 
     // Taxonomic profiling
     PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index, hv_index)
+
+    // Extract and count human-viral reads
+    EXTRACT_VIRAL_READS_SHORT(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
 
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)

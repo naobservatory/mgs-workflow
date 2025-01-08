@@ -37,7 +37,7 @@ if (params.single_end) {
 | WORKFLOW |
 ***********/
 
-workflow EXTRACT_VIRAL_READS {
+workflow EXTRACT_ONT_VIRAL_READS {
     take:
         reads_ch
         group_ch
