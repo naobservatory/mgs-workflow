@@ -28,7 +28,7 @@ workflow RUN_DEV_SE {
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     // Will want to add these indices to the index workflow
     minimap2_human_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
-    minimap2_ribo_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-ribo-index/ribo-ref-concat-unique.mmi"
+    minimap2_ribo_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-hv-index/virus-genomes-filtered.mmi"
 
     // Check if grouping column exists in samplesheet
     check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
