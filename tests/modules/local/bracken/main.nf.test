@@ -1,0 +1,54 @@
+nextflow_process {
+
+    name "Test process BRACKEN"
+    script "modules/local/bracken/main.nf"
+    process "BRACKEN"
+    config "tests/run_dev_se.config"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "test-data/single-end-samplesheet.csv"
+                """
+            }
+        }
+        run("COPY_FILE") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = "input.fastq.gz"
+                """
+            }
+        }
+        run("KRAKEN_STREAMED") {
+            script "modules/local/kraken/main.nf"
+            process {
+                '''
+                input[0] = COPY_FILE.out
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                '''
+            }
+        }
+    }
+
+    test("Should run without failures and return counts for all domains") {
+        when {
+            params {}
+            process {
+                '''
+                input[0] = KRAKEN_STREAMED.out.report
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                input[2] = "F"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // TODO: Add other checks of output format: number of columns, headers, line structure, etc
+        }
+    }
+}
