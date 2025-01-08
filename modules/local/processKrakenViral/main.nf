@@ -7,13 +7,16 @@ process PROCESS_KRAKEN_VIRAL {
         path viral_db_path
         val host_taxon
     output:
-        tuple val(sample), path("${sample}_kraken_viral_processed.tsv")
+        tuple val(sample), path("${sample}_kraken_viral_processed.tsv.gz"), emit: output
+        tuple val(sample), path("${sample}_kraken_viral_in.tsv.gz"), emit: input
     shell:
         '''
         in=!{output}
-        out=!{sample}_kraken_viral_processed.tsv
+        out=!{sample}_kraken_viral_processed.tsv.gz
         viral=!{viral_db_path}
         host=!{host_taxon}
         process_kraken_viral.py ${in} ${viral} ${host} ${out}
+        # Link input for testing
+        ln -s !{output} !{sample}_kraken_viral_in.tsv.gz
         '''
 }

@@ -1,0 +1,58 @@
+nextflow_process {
+
+    name "Test process PROCESS_KRAKEN_VIRAL"
+    script "modules/local/processKrakenViral/main.nf"
+    process "PROCESS_KRAKEN_VIRAL"
+
+    test("On paired data, should run without errors and preserve lines") {
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    '''
+                    input[0] = "test-data/samplesheet.csv"
+                    '''
+                }
+            }
+            run("INTERLEAVE_FASTQ_SEQTK") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    '''
+                }
+            }
+            run("TAXONOMY_STREAMED") {
+                script "subworkflows/local/taxonomyStreamed/main.nf"
+                workflow {
+                    '''
+                    input[0] = INTERLEAVE_FASTQ_SEQTK.out
+                    input[1] = "${params.ref_dir}/results/kraken_db"
+                    input[2] = "D"
+                    input[3] = params.single_end
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = TAXONOMY_STREAMED.out.kraken_output
+                input[1] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                input[2] = params.host_taxon
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output lines should match input lines (plus header)
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines = countGzipLines(process.out.output[0][1])
+            def input_lines = countGzipLines(process.out.input[0][1])
+            assert output_lines == input_lines + 1
+        }
+    }
+}
