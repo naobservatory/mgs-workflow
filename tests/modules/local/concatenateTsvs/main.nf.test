@@ -10,7 +10,7 @@ nextflow_process {
             script "modules/local/copyFile/main.nf"
             process {
                 """
-                input[0] = "${projectDir}/test-data/gold-standard-results/qc_basic_stats.tsv.gz"
+                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"
                 input[1] = "input_tsv_1.tsv.gz"
                 """
             }
@@ -19,7 +19,7 @@ nextflow_process {
             script "modules/local/copyFile/main.nf"
             process {
                 """
-                input[0] = "${projectDir}/test-data/gold-standard-results/qc_basic_stats.tsv.gz"
+                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"
                 input[1] = "input_tsv_2.tsv.gz"
                 """
             }
@@ -28,7 +28,7 @@ nextflow_process {
             script "modules/local/copyFile/main.nf"
             process {
                 """
-                input[0] = "${projectDir}/test-data/gold-standard-results/qc_basic_stats.tsv.gz"
+                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"
                 input[1] = "input_tsv_3.tsv.gz"
                 """
             }

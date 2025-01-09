@@ -17,8 +17,8 @@ include { PROCESS_KRAKEN_VIRAL_2 as PROCESS_KRAKEN_VIRAL } from "../../../module
 include { SORT_TSV as SORT_KRAKEN_VIRAL } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_BOWTIE_VIRAL } from "../../../modules/local/sortTsv"
 include { REHEAD_TSV as REHEAD_BOWTIE_VIRAL } from "../../../modules/local/reheadTsv"
+include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
 
-include { MERGE_SAM_KRAKEN } from "../../../modules/local/mergeSamKraken"
 include { CONCATENATE_TSVS as CONCATENATE_TSVS_BOWTIE2_KRAKEN } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_TSVS as CONCATENATE_TSVS_BBMERGE } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_TSVS as CONCATENATE_TSVS_DEDUP } from "../../../modules/local/concatenateTsvs"
@@ -83,6 +83,8 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         bowtie2_sam_rehead_ch = REHEAD_BOWTIE_VIRAL(bowtie2_sam_ch.output, "query_name", "seq_id", "bowtie2_viral")
         bowtie2_sam_sorted_ch = SORT_BOWTIE_VIRAL(bowtie2_sam_rehead_ch.output, "seq_id", "bowtie2_viral")
         kraken_sorted_ch = SORT_KRAKEN_VIRAL(kraken_output_ch.output, "seq_id", "kraken_viral")
+        out_combined_ch = bowtie2_sam_sorted_ch.sorted.combine(kraken_sorted_ch.sorted, by: 0)
+        out_joined_ch = JOIN_TSVS(out_combined_ch, "seq_id", "inner", "bowtie2_kraken_viral")
     emit:
         bbduk_match = bbduk_ch.fail
         reads_test  = other_bbm_ch.reads_unmapped

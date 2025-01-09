@@ -14,7 +14,8 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/test_tab_sorted.tsv.gz"))
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
                 input[1] = "x"
                 input[2] = "test_sorted"
                 '''
@@ -36,7 +37,8 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/test_tab_unsorted.tsv.gz"))
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv.gz"))
                 input[1] = "x"
                 input[2] = "test_sorted"
                 '''
@@ -67,7 +69,8 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/test_tab_unsorted.tsv.gz"))
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv.gz"))
                 input[1] = "a" // Not in header
                 input[2] = "test_sorted"
                 '''
