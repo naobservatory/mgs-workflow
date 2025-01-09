@@ -12,7 +12,19 @@ include { BOWTIE2_STREAMED as BOWTIE2_OTHER } from "../../../modules/local/bowti
 include { BBMAP_STREAMED as BBMAP_HUMAN } from "../../../modules/local/bbmap"
 include { BBMAP_STREAMED as BBMAP_OTHER } from "../../../modules/local/bbmap"
 include { TAXONOMY_STREAMED as TAXONOMY } from "../../../subworkflows/local/taxonomyStreamed"
-include { PROCESS_KRAKEN_VIRAL } from "../../../modules/local/processKrakenViral"
+include { PROCESS_VIRAL_BOWTIE2_SAM } from "../../../modules/local/processViralBowtie2Sam" // NB: Already streamed
+include { PROCESS_KRAKEN_VIRAL } from "../../../modules/local/processKrakenViral" // NB: Already streamed
+
+include { MERGE_SAM_KRAKEN } from "../../../modules/local/mergeSamKraken"
+include { MERGE_TSVS as MERGE_TSVS_BOWTIE2_KRAKEN } from "../../../modules/local/mergeTsvs"
+include { MERGE_TSVS as MERGE_TSVS_BBMERGE } from "../../../modules/local/mergeTsvs"
+include { MERGE_TSVS as MERGE_TSVS_DEDUP } from "../../../modules/local/mergeTsvs"
+include { MERGE_TSVS as MERGE_TSVS_ALIGNMENT_DUPLICATES } from "../../../modules/local/mergeTsvs"
+include { FILTER_VIRUS_READS } from "../../../modules/local/filterVirusReads"
+include { COLLAPSE_VIRUS_READS } from "../../../modules/local/collapseVirusReads"
+include { ADD_FRAG_DUP_TO_VIRUS_READS } from "../../../modules/local/addFragDupToVirusReads"
+include { MAKE_VIRUS_READS_FASTA } from "../../../modules/local/makeVirusReadsFasta"
+include { COUNT_VIRUS_CLADES } from "../../../modules/local/countVirusClades"
 
 /***********
 | WORKFLOW |
@@ -63,9 +75,33 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         // 5. Run Kraken on filtered viral candidates (via taxonomy subworkflow)
         tax_ch = TAXONOMY(other_bbm_ch.reads_unmapped, kraken_db_ch, "F", single_end)
         // 6. Process and combine Kraken and Bowtie2 output
+        bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path)
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
     emit:
         bbduk_match = bbduk_ch.fail
         reads_test  = other_bbm_ch.reads_unmapped
         kraken_test = tax_ch.kraken_output
 }
+
+//workflow EXTRACT_VIRAL_READS {
+//    main:
+//        trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path, encoding)
+//        // Process Kraken output and merge with Bowtie2 output across samples
+//        bowtie2_kraken_merged_ch = MERGE_SAM_KRAKEN(kraken_output_ch.combine(bowtie2_sam_ch, by: 0))
+//        merged_ch = MERGE_TSVS_BOWTIE2_KRAKEN(bowtie2_kraken_merged_ch.collect().ifEmpty([]), "bowtie2_kraken_merged")
+//        merged_bbmerge_results = MERGE_TSVS_BBMERGE(tax_ch.bbmerge_summary.collect().ifEmpty([]), "bbmerge")
+//        merged_dedup_results = MERGE_TSVS_DEDUP(tax_ch.dedup_summary.collect().ifEmpty([]), "dedup")
+//        merged_alignment_dup_results = MERGE_TSVS_ALIGNMENT_DUPLICATES(alignment_dup_summary.collect().ifEmpty([]), "alignment_duplicates")
+//        // Filter and process putative hit TSV
+//        filtered_ch = FILTER_VIRUS_READS(merged_ch, aln_score_threshold)
+//        collapsed_ch = COLLAPSE_VIRUS_READS(filtered_ch)
+//        collapsed_frag_dup_ch = ADD_FRAG_DUP_TO_VIRUS_READS(collapsed_ch, merged_bbmerge_results, merged_dedup_results, merged_alignment_dup_results)
+//        fasta_ch = MAKE_VIRUS_READS_FASTA(collapsed_frag_dup_ch)
+//        // Count clades
+//        count_ch = COUNT_VIRUS_CLADES(collapsed_frag_dup_ch, virus_db_path)
+//    emit:
+//        tsv = collapsed_frag_dup_ch
+//        fasta = fasta_ch
+//        counts = count_ch
+//        bbduk_match = bbduk_ch.fail
+//}
