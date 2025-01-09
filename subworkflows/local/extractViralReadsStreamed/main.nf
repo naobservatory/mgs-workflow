@@ -16,6 +16,7 @@ include { PROCESS_VIRAL_BOWTIE2_SAM_2 as PROCESS_VIRAL_BOWTIE2_SAM } from "../..
 include { PROCESS_KRAKEN_VIRAL_2 as PROCESS_KRAKEN_VIRAL } from "../../../modules/local/processKrakenViral" // NB: Already streamed
 include { SORT_TSV as SORT_KRAKEN_VIRAL } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_BOWTIE_VIRAL } from "../../../modules/local/sortTsv"
+include { REHEAD_TSV as REHEAD_BOWTIE_VIRAL } from "../../../modules/local/reheadTsv"
 
 include { MERGE_SAM_KRAKEN } from "../../../modules/local/mergeSamKraken"
 include { CONCATENATE_TSVS as CONCATENATE_TSVS_BOWTIE2_KRAKEN } from "../../../modules/local/concatenateTsvs"
@@ -79,7 +80,8 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         // 6. Process and combine Kraken and Bowtie2 output
         bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path)
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
-        bowtie2_sam_sorted_ch = SORT_BOWTIE_VIRAL(bowtie2_sam_ch.output, "query_name", "bowtie2_viral")
+        bowtie2_sam_rehead_ch = REHEAD_BOWTIE_VIRAL(bowtie2_sam_ch.output, "query_name", "seq_id", "bowtie2_viral")
+        bowtie2_sam_sorted_ch = SORT_BOWTIE_VIRAL(bowtie2_sam_rehead_ch.output, "seq_id", "bowtie2_viral")
         kraken_sorted_ch = SORT_KRAKEN_VIRAL(kraken_output_ch.output, "seq_id", "kraken_viral")
     emit:
         bbduk_match = bbduk_ch.fail
