@@ -6,7 +6,6 @@ process JOIN_FASTQ {
         tuple val(sample), path(reads)
     output:
         tuple val(sample), path("${sample}_joined.fastq.gz"), emit: reads
-        tuple val(sample), path("${sample}_joined_in.fastq.gz"), emit: input
     shell:
         '''
         # Prepare to join unmerged read pairs
@@ -19,9 +18,6 @@ process JOIN_FASTQ {
         # Concatenate single output file
         oo=!{sample}_joined.fastq.gz
         cat ${om} ${oj} > ${oo}
-        # Link input reads for testing
-        in2=!{sample}_joined_in.fastq.gz
-        ln -s !{reads} ${in2}
         '''
 }
 

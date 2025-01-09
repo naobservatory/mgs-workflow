@@ -12,14 +12,14 @@ include { BOWTIE2_STREAMED as BOWTIE2_OTHER } from "../../../modules/local/bowti
 include { BBMAP_STREAMED as BBMAP_HUMAN } from "../../../modules/local/bbmap"
 include { BBMAP_STREAMED as BBMAP_OTHER } from "../../../modules/local/bbmap"
 include { TAXONOMY_STREAMED as TAXONOMY } from "../../../subworkflows/local/taxonomyStreamed"
-include { PROCESS_VIRAL_BOWTIE2_SAM } from "../../../modules/local/processViralBowtie2Sam" // NB: Already streamed
-include { PROCESS_KRAKEN_VIRAL } from "../../../modules/local/processKrakenViral" // NB: Already streamed
+include { PROCESS_VIRAL_BOWTIE2_SAM_2 as PROCESS_VIRAL_BOWTIE2_SAM } from "../../../modules/local/processViralBowtie2Sam" // NB: Already streamed
+include { PROCESS_KRAKEN_VIRAL_2 as PROCESS_KRAKEN_VIRAL } from "../../../modules/local/processKrakenViral" // NB: Already streamed
 
 include { MERGE_SAM_KRAKEN } from "../../../modules/local/mergeSamKraken"
-include { MERGE_TSVS as MERGE_TSVS_BOWTIE2_KRAKEN } from "../../../modules/local/mergeTsvs"
-include { MERGE_TSVS as MERGE_TSVS_BBMERGE } from "../../../modules/local/mergeTsvs"
-include { MERGE_TSVS as MERGE_TSVS_DEDUP } from "../../../modules/local/mergeTsvs"
-include { MERGE_TSVS as MERGE_TSVS_ALIGNMENT_DUPLICATES } from "../../../modules/local/mergeTsvs"
+include { CONCATENATE_TSVS as CONCATENATE_TSVS_BOWTIE2_KRAKEN } from "../../../modules/local/concatenateTsvs"
+include { CONCATENATE_TSVS as CONCATENATE_TSVS_BBMERGE } from "../../../modules/local/concatenateTsvs"
+include { CONCATENATE_TSVS as CONCATENATE_TSVS_DEDUP } from "../../../modules/local/concatenateTsvs"
+include { CONCATENATE_TSVS as CONCATENATE_TSVS_ALIGNMENT_DUPLICATES } from "../../../modules/local/concatenateTsvs"
 include { FILTER_VIRUS_READS } from "../../../modules/local/filterVirusReads"
 include { COLLAPSE_VIRUS_READS } from "../../../modules/local/collapseVirusReads"
 include { ADD_FRAG_DUP_TO_VIRUS_READS } from "../../../modules/local/addFragDupToVirusReads"
@@ -88,10 +88,10 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
 //        trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path, encoding)
 //        // Process Kraken output and merge with Bowtie2 output across samples
 //        bowtie2_kraken_merged_ch = MERGE_SAM_KRAKEN(kraken_output_ch.combine(bowtie2_sam_ch, by: 0))
-//        merged_ch = MERGE_TSVS_BOWTIE2_KRAKEN(bowtie2_kraken_merged_ch.collect().ifEmpty([]), "bowtie2_kraken_merged")
-//        merged_bbmerge_results = MERGE_TSVS_BBMERGE(tax_ch.bbmerge_summary.collect().ifEmpty([]), "bbmerge")
-//        merged_dedup_results = MERGE_TSVS_DEDUP(tax_ch.dedup_summary.collect().ifEmpty([]), "dedup")
-//        merged_alignment_dup_results = MERGE_TSVS_ALIGNMENT_DUPLICATES(alignment_dup_summary.collect().ifEmpty([]), "alignment_duplicates")
+//        merged_ch = CONCATENATE_TSVS_BOWTIE2_KRAKEN(bowtie2_kraken_merged_ch.collect().ifEmpty([]), "bowtie2_kraken_merged")
+//        merged_bbmerge_results = CONCATENATE_TSVS_BBMERGE(tax_ch.bbmerge_summary.collect().ifEmpty([]), "bbmerge")
+//        merged_dedup_results = CONCATENATE_TSVS_DEDUP(tax_ch.dedup_summary.collect().ifEmpty([]), "dedup")
+//        merged_alignment_dup_results = CONCATENATE_TSVS_ALIGNMENT_DUPLICATES(alignment_dup_summary.collect().ifEmpty([]), "alignment_duplicates")
 //        // Filter and process putative hit TSV
 //        filtered_ch = FILTER_VIRUS_READS(merged_ch, aln_score_threshold)
 //        collapsed_ch = COLLAPSE_VIRUS_READS(filtered_ch)

@@ -1,5 +1,5 @@
 // Combine multiple TSVs with identical headers into a single output file
-process MERGE_TSVS {
+process CONCATENATE_TSVS {
     label "tidyverse"
     label "single_cpu_16GB_memory"
     input:
@@ -23,7 +23,7 @@ process MERGE_TSVS {
 }
 
 // Concatenate multiple TSVs (streamed version with Python)
-process MERGE_TSVS_STREAMED {
+process CONCATENATE_TSVS_STREAMED {
     label "biopython"
     label "single"
     input:
@@ -34,7 +34,7 @@ process MERGE_TSVS_STREAMED {
         path("${name}_in_0.tsv.gz"), emit: input
     shell:
         '''
-        merge_tsvs.py -o !{name}.tsv.gz !{tsvs}
+        concatenate_tsvs.py -o !{name}.tsv.gz !{tsvs}
         ln -s !{tsvs[0]} !{name}_in_0.tsv.gz # Link input to output for testing
         '''
 }

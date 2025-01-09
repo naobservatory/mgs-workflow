@@ -1,8 +1,8 @@
 nextflow_process {
 
-    name "Test process MERGE_TSVS_STREAMED"
-    script "modules/local/mergeTsvs/main.nf"
-    process "MERGE_TSVS_STREAMED"
+    name "Test process CONCATENATE_TSVS_STREAMED"
+    script "modules/local/concatenateTsvs/main.nf"
+    process "CONCATENATE_TSVS_STREAMED"
     config "tests/run.config"
 
     setup {

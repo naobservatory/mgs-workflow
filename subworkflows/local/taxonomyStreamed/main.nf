@@ -10,10 +10,10 @@ include { BBMERGE_STREAMED as BBMERGE } from "../../../modules/local/bbmerge"
 include { JOIN_FASTQ_STREAMED as JOIN_FASTQ } from "../../../modules/local/joinFastq"
 include { KRAKEN_STREAMED as KRAKEN } from "../../../modules/local/kraken"
 include { LABEL_KRAKEN_REPORTS_STREAMED as LABEL_KRAKEN_REPORTS } from "../../../modules/local/labelKrakenReports"
-include { MERGE_TSVS_STREAMED as MERGE_KRAKEN_REPORTS } from "../../../modules/local/mergeTsvs"
-include { BRACKEN } from "../../../modules/local/bracken"
+include { CONCATENATE_TSVS_STREAMED as CONCATENATE_KRAKEN_REPORTS } from "../../../modules/local/concatenateTsvs"
+include { BRACKEN2 as BRACKEN } from "../../../modules/local/bracken"
 include { LABEL_BRACKEN_REPORTS_STREAMED as LABEL_BRACKEN_REPORTS } from "../../../modules/local/labelBrackenReports"
-include { MERGE_TSVS_STREAMED as MERGE_BRACKEN_REPORTS } from "../../../modules/local/mergeTsvs"
+include { CONCATENATE_TSVS_STREAMED as CONCATENATE_BRACKEN_REPORTS } from "../../../modules/local/concatenateTsvs"
 include { SUMMARIZE_BBMERGE_STREAMED as SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
 
 /***********
@@ -42,11 +42,11 @@ workflow TAXONOMY_STREAMED {
         // Run Kraken and munge reports
         kraken_ch = KRAKEN(single_read_ch, kraken_db_ch)
         kraken_label_ch = LABEL_KRAKEN_REPORTS(kraken_ch.report)
-        kraken_merge_ch = MERGE_KRAKEN_REPORTS(kraken_label_ch.report.collect().ifEmpty([]), "kraken_reports")
+        kraken_merge_ch = CONCATENATE_KRAKEN_REPORTS(kraken_label_ch.report.collect().ifEmpty([]), "kraken_reports")
         // Run Bracken and munge reports
         bracken_ch = BRACKEN(kraken_ch.report, kraken_db_ch, classification_level) // NB: Not streamed
         bracken_label_ch = LABEL_BRACKEN_REPORTS(bracken_ch)
-        bracken_merge_ch = MERGE_BRACKEN_REPORTS(bracken_label_ch.report.collect().ifEmpty([]), "bracken_reports")
+        bracken_merge_ch = CONCATENATE_BRACKEN_REPORTS(bracken_label_ch.report.collect().ifEmpty([]), "bracken_reports")
     emit:
         input_reads = reads_ch
         single_reads = single_read_ch

@@ -20,7 +20,7 @@ nextflow.preview.output = true
 *****************/
 
 // Complete primary workflow
-workflow RUN {
+workflow RUN_STREAMED {
     // Setting reference paths
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
