@@ -30,11 +30,16 @@ workflow RUN_DEV_SE {
 
     // Load kraken db path
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
+    // Will want to add these indices to the index workflow
+    minimap2_human_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
+    minimap2_ribo_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-hv-index/virus-genomes-filtered.mmi"
 
 
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
     CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
+
+
 
     // Taxonomic profiling
     PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end)
@@ -73,4 +78,3 @@ workflow RUN_DEV_SE {
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
 }
-

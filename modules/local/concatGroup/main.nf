@@ -17,7 +17,7 @@ process CONCAT_GROUP_PAIRED {
 
 
 process CONCAT_GROUP_SINGLE {
-    label "base"
+    label "coreutils"
     label "single"
     input:
         tuple val(samples), path(fastq_list), val(group)
