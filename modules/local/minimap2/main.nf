@@ -16,4 +16,4 @@ process MINIMAP2_ONT {
         ref=!{contaminant_ref}
         minimap2 -a ${ref} ${i} -o ${o}
         '''
-}
+} 

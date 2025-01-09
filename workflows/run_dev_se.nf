@@ -13,9 +13,9 @@ include { RAW } from "../subworkflows/local/raw"
 include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 if (params.ont) {
-    include { EXTRACT_VIRAL_READS_ONT } from "../subworkflows/local/extractViralReadsONT"
+    include { EXTRACT_ONT_VIRAL_READS } from "../subworkflows/local/extractONTViralReads"
 } else {
-    include { EXTRACT_VIRAL_READS_SHORT } from "../subworkflows/local/extractViralReadsShort"
+    include { EXTRACT_SHORT_VIRAL_READS } from "../subworkflows/local/extractShortViralReads"
 }
 include { PROFILE } from "../subworkflows/local/profile"
 include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
@@ -33,9 +33,8 @@ workflow RUN_DEV_SE {
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     // Will want to add these indices to the index workflow
     minimap2_human_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
-    minimap2_ribo_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-hv-index/virus-genomes-filtered.mmi"
-
-    // Will want to turn into an mmi and add to the index workflow
+    minimap2_ribo_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-ribo-index/ribo-ref-concat-unique.mmi"
+    minimap2_hv_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-hv-index/virus-genomes-filtered.mmi"
     hv_index = "s3://nao-mgs-wb/index/20241209/output/results/virus-genomes-filtered.fasta.gz"
 
     // Check if grouping column exists in samplesheet
@@ -58,10 +57,14 @@ workflow RUN_DEV_SE {
     CLEAN(RAW.out.reads, params.adapters, "8", "16 GB", "cleaned", params.single_end)
 
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index, hv_index)
+    // PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index, hv_index)
 
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS_SHORT(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
+    if (params.ont) {
+        EXTRACT_ONT_VIRAL_READS(CLEAN.out.reads, group_ch, params.grouping, minimap2_hv_index)
+    } else {
+        EXTRACT_VIRAL_READS_SHORT(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
+    }
 
     // Process output
     qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
@@ -95,7 +98,7 @@ workflow RUN_DEV_SE {
         PROCESS_OUTPUT.out.lengths >> "results"
 
         // Final results
-        PROFILE.out.bracken >> "results"
-        PROFILE.out.kraken >> "results"
-        PROFILE.out.hv_sam >> "results"
+        // PROFILE.out.bracken >> "results"
+        // PROFILE.out.kraken >> "results"
+        EXTRACT_ONT_VIRAL_READS.out.merged_sam >> "results"
 }
