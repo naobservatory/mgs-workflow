@@ -1,0 +1,83 @@
+def checkGzipSorted = { file -> ["bash", "-c", "zcat " + file + " | tail -n +2 | sort -t '\t' -k1,1 -C && printf 1 || printf 0"].execute().text.trim() as Integer }
+def countGzipLines = { file -> path(file).linesGzip.size() }
+def getGzipHeader = { file -> ["bash", "-c", "zcat " + file + " | head -n 1"].execute().text.trim() }
+
+nextflow_process {
+
+    name "Test process SORT_TSV"
+    script "modules/local/sortTsv/main.nf"
+    process "SORT_TSV"
+    config "tests/run.config"
+
+    test("Should produce no change when run on an already-sorted gzipped TSV"){
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/test_tab_sorted.tsv.gz"))
+                input[1] = "x"
+                input[2] = "test_sorted"
+                '''
+            }
+            then {
+                // Should run without failures
+                assert process.success
+                // Output should be sorted
+                def output_sorted = checkGzipSorted(process.out.sorted[0][1])
+                assert output_sorted == 1
+                // Output should match input
+                assert path(process.out.sorted[0][1]).md5 == path(process.out.input[0][1]).md5
+            }
+        }
+    }
+
+    test("Should successfully sort an unsorted gzipped TSV"){
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/test_tab_unsorted.tsv.gz"))
+                input[1] = "x"
+                input[2] = "test_sorted"
+                '''
+            }
+            then {
+                // Should run without failures
+                assert process.success
+                // Output should be sorted
+                def output_sorted = checkGzipSorted(process.out.sorted[0][1])
+                assert output_sorted == 1
+                // Output should differ from input
+                def input_sorted = checkGzipSorted(process.out.input[0][1])
+                assert input_sorted == 0
+                assert path(process.out.sorted[0][1]).md5 != path(process.out.input[0][1]).md5
+                // Output and input should have matching headers and line counts
+                def output_lines = countGzipLines(process.out.sorted[0][1])
+                def input_lines = countGzipLines(process.out.input[0][1])
+                assert output_lines == input_lines
+                def output_header = getGzipHeader(process.out.sorted[0][1])
+                def input_header = getGzipHeader(process.out.input[0][1])
+                assert output_header == input_header
+            }
+        }
+    }
+
+    test("Should fail with an appropriate error code if the sort field is not present."){
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/test_tab_unsorted.tsv.gz"))
+                input[1] = "a" // Not in header
+                input[2] = "test_sorted"
+                '''
+            }
+            then {
+                // Should run without failures
+                assert process.failed
+                assert process.exitStatus == 1
+            }
+        }
+    }
+
+}
