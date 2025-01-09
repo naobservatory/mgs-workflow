@@ -13,7 +13,7 @@ include { RAW } from "../subworkflows/local/raw"
 include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 include { PROFILE } from "../subworkflows/local/profile"
-include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
+include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
 
 /*****************
@@ -22,28 +22,18 @@ nextflow.preview.output = true
 
 // Complete primary workflow
 workflow RUN_DEV_SE {
-    // Start time
-    start_time = new Date()
-    start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
+    // Load samplesheet
+    LOAD_SAMPLESHEET(params.sample_sheet)
+    samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
+    group_ch = LOAD_SAMPLESHEET.out.group
+    start_time_str = LOAD_SAMPLESHEET.out.start_time_str
+
+    // Load kraken db path
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     // Will want to add these indices to the index workflow
     minimap2_human_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
     minimap2_ribo_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-hv-index/virus-genomes-filtered.mmi"
 
-    // Check if grouping column exists in samplesheet
-    check_grouping = new File(params.sample_sheet).text.readLines()[0].contains('group') ? true : false
-    if (params.grouping != check_grouping) {
-        if (params.grouping && !check_grouping) {
-            throw new Exception("Grouping enabled in config file, but group column absent from samplesheet.")
-        } else if (!params.grouping && check_grouping) {
-            throw new Exception("Grouping is not enabled in config file, but group column is present in the samplesheet.")
-        }
-    }
-
-    // Load samplesheet
-    LOAD_SAMPLESHET(params.sample_sheet)
-    samplesheet_ch = LOAD_SAMPLESHET.out.samplesheet
-    group_ch = LOAD_SAMPLESHET.out.group
 
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
@@ -61,7 +51,7 @@ workflow RUN_DEV_SE {
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
-    time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
+    time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
     index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
     .map { file -> file.copyTo("${params.base_dir}/work/params-index.json") }
@@ -84,7 +74,6 @@ workflow RUN_DEV_SE {
         PROCESS_OUTPUT.out.qbase >> "results"
         PROCESS_OUTPUT.out.qseqs >> "results"
         PROCESS_OUTPUT.out.lengths >> "results"
-
         // Final results
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"

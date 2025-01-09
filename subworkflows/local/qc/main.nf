@@ -4,7 +4,7 @@
 
 include { FASTQC_LABELED } from "../../../modules/local/fastqc"
 include { MULTIQC_LABELED } from "../../../modules/local/multiqc"
-include { SUMMARIZE_MULTIQC_PAIR } from "../../../modules/local/summarizeMultiqcPair"
+include { SUMMARIZE_MULTIQC } from "../../../modules/local/summarizeMultiqc"
 include { MERGE_TSVS as MERGE_MULTIQC_BASIC } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_MULTIQC_ADAPT } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_MULTIQC_QBASE } from "../../../modules/local/mergeTsvs"
@@ -27,7 +27,7 @@ workflow QC {
         // 2. Extract data with MultiQC for each read file / pair of read files
         multiqc_ch = MULTIQC_LABELED(stage_label, fastqc_ch.zip)
         // 3. Summarize MultiQC information for each read file / pair of read files
-        process_ch = SUMMARIZE_MULTIQC_PAIR(multiqc_ch.data, single_end)
+        process_ch = SUMMARIZE_MULTIQC(multiqc_ch.data, single_end)
         // 4. Collate MultiQC outputs
         multiqc_basic_ch = process_ch.map{ it[0] }.collect().ifEmpty([])
         multiqc_adapt_ch = process_ch.map{ it[1] }.collect().ifEmpty([])

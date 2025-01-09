@@ -172,8 +172,8 @@ fastqc_tsv <- readr::read_tsv(fastqc_tsv_path, show_col_types = FALSE)
 # Process
 add_info <- function(tab) mutate(tab, stage=opt$stage, sample=opt$sample)
 basic_info <- basic_info_fastqc(fastqc_tsv, multiqc_json) %>% add_info
-adapters <- extract_adapter_data(multiqc_json) %>% add_info()
-lengths <- extract_length_data(multiqc_json) %>% add_info()
+adapters <- extract_adapter_data(multiqc_json) %>% add_info
+lengths <- extract_length_data(multiqc_json) %>% add_info
 per_base_quality <- extract_per_base_quality(multiqc_json) %>% add_info
 per_sequence_quality <- extract_per_sequence_quality(multiqc_json) %>% add_info
 
