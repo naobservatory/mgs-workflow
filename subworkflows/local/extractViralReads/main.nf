@@ -4,7 +4,7 @@
 
 include { BBDUK_HITS } from "../../../modules/local/bbduk"
 include { CUTADAPT } from "../../../modules/local/cutadapt"
-include { TRIMMOMATIC } from "../../../modules/local/trimmomatic"
+include { ATRIA } from "../../../modules/local/atria"
 include { BOWTIE2 as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
@@ -63,11 +63,21 @@ workflow EXTRACT_VIRAL_READS {
         bbm_human_index_path = "${ref_dir}/results/bbm-human-index"
         bbm_other_index_path = "${ref_dir}/results/bbm-other-index"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
-        // Run initial screen against viral genomes with BBDuk
+
+        // Read adapter file and create a channel containing just the adapter sequences
+        adapters_ch = Channel
+            .fromPath(adapter_path)
+            .splitFasta(record: [seqString: true])
+            .map { it.seqString }
+            .collect()
+
+       // Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // Carry out stringent adapter removal with Cutadapt and Trimmomatic
         adapt_ch = CUTADAPT(bbduk_ch.fail, adapter_path)
-        trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path, encoding)
+        // trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path, encoding)
+        atria_ch = ATRIA(adapt_ch.reads, adapters_ch)
+        trim_ch = atria_ch
         // Grouping for deduplication
         if (grouping) {
             // Join samplesheet with trimmed_reads and update fastq files
