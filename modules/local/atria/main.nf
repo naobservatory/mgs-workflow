@@ -9,7 +9,7 @@ process ATRIA {
         tuple val(sample), path("*{1,2}.atria.fastq.gz"), emit: reads
     shell:
         '''
-        par="--adapter1 !{adapters_ch.join(' ')} --adapter2 !{adapters_ch.join(' ')} --kmer-tolerance 2 --kmer-n-match 9 --trim-score-pe 10.0 --quality-score 10 --quality-kmer 4 --quality-score 15 --length-range 20:999999 --no-consensus"
+        par="--adapter1 !{adapters_ch.join(' ')} --adapter2 !{adapters_ch.join(' ')} --kmer-tolerance 2 --kmer-n-match 9 --trim-score-pe 10.0 --quality-kmer 4 --quality-score 15 --length-range 20:999999 --no-consensus"
         in="--read1 !{reads[0]} --read2 !{reads[1]}"
         atria ${par} ${in}
         '''

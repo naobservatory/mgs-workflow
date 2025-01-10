@@ -4,7 +4,6 @@
 
 include { BBDUK_HITS } from "../../../modules/local/bbduk"
 include { CUTADAPT } from "../../../modules/local/cutadapt"
-include { TRIMMOMATIC } from "../../../modules/local/trimmomatic"
 include { ATRIA } from "../../../modules/local/atria"
 include { BOWTIE2 as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
@@ -65,17 +64,14 @@ workflow EXTRACT_VIRAL_READS {
         bbm_other_index_path = "${ref_dir}/results/bbm-other-index"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
 
-        // Load in adapter channel
+        // Read adapter file and create a channel containing just the adapter sequences
         adapters_ch = Channel
             .fromPath(adapter_path)
-            .splitText()
+            .splitFasta(record: [seqString: true])
+            .map { it.seqString }
             .collect()
-            .map { lines ->
-                lines.withIndex()
-                    .findAll { line, idx -> idx % 2 == 1 } // Keep only odd-indexed lines (0-based, so these are the second lines of each pair)
-                    .collect { it[0].trim() } // Extract just the sequence, removing whitespace
-            }
-        // Run initial screen against viral genomes with BBDuk
+
+       // Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // Carry out stringent adapter removal with Cutadapt and Trimmomatic
         adapt_ch = CUTADAPT(bbduk_ch.fail, adapter_path)
