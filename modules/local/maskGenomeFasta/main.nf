@@ -15,6 +15,9 @@ process MASK_GENOME_FASTA {
 	path("${name_pattern}-mask-adapters-entropy.stats.txt"), emit: log1
 	path("${name_pattern}-mask-polyx.stats.txt"), emit: log2
     shell:
+ 	// Simplest way to mask polyX regions is just to pass them as literals, 
+	// e.g. "AAAAA,CCCCC,GGGGG,TTTTT" for polyx_len=5
+	polyx = ['A', 'C', 'G', 'T'].collect { it * (polyx_len as int) }.join(',')
         '''
 	# Define input/output
 	in=!{filtered_genomes}
@@ -22,14 +25,11 @@ process MASK_GENOME_FASTA {
 	out2=!{name_pattern}-masked.fasta.gz
 	ref=!{adapters}
 	stats1=!{name_pattern}-mask-adapters-entropy.stats.txt
-	stats2=!{name_pattern}-mask-polyx.txt
+	stats2=!{name_pattern}-mask-polyx.stats.txt
 	par1="k=!{k} hdist=!{hdist} mm=f mask=N rcomp=t entropy=!{entropy} entropymask=t mink=8 hdist2=1"
 	par2="k=!{polyx_len} hdist=0 mm=f mask=N rcomp=F"
- 	# Simplest way to mask polyX regions is just to pass them as literals, 
-	# e.g. "AAAAA,CCCCC,GGGGG,TTTTT" for polyx_len=5
-	polyx='A' * polyx_len + ',' + 'C' * polyx_len + ',' + 'G' * polyx_len + ',' + 'T' * polyx_len 
 	# Execute masking in sequence: first adapter/entropy masking, then polyX masking
 	bbduk.sh in=${in} out=${out1} ref=${ref} stats=${stats1} ${par1}
-	bbduk.sh in=${out1} out=${out2} literal=${polyx} stats=${stats2} ${par2}         
+	bbduk.sh in=${out1} out=${out2} literal=!{polyx} stats=${stats2} ${par2}         
 	'''
 }
