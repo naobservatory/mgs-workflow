@@ -23,7 +23,7 @@ workflow MAKE_VIRUS_GENOME_DB {
 	k // kmer length to use for bbduk adapater masking in reference
 	hdist // hdist (allowed mismatches) to use for bbduk adapter masking
 	entropy // entropy cutoff for bbduk filtering of low-complexity regions
-	polyx_length // minimum length of polyX runs to filter out with bbduk
+	polyx_len // minimum length of polyX runs to filter out with bbduk
     main:
         // 1. Download viral Genbank
         dl_ch = DOWNLOAD_VIRAL_NCBI(ncbi_viral_params)
@@ -36,8 +36,8 @@ workflow MAKE_VIRUS_GENOME_DB {
         // 5. Filter to remove undesired/contaminated genomes
         filter_ch = FILTER_GENOME_FASTA(concat_ch, patterns_exclude, "virus-genomes-filtered")
 	// 6. Mask to remove adapters, low-entropy regions, and polyX
-	mask_ch = MASK_GENOME_FASTA(filter_ch, adapter_path, k, hdist, entropy, polyx_length, "virus-genomes-masked")
+	mask_ch = MASK_GENOME_FASTA(filter_ch, adapter_path, k, hdist, entropy, polyx_len, "virus-genomes")
     emit:
-        fasta = mask_ch
+        fasta = mask_ch.masked
         metadata = gid_ch
 }

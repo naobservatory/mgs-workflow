@@ -12,12 +12,10 @@ process MASK_GENOME_FASTA {
         val(name_pattern)
     output:
         path("${name_pattern}-masked.fasta.gz"), emit: masked
-	path("${name_pattern}-mask-adapters-entropy.stats.txt), emit: log1
-	path("${name_pattern}-mask-polyx.stats.txt), emit: log2
+	path("${name_pattern}-mask-adapters-entropy.stats.txt"), emit: log1
+	path("${name_pattern}-mask-polyx.stats.txt"), emit: log2
     shell:
         '''
-        zcat !{collated_genomes} | grep "^>" | grep -vif !{patterns_exclude} | sed 's/>//' > names.txt
-        seqtk subseq !{collated_genomes} names.txt | gzip -c > !{name_pattern}.fasta.gz
 	# Define input/output
 	in=!{filtered_genomes}
 	out1=intermediate-masking.fasta.gz
