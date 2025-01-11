@@ -2,17 +2,16 @@ process BAM_TO_FASTQ {
     label "samtools"
 
     input:
-        path(bam_dir)
+        path(bam)
         val nanopore_run
     output:
         path '*.fastq.gz'
 
     shell:
         '''
-        # Run samtools
-        for bam in !{bam_dir}/*.bam; do
-            basename=$(basename "$bam" .bam)
-            barcode=$(echo $basename | sed 's/b7f847d7a590c4991a770d9fe21324ef21b88a6c_//')
-            samtools fastq "$bam" | gzip -c > "!{nanopore_run}_${barcode}.fastq.gz"        done
+        base_name=$(basename !{bam} .bam)
+        # Remove "calls_" prefix from base_name in case of no demultiplexing
+        base_name=${base_name#calls_}
+        samtools fastq !{bam} | gzip -c > "${base_name}.fastq.gz"
         '''
 }

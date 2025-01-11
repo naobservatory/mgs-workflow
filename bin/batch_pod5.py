@@ -21,10 +21,10 @@ for fname in os.listdir(args.pod5_dir):
 
     if current_batch_size + size > args.batch_size:
         batch_num += 1
-        batch_dir = os.path.join(args.output_dir, f"batch_{batch_num:03d}")
+        batch_dir = os.path.join(args.output_dir, f"batch_{batch_num:04d}")
         os.makedirs(batch_dir, exist_ok=True)
         for pod5_file in current_batch:
-            os.symlink(pod5_file, os.path.join(batch_dir, os.path.basename(pod5_file)))
+            shutil.copy(pod5_file, batch_dir)
         current_batch = []
         current_batch_size = 0
 
@@ -34,7 +34,7 @@ for fname in os.listdir(args.pod5_dir):
 # Handle the remaining files in the last batch
 if current_batch:
     batch_num += 1
-    batch_dir = os.path.join(args.output_dir, f"batch_{batch_num:03d}")
+    batch_dir = os.path.join(args.output_dir, f"batch_{batch_num:04d}")
     os.makedirs(batch_dir, exist_ok=True)
     for pod5_file in current_batch:
-        os.symlink(pod5_file, os.path.join(batch_dir, os.path.basename(pod5_file)))
+        shutil.copy(pod5_file, batch_dir)
