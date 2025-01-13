@@ -1,3 +1,6 @@
+# v2.6.1.0
+- Replace Trimmomatic with Atria
+
 # v2.6.0.0
 - Updated verison to reflect the new versioning scheme, which is described in `docs/version_schema.md`.
 
