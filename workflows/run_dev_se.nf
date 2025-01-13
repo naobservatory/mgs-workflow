@@ -9,6 +9,7 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
+include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 include { PROFILE } from "../subworkflows/local/profile"
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
@@ -21,7 +22,7 @@ nextflow.preview.output = true
 // Complete primary workflow
 workflow RUN_DEV_SE {
     // Load samplesheet
-    LOAD_SAMPLESHEET(params.sample_sheet)
+    LOAD_SAMPLESHEET(params.sample_sheet, params.grouping, params.single_end)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     group_ch = LOAD_SAMPLESHEET.out.group
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
@@ -35,7 +36,7 @@ workflow RUN_DEV_SE {
 
 
     // Taxonomic profiling
-    PROFILE(samplesheet_ch, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end)
+    PROFILE(samplesheet_ch, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping,params.adapters, "2", "4 GB", params.single_end)
 
     // Process output
     qc_ch = PROFILE.out.pre_qc.concat(PROFILE.out.post_qc)
