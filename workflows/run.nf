@@ -9,8 +9,6 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { RAW } from "../subworkflows/local/raw"
-include { CLEAN } from "../subworkflows/local/clean"
 include { EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReads"
 include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 include { PROFILE } from "../subworkflows/local/profile"
@@ -35,11 +33,8 @@ workflow RUN {
     group_ch = LOAD_SAMPLESHEET.out.group
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
 
-    // Preprocessing
-    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
-    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
+    EXTRACT_VIRAL_READS(samplesheet_ch, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
     // Process intermediate output for chimera detection
     raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(RAW.out.reads, by: 0)
     EXTRACT_RAW_READS_FROM_PROCESSED(raw_processed_ch, "raw_viral_subset")
@@ -53,9 +48,9 @@ workflow RUN {
         blast_paired_ch = Channel.empty()
     }
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end)
+    PROFILE(samplesheet_ch, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.adapters, "2", "4 GB", "profile", params.single_end)
     // Process output
-    qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
+    qc_ch = PROFILE.out.pre_qc.concat(PROFILE.out.post_qc)
     PROCESS_OUTPUT(qc_ch)
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -76,7 +71,6 @@ workflow RUN {
         time_ch >> "logging"
         version_ch >> "logging"
         // Intermediate files
-        CLEAN.out.reads >> "reads_cleaned"
         EXTRACT_RAW_READS_FROM_PROCESSED.out.reads >> "reads_raw_viral"
         // QC
         PROCESS_OUTPUT.out.basic >> "results"

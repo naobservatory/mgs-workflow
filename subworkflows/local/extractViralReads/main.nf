@@ -55,7 +55,8 @@ workflow EXTRACT_VIRAL_READS {
         single_end
     main:
         // Get reference paths
-        viral_genome_path = "${ref_dir}/results/virus-genomes-filtered.fasta.gz"
+        //viral_genome_path = "${ref_dir}/results/virus-genomes-filtered.fasta.gz"
+        viral_genome_path = "s3://nao-katherine/initial_viral_reference_masking_tests/20241209_masked_k20_hdist3_entropy_10homo.fasta"
         genome_meta_path  = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
         bt2_virus_index_path = "${ref_dir}/results/bt2-virus-index"
         bt2_human_index_path = "${ref_dir}/results/bt2-human-index"
@@ -73,8 +74,12 @@ workflow EXTRACT_VIRAL_READS {
 
        // Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
+
+        // Run FASTP
+        fastp_ch = FASTP(bbduk_ch.fail, adapter_path)
+
         // Carry out stringent adapter removal with Cutadapt and Trimmomatic
-        adapt_ch = CUTADAPT(bbduk_ch.fail, adapter_path)
+        adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path)
         // trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path, encoding)
         atria_ch = ATRIA(adapt_ch.reads, adapters_ch)
         trim_ch = atria_ch
