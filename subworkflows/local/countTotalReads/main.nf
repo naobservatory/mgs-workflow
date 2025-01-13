@@ -18,7 +18,6 @@ workflow COUNT_TOTAL_READS {
     main:
         read_counts_ch = COUNT_READS(samplesheet_ch)
         all_read_counts_ch = read_counts_ch.collect()
-        all_read_counts_ch.view()
         read_counts_file = COMBINE_READ_COUNTS(all_read_counts_ch)
     emit:
         read_counts = read_counts_file

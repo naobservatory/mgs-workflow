@@ -1,5 +1,6 @@
 process COMBINE_READ_COUNTS {
     label "coreutils_gzip_gawk"
+    label "single"
     input:
         path(read_counts)
     output:

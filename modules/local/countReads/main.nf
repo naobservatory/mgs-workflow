@@ -1,5 +1,6 @@
 process COUNT_READS {
     label "countReads"
+    label "single_cpu_32GB_memory"
     input:
         tuple val(sample), path(reads)
     output:
