@@ -29,7 +29,7 @@ workflow RUN {
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet
-    LOAD_SAMPLESHEET(params.sample_sheet)
+    LOAD_SAMPLESHEET(params.sample_sheet, params.grouping, params.single_end)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     group_ch = LOAD_SAMPLESHEET.out.group
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
