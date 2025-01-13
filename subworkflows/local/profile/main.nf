@@ -46,7 +46,6 @@ workflow PROFILE {
         adapter_path
         fastqc_cpus
         fastqc_mem
-        stage_label
         single_end
     main:
 
@@ -84,14 +83,14 @@ workflow PROFILE {
         }
 
         // Run FASTQC
-        pre_qc_ch = PRE_ADAPTER_TRIM_QC(grouped_ch, fastqc_cpus, fastqc_mem, "pre_"+ stage_label, single_end)
+        pre_qc_ch = PRE_ADAPTER_TRIM_QC(grouped_ch, fastqc_cpus, fastqc_mem, "pre_profile", single_end)
 
         // Call fastp adapter trimming
         fastp_ch = FASTP(grouped_ch, adapter_path)
         // Extract fastp trimmed reads
         trimmed_grouped_ch = fastp_ch.reads
         // Run FASTQC
-        post_qc_ch = POST_ADAPTER_TRIM_QC(trimmed_grouped_ch, fastqc_cpus, fastqc_mem, "post_" + stage_label, single_end)
+        post_qc_ch = POST_ADAPTER_TRIM_QC(trimmed_grouped_ch, fastqc_cpus, fastqc_mem, "post_profile", single_end)
 
         // Separate ribosomal reads
         ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"

@@ -29,8 +29,10 @@ include { MAKE_VIRUS_READS_FASTA } from "../../../modules/local/makeVirusReadsFa
 include { COUNT_VIRUS_CLADES } from "../../../modules/local/countVirusClades"
 if (params.single_end) {
     include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
+    include { FASTP_SINGLE as FASTP } from "../../../modules/local/fastp"
 } else {
     include { CONCAT_GROUP_PAIRED as CONCAT_GROUP } from "../../../modules/local/concatGroup"
+    include { FASTP_PAIRED as FASTP } from "../../../modules/local/fastp"
 }
 
 /***********
@@ -56,7 +58,7 @@ workflow EXTRACT_VIRAL_READS {
     main:
         // Get reference paths
         //viral_genome_path = "${ref_dir}/results/virus-genomes-filtered.fasta.gz"
-        viral_genome_path = "s3://nao-katherine/initial_viral_reference_masking_tests/20241209_masked_k20_hdist3_entropy_10homo.fasta"
+        viral_genome_path = "${ref_dir}/results/20241209_masked_k20_hdist3_entropy_10homo.fasta.gz"
         genome_meta_path  = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
         bt2_virus_index_path = "${ref_dir}/results/bt2-virus-index"
         bt2_human_index_path = "${ref_dir}/results/bt2-human-index"

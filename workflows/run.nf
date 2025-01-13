@@ -36,7 +36,7 @@ workflow RUN {
     // Extract and count human-viral reads
     EXTRACT_VIRAL_READS(samplesheet_ch, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
     // Process intermediate output for chimera detection
-    raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(RAW.out.reads, by: 0)
+    raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(samplesheet_ch, by: 0)
     EXTRACT_RAW_READS_FROM_PROCESSED(raw_processed_ch, "raw_viral_subset")
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
@@ -48,7 +48,7 @@ workflow RUN {
         blast_paired_ch = Channel.empty()
     }
     // Taxonomic profiling
-    PROFILE(samplesheet_ch, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.adapters, "2", "4 GB", "profile", params.single_end)
+    PROFILE(samplesheet_ch, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.adapters, "2", "4 GB", params.single_end)
     // Process output
     qc_ch = PROFILE.out.pre_qc.concat(PROFILE.out.post_qc)
     PROCESS_OUTPUT(qc_ch)
