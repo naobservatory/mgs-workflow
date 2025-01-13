@@ -56,9 +56,10 @@ workflow EXTRACT_VIRAL_READS {
         grouping
         single_end
     main:
-        // Get reference paths
+        // Get reference paths; TODO rerun index for run test.
         //viral_genome_path = "${ref_dir}/results/virus-genomes-filtered.fasta.gz"
-        viral_genome_path = "${ref_dir}/results/20241209_masked_k20_hdist3_entropy_10homo.fasta.gz"
+        //viral_genome_path = "${ref_dir}/results/20241209_masked_k20_hdist3_entropy_10homo.fasta.gz"
+        viral_genome_path = "s3://nao-katherine/initial_viral_reference_masking_tests/20241209_masked_k20_hdist3_entropy_10homo.fasta.gz"
         genome_meta_path  = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
         bt2_virus_index_path = "${ref_dir}/results/bt2-virus-index"
         bt2_human_index_path = "${ref_dir}/results/bt2-human-index"

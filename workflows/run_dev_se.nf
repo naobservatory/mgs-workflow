@@ -9,8 +9,6 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { RAW } from "../subworkflows/local/raw"
-include { CLEAN } from "../subworkflows/local/clean"
 include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
 include { PROFILE } from "../subworkflows/local/profile"
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
@@ -32,15 +30,15 @@ workflow RUN_DEV_SE {
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
 
 
-    // Preprocessing
-    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
-    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
+    // Count reads in files
+    COUNT_TOTAL_READS(samplesheet_ch)
+
 
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end)
+    PROFILE(samplesheet_ch, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end)
 
     // Process output
-    qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
+    qc_ch = PROFILE.out.pre_qc.concat(PROFILE.out.post_qc)
     PROCESS_OUTPUT(qc_ch)
 
     // Publish results
@@ -61,9 +59,8 @@ workflow RUN_DEV_SE {
         params_ch >> "input"
         time_ch >> "logging"
         version_ch >> "logging"
-        // Intermediate files
-        CLEAN.out.reads >> "intermediates/reads/cleaned"
         // QC
+        COUNT_TOTAL_READS.out.read_counts >> "results"
         PROCESS_OUTPUT.out.basic >> "results"
         PROCESS_OUTPUT.out.adapt >> "results"
         PROCESS_OUTPUT.out.qbase >> "results"

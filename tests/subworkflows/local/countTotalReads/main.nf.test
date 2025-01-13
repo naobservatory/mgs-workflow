@@ -1,0 +1,35 @@
+nextflow_workflow {
+
+    name "Test Workflow COUNT_TOTAL_READS"
+    script "subworkflows/local/countTotalReads/main.nf"
+    workflow "COUNT_TOTAL_READS"
+
+    test("Should run without failures") {
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "s3://nao-harmon/real-subset-sabeti-original/output/input/samplesheet.csv"
+                    """
+                }
+            }
+        }
+
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+}

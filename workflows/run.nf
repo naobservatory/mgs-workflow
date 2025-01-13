@@ -9,6 +9,7 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
+include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReads"
 include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 include { PROFILE } from "../subworkflows/local/profile"
@@ -32,6 +33,9 @@ workflow RUN {
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     group_ch = LOAD_SAMPLESHEET.out.group
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
+
+    // Count reads in files
+    COUNT_TOTAL_READS(samplesheet_ch)
 
     // Extract and count human-viral reads
     EXTRACT_VIRAL_READS(samplesheet_ch, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
@@ -73,6 +77,7 @@ workflow RUN {
         // Intermediate files
         EXTRACT_RAW_READS_FROM_PROCESSED.out.reads >> "reads_raw_viral"
         // QC
+        COUNT_TOTAL_READS.out.read_counts >> "results"
         PROCESS_OUTPUT.out.basic >> "results"
         PROCESS_OUTPUT.out.adapt >> "results"
         PROCESS_OUTPUT.out.qbase >> "results"
