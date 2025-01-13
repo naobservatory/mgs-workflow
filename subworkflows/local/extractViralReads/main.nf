@@ -4,7 +4,7 @@
 
 include { BBDUK_HITS } from "../../../modules/local/bbduk"
 include { CUTADAPT } from "../../../modules/local/cutadapt"
-include { TRIMMOMATIC } from "../../../modules/local/trimmomatic"
+include { ATRIA } from "../../../modules/local/atria"
 include { BOWTIE2 as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
@@ -27,7 +27,11 @@ include { COLLAPSE_VIRUS_READS } from "../../../modules/local/collapseVirusReads
 include { ADD_FRAG_DUP_TO_VIRUS_READS } from "../../../modules/local/addFragDupToVirusReads"
 include { MAKE_VIRUS_READS_FASTA } from "../../../modules/local/makeVirusReadsFasta"
 include { COUNT_VIRUS_CLADES } from "../../../modules/local/countVirusClades"
-include { CONCAT_GROUP } from "../../../modules/local/concatGroup"
+if (params.single_end) {
+    include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
+} else {
+    include { CONCAT_GROUP_PAIRED as CONCAT_GROUP } from "../../../modules/local/concatGroup"
+}
 
 /***********
 | WORKFLOW |
@@ -48,6 +52,7 @@ workflow EXTRACT_VIRAL_READS {
         encoding
         fuzzy_match
         grouping
+        single_end
     main:
         // Get reference paths
         viral_genome_path = "${ref_dir}/results/virus-genomes-filtered.fasta.gz"
@@ -58,11 +63,21 @@ workflow EXTRACT_VIRAL_READS {
         bbm_human_index_path = "${ref_dir}/results/bbm-human-index"
         bbm_other_index_path = "${ref_dir}/results/bbm-other-index"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
-        // Run initial screen against viral genomes with BBDuk
+
+        // Read adapter file and create a channel containing just the adapter sequences
+        adapters_ch = Channel
+            .fromPath(adapter_path)
+            .splitFasta(record: [seqString: true])
+            .map { it.seqString }
+            .collect()
+
+       // Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // Carry out stringent adapter removal with Cutadapt and Trimmomatic
         adapt_ch = CUTADAPT(bbduk_ch.fail, adapter_path)
-        trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path, encoding)
+        // trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path, encoding)
+        atria_ch = ATRIA(adapt_ch.reads, adapters_ch)
+        trim_ch = atria_ch
         // Grouping for deduplication
         if (grouping) {
             // Join samplesheet with trimmed_reads and update fastq files
@@ -90,7 +105,7 @@ workflow EXTRACT_VIRAL_READS {
         human_bbm_ch = BBMAP_HUMAN(other_bt2_ch.reads_unconc, bbm_human_index_path, "human")
         other_bbm_ch = BBMAP_OTHER(human_bbm_ch.reads_unmapped, bbm_other_index_path, "other")
         // Run Kraken on filtered viral candidates
-        tax_ch = TAXONOMY(other_bbm_ch.reads_unmapped, kraken_db_ch, true, "F")
+        tax_ch = TAXONOMY(other_bbm_ch.reads_unmapped, kraken_db_ch, true, "F", single_end)
         // Process Kraken output and merge with Bowtie2 output across samples
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
         bowtie2_kraken_merged_ch = MERGE_SAM_KRAKEN(kraken_output_ch.combine(bowtie2_sam_ch, by: 0))
