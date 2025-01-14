@@ -46,7 +46,7 @@ def main():
     parser.add_argument("sample_column", help="Name of the sample name column.")
     parser.add_argument("output_file", help="Path to output TSV.")
     args = parser.parse_args()
-    input_path = args.bracken_report
+    input_path = args.input_path
     sample_name = args.sample_name
     sample_column = args.sample_column
     out_path = args.output_file
@@ -54,7 +54,7 @@ def main():
     print_log("Starting process.")
     start_time = time.time()
     # Print parameters
-    print_log("Input Bracken report file: {}".format(input_path))
+    print_log("Input TSV file: {}".format(input_path))
     print_log("Sample name: {}".format(sample_name))
     print_log("Sample name column: {}".format(sample_column))
     print_log("Output TSV file: {}".format(out_path))

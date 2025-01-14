@@ -85,6 +85,7 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         kraken_sorted_ch = SORT_KRAKEN_VIRAL(kraken_output_ch.output, "seq_id", "kraken_viral")
         out_combined_ch = bowtie2_sam_sorted_ch.sorted.combine(kraken_sorted_ch.sorted, by: 0)
         out_joined_ch = JOIN_TSVS(out_combined_ch, "seq_id", "inner", "bowtie2_kraken_viral")
+        out_labeled_ch = ADD_SAMPLE_COLUMN(out_joined_ch, "sample", "bowtie2_kraken_viral")
     emit:
         bbduk_match = bbduk_ch.fail
         reads_test  = other_bbm_ch.reads_unmapped
