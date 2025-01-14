@@ -93,27 +93,3 @@ process BBDUK_HITS {
         '''
 }
 
-// Masking contaminant kmers in a sequence database
-process BBDUK_MASK {
-    label "large"
-    label "BBTools"
-    input:
-        path(seq_db)
-        path(contaminant_ref)
-        val(k)
-        val(label)
-    output:
-        path("${label}_masked.fasta.gz"), emit: masked
-        path("${label}_mask.stats.txt"), emit: log
-    shell:
-        '''
-        # Define input/output
-        in=!{seq_db}
-        out=!{label}_masked.fasta.gz
-        stats=!{label}_mask.stats.txt
-        ref=!{contaminant_ref}
-        par="k=!{k} hdist=1 mink=8 mm=f rcomp=t maskmiddle=t mask=N t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
-        # Execute
-        bbduk.sh in=${in} out=${out} ref=${ref} stats=${stats} ${par}
-        '''
-}
