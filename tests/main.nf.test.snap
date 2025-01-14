@@ -7,16 +7,16 @@
             "qc_basic_stats.tsv.gz:md5,fd1a20ad7bb06eecaaa9cc51b81efa8d",
             "qc_quality_base_stats.tsv.gz:md5,1e75fe721479280f83d7e2f8c9fa975b",
             "qc_quality_sequence_stats.tsv.gz:md5,0d835c1d9417df961b4aadd7ac42137d",
-            "virus_clade_counts.tsv.gz:md5,3fcf57def952c95bf43cad8cfb268926",
-            "virus_hits_db.tsv.gz:md5,2232a0cfa4a2812621bb852c276ef9a1",
-            "blast_hits_paired.tsv.gz:md5,f2d110487d36ca58b1232f6d02aa69af",
-            "virus_hits_1.fasta.gz:md5,6024105b15a879de8616e54cb2dc3bb0",
-            "virus_hits_2.fasta.gz:md5,a08a14e81a6277d56ec16d04f3be7b8e"
+            "virus_clade_counts.tsv.gz:md5,89f68c2cc7912f37b22745168b2fc7e4",
+            "virus_hits_db.tsv.gz:md5,72e692fb3d168dc5199ab97ac4c58426",
+            "blast_hits_paired.tsv.gz:md5,6dce9cbf1aa6397a9145c9752aa4c723",
+            "virus_hits_1.fasta.gz:md5,941487995f144f88df4c2994f2fc551c",
+            "virus_hits_2.fasta.gz:md5,e285ccfb350fed7f0e73e29aaa1f10c1"
         ],
         "meta": {
             "nf-test": "0.9.2",
             "nextflow": "24.10.1"
         },
-        "timestamp": "2024-12-20T21:16:59.561007756"
+        "timestamp": "2025-01-10T16:29:00.730413741"
     }
 }
