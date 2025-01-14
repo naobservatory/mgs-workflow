@@ -1,3 +1,6 @@
+# v2.6.0.0
+- Updated version to reflect the new versioning scheme, which is described in `docs/version_schema.md`.
+
 # v2.5.4
 - Fixed fatal bug in `configs/run_validation.config` that prevents users from running the `RUN_VALIDATION` workflow.
 
