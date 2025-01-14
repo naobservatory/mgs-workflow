@@ -44,13 +44,14 @@ nextflow_process {
         then {
             // Should run without failures
             assert process.success
-            // Output file should be nonempty
+            // Output should have expected dimensions
             def countGzipLines = { file -> path(file).linesGzip.size() }
-            def output_lines = countGzipLines(process.out.summary[0][1])
-            assert output_lines > 0
-            // Total input and output read counts should match
-            def input_lines = countGzipLines(process.out.input[0][1])
-            assert output_lines == input_lines / 4 + 1
+            def input_reads = countGzipLines(process.out.input[0][1]) / 4
+            def tab_out = path(process.out.summary[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount == 2
+            assert tab_out.columnNames == ["seq_id", "bbmerge_frag_length"]
+            assert tab_out.rowCount == input_reads
+            // TODO: Process input fastq directly using available plugins
         }
     }
 }
