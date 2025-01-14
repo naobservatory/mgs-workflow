@@ -9,8 +9,7 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { RAW } from "../subworkflows/local/raw"
-include { CLEAN } from "../subworkflows/local/clean"
+include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReads"
 include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 include { PROFILE } from "../subworkflows/local/profile"
@@ -30,18 +29,18 @@ workflow RUN {
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet
-    LOAD_SAMPLESHEET(params.sample_sheet)
+    LOAD_SAMPLESHEET(params.sample_sheet, params.grouping, params.single_end)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     group_ch = LOAD_SAMPLESHEET.out.group
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
 
-    // Preprocessing
-    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
-    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
+    // Count reads in files
+    COUNT_TOTAL_READS(samplesheet_ch)
+
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
+    EXTRACT_VIRAL_READS(samplesheet_ch, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
     // Process intermediate output for chimera detection
-    raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(RAW.out.reads, by: 0)
+    raw_processed_ch = EXTRACT_VIRAL_READS.out.bbduk_match.join(samplesheet_ch, by: 0)
     EXTRACT_RAW_READS_FROM_PROCESSED(raw_processed_ch, "raw_viral_subset")
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
@@ -53,9 +52,9 @@ workflow RUN {
         blast_paired_ch = Channel.empty()
     }
     // Taxonomic profiling
-    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end)
+    PROFILE(samplesheet_ch, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.adapters, "2", "4 GB", params.single_end)
     // Process output
-    qc_ch = RAW.out.qc.concat(CLEAN.out.qc)
+    qc_ch = PROFILE.out.pre_qc.concat(PROFILE.out.post_qc)
     PROCESS_OUTPUT(qc_ch)
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -76,9 +75,9 @@ workflow RUN {
         time_ch >> "logging"
         version_ch >> "logging"
         // Intermediate files
-        CLEAN.out.reads >> "reads_cleaned"
         EXTRACT_RAW_READS_FROM_PROCESSED.out.reads >> "reads_raw_viral"
         // QC
+        COUNT_TOTAL_READS.out.read_counts >> "results"
         PROCESS_OUTPUT.out.basic >> "results"
         PROCESS_OUTPUT.out.adapt >> "results"
         PROCESS_OUTPUT.out.qbase >> "results"
