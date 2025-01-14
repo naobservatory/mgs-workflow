@@ -1,3 +1,6 @@
+# v2.5.4
+- Fixed fatal bug in `configs/run_validation.config` that prevents users from running the `RUN_VALIDATION` workflow.
+
 # v2.5.3
 - Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing
 - Updated tags to prevent inappropriate S3 auto-cleanup
