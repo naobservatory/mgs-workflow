@@ -1,24 +1,15 @@
-# Major.Schema.Results.Point format
+# Version naming scheme for mgs-workflow
 
-## Outline
-- Major: increment each time we seriously rework the pipeline
-    - The v1 to v2 change qualified, though it’s not the minimum change that would qualify.
-    - Expect to increment every 1-5 years.
-- Schema: increment each time we restructure the outputs
-    - The reworking with the addition of vertebrate infecting viruses would qualify
-    - Consumers need to be updated because they will be looking for things in the wrong places
-- Results: increment each time the results are no longer directly comparable with previous versions.
-    - Historically a huge fraction of changes would require a bump here
-    - So would lots of the changes we have planned
-    - With the introduction of RBGD it starts to matter a lot that we have counts that can be compared across pipeline runs, and that we know when this is and isn’t the case.
-- Point: increment for changes that don’t meet the criteria above
-    - Changes that impact performance but not results, options that are off by default, and new outputs (it’s only changes to existing outputs that can’t go in Point releases)
-    - Very small changes to outputs that don’t meaningfully impact RBGD or other pipeline consumers may also be considered for point releases, with team discussion.
-    - I don’t think it is a problem if any individual segment (most likely Results) ends up very large.
+From version 2.6.0.0 we're adopting a new 4-number versioning scheme, described below. The primary purpose of this system is to communicate clearly to users of the pipeline what changes they must make when interpreting or using the outputs of the pipeline in downstream applications
 
-## Notes
-Only Major.Schema.Results goes into naming output directories, since consumers don’t need to consider Point (unless things have gone wrong).
+1. **Major:** The first number in the version will be incremented each time we seriously rework the pipeline, requiring potentially major changes to downstream code.
+2. **Schema:** The second number will be incremented each time we restructure or rename pipeline outputs, requiring downstream code to be changed to correctly access output files.
+3. **Results:** The third number will be incremented each time the results are no longer directly comparable to previous versions.
+4. **Point:** The fourth number will be incremented any other time the pipeline code changes in a manner that doesn't meet the criteria above, such as changes that impact performance but not results; changes to documentation; options that are off by default; and new outputs that don't interfere with existing outputs.
 
-We won’t want to reprocess all past data (which this time next year should be trillions of read pairs) each time we bump Results. So we introduce a concept of Stable, which is whatever version we currently are always running on new data and have run on all old data. We’ll need to be thoughtful about when to bump Stable, which will depend a lot on how expensive the pipeline ends up being to run. Sometimes it will make sense to backport bugfixes to Stable, and so Stable can have new Point releases. If a fix to Stable needed a new Results release, though, that would just be considering a new version to be Stable.
+Users relying on pipeline outputs should take the following actions in response to pipeline changes:
 
-We would also introduce Unstable, which we run all new data through but don’t intend to (or haven’t decided if we will) run all past data through. This would be valuable for chimera detection and anything else that wants the best current analysis regardless of whether it’s consistent with history. I think this may just be Master, though, in which case we don’t need a new name.
+1. **Point change or higher:** Review changes for new outputs and options that could be relevant to user's application.
+2. **Results change or higher:** Review changes for effects on output interpretation; show caution in comparing outputs across the version boundary.
+3. **Schema change or higher:** Update downstream code to reflect new output schema.
+4. **Major change:** Review new code and outputs thoroughly; be prepared for major changes to downstream code.
