@@ -32,11 +32,13 @@ process PROCESS_VIRAL_BOWTIE2_SAM_2 {
         tuple val(sample), path("${sample}_bowtie2_sam_in.tsv.gz"), emit: input
     shell:
         '''
-        in=!{sam}
         out=!{sample}_bowtie2_sam_processed.tsv.gz
         meta=!{genbank_metadata_path}
         db=!{viral_db_path}
-        process_viral_bowtie2_sam.py ${in} ${meta} ${db} ${out}
+        cmd="process_viral_bowtie2_sam_2.py -m ${meta} -v ${db} -o ${out}"
+        # Sort input SAM and pass to script
+        zcat !{sam} | sort -t $'\t' -k1,1 | ${cmd}
+        # Link input to output for testing
         ln -s !{sam} !{sample}_bowtie2_sam_in.tsv.gz
         '''
 }
