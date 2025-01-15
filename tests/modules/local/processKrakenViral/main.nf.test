@@ -1,8 +1,8 @@
 nextflow_process {
 
-    name "Test process PROCESS_KRAKEN_VIRAL"
+    name "Test process PROCESS_KRAKEN_VIRAL_2"
     script "modules/local/processKrakenViral/main.nf"
-    process "PROCESS_KRAKEN_VIRAL"
+    process "PROCESS_KRAKEN_VIRAL_2"
 
     test("On paired data, should run without errors and preserve lines") {
         config "tests/run.config"
@@ -48,11 +48,27 @@ nextflow_process {
         then {
             // Should run without failures
             assert process.success
-            // Output lines should match input lines (plus header)
-            def countGzipLines = { file -> path(file).linesGzip.size() }
-            def output_lines = countGzipLines(process.out.output[0][1])
-            def input_lines = countGzipLines(process.out.input[0][1])
-            assert output_lines == input_lines + 1
+            // Output should have correct dimensions
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true, header: false)
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount == 7
+            assert tab_in.columnCount == 5
+            assert tab_out.rowCount == tab_in.rowCount
+            // Some output columns should match input exactly
+            assert tab_out.columns["kraken_encoded_hits"] == tab_in.columns["C4"]
+            assert tab_out.columns["seq_id"] == tab_in.columns["C1"]
+            assert tab_out.columns["kraken_length"] == tab_in.columns["C3"]
+            // Others should map to inputs 1:1
+            for (int i = 0; i < tab_out.rowCount; i++){
+                if (tab_in.rows[i]["C0"] == "C") {
+                    assert tab_out.rows[i]["kraken_classified"] == true
+                } else if (tab_in.rows[i]["C0"] == "U") {
+                    assert tab_out.rows[i]["kraken_classified"] == false
+                } else {
+                    assert tab_out.rows[i]["kraken_classified"] == "NA"
+                }
+            }
+            // TODO: Add test for name & taxid fields (too complex for right now)
         }
     }
 }

@@ -27,7 +27,7 @@ process SORT_TSV {
             fi
         done
         if [[ "${COL_INDEX}" -eq 0 ]]; then
-            echo "Error: Could not find column '!{sort_field}' in the input header." >&2
+            echo "ERROR: Could not find sort field in input header: '!{sort_field}'." >&2
             exit 1
         fi
         echo "Found '!{sort_field}' in column ${COL_INDEX}. Sorting by column ${COL_INDEX}."

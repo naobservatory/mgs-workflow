@@ -30,7 +30,7 @@ process REHEAD_TSV {
             done
             # Error out if we never found old_field
             if [[ "${FOUND}" -eq 0 ]]; then
-                echo "ERROR: Field '!{old_field}' not found in header." >&2
+                echo "ERROR: Target field not found in header: '!{old_field}'" >&2
                 exit 1
             fi
             # Print the modified header

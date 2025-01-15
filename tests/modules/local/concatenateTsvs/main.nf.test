@@ -35,6 +35,25 @@ nextflow_process {
         }
     }
 
+    test("Should fail when input TSV column names don't match") {
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = COPY_FILE_1.out
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv.gz"))
+                input[1] = "test_mismatch"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Headers do not match")
+        }
+    }
+
     test("Should run without failures on a single input TSV") {
         when {
             params {
@@ -49,11 +68,13 @@ nextflow_process {
         then {
             // Should run without failures
             assert process.success
-            // Output lines should match input lines (plus header)
-            def countGzipLines = { file -> path(file).linesGzip.size() }
-            def output_lines = countGzipLines(process.out.output[0])
-            def input_lines = countGzipLines(process.out.input[0])
-            assert output_lines == input_lines
+            // Output should have correct dimensions
+            def tab_in = path(process.out.input[0]).csv(sep: "\t", decompress: true)
+            def tab_out = path(process.out.output[0]).csv(sep: "\t", decompress: true)
+            assert tab_in.columnCount == tab_out.columnCount
+            assert tab_in.rowCount == tab_out.rowCount
+            // Output should have same column names as input
+            assert tab_in.columnNames == tab_out.columnNames
         }
     }
 
@@ -71,11 +92,13 @@ nextflow_process {
         then {
             // Should run without failures
             assert process.success
-            // Output lines should match input lines (plus header)
-            def countGzipLines = { file -> path(file).linesGzip.size() }
-            def output_lines = countGzipLines(process.out.output[0])
-            def input_lines = countGzipLines(process.out.input[0])
-            assert output_lines == input_lines * 2 - 1
+            // Output should have correct dimensions
+            def tab_in = path(process.out.input[0]).csv(sep: "\t", decompress: true)
+            def tab_out = path(process.out.output[0]).csv(sep: "\t", decompress: true)
+            assert tab_in.columnCount == tab_out.columnCount
+            assert tab_in.rowCount * 2 == tab_out.rowCount
+            // Output should have same column names as input
+            assert tab_in.columnNames == tab_out.columnNames
         }
     }
 
@@ -93,11 +116,13 @@ nextflow_process {
         then {
             // Should run without failures
             assert process.success
-            // Output lines should match input lines (plus header)
-            def countGzipLines = { file -> path(file).linesGzip.size() }
-            def output_lines = countGzipLines(process.out.output[0])
-            def input_lines = countGzipLines(process.out.input[0])
-            assert output_lines == input_lines * 3 - 2
+            // Output should have correct dimensions
+            def tab_in = path(process.out.input[0]).csv(sep: "\t", decompress: true)
+            def tab_out = path(process.out.output[0]).csv(sep: "\t", decompress: true)
+            assert tab_in.columnCount == tab_out.columnCount
+            assert tab_in.rowCount * 3 == tab_out.rowCount
+            // Output should have same column names as input
+            assert tab_in.columnNames == tab_out.columnNames
         }
     }
 

@@ -1,8 +1,3 @@
-// Utility functions
-def checkGzipSorted = { file -> ["bash", "-c", "zcat " + file + " | tail -n +2 | sort -t '\t' -k1,1 -C && printf 1 || printf 0"].execute().text.trim() as Integer }
-def countGzipLines = { file -> path(file).linesGzip.size() }
-def getGzipHeader = { file -> ["bash", "-c", "zcat " + file + " | head -n 1"].execute().text.trim() }
-
 nextflow_process {
 
     name "Test process JOIN_TSVS"

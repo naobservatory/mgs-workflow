@@ -1,8 +1,8 @@
 nextflow_process {
 
-    name "Test process PROCESS_VIRAL_BOWTIE2_SAM"
+    name "Test process PROCESS_VIRAL_BOWTIE2_SAM_2"
     script "modules/local/processViralBowtie2Sam/main.nf"
-    process "PROCESS_VIRAL_BOWTIE2_SAM"
+    process "PROCESS_VIRAL_BOWTIE2_SAM_2"
 
     test("On paired data, should run without errors and preserve lines") {
         config "tests/run.config"
@@ -57,6 +57,7 @@ nextflow_process {
             def output_lines = countGzipLines(process.out.output[0][1])
             def input_lines = countGzipLinesSam(process.out.input[0][1])
             assert output_lines == input_lines / 2 + 1
+            // TODO: Add more detailed tests of file content (requires parsing gzipped SAM file)
         }
     }
 }

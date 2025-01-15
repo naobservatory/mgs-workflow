@@ -9,23 +9,44 @@ nextflow_process {
     process "REHEAD_TSV"
     config "tests/run.config"
 
+    test("Should fail with an appropriate error code if the field to modify is not present."){
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                input[1] = "xyz" // Not in header
+                input[2] = "abc"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ERROR: Target field not found in header")
+        }
+    }
+
     test("Should produce no change when old and new headers match"){
         when {
             params {}
             process {
                 '''
-                input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/test_tab_sorted.tsv.gz"))
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
                 input[1] = "x"
                 input[2] = "x"
                 input[3] = "test"
                 '''
             }
-            then {
-                // Should run without failures
-                assert process.success
-                // Output should match input
-                assert path(process.out.output[0][1]).md5 == path(process.out.input[0][1]).md5
-            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should match input
+            assert path(process.out.output[0][1]).md5 == path(process.out.input[0][1]).md5
         }
     }
 
@@ -34,50 +55,32 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/test_tab_sorted.tsv.gz"))
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
                 input[1] = "x"
                 input[2] = "test"
                 input[3] = "test"
                 '''
             }
-            then {
-                // Should run without failures
-                assert process.success
-                // Output should differ from input
-                def tab_in = process.out.input[0][1]
-                def tab_out = process.out.output[0][1]
-                assert path(tab_in).md5 != path(tab_out).md5
-                // Line counts should match
-                def lines_out = countGzipLines(tab_out)
-                def lines_in = countGzipLines(tab_in)
-                assert lines_out == lines_in
-                // Output header should match input except for intended substitution
-                def header_in = getGzipHeader(tab_in)
-                def header_out = getGzipHeader(tab_out)
-                assert header_out == header_in.replace("x", "test")
-                // Rest of file should be unmodified
-                def body_in = getGzipBody(tab_in)
-                def body_out = getGzipBody(tab_out)
-                assert body_in == body_out
-            }
         }
-    }
-
-    test("Should fail with an appropriate error code if the field to modify is not present."){
-        when {
-            params {}
-            process {
-                '''
-                input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/test_tab_sorted.tsv.gz"))
-                input[1] = "a" // Not in header
-                input[2] = "test"
-                input[3] = "test"
-                '''
-            }
-            then {
-                // Should run without failures
-                assert process.failed
-                assert process.exitStatus == 1
+        then {
+            // Should run without failures
+            assert process.success
+            // Output and input dimensions should match
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true)
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount == tab_in.columnCount
+            assert tab_out.rowCount == tab_in.rowCount
+            // Output and input headers should match except for intended substitution
+            assert tab_out.columnNames != tab_in.columnNames
+            assert tab_out.columnNames == tab_in.columnNames*.replace("x", "test")
+            // Rest of file should be unmodified
+            for (c in tab_in.columnNames) {
+                if (c == "x"){
+                    assert tab_in.columns[c] == tab_out.columns["test"]
+                } else {
+                    assert tab_in.columns[c] == tab_out.columns[c]
+                }
             }
         }
     }
