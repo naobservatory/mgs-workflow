@@ -11,6 +11,7 @@ import gzip
 import bz2
 import json
 import functools
+import math
 
 # Utility functions
 
@@ -137,6 +138,7 @@ def get_line(fields_dict):
               fields_dict["query_len_fwd"], fields_dict["query_len_rev"],
               fields_dict["query_seq_fwd"], fields_dict["query_seq_rev"],
               fields_dict["query_qual_fwd"], fields_dict["query_qual_rev"],
+              fields_dict["length_normalized_score_fwd"], fields_dict["length_normalized_score_rev"],
               fields_dict["pair_status"]]
     fields_joined = join_line(fields)
     return(fields_joined)
@@ -144,6 +146,7 @@ def get_line(fields_dict):
 def line_from_single(read_dict):
     """Generate an output line from a single SAM alignment dictionary."""
     out_dict = {"query_name": read_dict["query_name"], "pair_status": read_dict["pair_status"]}
+    adj_score = float(read_dict["alignment_score"]) / math.log(float(read_dict["query_len"]))
     if read_dict["is_mate_1"]:
         out_dict["genome_id_fwd"], out_dict["genome_id_rev"] = read_dict["genome_id"], "NA"
         out_dict["taxid_fwd"], out_dict["taxid_rev"] = read_dict["taxid"], "NA"
@@ -157,6 +160,7 @@ def line_from_single(read_dict):
         out_dict["query_len_fwd"], out_dict["query_len_rev"] = read_dict["query_len"], "NA"
         out_dict["query_seq_fwd"], out_dict["query_seq_rev"] = read_dict["query_seq"], "NA"
         out_dict["query_qual_fwd"], out_dict["query_qual_rev"] = read_dict["query_qual"], "NA"
+        out_dict["length_normalized_score_fwd"], out_dict["length_normalized_score_rev"] = adj_score, "NA"
     else:
         out_dict["genome_id_fwd"], out_dict["genome_id_rev"] = "NA", read_dict["genome_id"]
         out_dict["taxid_fwd"], out_dict["taxid_rev"] = "NA", read_dict["taxid"]
@@ -170,6 +174,7 @@ def line_from_single(read_dict):
         out_dict["query_len_fwd"], out_dict["query_len_rev"] = "NA", read_dict["query_len"]
         out_dict["query_seq_fwd"], out_dict["query_seq_rev"] = "NA", read_dict["query_seq"]
         out_dict["query_qual_fwd"], out_dict["query_qual_rev"] = "NA", read_dict["query_qual"]
+        out_dict["length_normalized_score_fwd"], out_dict["length_normalized_score_rev"] = "NA", adj_score
     return get_line(out_dict)
 
 def line_from_pair(dict_1, dict_2):
@@ -181,6 +186,9 @@ def line_from_pair(dict_1, dict_2):
         raise ValueError("Both reads are reverse reads: {}".format(dict_1["query_name"]))
     fwd_dict = dict_1 if dict_1["is_mate_1"] else dict_2
     rev_dict = dict_1 if not dict_1["is_mate_1"] else dict_2
+    # Calculate length-adjusted alignment scores
+    adj_score_fwd = float(fwd_dict["alignment_score"]) / math.log(float(fwd_dict["query_len"]))
+    adj_score_rev = float(rev_dict["alignment_score"]) / math.log(float(rev_dict["query_len"]))
     # Prepare dictionary for output
     out_dict = {
         "query_name": fwd_dict["query_name"],
@@ -208,6 +216,8 @@ def line_from_pair(dict_1, dict_2):
         "query_seq_rev": rev_dict["query_seq"],
         "query_qual_fwd": fwd_dict["query_qual"],
         "query_qual_rev": rev_dict["query_qual"],
+        "length_normalized_score_fwd": adj_score_fwd,
+        "length_normalized_score_rev": adj_score_rev,
         "pair_status": fwd_dict["pair_status"]
         }
     return get_line(out_dict)
