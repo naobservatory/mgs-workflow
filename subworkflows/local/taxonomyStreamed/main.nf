@@ -8,13 +8,15 @@
 
 include { BBMERGE_STREAMED as BBMERGE } from "../../../modules/local/bbmerge"
 include { JOIN_FASTQ_STREAMED as JOIN_FASTQ } from "../../../modules/local/joinFastq"
+include { SUMMARIZE_BBMERGE_STREAMED as SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
 include { KRAKEN_STREAMED as KRAKEN } from "../../../modules/local/kraken"
-include { LABEL_KRAKEN_REPORTS_STREAMED as LABEL_KRAKEN_REPORTS } from "../../../modules/local/labelKrakenReports"
+include { HEAD_TSV as HEAD_KRAKEN_REPORTS } from "../../../modules/local/headTsv"
+include { ADD_SAMPLE_COLUMN as LABEL_KRAKEN_REPORTS } from "../../../modules/local/addSampleColumn"
 include { CONCATENATE_TSVS_STREAMED as CONCATENATE_KRAKEN_REPORTS } from "../../../modules/local/concatenateTsvs"
 include { BRACKEN2 as BRACKEN } from "../../../modules/local/bracken"
-include { LABEL_BRACKEN_REPORTS_STREAMED as LABEL_BRACKEN_REPORTS } from "../../../modules/local/labelBrackenReports"
-include { CONCATENATE_TSVS_STREAMED as CONCATENATE_BRACKEN_REPORTS } from "../../../modules/local/concatenateTsvs"
-include { SUMMARIZE_BBMERGE_STREAMED as SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
+include { REHEAD_TSV as REHEAD_BRACKEN } from "../../../modules/local/reheadTsv"
+include { ADD_SAMPLE_COLUMN as LABEL_BRACKEN } from "../../../modules/local/addSampleColumn"
+include { CONCATENATE_TSVS_STREAMED as CONCATENATE_BRACKEN } from "../../../modules/local/concatenateTsvs"
 
 /***********
 | WORKFLOW |
@@ -41,12 +43,17 @@ workflow TAXONOMY_STREAMED {
         }
         // Run Kraken and munge reports
         kraken_ch = KRAKEN(single_read_ch, kraken_db_ch)
-        kraken_label_ch = LABEL_KRAKEN_REPORTS(kraken_ch.report)
-        kraken_merge_ch = CONCATENATE_KRAKEN_REPORTS(kraken_label_ch.report.collect().ifEmpty([]), "kraken_reports")
+        kraken_headers = "pc_reads_total,n_reads_clade,n_reads_direct,n_minimizers_total,n_minimizers_distinct,rank,taxid,name"
+        kraken_head_ch = HEAD_KRAKEN_REPORTS(kraken_ch.report, kraken_headers, "kraken_report")
+        kraken_label_ch = LABEL_KRAKEN_REPORTS(kraken_head_ch.output, "sample", "kraken_report")
+        kraken_combined_ch = kraken_label_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
+        kraken_merge_ch = CONCATENATE_KRAKEN_REPORTS(kraken_combined_ch, "kraken_reports")
         // Run Bracken and munge reports
         bracken_ch = BRACKEN(kraken_ch.report, kraken_db_ch, classification_level) // NB: Not streamed
-        bracken_label_ch = LABEL_BRACKEN_REPORTS(bracken_ch)
-        bracken_merge_ch = CONCATENATE_BRACKEN_REPORTS(bracken_label_ch.report.collect().ifEmpty([]), "bracken_reports")
+        bracken_rehead_ch = REHEAD_BRACKEN(bracken_ch, "taxonomy_id,taxonomy_lvl", "taxid,rank", "bracken")
+        bracken_label_ch = LABEL_BRACKEN(bracken_rehead_ch.output, "sample", "bracken")
+        bracken_combined_ch = bracken_label_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
+        bracken_merge_ch = CONCATENATE_BRACKEN(bracken_combined_ch, "bracken")
     emit:
         input_reads = reads_ch
         single_reads = single_read_ch

@@ -1,6 +1,4 @@
-// Rename a field in a gzipped TSV header
-// TODO: Expand to handle plaintext TSVs
-// TODO: Expand to rename multiple header fields at once
+// Rename fields in a TSV header
 process REHEAD_TSV {
     label "core_utils"
     label "single"

@@ -50,6 +50,21 @@ nextflow_workflow {
             // Kraken output lines should match input reads
             def kraken_output_lines = countGzipLines(workflow.out.kraken_output[0][1])
             assert kraken_output_lines == single_read_lines / 4
+            // Kraken reports should have expected fields
+            def kraken_report_tab = path(workflow.out.kraken_reports[0]).csv(sep: "\t", decompress: true)
+            def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample"]
+            assert kraken_report_tab.columnCount == 9
+            assert kraken_report_tab.columnNames == kraken_headers_exp
+            // Bracken output should have expected fields
+            def bracken_tab = path(workflow.out.bracken[0]).csv(sep: "\t", decompress: true)
+            def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample"]
+            assert bracken_tab.columnCount == 8
+            assert bracken_tab.columnNames == bracken_headers_exp
+            // BBMerge summary output should have expected fields
+            def bbmerge_tab = path(workflow.out.bbmerge_summary[0][1]).csv(sep: "\t", decompress: true)
+            def bbmerge_headers_exp = ["seq_id", "bbmerge_frag_length"]
+            assert bbmerge_tab
+            assert bbmerge_tab.columnNames == bbmerge_headers_exp
         }
     }
 
@@ -102,6 +117,18 @@ nextflow_workflow {
             // Kraken output lines should match input reads
             def kraken_output_lines = countGzipLines(workflow.out.kraken_output[0][1])
             assert kraken_output_lines == single_read_lines / 4
+            // Kraken reports should have expected fields
+            def kraken_report_tab = path(workflow.out.kraken_reports[0]).csv(sep: "\t", decompress: true)
+            def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample"]
+            assert kraken_report_tab.columnCount == 9
+            assert kraken_report_tab.columnNames == kraken_headers_exp
+            // Bracken output should have expected fields
+            def bracken_tab = path(workflow.out.bracken[0]).csv(sep: "\t", decompress: true)
+            def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample"]
+            assert bracken_tab.columnCount == 8
+            assert bracken_tab.columnNames == bracken_headers_exp
+            // BBMerge summary output should be empty
+            assert workflow.out.bbmerge_summary == []
         }
     }
 }
