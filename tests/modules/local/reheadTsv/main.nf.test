@@ -9,7 +9,8 @@ nextflow_process {
     process "REHEAD_TSV"
     config "tests/run.config"
 
-    test("Should fail with an appropriate error code if the field to modify is not present."){
+    test("Should fail with an appropriate error code if the first/only field to modify is not present"){
+        tag "expect_failed"
         when {
             params {}
             process {
@@ -25,11 +26,75 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("ERROR: Target field not found in header")
+            assert process.errorReport.contains("ValueError: Input field not found in file header")
         }
     }
 
-    test("Should produce no change when old and new headers match"){
+    test("Should fail with an appropriate error code if a later input field is not present"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                input[1] = "x,xyz" // Not in header
+                input[2] = "a,abc"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Input field not found in file header")
+        }
+    }
+
+    test("Should fail with an appropriate error code if there are more input fields than output fields"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                input[1] = "x,y"
+                input[2] = "a"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Input and output field lists must be the same length.")
+        }
+    }
+
+    test("Should fail with an appropriate error code if there are more output fields than input fields"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                input[1] = "x"
+                input[2] = "a,b"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Input and output field lists must be the same length.")
+        }
+    }
+
+    test("Should produce no change when old and new headers match (one input field)"){
+        tag "expect_success"
         when {
             params {}
             process {
@@ -50,7 +115,30 @@ nextflow_process {
         }
     }
 
-    test("Should successfully change the header when old and new fields differ"){
+    test("Should produce no change when old and new headers match (multiple input fields)"){
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                input[1] = "x,y"
+                input[2] = "x,y"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should match input
+            assert path(process.out.output[0][1]).md5 == path(process.out.input[0][1]).md5
+        }
+    }
+
+    test("Should successfully change the header when old and new fields differ (one input field)"){
+        tag "expect_success"
         when {
             params {}
             process {
@@ -78,6 +166,44 @@ nextflow_process {
             for (c in tab_in.columnNames) {
                 if (c == "x"){
                     assert tab_in.columns[c] == tab_out.columns["test"]
+                } else {
+                    assert tab_in.columns[c] == tab_out.columns[c]
+                }
+            }
+        }
+    }
+
+    test("Should successfully change the header when old and new fields differ (multiple input fields)"){
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                input[1] = "x,y"
+                input[2] = "a,b"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output and input dimensions should match
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true)
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount == tab_in.columnCount
+            assert tab_out.rowCount == tab_in.rowCount
+            // Output and input headers should match except for intended substitution
+            assert tab_out.columnNames != tab_in.columnNames
+            assert tab_out.columnNames == tab_in.columnNames*.replace("x", "a")*.replace("y", "b")
+            // Rest of file should be unmodified
+            for (c in tab_in.columnNames) {
+                if (c == "x"){
+                    assert tab_in.columns[c] == tab_out.columns["a"]
+                } else if (c == "y"){
+                    assert tab_in.columns[c] == tab_out.columns["b"]
                 } else {
                     assert tab_in.columns[c] == tab_out.columns[c]
                 }
