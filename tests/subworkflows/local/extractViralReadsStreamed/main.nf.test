@@ -45,12 +45,17 @@ nextflow_workflow {
             // Output should have a nonzero number of lines divisible by eight
             // (for an interleaved FASTQ file)
             def countGzipLines = { file -> path(file).linesGzip.size() }
-            def total_output_lines = countGzipLines(workflow.out.reads_test[0][1])
-            assert total_output_lines > 0
-            assert total_output_lines % 8 == 0
-            // Kraken output from taxonomy workflow should match lines in test reads
-            def kraken_lines = countGzipLines(workflow.out.kraken_test[0][1])
-            assert kraken_lines == total_output_lines / 8
+            def test_reads_lines = countGzipLines(workflow.out.test_reads[0][1])
+            assert test_reads_lines > 0
+            assert test_reads_lines % 8 == 0
+            // Processed Kraken output should match lines in test reads
+            def test_kraken_tab = path(workflow.out.test_kraken[0][1]).csv(sep: "\t", decompress: true)
+            assert test_kraken_tab.rowCount == test_reads_lines / 8
+            // Other tabular tests
+            def test_bowtie_tab = path(workflow.out.test_bowtie[0][1]).csv(sep: "\t", decompress: true)
+            def test_joined_tab = path(workflow.out.test_joined[0][1]).csv(sep: "\t", decompress: true)
+            assert test_joined_tab.rowCount == Math.min(test_bowtie_tab.rowCount, test_kraken_tab.rowCount)
+            assert test_joined_tab.columnCount == test_bowtie_tab.columnCount + test_kraken_tab.columnCount - 1 + 2
         }
     }
 }

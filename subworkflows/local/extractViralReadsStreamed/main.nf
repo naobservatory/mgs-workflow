@@ -16,8 +16,10 @@ include { PROCESS_VIRAL_BOWTIE2_SAM_2 as PROCESS_VIRAL_BOWTIE2_SAM } from "../..
 include { PROCESS_KRAKEN_VIRAL_2 as PROCESS_KRAKEN_VIRAL } from "../../../modules/local/processKrakenViral" // NB: Already streamed
 include { SORT_TSV as SORT_KRAKEN_VIRAL } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_BOWTIE_VIRAL } from "../../../modules/local/sortTsv"
+include { SORT_TSV as SORT_BBMERGE } from "../../../modules/local/sortTsv"
 include { REHEAD_TSV as REHEAD_BOWTIE_VIRAL } from "../../../modules/local/reheadTsv"
-include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
+include { JOIN_TSVS as JOIN_KRAKEN_BOWTIE } from "../../../modules/local/joinTsvs"
+include { JOIN_TSVS as JOIN_BBMERGE } from "../../../modules/local/joinTsvs"
 include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
 
 include { CONCATENATE_TSVS as CONCATENATE_TSVS_BOWTIE2_KRAKEN } from "../../../modules/local/concatenateTsvs"
@@ -62,14 +64,14 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
         // 1. Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS_STREAMED(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
-        // 2. Carry out stringent adapter removal with Cutadapt and Trimmomatic
+        // 2. Carry out stringent adapter removal with Cutadapt and Atria
+        // NB: Not currently running Atria until we figure out how to run it streamed
         adapt_ch = CUTADAPT_STREAMED(bbduk_ch.fail, adapter_path)
-        // NB: Dropping Trimmomatic here for now; note that this will produce additional false positives until this is replaced (in active development in another branch)
-        // TODO: Replace Trimmomatic with a different tool (once Harmon is done investigating)
-        trim_ch = adapt_ch
+        // atria_ch = ATRIA_STREAMED(adapt_ch.reads, adapters_ch)
+        atria_ch = adapt_ch
         // NB: No grouping, all readwise (i.e. no dedup)
         // 3. Run Bowtie2 against a viral database and process output
-        bowtie2_ch = BOWTIE2_VIRUS(trim_ch.reads, bt2_virus_index_path, "--score-min G,1,1", "virus", true, false)
+        bowtie2_ch = BOWTIE2_VIRUS(atria_ch.reads, bt2_virus_index_path, "--score-min G,1,1", "virus", true, false)
         // TODO: Process Bowtie2 SAM output for integration into output TSV (PROCESS_VIRAL_BOWTIE2_SAM)
         // 4. Filter contaminants
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, "", "human", false, false)
@@ -85,17 +87,22 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         bowtie2_sam_sorted_ch = SORT_BOWTIE_VIRAL(bowtie2_sam_rehead_ch.output, "seq_id", "bowtie2_viral")
         kraken_sorted_ch = SORT_KRAKEN_VIRAL(kraken_output_ch.output, "seq_id", "kraken_viral")
         out_combined_ch = bowtie2_sam_sorted_ch.sorted.combine(kraken_sorted_ch.sorted, by: 0)
-        out_joined_ch = JOIN_TSVS(out_combined_ch, "seq_id", "inner", "bowtie2_kraken_viral")
-        out_labeled_ch = ADD_SAMPLE_COLUMN(out_joined_ch.output, "sample", "bowtie2_kraken_viral")
+        out_joined_ch = JOIN_KRAKEN_BOWTIE(out_combined_ch, "seq_id", "inner", "bowtie2_kraken_viral")
+        // 7. Add BBMerge summary information
+        bbmerge_sorted_ch = SORT_BBMERGE(tax_ch.bbmerge_summary, "seq_id", "bbmerge_summary")
+        bbmerge_combined_ch = out_joined_ch.output.combine(bbmerge_sorted_ch.sorted, by: 0)
+        out_joined_ch_2 = JOIN_BBMERGE(bbmerge_combined_ch, "seq_id", "left", "viral_bbmerge")
+        out_labeled_ch = ADD_SAMPLE_COLUMN(out_joined_ch_2.output, "sample", "viral_bbmerge")
     emit:
         bbduk_match = bbduk_ch.fail
-        reads_test  = other_bbm_ch.reads_unmapped
-        kraken_test = tax_ch.kraken_output
+        test_reads  = other_bbm_ch.reads_unmapped
+        test_kraken = kraken_output_ch.output
+        test_bowtie = bowtie2_sam_ch.output
+        test_joined = out_labeled_ch.output
 }
 
 //workflow EXTRACT_VIRAL_READS {
 //    main:
-//        trim_ch = TRIMMOMATIC(adapt_ch.reads, adapter_path, encoding)
 //        // Process Kraken output and merge with Bowtie2 output across samples
 //        bowtie2_kraken_merged_ch = MERGE_SAM_KRAKEN(kraken_output_ch.combine(bowtie2_sam_ch, by: 0))
 //        merged_ch = CONCATENATE_TSVS_BOWTIE2_KRAKEN(bowtie2_kraken_merged_ch.collect().ifEmpty([]), "bowtie2_kraken_merged")
@@ -113,5 +120,4 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
 //        tsv = collapsed_frag_dup_ch
 //        fasta = fasta_ch
 //        counts = count_ch
-//        bbduk_match = bbduk_ch.fail
 //}
