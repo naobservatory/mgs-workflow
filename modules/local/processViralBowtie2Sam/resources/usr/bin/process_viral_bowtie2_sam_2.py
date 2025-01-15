@@ -126,6 +126,9 @@ def join_line(fields):
 def get_line(fields_dict):
     """Convert a dictionary of arguments into an output line."""
     fields = [fields_dict["query_name"],
+              fields_dict["genome_id_best"], fields_dict["genome_id_all"],
+              fields_dict["taxid_best"], fields_dict["taxid_all"],
+              fields_dict["fragment_length"],
               fields_dict["genome_id_fwd"], fields_dict["genome_id_rev"],
               fields_dict["taxid_fwd"], fields_dict["taxid_rev"],
               fields_dict["fragment_length_fwd"], fields_dict["fragment_length_rev"],
@@ -139,14 +142,22 @@ def get_line(fields_dict):
               fields_dict["query_seq_fwd"], fields_dict["query_seq_rev"],
               fields_dict["query_qual_fwd"], fields_dict["query_qual_rev"],
               fields_dict["length_normalized_score_fwd"], fields_dict["length_normalized_score_rev"],
+              fields_dict["length_normalized_score_max"],
               fields_dict["pair_status"]]
     fields_joined = join_line(fields)
     return(fields_joined)
 
 def line_from_single(read_dict):
     """Generate an output line from a single SAM alignment dictionary."""
-    out_dict = {"query_name": read_dict["query_name"], "pair_status": read_dict["pair_status"]}
     adj_score = float(read_dict["alignment_score"]) / math.log(float(read_dict["query_len"]))
+    out_dict = {"query_name": read_dict["query_name"],
+                "pair_status": read_dict["pair_status"],
+                "genome_id_best": read_dict["genome_id"],
+                "genome_id_all": read_dict["genome_id"],
+                "taxid_best": read_dict["taxid"],
+                "taxid_all": read_dict["taxid"],
+                "fragment_length": "NA",
+                "length_normalized_score_max": adj_score}
     if read_dict["is_mate_1"]:
         out_dict["genome_id_fwd"], out_dict["genome_id_rev"] = read_dict["genome_id"], "NA"
         out_dict["taxid_fwd"], out_dict["taxid_rev"] = read_dict["taxid"], "NA"
@@ -189,9 +200,35 @@ def line_from_pair(dict_1, dict_2):
     # Calculate length-adjusted alignment scores
     adj_score_fwd = float(fwd_dict["alignment_score"]) / math.log(float(fwd_dict["query_len"]))
     adj_score_rev = float(rev_dict["alignment_score"]) / math.log(float(rev_dict["query_len"]))
+    adj_score_max = max(adj_score_fwd, adj_score_rev)
+    score_fwd_max = adj_score_fwd >= adj_score_rev
+    # Calculate scalar values for conflicting alignments
+    if fwd_dict["genome_id"] == rev_dict["genome_id"]:
+        genome_id_best = fwd_dict["genome_id"]
+        genome_id_all = fwd_dict["genome_id"]
+        taxid_best = fwd_dict["taxid"]
+        taxid_all = fwd_dict["taxid"]
+        fragment_length = fwd_dict["fragment_length"]
+    else:
+        genome_id_best = fwd_dict["genome_id"] if score_fwd_max else rev_dict["genome_id"]
+        genome_id_list = [fwd_dict["genome_id"], rev_dict["genome_id"]]
+        genome_id_all = "/".join(genome_id_list) if score_fwd_max else "/".join(genome_id_list[::-1])
+        fragment_length = "NA"
+        if fwd_dict["taxid"] == rev_dict["taxid"]:
+            taxid_best = fwd_dict["taxid"]
+            taxid_all = fwd_dict["taxid"]
+        else:
+            taxid_best = fwd_dict["taxid"] if score_fwd_max else rev_dict["taxid"]
+            taxid_list = [fwd_dict["taxid"], rev_dict["taxid"]]
+            taxid_all = "/".join(taxid_list) if score_fwd_max else "/".join(taxid_list[::-1])
     # Prepare dictionary for output
     out_dict = {
         "query_name": fwd_dict["query_name"],
+        "genome_id_best": genome_id_best,
+        "genome_id_all": genome_id_all,
+        "taxid_best": taxid_best,
+        "taxid_all": taxid_all,
+        "fragment_length": fragment_length,
         "genome_id_fwd": fwd_dict["genome_id"],
         "genome_id_rev": rev_dict["genome_id"],
         "taxid_fwd": fwd_dict["taxid"],
@@ -218,6 +255,7 @@ def line_from_pair(dict_1, dict_2):
         "query_qual_rev": rev_dict["query_qual"],
         "length_normalized_score_fwd": adj_score_fwd,
         "length_normalized_score_rev": adj_score_rev,
+        "length_normalized_score_max": adj_score_max,
         "pair_status": fwd_dict["pair_status"]
         }
     return get_line(out_dict)
@@ -236,19 +274,25 @@ def check_pair_status(line_dict, paired):
 def write_sam_headers_paired(out_file):
     """Write header line to new TSV."""
     headers = ["query_name",
-               "genome_id_fwd", "genome_id_rev",
-               "taxid_fwd", "taxid_rev",
-               "fragment_length_fwd", "fragment_length_rev",
-               "best_alignment_score_fwd", "best_alignment_score_rev",
-               "next_alignment_score_fwd", "next_alignment_score_rev",
-               "edit_distance_fwd", "edit_distance_rev",
-               "ref_start_fwd", "ref_start_rev",
-               "map_qual_fwd", "map_qual_rev",
-               "cigar_fwd", "cigar_rev",
+               "bowtie2_genome_id_best", "bowtie2_genome_id_all",
+               "bowtie2_taxid_best", "bowtie2_taxid_all",
+               "bowtie2_fragment_length",
+               "bowtie2_genome_id_fwd", "bowtie2_genome_id_rev",
+               "bowtie2_taxid_fwd", "bowtie2_taxid_rev",
+               "bowtie2_fragment_length_fwd", "bowtie2_fragment_length_rev",
+               "bowtie2_best_alignment_score_fwd", "bowtie2_best_alignment_score_rev",
+               "bowtie2_next_alignment_score_fwd", "bowtie2_next_alignment_score_rev",
+               "bowtie2_edit_distance_fwd", "bowtie2_edit_distance_rev",
+               "bowtie2_ref_start_fwd", "bowtie2_ref_start_rev",
+               "bowtie2_map_qual_fwd", "bowtie2_map_qual_rev",
+               "bowtie2_cigar_fwd", "bowtie2_cigar_rev",
                "query_len_fwd", "query_len_rev",
                "query_seq_fwd", "query_seq_rev",
                "query_qual_fwd", "query_qual_rev",
-               "pair_status"]
+               "bowtie2_length_normalized_score_fwd", 
+               "bowtie2_length_normalized_score_rev",
+               "bowtie2_length_normalized_score_max",
+               "bowtie2_pair_status"]
     header_line = join_line(headers)
     out_file.write(header_line)
     return None

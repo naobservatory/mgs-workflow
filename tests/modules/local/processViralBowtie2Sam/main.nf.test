@@ -50,13 +50,16 @@ nextflow_process {
         then {
             // Should run without failures
             assert process.success
-            // Output lines should match input lines (plus TSV header, minus SAM headers)
             // Output lines should match input lines (plus header)
             def countGzipLines = { file -> path(file).linesGzip.size() }
             def countGzipLinesSam = { file -> ["bash", "-c", "zcat " + file + " | grep -v \"^@\" | wc -l"].execute().text.trim() as Integer }
             def output_lines = countGzipLines(process.out.output[0][1])
             def input_lines = countGzipLinesSam(process.out.input[0][1])
             assert output_lines == input_lines / 2 + 1
+            // Output should be a valid TSV that can be parsed and read
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount > 0
+            assert tab_out.rowCount > 0
             // TODO: Add more detailed tests of file content (requires parsing gzipped SAM file)
         }
     }
