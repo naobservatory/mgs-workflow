@@ -1,5 +1,5 @@
 process COUNT_READS {
-    label "countReads"
+    label "coreutils_gzip_gawk"
     label "single_cpu_32GB_memory"
     input:
         tuple val(sample), path(reads)
@@ -8,7 +8,10 @@ process COUNT_READS {
     shell:
         '''
         # Count reads in file
-        COUNT=$(bioawk -c fastx 'END{print NR}' !{reads[0]})
-        echo "!{sample},$COUNT" > !{sample}_read_count.txt
+        COUNT=$(zcat !{reads[0]} | wc -l | awk '{print $1/4}')
+        # Add header
+        echo -e "sample\ttotal_read_count" > !{sample}_read_count.txt
+        # Add sample and count
+        echo -e "!{sample}\t$COUNT" >> !{sample}_read_count.txt
         '''
 }

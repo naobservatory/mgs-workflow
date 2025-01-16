@@ -34,10 +34,10 @@ workflow QC {
         multiqc_qbase_ch = process_ch.map{ it[2] }.collect().ifEmpty([])
         multiqc_qseqs_ch = process_ch.map{ it[3] }.collect().ifEmpty([])
         // 5. Merge MultiQC outputs
-        basic_out_ch = MERGE_MULTIQC_BASIC(multiqc_basic_ch, "${stage_label}_subsetted_qc_basic_stats")
-        adapt_out_ch = MERGE_MULTIQC_ADAPT(multiqc_adapt_ch, "${stage_label}_subsetted_qc_adapter_stats")
-        qbase_out_ch = MERGE_MULTIQC_QBASE(multiqc_qbase_ch, "${stage_label}_subsetted_qc_quality_base_stats")
-        qseqs_out_ch = MERGE_MULTIQC_QSEQS(multiqc_qseqs_ch, "${stage_label}_subsetted_qc_quality_sequence_stats")
+        basic_out_ch = MERGE_MULTIQC_BASIC(multiqc_basic_ch, "${stage_label}_subset_qc_basic_stats")
+        adapt_out_ch = MERGE_MULTIQC_ADAPT(multiqc_adapt_ch, "${stage_label}_subset_qc_adapter_stats")
+        qbase_out_ch = MERGE_MULTIQC_QBASE(multiqc_qbase_ch, "${stage_label}_subset_qc_quality_base_stats")
+        qseqs_out_ch = MERGE_MULTIQC_QSEQS(multiqc_qseqs_ch, "${stage_label}_subset_qc_quality_sequence_stats")
         // 6. Combine outputs into a single output channel
         out_ch = basic_out_ch.combine(adapt_out_ch)
             .combine(qbase_out_ch).combine(qseqs_out_ch)
