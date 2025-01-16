@@ -1,4 +1,4 @@
-// Throw away reads that aligned to reference
+// Return reads that did not align to reference as FASTQ
 process SAMTOOLS_FILTER {
     label "samtools"
     input:
@@ -14,7 +14,7 @@ process SAMTOOLS_FILTER {
         samtools ${var} ${in} > ${out}
         '''
 }
-
+// Return reads that aligned to reference as FASTQ
 process SAMTOOLS_KEEP {
     label "samtools"
     input:
@@ -31,7 +31,7 @@ process SAMTOOLS_KEEP {
         '''
 }
 
-
+// Return reads that aligned to reference as SAM
 process SAMTOOLS_KEEP_AS_SAM {
     label "samtools"
     input:
