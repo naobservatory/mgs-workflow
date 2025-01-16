@@ -60,7 +60,7 @@ workflow RUN {
     SUBSET_AND_TRIM_READS(samplesheet_ch, group_ch, params.n_reads_profile, params.grouping, params.adapters, params.single_end)
 
     // Run QC on subset reads before and after adapter trimming
-    RUN_QC(SUBSET_AND_TRIM_READS.out.subset_reads, SUBSET_AND_TRIM_READS.out.trimmed_subset_reads, params.fastqc_cpus, params.fastqc_mem, params.single_end)
+    RUN_QC(SUBSET_AND_TRIM_READS.out.subset_reads, SUBSET_AND_TRIM_READS.out.trimmed_subset_reads, "2", "4 GB", params.single_end)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
     PROFILE(SUBSET_AND_TRIM_READS.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo", params.single_end)

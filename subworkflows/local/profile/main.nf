@@ -47,6 +47,4 @@ workflow PROFILE {
     emit:
         bracken = merge_ch.bracken
         kraken = merge_ch.kraken
-        pre_qc = pre_qc_ch.qc
-        post_qc = post_qc_ch.qc
 }

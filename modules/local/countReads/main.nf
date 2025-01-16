@@ -4,14 +4,14 @@ process COUNT_READS {
     input:
         tuple val(sample), path(reads)
     output:
-        path("${sample}_read_count.txt")
+        path("${sample}_read_count.tsv")
     shell:
         '''
         # Count reads in file
         COUNT=$(zcat !{reads[0]} | wc -l | awk '{print $1/4}')
         # Add header
-        echo -e "sample\ttotal_read_count" > !{sample}_read_count.txt
+        echo -e "sample\ttotal_read_count" > !{sample}_read_count.tsv
         # Add sample and count
-        echo -e "!{sample}\t$COUNT" >> !{sample}_read_count.txt
+        echo -e "!{sample}\t$COUNT" >> !{sample}_read_count.tsv
         '''
 }
