@@ -1,3 +1,12 @@
+# v2.6.1.0 (in progress)
+- Replace Trimmomatic with Atria
+
+# v2.6.0.0
+- Updated version to reflect the new versioning scheme, which is described in `docs/version_schema.md`.
+
+# v2.5.4
+- Fixed fatal bug in `configs/run_validation.config` that prevents users from running the `RUN_VALIDATION` workflow.
+
 # v2.5.3
 - Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing
 - Updated tags to prevent inappropriate S3 auto-cleanup
