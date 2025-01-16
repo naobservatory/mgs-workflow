@@ -23,8 +23,8 @@ include { JOIN_TSVS as JOIN_BBMERGE } from "../../../modules/local/joinTsvs"
 include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
 include { CONCATENATE_TSVS_STREAMED as CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
 include { FILTER_VIRUS_READS_STREAMED as FILTER_VIRUS_READS } from "../../../modules/local/filterVirusReads"
-
-include { MAKE_VIRUS_READS_FASTA } from "../../../modules/local/makeVirusReadsFasta"
+include { CONCATENATE_FILES } from "../../../modules/local/concatenateFiles"
+include { EXTRACT_VIRAL_HITS_TO_FASTQ } from "../../../modules/local/extractViralHitsToFASTQ"
 
 /***********
 | WORKFLOW |
@@ -92,11 +92,15 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_all")
         // 9. Filter by length-normalized alignment score
         filter_ch = FILTER_VIRUS_READS(concat_ch.output, aln_score_threshold)
+        // 10. Extract filtered virus hits in FASTQ format
+        fastq_unfiltered_collect = other_bbm_ch.reads_unmapped.map{ sample, file -> file }.collect().ifEmpty([])
+        fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
+        fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(filter_ch.output, fastq_unfiltered_concat.output)
     emit:
         bbduk_match = bbduk_ch.fail
         hits_all = concat_ch.output
         hits_filtered = filter_ch.output
-        //fits_fasta = fasta_ch.output
+        hits_fastq = fastq_ch.fastq
         test_reads  = other_bbm_ch.reads_unmapped
         test_kraken = kraken_output_ch.output
         test_bowtie = bowtie2_sam_ch.output
@@ -109,10 +113,3 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
 // - Duplicate annotation with Bowtie2
 // - Addition of duplicate information to output TSV
 // - Clade counting
-
-//workflow EXTRACT_VIRAL_READS {
-//    main:
-//        fasta_ch = MAKE_VIRUS_READS_FASTA(collapsed_frag_dup_ch)
-//    emit:
-//        fasta = fasta_ch
-//}

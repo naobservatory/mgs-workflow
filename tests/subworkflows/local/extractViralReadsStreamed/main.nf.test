@@ -52,13 +52,14 @@ nextflow_workflow {
             assert workflow.success
             // Output should have a nonzero number of lines divisible by eight
             // (for an interleaved FASTQ file)
-            def countGzipLines = { file -> path(file).linesGzip.size() }
-            def test_reads_lines = countGzipLines(workflow.out.test_reads[0][1])
-            assert test_reads_lines > 0
-            assert test_reads_lines % 8 == 0
+            // Output should be valid FASTQ with an even number of entries (interleaved)
+            def test_reads_fastq = path(workflow.out.test_reads[0][1]).fastq
+            def test_reads_count = test_reads_fastq.getNumberOfRecords()
+            assert test_reads_count > 0
+            assert test_reads_count % 2 == 0
             // Processed Kraken output should match lines in test reads
             def test_kraken_tab = path(workflow.out.test_kraken[0][1]).csv(sep: "\t", decompress: true)
-            assert test_kraken_tab.rowCount == test_reads_lines / 8
+            assert test_kraken_tab.rowCount == test_reads_count / 2
             // Other tabular tests
             def test_bowtie_tab = path(workflow.out.test_bowtie[0][1]).csv(sep: "\t", decompress: true)
             def test_joined_tab = path(workflow.out.test_joined[0][1]).csv(sep: "\t", decompress: true)
@@ -74,6 +75,23 @@ nextflow_workflow {
             assert hits_exp_tab.columnNames == hits_filtered_tab.columnNames
             assert hits_exp_tab.rowCount == hits_filtered_tab.rowCount
             assertTableEquals hits_exp_tab, hits_filtered_tab
+            // Filtered FASTQ should be a subset of test FASTQ
+            def hits_fastq = path(workflow.out.hits_fastq[0]).fastq
+            assert hits_fastq.getNumberOfRecords() < test_reads_count
+            for (r in hits_fastq.readNames) {
+                assert r in test_reads_fastq.readNames
+            }
+            // Elements from test FASTQ should be in filtered FASTQ iff they're in filtered TSV
+            def ids_filtered = hits_filtered_tab.columns["seq_id"]
+            def ids_fastq_in = test_reads_fastq.readNames.collect{ it.tokenize(" ")[0] }
+            def ids_fastq_out = hits_fastq.readNames.collect{ it.tokenize(" ")[0] }
+            for (id in ids_fastq_in) {
+                if (id in ids_filtered) {
+                    assert id in ids_fastq_out
+                } else {
+                    assert !(id in ids_fastq_out)
+                }
+            }
         }
     }
 }
