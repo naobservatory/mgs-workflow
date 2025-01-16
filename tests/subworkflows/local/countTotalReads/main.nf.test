@@ -1,0 +1,42 @@
+nextflow_workflow {
+
+    name "Test Workflow COUNT_TOTAL_READS"
+    script "subworkflows/local/countTotalReads/main.nf"
+    workflow "COUNT_TOTAL_READS"
+
+    test("Should run without failures") {
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "/home/ec2-user/pipeline-development/bbduk-rearrangement/mgs-workflow/test-data/samplesheet.csv"
+                    input[1] = false
+                    input[2] = false
+                    """
+                }
+            }
+        }
+
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            println(workflow.out.read_counts[0])
+            def file_out = path(workflow.out.read_counts[0]).csv(sep: "\t", decompress: true) 
+            assert file_out.rowCount == 1
+            assert file_out.columnNames == ["sample", "total_read_count"]
+            assert file_out.rows[0] == ["total_read_count": 165, "sample": "gold_standard"]
+        }
+
+    }
+
+}
