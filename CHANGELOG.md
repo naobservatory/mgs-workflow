@@ -1,8 +1,12 @@
-# v2.6.1.0
-- Replace Trimmomatic with Atria
+# v2.6.1.0 (in progress)
+- Implement masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences
+- Replace Trimmomatic with Atria in EXTRACT_VIRAL_READS
 
 # v2.6.0.0
-- Updated verison to reflect the new versioning scheme, which is described in `docs/version_schema.md`.
+- Updated version to reflect the new versioning scheme, which is described in `docs/version_schema.md`.
+
+# v2.5.4
+- Fixed fatal bug in `configs/run_validation.config` that prevents users from running the `RUN_VALIDATION` workflow.
 
 # v2.5.3
 - Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing
