@@ -11,7 +11,7 @@ nextflow_process {
                 script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
-                    input[0] = "/home/ec2-user/pipeline-development/bbduk-rearrangement/mgs-workflow/test-data/samplesheet.csv"
+                    input[0] = "${baseDir}/test-data/samplesheet.csv"
                     input[1] = false
                     input[2] = false
                     """
