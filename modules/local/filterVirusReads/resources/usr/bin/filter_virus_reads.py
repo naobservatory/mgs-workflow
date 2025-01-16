@@ -31,6 +31,8 @@ def filter_virus_reads(input_path, score_threshold, out_path):
         headers = inf.readline().strip().split("\t")
         idx = {h: i for i, h in enumerate(headers)}
         # Check for necessary columns in header
+        if "seq_id" not in headers:
+            raise ValueError("Missing column in input TSV: 'seq_id'")
         if "kraken_classified" not in headers:
             raise ValueError("Missing column in input TSV: 'kraken_classified'")
         if "kraken_assigned_host_virus" not in headers:
@@ -41,17 +43,31 @@ def filter_virus_reads(input_path, score_threshold, out_path):
         # Read in lines and filter based on Kraken assignment and score
         for line in inf:
             fields = line.strip().split("\t")
-            kraken_classified = bool(fields[idx["kraken_classified"]])
-            kraken_assigned_host_virus = bool(fields[idx["kraken_assigned_host_virus"]])
+            kraken_classified = fields[idx["kraken_classified"]].lower() == "true"
+            kraken_assigned_host_virus = int(fields[idx["kraken_assigned_host_virus"]]) # 3-state: 0, 1, or 2
+            if (not kraken_classified) and kraken_assigned_host_virus > 0:
+                raise ValueError("Inconsistent Kraken fields: 'kraken_classified' is False, but 'kraken_assigned_host_virus' is not 0: {}".format(fields[idx["seq_id"]]))
             adj_score = float(fields[idx["bowtie2_length_normalized_score_max"]])
-            # Discard if assigned to taxon other than host-infecting viruses
-            if kraken_classified and not kraken_assigned_host_virus:
-                continue
-            # Discard if normalized Bowtie2 score is below threshold, unless assigned by Kraken to a host-infecting virus
-            if !kraken_assigned_host_virus and adj_score < score_threshold:
-                continue
-            # Otherwise, write line to output
-            outf.write("\t".join(fields) + "\n")
+            # Only write reads that:
+            # 1. Are classified by Kraken as host-infecting viruses; or
+            # 2. Are classified by Kraken as potentially host-infecting viruses, and have a normalized Bowtie2 score above the threshold
+            # 3. Are unclassified by Kraken, but have a normalized Bowtie2 score above the threshold; or
+            msg = f"{kraken_classified}\t{kraken_assigned_host_virus}\t{adj_score}/{score_threshold}"
+            if kraken_assigned_host_virus == 1:
+                msg = msg+"\tKEEP"
+                print_log(msg)
+                outf.write("\t".join(fields) + "\n")
+            elif adj_score >= score_threshold and kraken_assigned_host_virus == 2:
+                msg = msg+"\tKEEP"
+                print_log(msg)
+                outf.write("\t".join(fields) + "\n")
+            elif adj_score >= score_threshold and not kraken_classified:
+                msg = msg+"\tKEEP"
+                print_log(msg)
+                outf.write("\t".join(fields) + "\n")
+            else:
+                msg = msg+"\tDISCARD"
+                print_log(msg)
 
 def main():
     # Parse arguments

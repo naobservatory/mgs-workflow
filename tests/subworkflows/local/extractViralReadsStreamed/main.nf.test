@@ -1,3 +1,10 @@
+// Helper function: manual table filtering
+def filter_tab = { tab_in, threshold -> csv(tab_in.table.where(
+    tab_in.table.intColumn("kraken_assigned_host_virus").isEqualTo(1).or(
+        tab_in.table.numberColumn("bowtie2_length_normalized_score_max").isGreaterThanOrEqualTo(threshold).and(
+            tab_in.table.intColumn("kraken_assigned_host_virus").isEqualTo(2).or(
+                tab_in.table.booleanColumn("kraken_classified").isFalse()))))) }
+
 nextflow_workflow {
 
     name "Test workflow EXTRACT_VIRAL_READS_STREAMED"
@@ -19,6 +26,7 @@ nextflow_workflow {
     test("Should run without failures") {
         when {
             params {
+                bt2_score_threshold = 20
             }
             workflow {
                 '''
@@ -56,6 +64,16 @@ nextflow_workflow {
             def test_joined_tab = path(workflow.out.test_joined[0][1]).csv(sep: "\t", decompress: true)
             assert test_joined_tab.rowCount == Math.min(test_bowtie_tab.rowCount, test_kraken_tab.rowCount)
             assert test_joined_tab.columnCount == test_bowtie_tab.columnCount + test_kraken_tab.columnCount - 1 + 2
+            // Test filtering produced expected results
+            def hits_all_tab = path(workflow.out.hits_all[0]).csv(sep: "\t", decompress: true)
+            def hits_filtered_tab = path(workflow.out.hits_filtered[0]).csv(sep: "\t", decompress: true)
+            assertTableEquals hits_all_tab, test_joined_tab
+            assert hits_all_tab.columnNames == hits_filtered_tab.columnNames
+            assert hits_all_tab.rowCount >= hits_filtered_tab.rowCount
+            def hits_exp_tab = filter_tab(hits_all_tab, params.bt2_score_threshold)
+            assert hits_exp_tab.columnNames == hits_filtered_tab.columnNames
+            assert hits_exp_tab.rowCount == hits_filtered_tab.rowCount
+            assertTableEquals hits_exp_tab, hits_filtered_tab
         }
     }
 }

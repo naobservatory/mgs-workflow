@@ -21,16 +21,10 @@ include { REHEAD_TSV as REHEAD_BOWTIE_VIRAL } from "../../../modules/local/rehea
 include { JOIN_TSVS as JOIN_KRAKEN_BOWTIE } from "../../../modules/local/joinTsvs"
 include { JOIN_TSVS as JOIN_BBMERGE } from "../../../modules/local/joinTsvs"
 include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
+include { CONCATENATE_TSVS_STREAMED as CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
+include { FILTER_VIRUS_READS_STREAMED as FILTER_VIRUS_READS } from "../../../modules/local/filterVirusReads"
 
-include { CONCATENATE_TSVS as CONCATENATE_TSVS_BOWTIE2_KRAKEN } from "../../../modules/local/concatenateTsvs"
-include { CONCATENATE_TSVS as CONCATENATE_TSVS_BBMERGE } from "../../../modules/local/concatenateTsvs"
-include { CONCATENATE_TSVS as CONCATENATE_TSVS_DEDUP } from "../../../modules/local/concatenateTsvs"
-include { CONCATENATE_TSVS as CONCATENATE_TSVS_ALIGNMENT_DUPLICATES } from "../../../modules/local/concatenateTsvs"
-include { FILTER_VIRUS_READS } from "../../../modules/local/filterVirusReads"
-include { COLLAPSE_VIRUS_READS } from "../../../modules/local/collapseVirusReads"
-include { ADD_FRAG_DUP_TO_VIRUS_READS } from "../../../modules/local/addFragDupToVirusReads"
 include { MAKE_VIRUS_READS_FASTA } from "../../../modules/local/makeVirusReadsFasta"
-include { COUNT_VIRUS_CLADES } from "../../../modules/local/countVirusClades"
 
 /***********
 | WORKFLOW |
@@ -93,31 +87,32 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         bbmerge_combined_ch = out_joined_ch.output.combine(bbmerge_sorted_ch.sorted, by: 0)
         out_joined_ch_2 = JOIN_BBMERGE(bbmerge_combined_ch, "seq_id", "left", "viral_bbmerge")
         out_labeled_ch = ADD_SAMPLE_COLUMN(out_joined_ch_2.output, "sample", "viral_bbmerge")
+        // 8. Concatenate across reads
+        label_combined_ch = out_labeled_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
+        concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_all")
+        // 9. Filter by length-normalized alignment score
+        filter_ch = FILTER_VIRUS_READS(concat_ch.output, aln_score_threshold)
     emit:
         bbduk_match = bbduk_ch.fail
+        hits_all = concat_ch.output
+        hits_filtered = filter_ch.output
+        //fits_fasta = fasta_ch.output
         test_reads  = other_bbm_ch.reads_unmapped
         test_kraken = kraken_output_ch.output
         test_bowtie = bowtie2_sam_ch.output
         test_joined = out_labeled_ch.output
 }
 
+// Removed functionality, to be moved to a new script or workflow
+// - Grouping for deduplication
+// - Deduplication with Clumpify
+// - Duplicate annotation with Bowtie2
+// - Addition of duplicate information to output TSV
+// - Clade counting
+
 //workflow EXTRACT_VIRAL_READS {
 //    main:
-//        // Process Kraken output and merge with Bowtie2 output across samples
-//        bowtie2_kraken_merged_ch = MERGE_SAM_KRAKEN(kraken_output_ch.combine(bowtie2_sam_ch, by: 0))
-//        merged_ch = CONCATENATE_TSVS_BOWTIE2_KRAKEN(bowtie2_kraken_merged_ch.collect().ifEmpty([]), "bowtie2_kraken_merged")
-//        merged_bbmerge_results = CONCATENATE_TSVS_BBMERGE(tax_ch.bbmerge_summary.collect().ifEmpty([]), "bbmerge")
-//        merged_dedup_results = CONCATENATE_TSVS_DEDUP(tax_ch.dedup_summary.collect().ifEmpty([]), "dedup")
-//        merged_alignment_dup_results = CONCATENATE_TSVS_ALIGNMENT_DUPLICATES(alignment_dup_summary.collect().ifEmpty([]), "alignment_duplicates")
-//        // Filter and process putative hit TSV
-//        filtered_ch = FILTER_VIRUS_READS(merged_ch, aln_score_threshold)
-//        collapsed_ch = COLLAPSE_VIRUS_READS(filtered_ch)
-//        collapsed_frag_dup_ch = ADD_FRAG_DUP_TO_VIRUS_READS(collapsed_ch, merged_bbmerge_results, merged_dedup_results, merged_alignment_dup_results)
 //        fasta_ch = MAKE_VIRUS_READS_FASTA(collapsed_frag_dup_ch)
-//        // Count clades
-//        count_ch = COUNT_VIRUS_CLADES(collapsed_frag_dup_ch, virus_db_path)
 //    emit:
-//        tsv = collapsed_frag_dup_ch
 //        fasta = fasta_ch
-//        counts = count_ch
 //}
