@@ -26,21 +26,21 @@ workflow EXTRACT_ONT_VIRAL_READS {
             // Split into multi-sample and single-sample groups
             multi_sample_groups = grouped_ch.filter { it[0].size() > 1 }
             single_sample_groups = grouped_ch.filter { it[0].size() == 1 }
-                .map { samples, fwd_list, rev_list, group -> tuple(group, [fwd_list[0], rev_list[0]]) }
+                .map { samples, read_list, group -> tuple(group, [read_list[0]]) }
             grouped_ch = CONCAT_GROUP(multi_sample_groups).mix(single_sample_groups)
         } else {
             grouped_ch = reads
         }
-        // Print content of grouped_ch for debugging
-        grouped_ch.view { "grouped_ch content: $it" }
         // Drop non-complex reads
-        masked_ch = DUSTMASKER_FASTQ_GZIPPED(grouped_ch)
+        // masked_ch = DUSTMASKER_FASTQ_GZIPPED(grouped_ch)
 
         // Identify HV reads
-        minimap2_hv_sam_ch = MINIMAP2_HV(masked_ch, minimap2_hv_index, "hv")
+        minimap2_hv_sam_ch = MINIMAP2_HV(grouped_ch, minimap2_hv_index, "hv")
         minimap2_hv_sam_ch = SAMTOOLS_KEEP_AS_SAM(minimap2_hv_sam_ch, "hv")
+
+        // Merge SAM files
+        // FIX!!! merged_sam = SAMTOOLS_MERGE(minimap2_hv_sam_ch.sam.collect().ifEmpty([]), "hv_alignments")
     emit:
         merged_sam = minimap2_hv_sam_ch
 }
-
 

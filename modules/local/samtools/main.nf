@@ -68,3 +68,22 @@ process SAMTOOLS_SEPARATE {
         samtools ${op_var} ${in} > ${op}
         '''
 }
+
+
+// Merge SAM files and return as SAM | FIX!!!
+process SAMTOOLS_MERGE {
+    label "samtools"
+    input:
+        tuple val(sample), path(sam_files)
+        val(prefix)
+    output:
+        path("${prefix}.sam")
+    shell:
+        '''
+        # Get list of input files
+        in_paths=(${sam_files})
+
+        # Merge SAM files
+        samtools merge -h "${name}.sam" ${in_paths}
+        '''
+}

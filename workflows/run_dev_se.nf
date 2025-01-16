@@ -57,7 +57,7 @@ workflow RUN_DEV_SE {
     CLEAN(RAW.out.reads, params.adapters, "8", "16 GB", "cleaned", params.single_end)
 
     // Taxonomic profiling
-    // PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index, hv_index)
+    PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index, hv_index)
 
     // Extract and count human-viral reads
     if (params.ont) {
