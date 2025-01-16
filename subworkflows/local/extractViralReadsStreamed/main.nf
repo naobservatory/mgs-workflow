@@ -60,13 +60,13 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         bbduk_ch = BBDUK_HITS_STREAMED(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // 2. Carry out stringent adapter removal with Cutadapt and Atria
         // NB: Not currently running Atria until we figure out how to run it streamed
+        // TODO: Add streamed version of Atria
         adapt_ch = CUTADAPT_STREAMED(bbduk_ch.fail, adapter_path)
         // atria_ch = ATRIA_STREAMED(adapt_ch.reads, adapters_ch)
         atria_ch = adapt_ch
         // NB: No grouping, all readwise (i.e. no dedup)
         // 3. Run Bowtie2 against a viral database and process output
         bowtie2_ch = BOWTIE2_VIRUS(atria_ch.reads, bt2_virus_index_path, "--score-min G,1,1", "virus", true, false)
-        // TODO: Process Bowtie2 SAM output for integration into output TSV (PROCESS_VIRAL_BOWTIE2_SAM)
         // 4. Filter contaminants
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, "", "human", false, false)
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, "", "other", false, false)
