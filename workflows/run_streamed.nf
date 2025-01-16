@@ -10,8 +10,6 @@ import java.time.LocalDateTime
 ***************************/
 
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
-include { RAW } from "../subworkflows/local/raw"
-include { CLEAN } from "../subworkflows/local/clean"
 include { EXTRACT_VIRAL_READS_STREAMED } from "../subworkflows/local/extractViralReadsStreamed"
 nextflow.preview.output = true
 
@@ -30,10 +28,6 @@ workflow RUN_STREAMED {
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     group_ch = LOAD_SAMPLESHEET.out.group
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
-
-    // Preprocessing
-    RAW(samplesheet_ch, params.n_reads_trunc, "2", "4 GB", "raw_concat", params.single_end)
-    CLEAN(RAW.out.reads, params.adapters, "2", "4 GB", "cleaned", params.single_end)
 
     // Extract and count human-viral reads
     EXTRACT_VIRAL_READS_STREAMED(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)

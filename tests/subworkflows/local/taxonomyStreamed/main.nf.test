@@ -11,7 +11,9 @@ nextflow_workflow {
                 script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
-                    input[0] = "test-data/samplesheet.csv"
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = false
+                    input[2] = false
                     """
                 }
             }
@@ -75,7 +77,9 @@ nextflow_workflow {
                 script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
-                    input[0] = "test-data/single-end-samplesheet.csv"
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = false
+                    input[2] = true
                     """
                 }
             }

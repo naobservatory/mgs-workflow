@@ -11,7 +11,7 @@ nextflow_process {
                 script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
-                    input[0] = "/home/ec2-user/pipeline-development/bbduk-rearrangement/mgs-workflow/test-data/samplesheet.csv"
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = false
                     input[2] = false
                     """
@@ -29,11 +29,17 @@ nextflow_process {
         }
 
         then {
+            // Should run without failures
             assert process.success
-            def file_out = path(process.out[0][0]).csv(sep: "\t") 
+            // Should have expected structure
+            def file_out = path(process.out.output[0]).csv(sep: "\t") 
             assert file_out.rowCount == 1
             assert file_out.columnNames == ["sample", "total_read_count"]
-            assert file_out.rows[0] == ["total_read_count": 165, "sample": "gold_standard"]
+            // Read count should be correct
+            def sample_name = process.out.input[0][0]
+            def fastq_in = path(process.out.input[0][1][0]).fastq
+            def reads_in = fastq_in.getNumberOfRecords()
+            assert file_out.rows[0] == ["total_read_count": reads_in, "sample": sample_name]
         }
 
     }
