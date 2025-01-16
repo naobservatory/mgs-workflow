@@ -10,7 +10,8 @@ import java.time.LocalDateTime
 ***************************/
 
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
-include { PROCESS_OUTPUT } from "../subworkflows/local/processOutput"
+include { SUBSET_AND_TRIM_READS } from "../subworkflows/local/subsetAndTrimReads"
+include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE } from "../subworkflows/local/profile"
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
@@ -34,13 +35,14 @@ workflow RUN_DEV_SE {
     // Count reads in files
     COUNT_TOTAL_READS(samplesheet_ch)
 
+    // Subset reads to target number, and trim adapters
+    SUBSET_AND_TRIM_READS(samplesheet_ch, group_ch, params.n_reads_profile, params.grouping, params.adapters, params.single_end)
 
-    // Taxonomic profiling
-    PROFILE(samplesheet_ch, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping,params.adapters, "2", "4 GB", params.single_end)
+    // Run QC on subset reads before and after adapter trimming
+    RUN_QC(SUBSET_AND_TRIM_READS.out.subset_reads, SUBSET_AND_TRIM_READS.out.trimmed_subset_reads, "2", "4 GB", params.single_end)
 
-    // Process output
-    qc_ch = PROFILE.out.pre_qc.concat(PROFILE.out.post_qc)
-    PROCESS_OUTPUT(qc_ch)
+    // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
+    PROFILE(SUBSET_AND_TRIM_READS.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo", params.single_end)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -62,10 +64,10 @@ workflow RUN_DEV_SE {
         version_ch >> "logging"
         // QC
         COUNT_TOTAL_READS.out.read_counts >> "results"
-        PROCESS_OUTPUT.out.basic >> "results"
-        PROCESS_OUTPUT.out.adapt >> "results"
-        PROCESS_OUTPUT.out.qbase >> "results"
-        PROCESS_OUTPUT.out.qseqs >> "results"
+        RUN_QC.out.qc_basic >> "results"
+        RUN_QC.out.qc_adapt >> "results"
+        RUN_QC.out.qc_qbase >> "results"
+        RUN_QC.out.qc_qseqs >> "results"
         // Final results
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"

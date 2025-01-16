@@ -30,7 +30,7 @@ workflow RUN_QC {
       multiqc_basic_ch = qc_ch.map{ it[0] }.collect().ifEmpty([])
       multiqc_adapt_ch = qc_ch.map{ it[1] }.collect().ifEmpty([])
       multiqc_qbase_ch = qc_ch.map{ it[2] }.collect().ifEmpty([])
-      multiqc_qseqs_ch = multiqc_ch.map{ it[3] }.collect().ifEmpty([])
+      multiqc_qseqs_ch = qc_ch.map{ it[3] }.collect().ifEmpty([])
       // 4. Merge MultiQC outputs
       basic_out_ch = MERGE_MULTIQC_BASIC(multiqc_basic_ch, "qc_basic_stats")
       adapt_out_ch = MERGE_MULTIQC_ADAPT(multiqc_adapt_ch, "qc_adapter_stats")
