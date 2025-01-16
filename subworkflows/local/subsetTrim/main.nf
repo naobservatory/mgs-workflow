@@ -18,7 +18,7 @@ if (params.single_end) {
 | WORKFLOW |
 ***********/
 
-workflow SUBSET_AND_TRIM_READS {
+workflow SUBSET_TRIM {
     take:
       reads_ch
       group_ch

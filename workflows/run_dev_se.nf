@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 ***************************/
 
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
-include { SUBSET_AND_TRIM_READS } from "../subworkflows/local/subsetAndTrimReads"
+include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE } from "../subworkflows/local/profile"
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
@@ -36,13 +36,13 @@ workflow RUN_DEV_SE {
     COUNT_TOTAL_READS(samplesheet_ch)
 
     // Subset reads to target number, and trim adapters
-    SUBSET_AND_TRIM_READS(samplesheet_ch, group_ch, params.n_reads_profile, params.grouping, params.adapters, params.single_end)
+    SUBSET_TRIM(samplesheet_ch, group_ch, params.n_reads_profile, params.grouping, params.adapters, params.single_end)
 
     // Run QC on subset reads before and after adapter trimming
-    RUN_QC(SUBSET_AND_TRIM_READS.out.subset_reads, SUBSET_AND_TRIM_READS.out.trimmed_subset_reads, "2", "4 GB", params.single_end)
+    RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, "2", "4 GB", params.single_end)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
-    PROFILE(SUBSET_AND_TRIM_READS.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo", params.single_end)
+    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo", params.single_end)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
