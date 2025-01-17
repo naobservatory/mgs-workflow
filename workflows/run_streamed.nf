@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
-include { EXTRACT_VIRAL_READS_STREAMED } from "../subworkflows/local/extractViralReadsStreamed"
+include { EXTRACT_VIRAL_READS_STREAMED as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsStreamed"
 nextflow.preview.output = true
 
 /*****************
@@ -34,7 +34,8 @@ workflow RUN_STREAMED {
     COUNT_TOTAL_READS(samplesheet_ch)
 
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS_STREAMED(CLEAN.out.reads, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
+    EXTRACT_VIRAL_READS(CLEAN.out.reads, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
+        params.adapters, params.host_taxon, "1", "24", "viral")
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
