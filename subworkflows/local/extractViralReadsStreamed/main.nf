@@ -10,8 +10,6 @@ include { FASTP_PAIRED_STREAMED as FASTP } from "../../../modules/local/fastp"
 include { BOWTIE2_STREAMED as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
 include { BOWTIE2_STREAMED as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
 include { BOWTIE2_STREAMED as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
-include { BBMAP_STREAMED as BBMAP_HUMAN } from "../../../modules/local/bbmap"
-include { BBMAP_STREAMED as BBMAP_OTHER } from "../../../modules/local/bbmap"
 include { TAXONOMY_STREAMED as TAXONOMY } from "../../../subworkflows/local/taxonomyStreamed"
 include { PROCESS_VIRAL_BOWTIE2_SAM_2 as PROCESS_VIRAL_BOWTIE2_SAM } from "../../../modules/local/processViralBowtie2Sam" // NB: Already streamed
 include { PROCESS_KRAKEN_VIRAL_2 as PROCESS_KRAKEN_VIRAL } from "../../../modules/local/processKrakenViral" // NB: Already streamed
@@ -55,8 +53,6 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         bt2_virus_index_path = "${ref_dir}/results/bt2-virus-index"
         bt2_human_index_path = "${ref_dir}/results/bt2-human-index"
         bt2_other_index_path = "${ref_dir}/results/bt2-other-index"
-        bbm_human_index_path = "${ref_dir}/results/bbm-human-index"
-        bbm_other_index_path = "${ref_dir}/results/bbm-other-index"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
         // 1. Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS_STREAMED(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
@@ -69,10 +65,8 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         // 4. Filter contaminants
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, "", "human", false, false)
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, "", "other", false, false)
-        human_bbm_ch = BBMAP_HUMAN(other_bt2_ch.reads_unmapped, bbm_human_index_path, "human", false, false)
-        other_bbm_ch = BBMAP_OTHER(human_bbm_ch.reads_unmapped, bbm_other_index_path, "other", false, false)
         // 5. Run Kraken on filtered viral candidates (via taxonomy subworkflow)
-        tax_ch = TAXONOMY(other_bbm_ch.reads_unmapped, kraken_db_ch, "F", single_end)
+        tax_ch = TAXONOMY(other_bt2_ch.reads_unmapped, kraken_db_ch, "F", single_end)
         // 6. Process and combine Kraken and Bowtie2 output
         bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path)
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
@@ -92,7 +86,7 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         // 9. Filter by length-normalized alignment score
         filter_ch = FILTER_VIRUS_READS(concat_ch.output, aln_score_threshold)
         // 10. Extract filtered virus hits in FASTQ format
-        fastq_unfiltered_collect = other_bbm_ch.reads_unmapped.map{ sample, file -> file }.collect().ifEmpty([])
+        fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ sample, file -> file }.collect().ifEmpty([])
         fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
         fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(filter_ch.output, fastq_unfiltered_concat.output)
     emit:
@@ -100,7 +94,7 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         hits_all = concat_ch.output
         hits_filtered = filter_ch.output
         hits_fastq = fastq_ch.fastq
-        test_reads  = other_bbm_ch.reads_unmapped
+        test_reads  = other_bt2_ch.reads_unmapped
         test_kraken = kraken_output_ch.output
         test_bowtie = bowtie2_sam_ch.output
         test_joined = out_labeled_ch.output
