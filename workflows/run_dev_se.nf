@@ -62,18 +62,13 @@ workflow RUN_DEV_SE {
         time_ch >> "logging"
         version_ch >> "logging"
         // QC
-        PROCESS_OUTPUT.out.basic >> "results"
-        PROCESS_OUTPUT.out.adapt >> "results"
-        PROCESS_OUTPUT.out.qbase >> "results"
-        PROCESS_OUTPUT.out.qseqs >> "results"
-        PROCESS_OUTPUT.out.lengths >> "results"
         COUNT_TOTAL_READS.out.read_counts >> "results"
         RUN_QC.out.qc_basic >> "results"
         RUN_QC.out.qc_adapt >> "results"
         RUN_QC.out.qc_qbase >> "results"
         RUN_QC.out.qc_qseqs >> "results"
+        RUN_QC.out.qc_lengths >> "results"
         // Final results
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
 }
-

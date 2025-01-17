@@ -20,17 +20,6 @@ if (params.single_end) {
 }
 
 
-if (params.ont) {
-    include { FILTLONG as FILTER_READS } from "../../../modules/local/filtlong"
-} else {
-    if (params.single_end) {
-        include { FASTP_SINGLE as FILTER_READS } from "../../../modules/local/fastp"
-    } else {
-        include { FASTP_PAIRED as FILTER_READS } from "../../../modules/local/fastp"
-    }
-}
-
-
 /***********
 | WORKFLOW |
 ***********/
@@ -77,8 +66,12 @@ workflow SUBSET_TRIM {
         }
 
         // Call fastp adapter trimming
-        fastp_ch = FILTER_READS(grouped_ch, adapter_path)
+        if (params.ont) {
+            trimmed_ch = FILTER_READS(grouped_ch)
+        } else {
+            trimmed_ch = FILTER_READS(grouped_ch, adapter_path)
+        }
     emit:
         subset_reads = grouped_ch
-        trimmed_subset_reads = fastp_ch.reads
+        trimmed_subset_reads = trimmed_ch.reads
 }
