@@ -42,7 +42,7 @@ workflow GROUP_SAMPLES {
         // Concatenate multi-sample groups
         grouped_samples = CONCAT_GROUP(multi_sample_groups)
         // Randomly subset multi-sample groups to target number
-        subset_grouped_ch = SUBSET_READS_TARGET_GROUP(grouped_samples, n_reads, "fastq")
+        subset_grouped_ch = SUBSET_READS_TARGET_GROUP(grouped_samples, params.n_reads_profile, "fastq")
         // Mix with subsetted multi-sample group with already subsetted single-sample groups
         grouped_ch = subset_grouped_ch.mix(single_sample_groups)
     emit:
