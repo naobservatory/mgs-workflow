@@ -1,0 +1,45 @@
+nextflow_workflow {
+
+    name "Test Workflow SUBSET_TRIM"
+    script "subworkflows/local/subsetTrim/main.nf"
+    workflow "SUBSET_TRIM"
+
+    test("Should run without failures") {
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${baseDir}/test-data/samplesheet.csv"
+                    input[1] = false
+                    input[2] = false
+                    """
+                }
+            }
+        }
+
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet // reads_ch
+                input[1] = LOAD_SAMPLESHEET.out.group // group_ch
+                input[2] = params.n_reads_profile // n_reads
+                input[3] = params.grouping // grouping
+                input[4] = params.adapters // adapter_path
+                input[5] = params.single_end // single_end
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            assert countGzipLines(workflow.out.subset_reads[0][1][0]) == 165 * 4
+            assert countGzipLines(workflow.out.trimmed_subset_reads[0][1][0]) == 135 * 4
+        }
+
+    }
+
+}

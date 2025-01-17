@@ -64,6 +64,7 @@ nextflow_pipeline {
                 path("${launchDir}/output/results/blast_hits_paired.tsv.gz"),
                 path("${launchDir}/output/results/virus_hits_1.fasta.gz"),
                 path("${launchDir}/output/results/virus_hits_2.fasta.gz"),
+                path("${launchDir}/output/results/read_counts.tsv.gz"),
             ).match("run_output")
         }
 
