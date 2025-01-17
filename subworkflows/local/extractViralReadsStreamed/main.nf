@@ -5,7 +5,8 @@
 ***************************/
 
 include { BBDUK_HITS_STREAMED } from "../../../modules/local/bbduk"
-include { CUTADAPT_STREAMED } from "../../../modules/local/cutadapt"
+include { CUTADAPT_STREAMED as CUTADAPT } from "../../../modules/local/cutadapt"
+include { FASTP_PAIRED_STREAMED as FASTP } from "../../../modules/local/fastp"
 include { BOWTIE2_STREAMED as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
 include { BOWTIE2_STREAMED as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
 include { BOWTIE2_STREAMED as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
@@ -46,6 +47,7 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         fuzzy_match
         grouping
         single_end
+        // TODO: Check and remove unused inputs (e.g. grouping)
     main:
         // 0. Get reference paths
         viral_genome_path = "${ref_dir}/results/virus-genomes-filtered.fasta.gz"
@@ -58,15 +60,12 @@ workflow EXTRACT_VIRAL_READS_STREAMED {
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
         // 1. Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS_STREAMED(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
-        // 2. Carry out stringent adapter removal with Cutadapt and Atria
-        // NB: Not currently running Atria until we figure out how to run it streamed
-        // TODO: Add streamed version of Atria
-        adapt_ch = CUTADAPT_STREAMED(bbduk_ch.fail, adapter_path)
-        // atria_ch = ATRIA_STREAMED(adapt_ch.reads, adapters_ch)
-        atria_ch = adapt_ch
+        // 2. Carry out stringent adapter removal with FASTP and Cutadapt
+        fastp_ch = FASTP(bbduk_ch.fail, adapter_path)
+        adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path)
         // NB: No grouping, all readwise (i.e. no dedup)
         // 3. Run Bowtie2 against a viral database and process output
-        bowtie2_ch = BOWTIE2_VIRUS(atria_ch.reads, bt2_virus_index_path, "--score-min G,1,1", "virus", true, false)
+        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, "--score-min G,1,1", "virus", true, false)
         // 4. Filter contaminants
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, "", "human", false, false)
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, "", "other", false, false)

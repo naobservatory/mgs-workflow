@@ -1,3 +1,39 @@
+// Run FASTP on paired interleaved data
+process FASTP_PAIRED_STREAMED {
+    label "small"
+    label "fastp"
+    input:
+        tuple val(sample), path(reads_interleaved)
+        path(adapters)
+    output:
+        tuple val(sample), path("${sample}_fastp.fastq.gz"), emit: reads
+        tuple val(sample), path("${sample}_fastp_failed.fastq.gz"), emit: failed
+        tuple val(sample), path("${sample}_fastp.{json,html}"), emit: log
+        tuple val(sample), path("${sample}_fastp_in.fastq.gz"), emit: input
+    shell:
+        /* Cleaning not done in CUTADAPT:
+        * Higher quality threshold for sliding window trimming;
+        * Removing poly-X tails;
+        * Automatic adapter detection;
+        * Base correction in overlapping paired-end reads;
+        * Filter low complexity reads.
+        */
+        '''
+        # Define paths and parameters
+        op=!{sample}_fastp.fastq.gz
+        of=!{sample}_fastp_failed.fastq.gz
+        oj=!{sample}_fastp.json
+        oh=!{sample}_fastp.html
+        ad=!{adapters}
+        io="--failed_out ${of} --html ${oh} --json ${oj} --adapter_fasta ${ad} --stdin --interleaved_in --stdout"
+        par="--cut_front --cut_tail --correction --detect_adapter_for_pe --trim_poly_x --cut_mean_quality 20 --average_qual 20 --qualified_quality_phred 20 --verbose --dont_eval_duplication --thread !{task.cpus} --low_complexity_filter"
+        # Execute
+        zcat !{reads_interleaved} | fastp ${io} ${par} | gzip -c > ${op}
+        # Link input to output for testing
+        ln -s !{reads_interleaved} !{sample}_fastp_in.fastq.gz
+        '''
+}
+
 process FASTP_PAIRED {
     label "max"
     label "fastp"
@@ -10,7 +46,7 @@ process FASTP_PAIRED {
         tuple val(sample), path("${sample}_fastp_failed.fastq.gz"), emit: failed
         tuple val(sample), path("${sample}_fastp.{json,html}"), emit: log
     shell:
-        /* Cleaning not done in CUTADAPT or TRIMMOMATIC:
+        /* Cleaning not done in CUTADAPT:
         * Higher quality threshold for sliding window trimming;
         * Removing poly-X tails;
         * Automatic adapter detection;
@@ -44,7 +80,7 @@ process FASTP_SINGLE {
         tuple val(sample), path("${sample}_fastp_failed.fastq.gz"), emit: failed
         tuple val(sample), path("${sample}_fastp.{json,html}"), emit: log
     shell:
-        /* Cleaning not done in CUTADAPT or TRIMMOMATIC:
+        /* Cleaning not done in CUTADAPT:
         * Higher quality threshold for sliding window trimming;
         * Removing poly-X tails;
         * Automatic adapter detection;
@@ -80,7 +116,7 @@ process FASTP_NOTRIM {
         tuple val(sample), path("${sample}_fastp_failed.fastq.gz"), emit: failed
         tuple val(sample), path("${sample}_fastp.{json,html}"), emit: log
     shell:
-        /* Cleaning not done in CUTADAPT or TRIMMOMATIC:
+        /* Cleaning not done in CUTADAPT:
         * Higher quality threshold for sliding window trimming;
         * Removing poly-X tails;
         * Automatic adapter detection;

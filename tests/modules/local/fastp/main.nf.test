@@ -1,0 +1,58 @@
+nextflow_process {
+
+    name "Test process FASTP_PAIRED_STREAMED"
+    script "modules/local/fastp/main.nf"
+    process "FASTP_PAIRED_STREAMED"
+    config "tests/run.config"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = false
+                input[2] = false
+                """
+            }
+        }
+        run("INTERLEAVE_FASTQ_SEQTK") {
+            script "modules/local/interleaveFastq/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                """
+            }
+        }
+    }
+
+    test("Should run without failures and conserve reads") {
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = INTERLEAVE_FASTQ_SEQTK.out
+                input[1] = "${params.adapters}"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Input and output should be valid interleaved FASTQ
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def fastq_pass = path(process.out.reads[0][1]).fastq
+            def fastq_fail = path(process.out.failed[0][1]).fastq
+            def reads_in = fastq_in.getNumberOfRecords()
+            def reads_pass = fastq_pass.getNumberOfRecords()
+            def reads_fail = fastq_fail.getNumberOfRecords()
+            assert reads_in % 2 == 0
+            assert reads_pass % 2 == 0
+            assert reads_fail % 2 == 0
+            // Should conserve reads between input and output
+            assert reads_pass > 0
+            assert reads_pass + reads_fail == reads_in
+        }
+    }
+}
