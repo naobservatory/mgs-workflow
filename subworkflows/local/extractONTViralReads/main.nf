@@ -6,7 +6,7 @@ include { DUSTMASKER_FASTQ_GZIPPED } from "../../../modules/local/dustmasker"
 include { MINIMAP2_ONT as MINIMAP2_HV } from "../../../modules/local/minimap2"
 include { SAMTOOLS_KEEP_AS_SAM } from "../../../modules/local/samtools"
 include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
-include { MERGE_SAM } from "../../../modules/local/samtools/mergeSam"
+include { MERGE_SAM } from "../../../modules/local/samtools"
 
 /***********
 | WORKFLOW |
@@ -40,9 +40,9 @@ workflow EXTRACT_ONT_VIRAL_READS {
         minimap2_hv_sam_ch = SAMTOOLS_KEEP_AS_SAM(minimap2_hv_sam_ch, "hv")
 
         // Merging doesn't yet work, to fix.
-        // merged_sam_ch = MERGE_SAM(minimap2_hv_sam_ch)
+        merged_sam_ch = MERGE_SAM(minimap2_hv_sam_ch.sam.collect())
 
     emit:
-        sam = minimap2_hv_sam_ch.sam
+        sam = merged_sam_ch.merged_sam
 }
 
