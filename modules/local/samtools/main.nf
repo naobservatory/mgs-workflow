@@ -11,7 +11,7 @@ process SAMTOOLS_FILTER {
         in=!{sam}
         out=!{sample}_!{suffix}.fastq.gz
         var="fastq -n -f 4"
-        samtools ${var} ${in} > ${out}
+        samtools ${var} ${in} | gzip > ${out}
         '''
 }
 // Return reads that aligned to reference as FASTQ
@@ -27,7 +27,7 @@ process SAMTOOLS_KEEP {
         in=!{sam}
         out=!{sample}_!{suffix}.fastq.gz
         var="fastq -n -F 4"
-        samtools ${var} ${in} > ${out}
+        samtools ${var} ${in} | gzip > ${out}
         '''
 }
 
@@ -38,7 +38,7 @@ process SAMTOOLS_KEEP_AS_SAM {
         tuple val(sample), path(sam)
         val(suffix)
     output:
-        tuple val(sample), path("${sample}_${suffix}.sam"), emit: sam
+        path("${sample}_${suffix}.sam"), emit: sam
     shell:
         '''
         in=!{sam}
@@ -64,26 +64,22 @@ process SAMTOOLS_SEPARATE {
         op=!{sample}_!{suffix}_samtools_pass.fastq.gz
         of_var="fastq -n -F 4"
         op_var="fastq -n -f 4"
-        samtools ${of_var} ${in} > ${of}
-        samtools ${op_var} ${in} > ${op}
+        samtools ${of_var} ${in} | gzip > ${of}
+        samtools ${op_var} ${in} | gzip > ${op}
         '''
 }
 
-
-// Merge SAM files and return as SAM | FIX!!!
-process SAMTOOLS_MERGE {
+process MERGE_SAM {
     label "samtools"
+
     input:
-        tuple val(sample), path(sam_files)
-        val(prefix)
+        path(sam_files)
     output:
-        path("${prefix}.sam")
+        path("hv_alignments.sam"), emit: merged_sam
+
     shell:
         '''
-        # Get list of input files
-        in_paths=(${sam_files})
-
-        # Merge SAM files
-        samtools merge -h "${name}.sam" ${in_paths}
+        # Merge SAM files and automatically add RG tags based on filenames
+        samtools merge -r -O sam "hv_alignments.sam" !{sam_files}
         '''
 }
