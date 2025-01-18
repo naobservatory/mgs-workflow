@@ -7,6 +7,7 @@
 ***************************/
 
 include { QC } from "../../../subworkflows/local/qc"
+
 if (params.ont) {
     include { FILTLONG as FILTER_READS } from "../../../modules/local/filtlong"
 } else {
@@ -15,6 +16,10 @@ if (params.ont) {
     } else {
         include { FASTP_PAIRED as FILTER_READS } from "../../../modules/local/fastp"
     }
+}
+if (params.human_read_filtering) {
+    include { MINIMAP2_ONT as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
+    include { SAMTOOLS_FILTER } from "../../../modules/local/samtools"
 }
 
 /***********
@@ -29,9 +34,14 @@ workflow CLEAN {
         fastqc_mem
         stage_label
         single_end
+        minimap2_human_index
     main:
         if (params.ont) {
             filter_ch = FILTER_READS(reads_ch)
+            if (params.human_read_filtering) {
+                minimap2_ch = MINIMAP2_HUMAN(filter_ch, minimap2_human_index, "human")
+                filter_ch = SAMTOOLS_FILTER(minimap2_ch, "human")
+            }
         } else {
             filter_ch = FILTER_READS(reads_ch, adapter_path)
         }
