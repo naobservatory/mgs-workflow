@@ -102,8 +102,8 @@ workflow RUN_DEV_SE {
         PROCESS_OUTPUT.out.lengths >> "results"
 
         // Final results
-        // PROFILE.out.bracken >> "results"
-        // PROFILE.out.kraken >> "results"
+        PROFILE.out.bracken >> "results"
+        PROFILE.out.kraken >> "results"
         EXTRACT_ONT_VIRAL_READS.out.sam >> "results"
         HUMAN_SAM.out.human_sam >> "results"
 }
