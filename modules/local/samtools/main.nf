@@ -74,12 +74,13 @@ process MERGE_SAM {
 
     input:
         path(sam_files)
+        val prefix
     output:
-        path("hv_alignments.sam"), emit: merged_sam
+        path("${prefix}_alignments.sam"), emit: merged_sam
 
     shell:
         '''
         # Merge SAM files and automatically add RG tags based on filenames
-        samtools merge -r -O sam "hv_alignments.sam" !{sam_files}
+        samtools merge -r -O sam "${prefix}_alignments.sam" !{sam_files}
         '''
 }
