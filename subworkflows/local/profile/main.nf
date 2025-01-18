@@ -24,7 +24,6 @@ include { TAXONOMY as TAXONOMY_RIBO } from "../../../subworkflows/local/taxonomy
 include { TAXONOMY as TAXONOMY_NORIBO } from "../../../subworkflows/local/taxonomy"
 include { MERGE_TAXONOMY_RIBO } from "../../../modules/local/mergeTaxonomyRibo"
 if (params.ont) {
-    include { MINIMAP2_ONT as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
     include { MINIMAP2_ONT as MINIMAP2_RIBO } from "../../../modules/local/minimap2"
     include { MINIMAP2_ONT as MINIMAP2_HV } from "../../../modules/local/minimap2"
     include { SAMTOOLS_FILTER} from "../../../modules/local/samtools"
@@ -84,10 +83,6 @@ workflow PROFILE {
             grouped_ch = subset_ch
         }
 
-        if (params.human_read_filtering) {
-            minimap2_ch = MINIMAP2_HUMAN(grouped_ch, minimap2_human_index, "human")
-            grouped_ch = SAMTOOLS_FILTER(minimap2_ch, "human")
-        }
 
         // Separate ribosomal reads
         if (params.ont) {

@@ -54,7 +54,7 @@ workflow RUN_DEV_SE {
 
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "8", "16 GB", "raw_concat", params.single_end)
-    CLEAN(RAW.out.reads, params.adapters, "8", "16 GB", "cleaned", params.single_end)
+    CLEAN(RAW.out.reads, params.adapters, "8", "16 GB", "cleaned", params.single_end, minimap2_human_index)
 
     // Taxonomic profiling
     PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index, hv_index)
@@ -100,5 +100,5 @@ workflow RUN_DEV_SE {
         // Final results
         // PROFILE.out.bracken >> "results"
         // PROFILE.out.kraken >> "results"
-        EXTRACT_ONT_VIRAL_READS.out.merged_sam >> "results"
+        EXTRACT_ONT_VIRAL_READS.out.sam >> "results"
 }
