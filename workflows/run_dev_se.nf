@@ -19,6 +19,7 @@ if (params.ont) {
 }
 include { PROFILE } from "../subworkflows/local/profile"
 include { LOAD_SAMPLESHET } from "../subworkflows/local/loadSampleSheet"
+include { HUMAN_SAM } from "../subworkflows/local/humanSam"
 nextflow.preview.output = true
 
 /*****************
@@ -55,6 +56,9 @@ workflow RUN_DEV_SE {
     // Preprocessing
     RAW(samplesheet_ch, params.n_reads_trunc, "8", "16 GB", "raw_concat", params.single_end)
     CLEAN(RAW.out.reads, params.adapters, "8", "16 GB", "cleaned", params.single_end, minimap2_human_index)
+
+    // One-off ribosomal reads
+    HUMAN_SAM(RAW.out.reads, minimap2_human_index)
 
     // Taxonomic profiling
     PROFILE(CLEAN.out.reads, group_ch, kraken_db_path, params.n_reads_profile, params.ref_dir, "0.4", "27", "ribo", params.grouping, params.single_end, minimap2_human_index, minimap2_ribo_index, hv_index)
@@ -98,7 +102,8 @@ workflow RUN_DEV_SE {
         PROCESS_OUTPUT.out.lengths >> "results"
 
         // Final results
-        PROFILE.out.bracken >> "results"
-        PROFILE.out.kraken >> "results"
-        EXTRACT_ONT_VIRAL_READS.out.merged_sam >> "results"
+        // PROFILE.out.bracken >> "results"
+        // PROFILE.out.kraken >> "results"
+        EXTRACT_ONT_VIRAL_READS.out.sam >> "results"
+        HUMAN_SAM.out.human_sam >> "results"
 }

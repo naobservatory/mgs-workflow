@@ -81,6 +81,6 @@ process MERGE_SAM {
     shell:
         '''
         # Merge SAM files and automatically add RG tags based on filenames
-        samtools merge -r -O sam "${prefix}_alignments.sam" !{sam_files}
+        samtools merge -r -O sam "!{prefix}_alignments.sam" !{sam_files}
         '''
 }
