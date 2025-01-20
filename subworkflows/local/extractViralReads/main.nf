@@ -13,8 +13,6 @@ include { COUNT_ALIGNMENT_DUPLICATES } from "../../../modules/local/countAlignme
 include { EXTRACT_UNCONC_READ_IDS } from "../../../modules/local/extractUnconcReadIDs"
 include { EXTRACT_UNCONC_READS } from "../../../modules/local/extractUnconcReads"
 include { COMBINE_MAPPED_BOWTIE2_READS } from "../../../modules/local/combineMappedBowtie2Reads"
-include { BBMAP as BBMAP_HUMAN } from "../../../modules/local/bbmap"
-include { BBMAP as BBMAP_OTHER } from "../../../modules/local/bbmap"
 include { TAXONOMY } from "../../../subworkflows/local/taxonomy"
 include { PROCESS_KRAKEN_VIRAL } from "../../../modules/local/processKrakenViral"
 include { MERGE_SAM_KRAKEN } from "../../../modules/local/mergeSamKraken"
@@ -62,8 +60,6 @@ workflow EXTRACT_VIRAL_READS {
         bt2_virus_index_path = "${ref_dir}/results/bt2-virus-index"
         bt2_human_index_path = "${ref_dir}/results/bt2-human-index"
         bt2_other_index_path = "${ref_dir}/results/bt2-other-index"
-        bbm_human_index_path = "${ref_dir}/results/bbm-human-index"
-        bbm_other_index_path = "${ref_dir}/results/bbm-other-index"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
 
         // Read adapter file and create a channel containing just the adapter sequences
@@ -104,10 +100,8 @@ workflow EXTRACT_VIRAL_READS {
         // Filter contaminants
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_reads_combined_ch, bt2_human_index_path, "", "human")
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unconc, bt2_other_index_path, "", "other")
-        human_bbm_ch = BBMAP_HUMAN(other_bt2_ch.reads_unconc, bbm_human_index_path, "human")
-        other_bbm_ch = BBMAP_OTHER(human_bbm_ch.reads_unmapped, bbm_other_index_path, "other")
         // Run Kraken on filtered viral candidates
-        tax_ch = TAXONOMY(other_bbm_ch.reads_unmapped, kraken_db_ch, true, "F", single_end)
+        tax_ch = TAXONOMY(other_bt2_ch.reads_unconc, kraken_db_ch, true, "F", single_end)
         // Process Kraken output and merge with Bowtie2 output across samples
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
         bowtie2_kraken_merged_ch = MERGE_SAM_KRAKEN(kraken_output_ch.combine(bowtie2_sam_ch, by: 0))

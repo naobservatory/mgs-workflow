@@ -34,8 +34,9 @@ workflow RUN_STREAMED {
     COUNT_TOTAL_READS(samplesheet_ch)
 
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(CLEAN.out.reads, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
-        params.adapters, params.host_taxon, "1", "24", "viral")
+    EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path,
+        params.bt2_score_threshold, params.adapters, params.host_taxon,
+        "1", "24", "viral")
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -55,6 +56,12 @@ workflow RUN_STREAMED {
         params_ch >> "input"
         time_ch >> "logging"
         version_ch >> "logging"
+        // Intermediate files
+        EXTRACT_VIRAL_READS.out.bbduk_match >> "reads_raw_viral"
+        EXTRACT_VIRAL_READS.out.hits_all    >> "intermediates"
+        EXTRACT_VIRAL_READS.out.hits_fastq  >> "intermediates"
+        // QC
+        COUNT_TOTAL_READS.out.read_counts >> "results"
         // Final results
-        EXTRACT_VIRAL_READS_STREAMED.out.test_out >> "results"
+        EXTRACT_VIRAL_READS.out.hits_filtered >> "results"
 }
