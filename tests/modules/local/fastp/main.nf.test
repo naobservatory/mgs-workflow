@@ -1,32 +1,31 @@
 nextflow_process {
 
-    name "Test process FASTP_PAIRED_STREAMED"
+    name "Test process FASTP_STREAMED"
     script "modules/local/fastp/main.nf"
-    process "FASTP_PAIRED_STREAMED"
-    config "tests/run.config"
+    process "FASTP_STREAMED"
 
-    setup {
-        run("LOAD_SAMPLESHEET") {
-            script "subworkflows/local/loadSampleSheet/main.nf"
-            process {
-                """
-                input[0] = "${projectDir}/test-data/samplesheet.csv"
-                input[1] = false
-                input[2] = false
-                """
+    test("Should run correctly on interleaved data") {
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = false
+                    input[2] = false
+                    """
+                }
+            }
+            run("INTERLEAVE_FASTQ_SEQTK") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    """
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    """
+                }
             }
         }
-        run("INTERLEAVE_FASTQ_SEQTK") {
-            script "modules/local/interleaveFastq/main.nf"
-            process {
-                """
-                input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                """
-            }
-        }
-    }
-
-    test("Should run without failures and conserve reads") {
         when {
             params {
             }
@@ -34,6 +33,7 @@ nextflow_process {
                 '''
                 input[0] = INTERLEAVE_FASTQ_SEQTK.out
                 input[1] = "${params.adapters}"
+                input[2] = true
                 '''
             }
         }
@@ -55,4 +55,54 @@ nextflow_process {
             assert reads_pass + reads_fail == reads_in
         }
     }
+
+    test("Should run correctly on single-end data") {
+        config "tests/run_dev_se.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = false
+                    input[2] = true
+                    """
+                }
+            }
+            run("COPY_FILE") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    """
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = "input.fastq.gz"
+                    """
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = COPY_FILE.out
+                input[1] = "${params.adapters}"
+                input[2] = false
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Should conserve reads between input and output
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def fastq_pass = path(process.out.reads[0][1]).fastq
+            def fastq_fail = path(process.out.failed[0][1]).fastq
+            def reads_in = fastq_in.getNumberOfRecords()
+            def reads_pass = fastq_pass.getNumberOfRecords()
+            def reads_fail = fastq_fail.getNumberOfRecords()
+            assert reads_pass > 0
+            assert reads_pass + reads_fail == reads_in
+        }
+    }
+
 }

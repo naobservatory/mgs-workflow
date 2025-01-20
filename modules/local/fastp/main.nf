@@ -1,10 +1,11 @@
-// Run FASTP on paired interleaved data
-process FASTP_PAIRED_STREAMED {
+// Run FASTP on streamed data (either single-end or interleaved)
+process FASTP_STREAMED {
     label "small"
     label "fastp"
     input:
-        tuple val(sample), path(reads_interleaved)
+        tuple val(sample), path(reads)
         path(adapters)
+        val(interleaved)
     output:
         tuple val(sample), path("${sample}_fastp.fastq.gz"), emit: reads
         tuple val(sample), path("${sample}_fastp_failed.fastq.gz"), emit: failed
@@ -25,12 +26,12 @@ process FASTP_PAIRED_STREAMED {
         oj=!{sample}_fastp.json
         oh=!{sample}_fastp.html
         ad=!{adapters}
-        io="--failed_out ${of} --html ${oh} --json ${oj} --adapter_fasta ${ad} --stdin --interleaved_in --stdout"
+        io="--failed_out ${of} --html ${oh} --json ${oj} --adapter_fasta ${ad} --stdin --stdout !{interleaved ? '--interleaved_in' : ''}"
         par="--cut_front --cut_tail --correction --detect_adapter_for_pe --trim_poly_x --cut_mean_quality 20 --average_qual 20 --qualified_quality_phred 20 --verbose --dont_eval_duplication --thread !{task.cpus} --low_complexity_filter"
         # Execute
-        zcat !{reads_interleaved} | fastp ${io} ${par} | gzip -c > ${op}
+        zcat !{reads} | fastp ${io} ${par} | gzip -c > ${op}
         # Link input to output for testing
-        ln -s !{reads_interleaved} !{sample}_fastp_in.fastq.gz
+        ln -s !{reads} !{sample}_fastp_in.fastq.gz
         '''
 }
 
