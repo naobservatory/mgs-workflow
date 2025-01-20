@@ -12,6 +12,7 @@ import java.time.LocalDateTime
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { EXTRACT_VIRAL_READS_STREAMED as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsStreamed"
+include { SUBSET_TRIM_STREAMED as SUBSET_TRIM } from "../subworkflows/local/subsetTrimStreamed"
 nextflow.preview.output = true
 
 /*****************
@@ -25,6 +26,7 @@ workflow RUN_STREAMED {
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet
+    // TODO: Drop grouping and update subworkflow
     LOAD_SAMPLESHEET(params.sample_sheet, params.grouping, params.single_end)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     group_ch = LOAD_SAMPLESHEET.out.group
@@ -37,6 +39,13 @@ workflow RUN_STREAMED {
     EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path,
         params.bt2_score_threshold, params.adapters, params.host_taxon,
         "1", "24", "viral")
+
+    // TODO: Add BLAST validation
+
+    // Subset reads to target number, and trim adapters
+    SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
+        params.adapters, params.single_end)
+
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
