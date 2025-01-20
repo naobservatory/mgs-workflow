@@ -102,7 +102,7 @@ workflow EXTRACT_VIRAL_READS {
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_reads_combined_ch, bt2_human_index_path, "", "human")
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unconc, bt2_other_index_path, "", "other")
         // Run Kraken on filtered viral candidates
-        tax_ch = TAXONOMY(human_bt2_ch.reads_unconc, kraken_db_ch, true, "F", single_end)
+        tax_ch = TAXONOMY(other_bt2_ch.reads_unconc, kraken_db_ch, true, "F", single_end)
         // Process Kraken output and merge with Bowtie2 output across samples
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
         bowtie2_kraken_merged_ch = MERGE_SAM_KRAKEN(kraken_output_ch.combine(bowtie2_sam_ch, by: 0))
