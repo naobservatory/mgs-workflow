@@ -16,7 +16,7 @@ nextflow_process {
                 """
             }
         }
-        run("INTERLEAVE_FASTQ_SEQTK") {
+        run("INTERLEAVE_FASTQ") {
             script "modules/local/interleaveFastq/main.nf"
             process {
                 """
@@ -28,7 +28,7 @@ nextflow_process {
             script "modules/local/bbmerge/main.nf"
             process {
                 """
-                input[0] = INTERLEAVE_FASTQ_SEQTK.out
+                input[0] = INTERLEAVE_FASTQ.out.output
                 """
             }
         }

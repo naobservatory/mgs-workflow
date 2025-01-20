@@ -1,4 +1,5 @@
 // Unleave an interleaved FASTQ file and save paired output files
+// TODO: Implement streamed version
 
 process UNLEAVE_FASTQ {
     label "small"

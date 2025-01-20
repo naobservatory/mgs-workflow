@@ -1,0 +1,52 @@
+nextflow_process {
+
+    name "Test process INTERLEAVE_FASTQ"
+    script "modules/local/interleaveFastq/main.nf"
+    process "INTERLEAVE_FASTQ"
+    config "tests/run.config"
+
+    setup {
+        run("UNLEAVE_FASTQ") {
+            script "modules/local/unleaveFastq/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq.gz"))
+                '''
+            }
+        }
+    }
+
+    test("Should run without failures on correct input") {
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = UNLEAVE_FASTQ.out.output
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Input and output read counts should match
+            def fastq_in_1 = path(process.out.input[0][1][0]).fastq
+            def fastq_in_2 = path(process.out.input[0][1][1]).fastq
+            def fastq_out = path(process.out.output[0][1]).fastq
+            def n_reads_in_1 = fastq_in_1.getNumberOfRecords()
+            def n_reads_in_2 = fastq_in_2.getNumberOfRecords()
+            def n_reads_out = fastq_out.getNumberOfRecords()
+            assert n_reads_in_1 == n_reads_in_2
+            assert n_reads_out == n_reads_in_1 + n_reads_in_2
+            // Output files should correctly partition input reads
+            for (int i = 0; i < n_reads_in_1; i++){
+                assert fastq_in_1.readNames[i] == fastq_out.readNames[2*i]
+                assert fastq_in_1.sequences[i] == fastq_out.sequences[2*i]
+                assert fastq_in_2.readNames[i] == fastq_out.readNames[2*i+1]
+                assert fastq_in_2.sequences[i] == fastq_out.sequences[2*i+1]
+            }
+        }
+    }
+
+}
