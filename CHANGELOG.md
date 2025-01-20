@@ -1,4 +1,7 @@
-# v2.6.1.0 (in progress)
+# v2.6.1.1
+- Remove ATRIA and BBMAP from the pipeline.
+
+# v2.6.1.0
 - Restructured subworkflows:
   - Removed RAW, CLEAN, and PROCESS_OUTPUT subworkflows.
   - Added COUNT_TOTAL_READS subworkflow to count the total number of reads in each sample.
