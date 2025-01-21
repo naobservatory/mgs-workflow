@@ -3,7 +3,6 @@
 ***************************/
 
 include { DOWNLOAD_GENOME } from "../../../modules/local/downloadGenome"
-include { BBMAP_INDEX } from "../../../modules/local/bbmap"
 include { BOWTIE2_INDEX } from "../../../modules/local/bowtie2"
 
 /***********
@@ -17,9 +16,7 @@ workflow MAKE_HUMAN_INDEX {
         ref_ch = channel
             .of(tuple(human_genome_url, "human"))  // (url, name)
         genome_ch = DOWNLOAD_GENOME(ref_ch)
-        bbmap_ch = BBMAP_INDEX(genome_ch, "bbm-human-index")
         bowtie2_ch = BOWTIE2_INDEX(genome_ch, "bt2-human-index")
     emit:
-        bbm = bbmap_ch
         bt2 = bowtie2_ch
 }

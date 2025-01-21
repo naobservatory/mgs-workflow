@@ -57,9 +57,7 @@ workflow INDEX {
         MAKE_VIRUS_GENOME_DB.out.fasta >> "results"
         MAKE_VIRUS_GENOME_DB.out.metadata >> "results"
         // Alignment indexes
-        MAKE_HUMAN_INDEX.out.bbm >> "results"
         MAKE_HUMAN_INDEX.out.bt2 >> "results"
-        MAKE_CONTAMINANT_INDEX.out.bbm >> "results"
         MAKE_CONTAMINANT_INDEX.out.bt2 >> "results"
         MAKE_VIRUS_INDEX.out.bt2 >> "results"
         // Other reference files & directories

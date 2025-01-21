@@ -4,7 +4,6 @@
 
 include { DOWNLOAD_GENOME } from "../../../modules/local/downloadGenome"
 include { CONCATENATE_FASTA_GZIPPED } from "../../../modules/local/concatenateFasta"
-include { BBMAP_INDEX } from "../../../modules/local/bbmap"
 include { BOWTIE2_INDEX } from "../../../modules/local/bowtie2"
 
 /***********
@@ -33,9 +32,7 @@ workflow MAKE_CONTAMINANT_INDEX {
         genome_ch = CONCATENATE_FASTA_GZIPPED(combined_ch, "ref_concat")
 
         // Make indexes
-        bbmap_ch = BBMAP_INDEX(genome_ch, "bbm-other-index")
         bowtie2_ch = BOWTIE2_INDEX(genome_ch, "bt2-other-index")
     emit:
-        bbm = bbmap_ch
         bt2 = bowtie2_ch
 }
