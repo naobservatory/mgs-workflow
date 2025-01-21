@@ -5,11 +5,13 @@
 include { FASTQC_LABELED } from "../../../modules/local/fastqc"
 include { MULTIQC_LABELED } from "../../../modules/local/multiqc"
 include { SUMMARIZE_MULTIQC } from "../../../modules/local/summarizeMultiqc"
+include { GET_READ_LENGTHS } from "../../../modules/local/getReadLengths"
 include { MERGE_TSVS as MERGE_MULTIQC_BASIC } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_MULTIQC_ADAPT } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_MULTIQC_QBASE } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_MULTIQC_QSEQS } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_MULTIQC_LENGTHS } from "../../../modules/local/mergeTsvs"
+include { MERGE_JSONS } from "../../../modules/local/mergeJsons"
 /***********
 | WORKFLOW |
 ***********/
@@ -40,11 +42,17 @@ workflow QC {
         qbase_out_ch = MERGE_MULTIQC_QBASE(multiqc_qbase_ch, "${stage_label}_qc_quality_base_stats")
         qseqs_out_ch = MERGE_MULTIQC_QSEQS(multiqc_qseqs_ch, "${stage_label}_qc_quality_sequence_stats")
         lengths_out_ch = MERGE_MULTIQC_LENGTHS(multiqc_lengths_ch, "${stage_label}_qc_length_stats")
-        // 6. Combine outputs into a single output channel
+
+        // 6. Get read lengths
+        read_lengths_ch = GET_READ_LENGTHS(reads, stage_label)
+        // 7. Merge read lengths
+        merged_read_lengths_ch = MERGE_JSONS(read_lengths_ch, stage_label)
+
+        // 8. Combine outputs into a single output channel
         out_ch = basic_out_ch.combine(adapt_out_ch)
             .combine(qbase_out_ch).combine(qseqs_out_ch)
-            .combine(lengths_out_ch)
-            .map({file1, file2, file3, file4, file5 -> tuple(file1, file2, file3, file4, file5)})
+            .combine(lengths_out_ch).combine(merged_read_lengths_ch)
+            .map({file1, file2, file3, file4, file5, file6 -> tuple(file1, file2, file3, file4, file5, file6)})
     emit:
         qc = out_ch
 }

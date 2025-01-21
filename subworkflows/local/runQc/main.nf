@@ -9,7 +9,7 @@ include { MERGE_TSVS as MERGE_MULTIQC_ADAPT } from "../../../modules/local/merge
 include { MERGE_TSVS as MERGE_MULTIQC_QBASE } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_MULTIQC_QSEQS } from "../../../modules/local/mergeTsvs"
 include { MERGE_TSVS as MERGE_MULTIQC_LENGTHS } from "../../../modules/local/mergeTsvs"
-
+include { MERGE_JSONS } from "../../../modules/local/mergeJsons"
 /***********
 | WORKFLOW |
 ***********/
@@ -33,16 +33,19 @@ workflow RUN_QC {
       multiqc_qbase_ch = qc_ch.map{ it[2] }.collect().ifEmpty([])
       multiqc_qseqs_ch = qc_ch.map{ it[3] }.collect().ifEmpty([])
       multiqc_lengths_ch = qc_ch.map{ it[4] }.collect().ifEmpty([])
+      json_lengths_ch = qc_ch.map{ it[5] }.collect().ifEmpty([])
       // 4. Merge MultiQC outputs
       basic_out_ch = MERGE_MULTIQC_BASIC(multiqc_basic_ch, "qc_basic_stats")
       adapt_out_ch = MERGE_MULTIQC_ADAPT(multiqc_adapt_ch, "qc_adapter_stats")
       qbase_out_ch = MERGE_MULTIQC_QBASE(multiqc_qbase_ch, "qc_quality_base_stats")
       qseqs_out_ch = MERGE_MULTIQC_QSEQS(multiqc_qseqs_ch, "qc_quality_sequence_stats")
       lengths_out_ch = MERGE_MULTIQC_LENGTHS(multiqc_lengths_ch, "qc_length_stats")
+      json_lengths_out_ch = MERGE_JSONS(json_lengths_ch, "qc_length_stats")
     emit:
       qc_basic = basic_out_ch
       qc_adapt = adapt_out_ch
       qc_qbase = qbase_out_ch
       qc_qseqs = qseqs_out_ch
       qc_lengths = lengths_out_ch
+      qc_json_lengths = json_lengths_out_ch
 }

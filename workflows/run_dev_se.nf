@@ -33,7 +33,6 @@ workflow RUN_DEV_SE {
 
     // Count reads in files
     COUNT_TOTAL_READS(samplesheet_ch)
-
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, group_ch, params.n_reads_profile, params.grouping, params.adapters, params.single_end)
 
@@ -68,6 +67,7 @@ workflow RUN_DEV_SE {
         RUN_QC.out.qc_qbase >> "results"
         RUN_QC.out.qc_qseqs >> "results"
         RUN_QC.out.qc_lengths >> "results"
+        RUN_QC.out.qc_json_lengths >> "results"
         // Final results
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
