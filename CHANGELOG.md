@@ -1,3 +1,21 @@
+# v2.6.1.0 (in progress)
+- Restructured subworkflows:
+  - Removed RAW, CLEAN, and PROCESS_OUTPUT subworkflows.
+  - Added COUNT_TOTAL_READS subworkflow to count the total number of reads in each sample.
+  - Split PROFILE workflow into SUBSET_TRIM, RUN_QC, and PROFILE subworkflows:
+    - SUBSET_TRIM: Subset reads to a user-specified number of reads per sample, and conducts adapter trimming with Fastp, returning the subset reads and the trimmed subset reads.
+    - RUN_QC: Runs QC metrics on the subset reads and the trimmed subset reads.
+    - PROFILE: Conducts taxonomic profiling on the trimmed subset reads.
+  - Added Fastp adapter trimming after running BBDuk in the EXTRACT_VIRAL_READS subworkflow.
+- Implement masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
+- Replace Trimmomatic with Atria in EXTRACT_VIRAL_READS.
+
+# v2.6.0.0
+- Updated version to reflect the new versioning scheme, which is described in `docs/version_schema.md`.
+
+# v2.5.4
+- Fixed fatal bug in `configs/run_validation.config` that prevents users from running the `RUN_VALIDATION` workflow.
+
 # v2.5.3
 - Added new LOAD_SAMPLESHEET subworkflow to centralize samplesheet processing
 - Updated tags to prevent inappropriate S3 auto-cleanup

@@ -6,6 +6,7 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
+
 include { BBDUK_HITS } from "../../../modules/local/bbduk"
 include { TAXONOMY as TAXONOMY_RIBO } from "../../../subworkflows/local/taxonomy"
 include { TAXONOMY as TAXONOMY_NORIBO } from "../../../subworkflows/local/taxonomy"
@@ -35,14 +36,11 @@ if (params.ont) {
 workflow PROFILE {
     take:
         reads_ch
-        group_ch
         kraken_db_ch
-        n_reads
         ref_dir
         min_kmer_fraction
         k
         bbduk_suffix
-        grouping
         single_end
     main:
         // Load indices
