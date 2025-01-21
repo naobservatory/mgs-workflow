@@ -1,0 +1,111 @@
+nextflow_workflow {
+
+    name "Test workflow RUN_QC_STREAMED"
+    script "subworkflows/local/runQcStreamed/main.nf"
+    workflow "RUN_QC_STREAMED"
+
+    test("Should run without failures on paired data") {
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                workflow {
+                    '''
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = false
+                    input[2] = false
+                    '''
+                }
+            }
+            run("SUBSET_TRIM_STREAMED") {
+                script "subworkflows/local/subsetTrimStreamed/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = 49
+                    input[2] = params.adapters
+                    input[3] = false
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = SUBSET_TRIM_STREAMED.out.subset_reads
+                input[1] = SUBSET_TRIM_STREAMED.out.trimmed_subset_reads
+                input[2] = false
+                """
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Basic stats TSV should have expected structure and content
+            def tsv_basic = path(workflow.out.qc_basic[0]).csv(sep: "\t", decompress: true)
+            assert tsv_basic.rowCount == 2
+            assert tsv_basic.columnCount == 17
+            // Other TSVs should have expected structure and content
+            def tsv_adapt = path(workflow.out.qc_adapt[0]).csv(sep: "\t", decompress: true)
+            assert tsv_adapt.columnCount == 6
+            def tsv_qbase = path(workflow.out.qc_qbase[0]).csv(sep: "\t", decompress: true)
+            assert tsv_qbase.columnCount == 5
+            def tsv_qseqs = path(workflow.out.qc_qseqs[0]).csv(sep: "\t", decompress: true)
+            assert tsv_qseqs.columnCount == 5
+        }
+    }
+
+    test("Should run without failures on single-end data") {
+        config "tests/run_dev_se.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                workflow {
+                    '''
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = false
+                    input[2] = true
+                    '''
+                }
+            }
+            run("SUBSET_TRIM_STREAMED") {
+                script "subworkflows/local/subsetTrimStreamed/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = 49
+                    input[2] = params.adapters
+                    input[3] = false
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = SUBSET_TRIM_STREAMED.out.subset_reads
+                input[1] = SUBSET_TRIM_STREAMED.out.trimmed_subset_reads
+                input[2] = true
+                """
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Basic stats TSV should have expected structure and content
+            def tsv_basic = path(workflow.out.qc_basic[0]).csv(sep: "\t", decompress: true)
+            assert tsv_basic.rowCount == 2
+            assert tsv_basic.columnCount == 17
+            // Other TSVs should have expected structure and content
+            def tsv_adapt = path(workflow.out.qc_adapt[0]).csv(sep: "\t", decompress: true)
+            assert tsv_adapt.columnCount == 6
+            def tsv_qbase = path(workflow.out.qc_qbase[0]).csv(sep: "\t", decompress: true)
+            assert tsv_qbase.columnCount == 5
+            def tsv_qseqs = path(workflow.out.qc_qseqs[0]).csv(sep: "\t", decompress: true)
+            assert tsv_qseqs.columnCount == 5
+        }
+    }
+
+}

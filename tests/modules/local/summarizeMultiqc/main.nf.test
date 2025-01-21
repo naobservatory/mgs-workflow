@@ -1,0 +1,173 @@
+nextflow_process {
+
+    name "Test Process SUMMARIZE_MULTIQC"
+    script "modules/local/summarizeMultiqc/main.nf"
+    process "SUMMARIZE_MULTIQC"
+
+    test("Should run without failures on paired data") {
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = false
+                    input[2] = false
+                    '''
+                }
+            }
+            run("INTERLEAVE_FASTQ") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    '''
+                }
+            }
+            run("FASTQC_LABELED") {
+                script "modules/local/fastqc/main.nf"
+                process {
+                    '''
+                    input[0] = INTERLEAVE_FASTQ.out.output
+                    input[1] = "1"
+                    input[2] = "1 GB"
+                    '''
+                }
+            }
+            run("MULTIQC_LABELED") {
+                script "modules/local/multiqc/main.nf"
+                process {
+                    '''
+                    input[0] = "test"
+                    input[1] = FASTQC_LABELED.out.zip
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                """
+                input[0] = MULTIQC_LABELED.out.data
+                input[1] = false
+                """
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Basic stats TSV should have expected structure and content
+            def tsv_basic  = path(process.out[0][0][0]).csv(sep: "\t", decompress: true)
+            with (tsv_basic) {
+                assert rowCount == 1
+                assert columnCount == 17
+                assert columns["n_reads_single"][0] == columns["n_read_pairs"][0] * 2
+                def n_bases_exp = Math.floor(columns["n_reads_single"][0] * columns["mean_seq_len"][0] / 100) * 100
+                assert columns["n_bases_approx"][0] == n_bases_exp
+                assert columns["stage"][0] == "test"
+            }
+            def stage = tsv_basic.columns["stage"][0]
+            def sample = tsv_basic.columns["sample"][0]
+            // Other TSVs should have expected structure and content
+            def tsv_adapt = path(process.out[0][0][1]).csv(sep: "\t", decompress: true)
+            with (tsv_adapt) {
+                assert columnCount == 6
+                assert columns["stage"][0] == stage
+                assert columns["sample"][0] == sample
+            }
+            def tsv_qbase = path(process.out[0][0][2]).csv(sep: "\t", decompress: true)
+            with (tsv_qbase) {
+                assert columnCount == 5
+                assert columns["stage"][0] == stage
+                assert columns["sample"][0] == sample
+            }
+            def tsv_qseqs = path(process.out[0][0][3]).csv(sep: "\t", decompress: true)
+            with (tsv_qseqs) {
+                assert columnCount == 5
+                assert columns["stage"][0] == stage
+                assert columns["sample"][0] == sample
+            }
+        }
+    }
+
+    test("Should run without failures on single-end data") {
+        config "tests/run_dev_se.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = false
+                    input[2] = true
+                    '''
+                }
+            }
+            run("FASTQC_LABELED") {
+                script "modules/local/fastqc/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = "1"
+                    input[2] = "1 GB"
+                    '''
+                }
+            }
+            run("MULTIQC_LABELED") {
+                script "modules/local/multiqc/main.nf"
+                process {
+                    '''
+                    input[0] = "test"
+                    input[1] = FASTQC_LABELED.out.zip
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                """
+                input[0] = MULTIQC_LABELED.out.data
+                input[1] = true
+                """
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Basic stats TSV should have expected structure and content
+            def tsv_basic  = path(process.out[0][0][0]).csv(sep: "\t", decompress: true)
+            with (tsv_basic) {
+                assert rowCount == 1
+                assert columnCount == 17
+                def n_bases_exp = Math.floor(columns["n_reads_single"][0] * columns["mean_seq_len"][0] / 100) * 100
+                assert columns["n_bases_approx"][0] == n_bases_exp
+                assert columns["n_read_pairs"][0] == ""
+                assert columns["stage"][0] == "test"
+            }
+            def stage = tsv_basic.columns["stage"][0]
+            def sample = tsv_basic.columns["sample"][0]
+            // Other TSVs should have expected structure and content
+            def tsv_adapt = path(process.out[0][0][1]).csv(sep: "\t", decompress: true)
+            with (tsv_adapt) {
+                assert columnCount == 6
+                assert columns["stage"][0] == stage
+                assert columns["sample"][0] == sample
+            }
+            def tsv_qbase = path(process.out[0][0][2]).csv(sep: "\t", decompress: true)
+            with (tsv_qbase) {
+                assert columnCount == 5
+                assert columns["stage"][0] == stage
+                assert columns["sample"][0] == sample
+            }
+            def tsv_qseqs = path(process.out[0][0][3]).csv(sep: "\t", decompress: true)
+            with (tsv_qseqs) {
+                assert columnCount == 5
+                assert columns["stage"][0] == stage
+                assert columns["sample"][0] == sample
+            }
+        }
+    }
+
+}

@@ -13,7 +13,7 @@ include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { EXTRACT_VIRAL_READS_STREAMED as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsStreamed"
 include { SUBSET_TRIM_STREAMED as SUBSET_TRIM } from "../subworkflows/local/subsetTrimStreamed"
-//include { RUN_QC_STREAMED as RUN_QC } from "../subworkflows/local/runQcStreamed"
+include { RUN_QC_STREAMED as RUN_QC } from "../subworkflows/local/runQcStreamed"
 nextflow.preview.output = true
 
 /*****************
@@ -48,7 +48,7 @@ workflow RUN_STREAMED {
         params.adapters, params.single_end)
 
     // Run QC on subset reads before and after adapter trimming (NB: unchanged in streamed version)
-    //RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, params.single_end)
+    RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, params.single_end)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -74,10 +74,10 @@ workflow RUN_STREAMED {
         EXTRACT_VIRAL_READS.out.hits_fastq  >> "intermediates"
         // QC
         COUNT_TOTAL_READS.out.read_counts >> "results"
-        //RUN_QC.out.qc_basic >> "results"
-        //RUN_QC.out.qc_adapt >> "results"
-        //RUN_QC.out.qc_qbase >> "results"
-        //RUN_QC.out.qc_qseqs >> "results"
+        RUN_QC.out.qc_basic >> "results"
+        RUN_QC.out.qc_adapt >> "results"
+        RUN_QC.out.qc_qbase >> "results"
+        RUN_QC.out.qc_qseqs >> "results"
         // Final results
         EXTRACT_VIRAL_READS.out.hits_filtered >> "results"
 }
