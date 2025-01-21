@@ -4,7 +4,7 @@
 
 include { FASTQC_LABELED } from "../../../modules/local/fastqc"
 include { MULTIQC_LABELED } from "../../../modules/local/multiqc"
-include { SUMMARIZE_MULTIQC_PAIR } from "../../../modules/local/summarizeMultiqcPair"
+include { SUMMARIZE_MULTIQC_PAIR } from "../../../modules/local/summarizeMultiqc"
 include { CONCATENATE_TSVS as CONCATENATE_MULTIQC_BASIC } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_TSVS as CONCATENATE_MULTIQC_ADAPT } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_TSVS as CONCATENATE_MULTIQC_QBASE } from "../../../modules/local/concatenateTsvs"
