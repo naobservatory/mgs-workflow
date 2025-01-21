@@ -7,7 +7,6 @@ process EXTRACT_RAW_READS_FROM_PROCESSED {
         val(name)
     output:
         tuple val(sample), path("${sample}_${name}_{1,2}.fastq.gz"), emit: reads
-        tuple val(sample), path("${sample}_${name}_in_{processed,raw_1,raw_2}.fastq.gz"), emit: input
     shell:
         '''
         # Extract read IDs from filtered files
@@ -16,9 +15,5 @@ process EXTRACT_RAW_READS_FROM_PROCESSED {
         out_prefix="!{sample}_!{name}"
         seqtk subseq !{reads_raw[0]} read_ids.txt | gzip -c > ${out_prefix}_1.fastq.gz
         seqtk subseq !{reads_raw[1]} read_ids.txt | gzip -c > ${out_prefix}_2.fastq.gz
-        # Link input to output for testing
-        ln -s !{reads_processed} !{sample}_!{name}_in_processed.fastq.gz
-        ln -s !{reads_raw[0]} !{sample}_!{name}_in_raw_1.fastq.gz
-        ln -s !{reads_raw[1]} !{sample}_!{name}_in_raw_2.fastq.gz
         '''
 }
