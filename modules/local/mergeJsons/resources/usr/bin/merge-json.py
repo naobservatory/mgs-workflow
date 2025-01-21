@@ -6,7 +6,7 @@ from collections import defaultdict
 
 def main():
     parser = argparse.ArgumentParser(description="Merge JSON files")
-    parser.add_argument("-i", dest="input_jsons", help="Input JSON files")
+    parser.add_argument("-i", dest="input_jsons", help="Input JSON files", nargs="+")
     parser.add_argument("-o", dest="output_json", help="Output JSON file")
     args = parser.parse_args()
 
