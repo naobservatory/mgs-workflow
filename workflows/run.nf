@@ -36,7 +36,7 @@ workflow RUN {
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
 
     // Count reads in files
-    COUNT_TOTAL_READS(samplesheet_ch)
+    COUNT_TOTAL_READS(samplesheet_ch, params.single_end)
 
     // Extract and count human-viral reads
     EXTRACT_VIRAL_READS(samplesheet_ch, group_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", "${params.quality_encoding}", "${params.fuzzy_match_alignment_duplicates}", params.grouping, params.single_end)
