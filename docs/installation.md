@@ -1,11 +1,9 @@
 # Installation & setup
 
-This section describes how to install the pipeline and set up your environment to run it. This pipeline is generally optimized and tested to run on linux machines, we specifically use EC2 instances for running this pipeline, but this code could be adopted for MACOS or Windows machines.
+This page describes how to install the pipeline and configure your computing environment to run it.
 
-
-> [!TIP]
-> If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output`.
-
+> [!IMPORTANT]
+> This pipeline has been developed to run on Linux environments, primarily on AWS EC2 instances. It has not been tested or debugged on MacOS or Windows machines, and is not guaranteed to work on those environments.
 
 <!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
 - [Installation \& setup](#installation--setup)
@@ -47,6 +45,14 @@ aws_access_key_id = <ACCESS_KEY_ID>
 aws_secret_access_key = <SECRET_ACCESS_KEY>
 ```
 
+> [!TIP]
+> If you encounter `AccessDenied` errors after doing this, you may also need to export these keys as environment variables before running Nextflow:
+>
+> ```
+> eval "$(aws configure export-credentials --format env)"
+> ```
+
+
 Next, you need to make sure your user is configured to use Docker. To do this, create the `docker` user group and add your current user to it:
 
 ```
@@ -61,6 +67,10 @@ docker run hello-world
 Clone this repo into a new directory as normal.
 
 #### 4. Run index/reference workflow
+
+> [!TIP]
+> If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output`.
+
 Create a new directory outside the repo directory and copy over the index workflow config file as `nextflow.config` in that directory:
 
 ```
@@ -71,10 +81,13 @@ cp REPO_DIR/configs/index.config nextflow.config
 
 Next, edit `nextflow.config` such that `params.base_dir` points to the directory (likely on S3) where you want to store your index files. (You shouldn't need to modify anything else about the config file at this stage.)
 
-Next, call `nextflow run` pointing at the repo directory (NB: *not* `main.nf` or any other workflow file; pointing to the directory will cause Nextflow to automatically run `main.nf` from that directory.):
+Next, call `nextflow run` pointing at the repo directory:
 
 ```
 nextflow run PATH_TO_REPO_DIR -resume
 ```
+
+> [!TIP]
+> You don't need to point `nextflow run` at `main.nf` any other workflow file; pointing to the directory will cause Nextflow to automatically run `main.nf` from that directory.
 
 Wait for the workflow to run to completion; this is likely to take several hours at least.
