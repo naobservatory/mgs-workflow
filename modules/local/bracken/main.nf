@@ -43,6 +43,7 @@ process BRACKEN2 {
         tuple val(sample), path(report)
         path db_path
         val classificationLevel
+        val threshold
     output:
         tuple val(sample), path("${sample}.bracken.gz")
     shell:
@@ -67,8 +68,8 @@ process BRACKEN2 {
         fi
         # Handle empty files and files with no assigned reads
         x=$(wc -l < ${in})
-        y=$(grep -c "unclassified" ${in} || true)
-        z=$(cat "${in}" | awk '{print $6}' | grep -c "!{classificationLevel}" || true)
+        y=$(grep -c "\\sunclassified$" ${in} || true)
+        z=$(cat "${in}" | awk '{print $6}' | grep -c "^!{classificationLevel}$" || true)
         echo "Number of lines (x): ${x}"
         echo "Number of 'unclassified' lines (y): ${y}"
         echo "Number of lines with classification level !{classificationLevel} (z): ${z}"
@@ -83,7 +84,7 @@ process BRACKEN2 {
             touch ${out}
         else
             # Run Bracken
-            io="-d ${db} -i ${in} -o ${out}"
+            io="-d ${db} -i ${in} -o ${out} -t !{threshold}"
             par="-l !{classificationLevel}"
             echo "Input okay - running Bracken."
             bracken ${io} ${par}

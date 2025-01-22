@@ -54,6 +54,7 @@ nextflow_process {
                 input[0] = KRAKEN_STREAMED.out.report
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "F"
+                input[3] = "5"
                 '''
             }
         }
@@ -73,6 +74,7 @@ nextflow_process {
                 input[0] = KRAKEN.out.report
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "F"
+                input[3] = "5"
                 '''
             }
         }

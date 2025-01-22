@@ -41,6 +41,7 @@ nextflow_workflow {
                 input[6] = "1"
                 input[7] = "24"
                 input[8] = "viral"
+                input[9] = "5"
                 '''
             }
         }

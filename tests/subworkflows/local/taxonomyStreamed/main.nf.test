@@ -17,7 +17,7 @@ nextflow_workflow {
                     """
                 }
             }
-            run("INTERLEAVE_FASTQ_SEQTK") {
+            run("INTERLEAVE_FASTQ") {
                 script "modules/local/interleaveFastq/main.nf"
                 process {
                     """
@@ -31,10 +31,11 @@ nextflow_workflow {
             }
             workflow {
                 '''
-                input[0] = INTERLEAVE_FASTQ_SEQTK.out
+                input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "D"
-                input[3] = false
+                input[3] = "5"
+                input[4] = false
                 '''
             }
         }
@@ -100,7 +101,8 @@ nextflow_workflow {
                 input[0] = COPY_FILE.out
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "D"
-                input[3] = true
+                input[3] = "5"
+                input[4] = true
                 '''
             }
         }

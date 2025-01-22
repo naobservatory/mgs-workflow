@@ -14,6 +14,7 @@ include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { EXTRACT_VIRAL_READS_STREAMED as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsStreamed"
 include { SUBSET_TRIM_STREAMED as SUBSET_TRIM } from "../subworkflows/local/subsetTrimStreamed"
 include { RUN_QC_STREAMED as RUN_QC } from "../subworkflows/local/runQcStreamed"
+//include { PROFILE_STREAMED as PROFILE } from "../subworkflows/local/
 nextflow.preview.output = true
 
 /*****************
@@ -39,7 +40,7 @@ workflow RUN_STREAMED {
     // Extract and count human-viral reads
     EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path,
         params.bt2_score_threshold, params.adapters, params.host_taxon,
-        "1", "24", "viral")
+        "1", "24", "viral", params.bracken_threshold)
 
     // TODO: Add BLAST validation
 
