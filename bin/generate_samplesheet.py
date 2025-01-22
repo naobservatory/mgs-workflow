@@ -172,6 +172,13 @@ def build_samples_dict(listing, dir_path, single_end, forward_suffix, reverse_su
         for sample, fr_dict in samples_dict.items():
             if fr_dict["fwd"] and fr_dict["rev"]:
                 final_dict[sample] = [fr_dict["fwd"], fr_dict["rev"]]
+            else:
+                # New error message for incomplete pairs
+                if fr_dict["fwd"] and not fr_dict["rev"]:
+                    print(f"Error: Sample '{sample}' is missing its reverse read (found forward: {fr_dict['fwd']})", file=sys.stderr)
+                elif fr_dict["rev"] and not fr_dict["fwd"]:
+                    print(f"Error: Sample '{sample}' is missing its forward read (found reverse: {fr_dict['rev']})", file=sys.stderr)
+                sys.exit(1)
         return final_dict
 
     else:
