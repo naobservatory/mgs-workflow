@@ -9,6 +9,7 @@
   - Added Fastp adapter trimming after running BBDuk in the EXTRACT_VIRAL_READS subworkflow.
 - Implement masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
 - Remove TRIMMOMATIC and BBMAP from the pipeline.
+- Fixed bug in extractUnconcReadID that would cause the pipeline to fail if it contained the string 'YT' in the read id.
 
 # v2.6.0.0
 - Updated version to reflect the new versioning scheme, which is described in `docs/version_schema.md`.
