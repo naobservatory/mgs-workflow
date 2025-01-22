@@ -75,9 +75,6 @@ The pipeline can be run in multiple ways by modifying various configuration vari
 
 To run the pipeline with a specified profile, run `nextflow run PATH_TO_REPO_DIR -profile PROFILE_NAME -resume`. Calling the pipeline without specifying a profile will run the `batch` profile by default. Future example commands in this README will assume you are using Batch; if you want to instead use a different profile, you'll need to modify the commands accordingly.
 
-> [!TIP]
-> It's highly recommended that you always run `nextflow run` with the `-resume` option enabled. It doesn't do any harm if you haven't run a workflow before, and getting into the habit will help you avoid much sadness when you want to resume it without rerunning all your jobs.
-
 ### Compute resource requirements
 
 To run the pipeline as is you need at least 128GB of memory and 64 cores. This is because we use the whole KrakenDB whihc is large (128GB) and some for processes consume 64 cores. Simiarly, if one would like to run BLAST, they must have at least 256GB of memory. 
@@ -102,5 +99,8 @@ where PATH/TO/PIPELINE/DIR specifies the path to the directory containing the pi
 > ```
 > nextflow run -resume PATH/TO/PIPELINE/DIR
 > ```
+
+> [!TIP]
+> It's highly recommended that you always run `nextflow run` with the `-resume` option enabled. It doesn't do any harm if you haven't run a workflow before, and getting into the habit will help you avoid much sadness when you want to resume it without rerunning all your jobs.
 
 Once the pipeline has finished, output and logging files will be available in the `output` subdirectory of the base directory specified in the config file.
