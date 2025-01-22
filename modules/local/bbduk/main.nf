@@ -127,3 +127,37 @@ process BBDUK_HITS_STREAMED {
         ln -s ${in2} !{sample}_!{suffix}_bbduk_in_2.fastq.gz
         '''
 }
+
+// Streamed version (interleaved or single-end input and output)
+process BBDUK_STREAMED {
+    label "small"
+    label "BBTools"
+    input:
+        tuple val(sample), path(reads) // Interleaved or single-end
+        path(contaminant_ref)
+        val(min_kmer_fraction)
+        val(k)
+        val(suffix)
+        val(interleaved)
+    output:
+        tuple val(sample), path("${sample}_${suffix}_bbduk_nomatch.fastq.gz"), emit: nomatch
+        tuple val(sample), path("${sample}_${suffix}_bbduk_match.fastq.gz"), emit: match
+        tuple val(sample), path("${sample}_${suffix}_bbduk.stats.txt"), emit: log
+        tuple val(sample), path("${sample}_${suffix}_in.fastq.gz"), emit: input
+    shell:
+        '''
+        # Define input/output
+        op=!{sample}_!{suffix}_bbduk_nomatch.fastq.gz
+        of=!{sample}_!{suffix}_bbduk_match.fastq.gz
+        stats=!{sample}_!{suffix}_bbduk.stats.txt
+        ref=!{contaminant_ref}
+        il=!{interleaved ? 't' : 'f'}
+        io="in=stdin.fastq ref=${ref} out=${op} outm=${of} stats=${stats} interleaved=${il}"
+        # Define parameters
+        par="minkmerfraction=!{min_kmer_fraction} k=!{k} t=!{task.cpus} -Xmx!{task.memory.toGiga()}g"
+        # Execute
+        zcat !{reads} | bbduk.sh ${io} ${par}
+        # Link input to output for testing
+        ln -s !{reads} !{sample}_!{suffix}_in.fastq.gz
+        '''
+}
