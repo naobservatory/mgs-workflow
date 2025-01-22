@@ -14,7 +14,7 @@ include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { EXTRACT_VIRAL_READS_STREAMED as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsStreamed"
 include { SUBSET_TRIM_STREAMED as SUBSET_TRIM } from "../subworkflows/local/subsetTrimStreamed"
 include { RUN_QC_STREAMED as RUN_QC } from "../subworkflows/local/runQcStreamed"
-//include { PROFILE_STREAMED as PROFILE } from "../subworkflows/local/
+include { PROFILE_STREAMED as PROFILE } from "../subworkflows/local/profileStreamed"
 nextflow.preview.output = true
 
 /*****************
@@ -51,6 +51,10 @@ workflow RUN_STREAMED {
     // Run QC on subset reads before and after adapter trimming (NB: unchanged in streamed version)
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, params.single_end)
 
+    // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
+    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
+        params.bracken_threshold, params.single_end)
+
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
@@ -81,4 +85,6 @@ workflow RUN_STREAMED {
         RUN_QC.out.qc_qseqs >> "results"
         // Final results
         EXTRACT_VIRAL_READS.out.hits_filtered >> "results"
+        PROFILE.out.bracken >> "results"
+        PROFILE.out.kraken >> "results"
 }
