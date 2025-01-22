@@ -1,8 +1,6 @@
 # Installation & setup
 
-This section describes how to install the pipeline and set up your environment to run it.
-
-This pipeline is generally optimized and tested to run on linux machines, we specifically use EC2 instances for running this pipeline, but this code could be adopted for MACOS or Windows machines.
+This section describes how to install the pipeline and set up your environment to run it. This pipeline is generally optimized and tested to run on linux machines, we specifically use EC2 instances for running this pipeline, but this code could be adopted for MACOS or Windows machines.
 
 
 > [!TIP]

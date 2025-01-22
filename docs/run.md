@@ -56,11 +56,6 @@ I've broken down the `run` workflow into a series of subworkflows, each of which
 ### Load data into channels (LOAD_SAMPLESHEET)
 This workflow loads the samplesheet and creates a channel containing the samplesheet data. It also creates a channel containing the group data, which is used to group reads into samples. No diagram is provided for this workflow, as it's a simple channel creation workflow.
 
-Output:
-- `samplesheet`: A channel containing the samplesheet data.
-- `group`: A channel containing the group data.
-- `start_time_str`: A channel containing the start time of the workflow.
-
 ### Subset and trim reads (SUBSET_TRIM)
 This workflow subsets the reads to a target number (default 1M/sample), and trims adapters with [FASTP](https://github.com/OpenGene/fastp), which both screens for adapters and trims low-quality and low-complexity sequences.
 
@@ -79,10 +74,6 @@ B --> C[FASTP]
 
 1. Subset reads using [Seqtk](https://github.com/lh3/seqtk)
 2. Trim reads using [FASTP](https://github.com/OpenGene/fastp)
-
-Output:
-- `subset_reads`: A channel containing the subsetted reads.
-- `trimmed_subset_reads`: A channel containing the subsetted and trimmed reads.
 
 ## Analysis workflows
 
@@ -131,11 +122,6 @@ end
     - Are classified as vertebrate-infecting virus by both Bowtie2 and Kraken2; or
     - Are unassigned by Kraken and align to an vertebrate-infecting virus taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
 
-
-Output:
-- `virus_hits_db.tsv.gz`: A TSV file containing information for each read pair, including whether it was classified as vertebrate-infecting virus, and the taxonomic assignment of the read pair.
-- `virus_clade_counts.tsv.gz`: A TSV file containing the number of read pairs mapping to each detected vertebrate-infecting virus taxon.
-
 [^filter]: We've found in past investigations that the two aligners detect different contaminant sequences, and aligning against both is more effective at avoiding false positives than either in isolation.
  
 [^threshold]: Specifically, Kraken-unassigned read pairs are classed as HV if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
@@ -180,15 +166,17 @@ config:
   theme: default
 ---
 flowchart LR
-A[Reads] --> B["Subset reads <br> (*Optional*)"]
-B --> |Forward read|C[BLASTN]
-B --> |Reverse read|D[BLASTN]
+A[Reads] -.-> |Optional|B[Subset reads]
+A --> |Forward read|C[BLASTN]
+A --> |Reverse read|D[BLASTN]
+B -.-> |Forward read|C[BLASTN]
+B -.-> |Reverse read|D[BLASTN]
 C --> E[Filter BLASTN output]
 D --> F[Filter BLASTN output]
 E & F --> G[Process & merge output]
 ```
 
-1. Reads are subset if `params.blast_hv_fraction` is less than 1.
+1. Reads are subset if `params.blast_hv_fraction` is less than 1, else if `params.blast_hv_fraction` is 1, then BLAST is run on all host viral reads.
 2. Forward and reverse reads are aligned separately with BLASTN.
 3. BLASTN outputs are filtered to keep only the best-scoring alignment for each read.
 4. Output from both reads are combined into a single file, with columns for the read ID, the subject taxid, and the alignment score.

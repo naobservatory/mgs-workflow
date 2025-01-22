@@ -21,16 +21,14 @@ The pipeline has three main workflows: `INDEX`, `RUN`, and `RUN_VALIDATION`. Eac
 
 The pipeline can be run in multiple ways by modifying various configuration variables specified in `configs/profiles.config`. Currently, three profiles are implemented, all of which assume the workflow is being launched from an AWS EC2 instance:
 
-- `batch (default)`:  Most efficient way to run the pipeline
-  - This profile is the default and attempts to run the pipeline with AWS Batch. This is the quickest and most efficient way to run the pipeline, but requires significant additional setup not described in this repo. To set up AWS Batch for this pipeline, follow the instructions [here](https://data.securebio.org/wills-public-notebook/notebooks/2024-06-11_batch.html) (steps 1-3), then modify your config file to point `process.queue` to the name of your Batch job queue.
-- `ec2_local`: Simple and can be relatively fast, but is bottlenecked by your instance's CPU and memory allocations.
+- `batch (default)`:  **Most efficient way to run the pipeline**
+  - This profile is the default and attempts to run the pipeline with AWS Batch. This is the quickest and most efficient way to run the pipeline, but requires significant additional setup not described in this repo. To set up AWS Batch for this pipeline, follow the instructions [here](./batch.md) (steps 1-3), then modify your config file to point `process.queue` to the name of your Batch job queue.
+- `ec2_local`: **Simple and can be relatively fast, but is bottlenecked by your instance's CPU and memory allocations.**
   - This profile attempts to run the whole workflow locally on your EC2 instance, storing intermediate and outflow files on instance-linked block storage. This is simple and can be relatively fast, but is bottlenecked by your instance's CPU and memory allocations; in particular, if you don't use an instance with very high memory, the pipeline is likely to fail when loading the Kraken2 reference DB.
-- `ec2_s3`: Avoids storage issues on your EC2 instance, but is still constrained by your instance's memory allocation.
+- `ec2_s3`: **Avoids storage issues on your EC2 instance, but is still constrained by your instance's memory allocation.**
   - This profile runs the pipeline on your EC2 instance, but attempts to read and write files to a specified S3 directory. This avoids problems caused by insufficient storage on your EC2 instance, but (1) is significantly slower and (2) is still constrained by your instance's memory allocation.
 
 To run the pipeline with a specified profile, run `nextflow run PATH_TO_REPO_DIR -profile PROFILE_NAME -resume`. Calling the pipeline without specifying a profile will run the `batch` profile by default. Future example commands in this README will assume you are using Batch; if you want to instead use a different profile, you'll need to modify the commands accordingly.
-
-As of the current pipeline, you must have at least 128GB of memory and 32 cores to run the pipeline if you're running ec2_local or ec2_s3. This is because we use the whole KrakenDB whihc is large (128GB) and some for processes consume 64 cores. Simiarly, if one would like to run BLAST, they must have at least 256GB of memory. 
 
 > [!TIP]
 > It's highly recommended that you always run `nextflow run` with the `-resume` option enabled. It doesn't do any harm if you haven't run a workflow before, and getting into the habit will help you avoid much sadness when you want to resume it without rerunning all your jobs.
