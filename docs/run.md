@@ -1,6 +1,8 @@
 # RUN WORKFLOW
 
-The `run` workflow is responsible for the primary analysis of the pipeline. 
+This page describes the structure and function of the `run` workflow, which is responsible for the primary analysis of the pipeline. For usage instructions, see [here](./docs/usage.md).
+
+## Workflow structure
 
 ```mermaid
 ---
@@ -11,11 +13,11 @@ config:
   theme: default
 ---
 flowchart LR
-A[Input Files] --> |Raw reads|B[LOAD_SAMPLESHEET]
+A[Raw input reads] --> B[LOAD_SAMPLESHEET]
 B --> C[COUNT_TOTAL_READS] & D[EXTRACT_VIRAL_READS] & E[SUBSET_TRIM]
-D -.-> |*Optional*| F[BLAST_VIRAL]
-E --> |Trim and subset reads| G[RUN_QC] & H[PROFILE]
-E --> |Subset reads|G[RUN_QC]
+D -.-> F[BLAST_VIRAL]
+E --> |Subsetted reads|G[RUN_QC]
+E --> |Trimmed subsetted reads| G[RUN_QC] & H[PROFILE]
 %% Adjust layout by placing subgraphs in specific order
 subgraph "Viral identification"
 D
@@ -27,37 +29,38 @@ subgraph "QC"
 C
 G
 end
-subgraph "BLAST Validation"
+subgraph "BLAST Validation (optional)"
 F
 end
 ```
 
-By default, we define the host-infecting viruses to be screened against all vertebrate-infecting viruses and we don't perform BLAST validation. Corresponding config file: `configs/run.config`.
+At a high level, the `run` workflow carries out two main analyses on raw input reads: sensitive and specific identification of vertebrate-infecting viral reads, and high-level taxonomic profiling. Optionally, it can also perform BLAST validation on putative vertebrate-infecting viral reads; however, this is slow and expensive and not performed by default.
 
-I've broken down the `run` workflow into a series of subworkflows, each of which performs a specific task:
-1. [Setup workflows](#setup-workflows): Prepare the input data for analysis
+To perform these functions, the workflow runs a series of subworkflows responsible for different tasks:
+
+1. [Setup subworkflows](#setup-subworkflows): Prepare the input data for analysis
     - [Load data into channels (LOAD_SAMPLESHEET)](#load-data-into-channels-load_samplesheet)
     - [Subset and trim reads (SUBSET_TRIM)](#subset-and-trim-reads-subset_trim)
-2. [Analysis workflows](#analysis-workflows): Perform the primary analysis
-    - [Viral identification phase (EXTRACT_VIRAL_READS)](#viral-identification-phase-extract_viral_reads)
-    - [Taxonomic profiling phase (PROFILE)](#taxonomic-profiling-phase-profile)
-    - [BLAST validation phase (BLAST_VIRAL)](#blast-validation-phase-blast_viral)
-3. [QC workflows](#qc-workflows): Conduct quality control on the analysis results
+2. [Analysis subworkflows](#analysis-subworkflows): Perform the primary analysis
+    - [Viral identification (EXTRACT_VIRAL_READS)](#viral-identification-extract_viral_reads)
+    - [Taxonomic profiling (PROFILE)](#taxonomic-profiling-profile)
+    - [BLAST validation (BLAST_VIRAL)](#blast-validation-blast_viral)
+3. [QC subworkflows](#qc-subworkflows): Conduct quality control on the analysis results
     - [Count total reads (COUNT_TOTAL_READS)](#count-total-reads-count_total_reads)
-    - [QC and output phase (RUN_QC)](#qc-and-output-phase-run_qc)
-4. [Helper workflows](#helper-workflows): Helper workflows that are used by the workflows above
+    - [QC and output (RUN_QC)](#qc-and-output-run_qc)
+4. [Helper subworkflows](#helper-subworkflows): Helper workflows that are used by other subworkflows in this list
     - [Taxonomic assignment (TAXONOMY)](#taxonomic-assignment-taxonomy)
     - [QC (QC)](#qc-qc)
 
-
-
-## Setup workflows
+## Setup subworkflows
 
 ### Load data into channels (LOAD_SAMPLESHEET)
-This workflow loads the samplesheet and creates a channel containing the samplesheet data. It also creates a channel containing the group data, which is used to group reads into samples. No diagram is provided for this workflow, as it's a simple channel creation workflow.
+This subworkflow loads the samplesheet and creates a channel containing the samplesheet data, in the structure expected by the pipeline. If provided, it also creates a channel containing the grouping information used to combine samples for downstream analysis. (No diagram is provided for this subworkflow.)
 
 ### Subset and trim reads (SUBSET_TRIM)
-This workflow subsets the reads to a target number (default 1M/sample), and trims adapters with [FASTP](https://github.com/OpenGene/fastp), which both screens for adapters and trims low-quality and low-complexity sequences.
+This subworkflow uses [Seqtk](https://github.com/lh3/seqtk) to randomly subsample the input reads to a target number[^target] (default 1 million read pairs per sample) to save time and and compute on downstream steps while still providing a reliable statistical picture of the overall sample. Following downsampling, reads undergo adapter trimming and quality screening with [FASTP](https://github.com/OpenGene/fastp), which both screens for adapters and trims low-quality and low-complexity sequences.
+
+[^target]: More precisely, the subworkflow uses the total read count and target read number to calculate a fraction $p$ of the input reads that should be retained, then keeps each read from the input data with probability $p$. Since each read is kept or discarded independently of the others, the final read count will not exactly match the target number; however, it will be very close for sufficiently large input files.
 
 ```mermaid
 ---
@@ -68,18 +71,15 @@ config:
   theme: default
 ---
 flowchart LR
-A[Raw reads] --> B[SUBSET]
-B --> C[FASTP]
+A[Raw reads] --> B[Subset with Seqtk]
+B --> C[Trim with FASTP]
 ```
 
-1. Subset reads using [Seqtk](https://github.com/lh3/seqtk)
-2. Trim reads using [FASTP](https://github.com/OpenGene/fastp)
+## Analysis subworkflows
 
-## Analysis workflows
+### Viral identification (EXTRACT_VIRAL_READS)
 
-### Viral identification phase (EXTRACT_VIRAL_READS)
-
-The goal of this phase is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It uses a multi-step process designed to keep computational costs low while minimizing false-positive and false-negative errors.
+The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It uses a multi-step process designed to keep computational costs low while minimizing false-positive and false-negative errors.
 
 ```mermaid
 ---
@@ -113,22 +113,20 @@ G
 end
 ```
 
-1. To begin with, the raw reads are screened against a database of vertebrate-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least three 21-mers matching any host-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative vertebrate-infecting viral reads while discarding the vast majority of non-HV reads, reducing the cost associated with the rest of this phase.
+1. To begin with, the raw reads are screened against a database of vertebrate-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least one 24-mer matching any vertebrate-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative vertebrate-infecting viral reads while discarding the vast majority of non-HV reads, reducing the cost associated with the rest of this phase.
 2. Surviving reads undergo additional adapter trimming with [FASTP](https://github.com/OpenGene/fastp) and [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) to remove any residual adapter contamination that might lead to false positive results.
 3. Next, reads are aligned to the previously-mentioned database of vertebrate-infecting viral genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative HV reads as possible. The SAM and FASTQ files are processed to generate new read files containing any read pair for which at least one read matches the HV database.
-4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using Bowtie2 in series[^filter]. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
-5. Surviving read pairs are then taxonomically profiled using the [TAXONOMY workflow](#taxonomic-assignment-taxonomy), which deduplicates, merges and profiles the reads.
+4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using Bowtie2 in series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
+5. Surviving read pairs are then taxonomically profiled using the [TAXONOMY subworkflow](#taxonomic-assignment-taxonomy), which deduplicates, merges and profiles the reads.
 6.  Finally, reads are assigned a final vertebrate-infecting virus status if they:
     - Are classified as vertebrate-infecting virus by both Bowtie2 and Kraken2; or
     - Are unassigned by Kraken and align to an vertebrate-infecting virus taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
 
-[^filter]: We've found in past investigations that the two aligners detect different contaminant sequences, and aligning against both is more effective at avoiding false positives than either in isolation.
- 
 [^threshold]: Specifically, Kraken-unassigned read pairs are classed as HV if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
 
-### Taxonomic profiling phase (PROFILE)
+### Taxonomic profiling (PROFILE)
 
-The goal of this phase is to give an overview of the taxonomic composition of the cleaned reads from the preprocessing phase. In particular, it gives an estimate of (i) the fraction of ribosomal reads in the dataset, (ii) the taxonomic breakdown of the dataset at the domain level[^eukarya], and (iii) more detailed abundance estimates for lower-level taxa.
+The goal of this subworkflow is to give an overview of the taxonomic composition of the cleaned and subset reads from the preprocessing phase. In particular, it gives an estimate of (i) the fraction of ribosomal reads in the dataset, (ii) the taxonomic breakdown of the dataset at the domain level[^eukarya], and (iii) more detailed abundance estimates for lower-level taxa.
 
 ```mermaid
 ---
@@ -148,8 +146,8 @@ subgraph "Ribosomal classification"
 B
 end
 ```
-1. These subset reads are then separated into ribosomal and non-ribosomal read groups using BBDuk, by searching for ribosomal k-mers from the SILVA database obtained during the index workflow. 
-2. The output of the previous step is passed to the [TAXONOMY workflow](#taxonomic-assignment-taxonomy), which returns back the Kraken2 and Bracken outputs.
+
+To do this, reads from SUBSET_CLEAN are separated into ribosomal and non-ribosomal read groups using BBDuk, by searching for ribosomal k-mers from the SILVA database generated by the index workflow. The ribosomal and non-ribosomal reads are then passed separately to [TAXONOMY workflow](#taxonomic-assignment-taxonomy), which returns back the Kraken2 and Bracken outputs. These are then annotated and merged across samples to produce single output files.
 
 [^eukarya]: As human is the only eukaryotic genome included in the Standard reference database for Kraken2, all sequences assigned to that domain can be assigned to *Homo sapiens*.
 
@@ -186,10 +184,10 @@ E & F --> G[Process & merge output]
 ## QC workflows
 
 ### Count total reads (COUNT_TOTAL_READS)
-This phase counts the total number of reads in the input files, then merges them all into one file. No diagram is provided for this workflow, as it's a simple channel creation workflow.
+This subworkflow counts the total number of reads in the input files, then merges read counts from all samples into one output TSV. (No diagram is provided for this subworkflow.)
 
 ### QC and output phase (RUN_QC)
-This phase conducts quality control on the subsetted reads, both the raw and cleaned reads.
+This subworkflow generates quality metrics on the raw and cleaned read subsets output by SUBSET_TRIM. Reads are analyzed with [FASTQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://multiqc.info/), then extracted into easy-to-parse TSV files[^tsvs] for downstream processing.
 
 ```mermaid
 ---
@@ -205,16 +203,13 @@ C[Subset and trimmed reads] --> D[QC]
 B & D --> E[Process & merge output]
 ```
 
-In this phase, the raw and cleaned reads from the preprocessing phase are analyzed with [FASTQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://multiqc.info/). This allows us to assess important metrics (e.g. read quality, read numbers, adapter content) in the raw input, and how these metrics are affected by cleaning. Relevant metrics are then extracted from MultiQC outputs into easy-to-parse TSV files[^tsvs] for downstream processing.
-
-
 [^tsvs]: Specifically, `qc_basic_stats.tsv.gz`, `qc_adapter_stats.tsv.gz`, `qc_quality_base_stats.tsv.gz` and `qc_quality_sequence_stats.tsv.gz`.
 
 ## Helper workflows
 
 ### Taxonomic assignment (TAXONOMY)
 
-This workflow performs taxonomic assignment on a set of reads.
+This subworkflow performs taxonomic assignment on a set of reads using [Kraken2](https://ccb.jhu.edu/software/kraken2/). It is called by both the PROFILE and EXTRACT_VIRAL_READS subworkflows.
 
 ```mermaid
 ---
