@@ -5,14 +5,6 @@ This page describes how to install the pipeline and configure your computing env
 > [!IMPORTANT]
 > This pipeline has been developed to run on Linux environments, primarily on AWS EC2 instances. It has not been tested or debugged on MacOS or Windows machines, and is not guaranteed to work on those environments.
 
-<!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
-- [Installation \& setup](#installation--setup)
-      - [1. Install dependencies](#1-install-dependencies)
-      - [2. Configure AWS \& Docker](#2-configure-aws--docker)
-      - [3. Clone this repository](#3-clone-this-repository)
-      - [4. Run index/reference workflow](#4-run-indexreference-workflow)
-<!-- TOC end -->
-
 ## 1. Install dependencies 
 
 To run this workflow with full functionality, you need access to the following dependencies:
