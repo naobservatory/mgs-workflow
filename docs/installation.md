@@ -54,11 +54,11 @@ newgrp docker
 docker run hello-world
 ```
 
-#### 3. Clone this repository
+## 3. Clone this repository
 
 Clone this repo into a new directory as normal.
 
-#### 4. Run index/reference workflow
+## 4. Run index/reference workflow
 
 > [!TIP]
 > If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output`.
@@ -83,3 +83,31 @@ nextflow run PATH_TO_REPO_DIR -resume
 > You don't need to point `nextflow run` at `main.nf` any other workflow file; pointing to the directory will cause Nextflow to automatically run `main.nf` from that directory.
 
 Wait for the workflow to run to completion; this is likely to take several hours at least.
+
+## 5. Run the pipeline on test data
+
+To confirm that the pipeline works in your hands, we recommend running it on a small test dataset, such as the one provided at `s3://nao-testing/gold-standard-test/raw/`, before running it on larger input data. To do this with our test dataset, follow the instructions below, or do it yourself according to the directions given [here](./docs/usage.md).
+
+1. Prepare the launch directory:
+    - Create a clean launch directory outside the repository directory.
+    - Copy over the run workflow config file to a new file in the launch directory labeled `nextflow.config`.
+    - Copy the test-data sample sheet from the repository directory to the launch directory.
+
+```
+mkdir launch
+cd launch
+cp REPO_DIR/configs/run.config nextflow.config
+cp REPO_DIR/test-data/samplesheet.csv samplesheet.csv
+```
+
+2. Edit the config file (`nextflow.config`):
+    - Edit `params.ref_dir` to point to the index directory you chose or created above (specifically `PATH_TO_REF_DIR/output`)
+    - Edit `params.base_dir` to point to where you would like the pipeline to save intermediate and final pipeline outputs.
+3. Choose a profile as described [here](./docs/usage.md).
+4. Run the pipeline from the launch directory:
+
+```
+nextflow run -resume -profile <PROFILE> REPO_DIR
+```
+
+Once the pipeline is complete, output and logging files will be available in the `output` subdirectory of the base directory specified in the config file.
