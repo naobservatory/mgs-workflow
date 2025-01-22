@@ -1,0 +1,61 @@
+nextflow_process {
+
+    name "Test process ADD_FIXED_COLUMN"
+    script "modules/local/addFixedColumn/main.nf"
+    process "ADD_FIXED_COLUMN"
+    config "tests/run.config"
+
+    test("Should break when column is already present in tsv"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"
+                input[1] = "x"
+                input[2] = "test"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Column already exists")
+        }
+    }
+
+    test("Should run without failures on correct input and produce correct output"){
+        tag "expect_success"
+        when {
+            params {
+                test_column = "test_column"
+                test_value = "test_value"
+            }
+            process {
+                '''
+                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"
+                input[1] = params.test_column
+                input[2] = params.test_value
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should have correct dimensions
+            def tab_in = path(process.out.input[0]).csv(sep: "\t", decompress: true)
+            def tab_out = path(process.out.output[0]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount == tab_in.columnCount + 1
+            assert tab_out.rowCount == tab_in.rowCount
+            // Output should have sample column with appropriate values
+            assert params.test_column in tab_out.columnNames
+            assert !(params.test_column in tab_in.columnNames)
+            for (i in tab_out.columns[params.test_column]) {
+                assert i == params.test_value
+            }
+        }
+    }
+
+}
