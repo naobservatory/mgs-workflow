@@ -57,7 +57,7 @@ workflow RUN_DEV_SE {
     RAW(samplesheet_ch, params.n_reads_trunc, "8", "16 GB", "raw_concat", params.single_end)
     CLEAN(RAW.out.reads, params.adapters, "8", "16 GB", "cleaned", params.single_end, minimap2_human_index)
 
-    // One-off ribosomal reads
+    // Create alignments of human reads for duplicate analysis.
     HUMAN_SAM(RAW.out.reads, minimap2_human_index)
 
     // Taxonomic profiling
