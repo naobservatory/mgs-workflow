@@ -4,7 +4,6 @@
 
 include { BBDUK_HITS } from "../../../modules/local/bbduk"
 include { CUTADAPT } from "../../../modules/local/cutadapt"
-include { ATRIA } from "../../../modules/local/atria"
 include { BOWTIE2 as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
@@ -74,12 +73,10 @@ workflow EXTRACT_VIRAL_READS {
         // Carry out stringent adapter removal with FASTP, Cutadapt and Atria
         fastp_ch = FASTP(bbduk_ch.fail, adapter_path)
         adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path)
-        atria_ch = ATRIA(adapt_ch.reads, adapters_ch)
-        trim_ch = atria_ch
         // Grouping for deduplication
         if (grouping) {
             // Join samplesheet with trimmed_reads and update fastq files
-            trim_group_ch = group_ch.join(trim_ch.reads, by: 0)
+            trim_group_ch = group_ch.join(adapt_ch.reads, by: 0)
             .map { sample, group, reads -> tuple(sample, reads[0], reads[1], group) }
             .groupTuple(by: 3)
             // Split into multi-sample and single-sample groups
@@ -88,7 +85,7 @@ workflow EXTRACT_VIRAL_READS {
                 .map { samples, fwd_list, rev_list, group -> tuple(group, [fwd_list[0], rev_list[0]]) }
             grouped_ch = CONCAT_GROUP(multi_sample_groups).mix(single_sample_groups)
         } else {
-            grouped_ch = trim_ch.reads
+            grouped_ch = adapt_ch.reads
         }
         // Run Bowtie2 against a viral database and process output
         bowtie2_ch = BOWTIE2_VIRUS(grouped_ch, bt2_virus_index_path, "--no-unal --no-sq --score-min G,1,1", "virus")

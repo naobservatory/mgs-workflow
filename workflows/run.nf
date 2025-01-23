@@ -90,6 +90,7 @@ workflow RUN {
         RUN_QC.out.qc_adapt >> "results"
         RUN_QC.out.qc_qbase >> "results"
         RUN_QC.out.qc_qseqs >> "results"
+        RUN_QC.out.qc_lengths >> "results"
         // Final results
         EXTRACT_VIRAL_READS.out.tsv >> "results"
         EXTRACT_VIRAL_READS.out.counts >> "results"

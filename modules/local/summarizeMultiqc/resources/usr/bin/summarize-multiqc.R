@@ -40,6 +40,7 @@ out_path_basic <- file.path(opt$output_dir, paste0(id_out, "_qc_basic_stats.tsv.
 out_path_adapters <- file.path(opt$output_dir, paste0(id_out, "_qc_adapter_stats.tsv.gz"))
 out_path_quality_base <- file.path(opt$output_dir, paste0(id_out, "_qc_quality_base_stats.tsv.gz"))
 out_path_quality_sequence <- file.path(opt$output_dir, paste0(id_out, "_qc_quality_sequence_stats.tsv.gz"))
+out_path_lengths <- file.path(opt$output_dir, paste0(id_out, "_qc_length_stats.tsv.gz"))
 
 #=====================#
 # AUXILIARY FUNCTIONS #
@@ -69,8 +70,8 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json, single_end){
   # Read in basic stats from fastqc TSV
   tab_tsv <- fastqc_tsv %>%
     mutate(n_bases_approx = process_n_bases(`Total Bases`) %>% as.numeric) %>%
-    select(n_bases_approx, per_base_sequence_quality:adapter_content)
-  # Combine
+    select(n_bases_approx, per_base_sequence_quality:adapter_content) %>%
+    summarize_all(function(x) paste(x, collapse="/"))
   return(bind_cols(tab_json, tab_tsv))
 }
 
@@ -89,6 +90,24 @@ extract_adapter_data <- function(multiqc_json){
   # Extract adapter data from multiqc JSON
   datasets <- multiqc_json$report_plot_data$fastqc_adapter_content_plot$datasets$lines
   data_out <- lapply(datasets, extract_adapter_data_single) %>% bind_rows()
+  return(data_out)
+}
+
+extract_length_data_single <- function(length_dataset){
+  # Convert a single JSON length dataset into a tibble
+  data <- lapply(1:length(length_dataset$name), function(n)
+    length_dataset$data[[n]] %>% as.data.frame %>%
+      mutate(filename=length_dataset$name[n])) %>%
+    bind_rows() %>% as_tibble %>%
+    rename(length=V1, n_sequences=V2) %>%
+    rename(file = filename)
+  return(data)
+}
+
+extract_length_data <- function(multiqc_json){
+  # Extract length data from multiqc JSON
+  datasets <- multiqc_json$report_plot_data$fastqc_sequence_length_distribution_plot$datasets$lines
+  data_out <- lapply(datasets, extract_length_data_single) %>% bind_rows()
   return(data_out)
 }
 
@@ -141,6 +160,7 @@ add_info <- function(tab) mutate(tab, stage=opt$stage, sample=opt$sample)
 basic_info <- basic_info_fastqc(fastqc_tsv, multiqc_json, single_end) %>% add_info
 adapters <- extract_adapter_data(multiqc_json) %>% add_info
 per_base_quality <- extract_per_base_quality(multiqc_json) %>% add_info
+lengths <- extract_length_data(multiqc_json) %>% add_info
 per_sequence_quality <- extract_per_sequence_quality(multiqc_json) %>% add_info
 
 # Write tables
@@ -148,3 +168,4 @@ write_tsv(basic_info, out_path_basic)
 write_tsv(adapters, out_path_adapters)
 write_tsv(per_base_quality, out_path_quality_base)
 write_tsv(per_sequence_quality, out_path_quality_sequence)
+write_tsv(lengths, out_path_lengths)

@@ -32,7 +32,8 @@ nextflow_process {
                     input[0] = INTERLEAVE_FASTQ.out.output
                     input[1] = "${params.ref_dir}/results/kraken_db"
                     input[2] = "D"
-                    input[3] = params.single_end
+                    input[3] = "5"
+                    input[4] = params.single_end
                     '''
                 }
             }

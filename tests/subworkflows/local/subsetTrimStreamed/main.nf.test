@@ -89,7 +89,7 @@ nextflow_workflow {
         }
         when {
             params {
-                n_reads = 49
+                n_reads = 109
             }
             workflow {
                 '''

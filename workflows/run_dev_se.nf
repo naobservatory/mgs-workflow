@@ -31,9 +31,8 @@ workflow RUN_DEV_SE {
     // Load kraken db path
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
 
-
     // Count reads in files
-    COUNT_TOTAL_READS(samplesheet_ch)
+    COUNT_TOTAL_READS(samplesheet_ch, params.single_end)
 
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, group_ch, params.n_reads_profile, params.grouping, params.adapters, params.single_end)
@@ -68,6 +67,7 @@ workflow RUN_DEV_SE {
         RUN_QC.out.qc_adapt >> "results"
         RUN_QC.out.qc_qbase >> "results"
         RUN_QC.out.qc_qseqs >> "results"
+        RUN_QC.out.qc_lengths >> "results"
         // Final results
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"

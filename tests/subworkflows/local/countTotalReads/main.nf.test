@@ -24,6 +24,7 @@ nextflow_workflow {
             workflow {
                 """
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = false
                 """
             }
         }
@@ -33,8 +34,8 @@ nextflow_workflow {
             println(workflow.out.read_counts[0])
             def file_out = path(workflow.out.read_counts[0]).csv(sep: "\t", decompress: true) 
             assert file_out.rowCount == 1
-            assert file_out.columnNames == ["sample", "total_read_count"]
-            assert file_out.rows[0] == ["total_read_count": 165, "sample": "gold_standard"]
+            assert file_out.columnNames == ['sample', 'n_reads_single', 'n_read_pairs']
+            assert file_out.rows[0] == ["sample": "gold_standard", "n_reads_single": 165*2, "n_read_pairs": 165]
         }
 
     }
