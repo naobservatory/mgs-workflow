@@ -193,7 +193,7 @@ def build_samples_dict(listing, dir_path, single_end, forward_suffix, reverse_su
 
 def read_group_file(group_file_path):
     """
-    Reads a CSV group file with at least two columns: sample,group
+    Reads a CSV group file that must have exactly two columns with header: sample,group
     Returns a dict: {sample_name -> group_name}
     """
     groups_dict = {}
@@ -203,12 +203,18 @@ def read_group_file(group_file_path):
         if not header:
             print("Group file is empty or missing a header.", file=sys.stderr)
             sys.exit(1)
-        # We expect the first two columns to be sample,group
+        
+        # Enforce exact header format
+        if header != ["sample", "group"]:
+            print("Group file header must be exactly 'sample,group'.", file=sys.stderr)
+            sys.exit(1)
+            
         for row in reader:
-            if len(row) >= 2:
-                sample_name = row[0]
-                group_name = row[1]
-                groups_dict[sample_name] = group_name
+            if len(row) != 2:
+                print(f"Each row must have exactly 2 columns. Found {len(row)} columns in row: {','.join(row)}", file=sys.stderr)
+                sys.exit(1)
+            sample_name, group_name = row
+            groups_dict[sample_name] = group_name
     return groups_dict
 
 
