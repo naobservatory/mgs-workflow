@@ -111,3 +111,24 @@ nextflow run -resume -profile <PROFILE> REPO_DIR
 ```
 
 Once the pipeline is complete, output and logging files will be available in the `output` subdirectory of the base directory specified in the config file.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Compute resource requirements
+
+To run the pipeline as is you need at least 128GB of memory and 64 cores. This is because we use the whole KrakenDB whihc is large (128GB) and some for processes consume 64 cores. Simiarly, if one would like to run BLAST, they must have at least 256GB of memory. 
+
+To change the compute resources for a process, you can modify the `resources.config` file. This file specifies the compute resources for each process based on the label of the process. For example, to change the compute resources for the `kraken` process, you can add the following to the `resources.config` file:
+
+In the case that you change the resources, you'll need to also change the index.
