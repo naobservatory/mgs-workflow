@@ -3,7 +3,7 @@ name: End-to-end MGS workflow test
 on:
   pull_request:
     branches:
-      - main
+      - master
       - dev
 
 jobs:
