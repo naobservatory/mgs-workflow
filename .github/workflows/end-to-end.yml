@@ -1,6 +1,10 @@
 name: End-to-end MGS workflow test
 
-on: [pull_request]
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
 
 jobs:
   test-index:
