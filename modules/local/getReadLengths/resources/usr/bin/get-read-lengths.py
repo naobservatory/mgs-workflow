@@ -23,7 +23,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Process fastq files and aggregate read lengths by barcode"
     )
-    parser.add_argument("-i", dest="input_fastqc", help="Input fastqc file")
+    parser.add_argument("-i", dest="input_fastq", help="Input fastq file")
     parser.add_argument("-o", dest="output_json", help="Output JSON file path")
     parser.add_argument("-stage", dest="stage", help="Stage name")
     parser.add_argument("-sample", dest="sample", help="Sample name")
