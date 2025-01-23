@@ -25,41 +25,42 @@ To run the workflow on new data, you need:
 
 ### 1.1. The sample sheet
 
-The sample sheet must be an uncompressed CSV file with the following fields:
+The sample sheet must be an uncompressed CSV file with the following headers in the order specified:
 
-- First column: Sample ID
-- Second column: Path to FASTQ file 1 which should be the forward read for this sample
-- Third column: Path to FASTQ file 2 which should be the reverse read for this sample
+- `sample` (1st column): Sample ID
+- `fastq_1` (2nd column): Path to FASTQ file 1 which should be the forward read for this sample
+- `fastq_2` (3rd column): Path to FASTQ file 2 which should be the reverse read for this sample
+- `group` (4th column): Group ID (optional)
 
-The easiest way to generate this file is typically using `dev/generate_samplesheet.sh`. This script takes in a path to a directory containing raw FASTQ files (`dir_path`) along with forward (`forward_suffix`) and reverse (`reverse_suffix`) read suffixes (both of which support regex) and an optional output path (`output_path`). The `--s3` flag indicates that the target directory is specified as an S3 path. As output, the script generates a CSV file (names `samplesheet.csv` by default) which can be used as input for the pipeline.
+The easiest way to generate this file is typically using `dev/generate_samplesheet.py`. This script takes in a path to a directory containing raw FASTQ files (`dir_path`) along with forward (`forward_suffix`) and reverse (`reverse_suffix`) read suffixes (both of which support regex) and an optional output path (`output_path`). The `--s3` flag indicates that the target directory is specified as an S3 path. As output, the script generates a CSV file (names `samplesheet.csv` by default) which can be used as input for the pipeline. 
 
 For example:
 ```
-../bin/generate_samplesheet.sh \
+./bin/generate_samplesheet.py \
    --s3
-   --dir_path s3://nao-restricted/MJ-2024-10-21/raw/ \
-   --forward_suffix _1 \
-   --reverse_suffix _2
+   --dir_path s3://nao-testing/gold-standard-test/raw/ \
+   --forward_suffix _R1 \
+   --reverse_suffix _R2
 ```
 
 In addition, the script can also add an additional `group` column that can be used to combine reads from different files that should be processed together (e.g. for deduplication). There are two options for doing this:
 
-- Provide a path to a CSV file containing `sample` and `group` headers, specifying the mapping between samples and groups.
-- Specify the `--group_across_illumina_lanes` option if the target directory contains data from one or more libraries split across lanes on an Illumina flowcell.
+- Provide a path to a CSV file containing `sample` and `group` headers (in that order), specifying the mapping between samples and groups.
+- Specify the `--group_across_illumina_lanes` option if the target directory contains data from one or more libraries split across lanes on an Illumina flowcell (i.e. group all reads with the following pattern 'Lnnn' where 'n' is any digit from 0 to 9).
 
-Alternatively, the sample sheet can be manually edited to provide the `groups` column prior to running the pipeline.
+Alternatively, the sample sheet can be manually edited to provide the `group` column prior to running the pipeline.
 
 ### 1.2. The config file
 
 The config file specifies parameters and other configuration options used by Nextflow in executing the pipeline. To create a config file for your pipeline run, copy `configs/run.config` into your launch directory as a file named `nextflow.config`, then modify the file as follows:
-    - Make sure `params.mode = "run"`; this instructs the pipeline to execute the [core run workflow](./docs/run.md).
+    - Make sure `params.mode = "run"`; this instructs the pipeline to execute the [core run workflow](./run.md).
     - Edit `params.ref_dir` to point to the directory containing the outputs of the reference workflow.
     - Edit `params.sample_sheet` to point to your sample sheet.
     - Edit `params.base_dir` to point to the directory in which Nextflow should put the pipeline working and output directories.
     - Edit `params.grouping` to specify whether to group samples together for common processing, based on the `group` column in the sample sheet.
     - If running on AWS Batch (see below), edit `process.queue` to the name of your Batch job queue.
 
-Most other entries in the config file can be left at their default values for most runs. See [here](./docs/config.md) for a full description of config file parameters and their meanings.
+Most other entries in the config file can be left at their default values for most runs. See [here](./config.md) for a full description of config file parameters and their meanings.
 
 ## 2. Choosing a profile
 
@@ -74,14 +75,6 @@ The pipeline can be run in multiple ways by modifying various configuration vari
   - This profile runs the pipeline on your EC2 instance, but attempts to read and write files to a specified S3 directory. This avoids problems arising from insufficient local storage, but (a) is significantly slower and (b) is still constrained by local compute and memory allocations.
 
 To run the pipeline with a specified profile, run `nextflow run PATH_TO_REPO_DIR -profile PROFILE_NAME -resume`. Calling the pipeline without specifying a profile will run the `batch` profile by default. Future example commands in this README will assume you are using Batch; if you want to instead use a different profile, you'll need to modify the commands accordingly.
-
-### Compute resource requirements
-
-To run the pipeline as is you need at least 128GB of memory and 64 cores. This is because we use the whole KrakenDB whihc is large (128GB) and some for processes consume 64 cores. Simiarly, if one would like to run BLAST, they must have at least 256GB of memory. 
-
-To change the compute resources for a process, you can modify the `resources.config` file. This file specifies the compute resources for each process based on the label of the process. For example, to change the compute resources for the `kraken` process, you can add the following to the `resources.config` file:
-
-In the case that you change the resources, you'll need to also change the index.
 
 ## 3. Running the pipeline
 
@@ -104,3 +97,10 @@ where PATH/TO/PIPELINE/DIR specifies the path to the directory containing the pi
 > It's highly recommended that you always run `nextflow run` with the `-resume` option enabled. It doesn't do any harm if you haven't run a workflow before, and getting into the habit will help you avoid much sadness when you want to resume it without rerunning all your jobs.
 
 Once the pipeline has finished, output and logging files will be available in the `output` subdirectory of the base directory specified in the config file.
+
+
+## 4. Cleaning up
+
+Running nextflow pipelines will create a large number of files in the working directory. To get rid of these files, you can remove them manually or by running the `nextflow clean` command in the launch directory.
+
+If you are running the pipeline using `ec2_local` or `ec2_s3` profiles, you will also want to clean up the docker images and containers created by the pipeline as these can take up a lot of space. This can be done by running `docker system prune -a` which will remove all unused docker images and containers on your system.
