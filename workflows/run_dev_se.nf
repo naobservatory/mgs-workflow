@@ -100,5 +100,5 @@ workflow RUN_DEV_SE {
         // Final results
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
-        EXTRACT_ONT_VIRAL_READS.out.merged_sam >> "results"
+        EXTRACT_ONT_VIRAL_READS.out.sam >> "results"
 }

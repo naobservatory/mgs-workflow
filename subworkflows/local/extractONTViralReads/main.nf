@@ -39,7 +39,7 @@ workflow EXTRACT_ONT_VIRAL_READS {
         minimap2_hv_sam_ch = MINIMAP2_HV(masked_ch, minimap2_hv_index, "hv")
         minimap2_hv_sam_ch = SAMTOOLS_KEEP_AS_SAM(minimap2_hv_sam_ch, "hv")
 
-        // Merging doesn't yet work, to fix.
+        // Merging SAM files
         merged_sam_ch = MERGE_SAM(minimap2_hv_sam_ch.sam.collect(), "hv")
 
     emit:
