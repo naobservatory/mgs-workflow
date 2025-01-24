@@ -28,10 +28,6 @@ output {
         path "results"
         tags nextflow_file_class: "publish", "nextflow.io/temporary": "false"
     }
-    reads_cleaned {
-        path "intermediates/reads/cleaned"
-        tags nextflow_file_class: "intermediate", "nextflow.io/temporary": "false"
-    }
     reads_raw_viral {
         path "intermediates/reads/raw_viral"
         tags nextflow_file_class: "intermediate", "nextflow.io/temporary": "false"
