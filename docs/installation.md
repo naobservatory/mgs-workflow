@@ -74,28 +74,7 @@ To run the tests, clone this repository onto your machine, navigate to the repo 
 nf-test test
 ```
 
-## 5. Prepare compute resources for running the pipeline on real data
-
-The pipeline has significant compute requirements:
-
-- **Base Requirements:**
-  - 128GB RAM
-  - 64 CPU cores
-  - Required for running the standard pipeline with the full Kraken database (128GB)
-
-- **Additional Requirements for BLAST:**
-  - 256GB RAM when running either the `run` or `run_validation` workflows with BLAST enabled
-
-Ensure your computing environment meets these requirements:
-- For `ec2_local` or `ec2_s3` profiles: Select an EC2 instance with sufficient resources
-- For `batch` profile: Configure AWS Batch to scale to these specifications
-
-> [!NOTE]
-> The following recommendations are based on using the default reference files produced as a result of the  `index` workflow. If you do not have access to this much compute, you can modify the `index` workflow to create smaller reference files, however this will reduce the accuracy of the pipeline.
->
-> In the situation that you do use smaller reference files, you can modify the required resources by changing the resource specifications in the `config/resources.config` file.
-
-## 6. Run index/reference workflow
+## 5. Run index/reference workflow
 
 > [!TIP]
 > If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output`.
@@ -121,7 +100,7 @@ nextflow run PATH_TO_REPO_DIR -resume
 
 Wait for the workflow to run to completion; this is likely to take several hours at least.
 
-## 7. Run the pipeline on test data
+## 6. Run the pipeline on test data
 
 To confirm that the pipeline works in your hands, we recommend running it on a small test dataset, such as the one provided at `s3://nao-testing/gold-standard-test/raw/`, before running it on larger input data. To do this with our test dataset, follow the instructions below, or do it yourself according to the directions given [here](./docs/usage.md).
 

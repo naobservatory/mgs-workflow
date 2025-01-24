@@ -29,11 +29,11 @@ Main heading represents the folder name, and subheadings represent a description
 
 ### `intermediates`
 
-- `reads/raw_viral/*`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk.
+- `/reads/raw_viral/*`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk.
 
 ### `results`
 
-#### `qc`
+#### QC
 - `total_reads_qc.tsv.gz`: Total number of raw reads in each sample.
 - `qc_basic_stats.tsv.gz`: Summary statistics for each subset sample before and after adapter trimming, including:
     - GC content (`percent GC`);
@@ -45,16 +45,17 @@ Main heading represents the folder name, and subheadings represent a description
 - `qc_adapter_stats.tsv.gz`: Adapter statistics calculated by FASTQC for subset sample before and after adapter trimming, given as a percentage of reads containing adapter content (`pc_adapters`) at each position along the read (`position`) for each adapter detected (`adapter`) for each read in the read pair (`read_pair`).
 - `qc_quality_base_stats.tsv.gz`: Per-base read-quality statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the mean Phred score (`mean_phred_score`) at each position along the read (`position`) for each read in the read pair (`read_pair`).
 - `qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
+- `qc_length_stats.tsv.gz`: Per-read length statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the number of reads (`n_sequences`) with a given read length (`read_length`) for each read in the read pair (`read_pair`).
 
-#### `viral identification`
+#### Viral identification
 - `virus_hits_db.tsv.gz`: TSV output by the viral identification phase, giving information about each read pair assigned to a host-infecting virus.
 - `virus_clade_counts.tsv.gz`: Summary of the previous file giving the number of HV read pairs mapped to each viral taxon. Includes both read pairs mapped directly to that taxon (`n_reads_direct`) and to that taxon plus all descendent taxa (`n_reads_clade`).
 
-#### `taxonomic identification`
+#### Taxonomic identification
 - `kraken_reports_merged.tsv.gz`: Kraken output reports in TSV format, labeled by sample and ribosomal status for subset trimmed samples.
 - `bracken_reports_merged.tsv.gz`: Bracken output reports in TSV format, labeled by sample and ribosomal status for subset trimmed samples.
 
-#### `blast`
+#### BLAST
 - `blast_hits_paired.tsv.gz`: Summarized BLASTN output for putative HV read pairs, giving, for each read pair and subject taxid:
     - The number of reads in the read pair with high-scoring matches to that taxid (`n_reads`).
     - The best bitscores of alignments to that taxid for each matching read (`bitscore_max` and `bitscore_min`)[^bitscore].
@@ -80,28 +81,28 @@ Main heading represents the folder name, and subheadings describes the tool that
 
 ### `results`
 
-#### `General`
+#### General
 
 - `total-virus-db-annotated.tsv.gz`: Database generated from NCBI taxonomy and Virus-Host-DB giving taxonomy and host-infection information for each viral taxon.
 - `taxonomy-nodes.dmp`: Taxonomy dump file from NCBI mapping between taxids and their parents in the NCBI taxonomy tree structure.
 - `taxonomy-names.dmp`: Taxonomy dump file from NCBI mapping between taxids and taxon names.
 
-#### `BLAST`
+#### BLAST
 
 - `core_nt`: Directory containing extracted BLAST database files for BLASTing against core_nt.
 
-#### `Bowtie2`
+#### Bowtie2
 
 - `bt2-virus-index`: Directory containing Bowtie2 index for host-infecting viral genomes.
 - `bt2-human-index`: Directory containing Bowtie2 index for the human genome.
 - `bt2-other-index`: Directory containing Bowtie2 index for other contaminant sequences.
 - `virus-genome-metadata-gid.tsv.gz`: Genome metadata file generated during download of HV genomes from viral Genbank, annotated additionally with Genome IDs used by Bowtie2 (allowing mapping between genome ID and taxid).
 
-#### `Kraken2`
+#### Kraken2
 
 - `kraken_db`: Directory containing Kraken2 reference database (default: Most recent version of Standard).
 
-#### `BBduk`
+#### BBduk
 
 - `virus-genomes-filtered.fasta.gz`: FASTA file containing host-infecting viral genomes downloaded from viral Genbank (filtered to remove transgenic, contaminated, or erroneous sequences).
 - `ribo-ref-concat.fasta.gz`: Reference database of ribosomal LSU and SSU sequences from SILVA.
