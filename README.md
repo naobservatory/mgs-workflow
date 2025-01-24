@@ -22,8 +22,8 @@ This Nextflow pipeline is designed to process metagenomic sequencing data, chara
 
 The pipeline currently consists of three workflows:
 
-- `index`: Creates indices and reference files used by the `run` workflow. Intended to be run first.
-- `run`: Performs the main analysis, including viral identification, taxonomic profiling, and optional BLAST validation.
+- [`index`](./docs/index.md): Creates indices and reference files used by the `run` workflow. Intended to be run first.
+- [`run`](./docs/run.md): Performs the main analysis, including viral identification, taxonomic profiling, and optional BLAST validation.
 - `run_validation`: Performs part of the `run` workflow dedicated to validation of taxonomic classification with BLAST.[^2]
 
 [^1]: The `index` workflow is intended to be run first, after which many instantiations of the `run` workflow can use the same index output files. 
