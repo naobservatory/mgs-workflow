@@ -12,6 +12,25 @@ workflow LOAD_SAMPLESHEET {
         start_time = new Date()
         start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
 
+        // Define expected headers
+        def expected_headers_se = ['sample', 'fastq']
+        def expected_headers_pe = ['sample', 'fastq_1', 'fastq_2']
+        
+        // Read actual headers
+        def headers = file(sample_sheet).readLines().first().tokenize(',')*.trim()
+        
+        // Validate headers based on single_end and grouping parameters
+        def required_headers = single_end ? expected_headers_se : expected_headers_pe
+        if (grouping) required_headers = required_headers + ['group']
+        
+        // Check if headers match exactly
+        if (headers != required_headers) {
+            throw new Exception("""Invalid samplesheet header. 
+                Expected: ${required_headers.join(', ')}
+                Found: ${headers.join(', ')}
+                Please ensure the samplesheet has the correct columns in the specified order.""".stripIndent())
+        }
+
         // Check if grouping column exists in samplesheet
         check_grouping = new File(sample_sheet).text.readLines()[0].contains('group') ? true : false
         if (grouping != check_grouping) {
