@@ -58,7 +58,45 @@ docker run hello-world
 
 Clone this repo into a new directory as normal.
 
-## 4. Run index/reference workflow
+## 4. Run the pipeline locally via our test suite
+
+To verify the pipeline works correctly, run the test suite locally. You'll need:
+
+- **Recommended EC2 Instance:** `m5.xlarge`
+  - 4 CPU cores
+  - 14GB RAM
+  - At least 32GB EBS storage
+
+This instance type matches the GitHub Actions virtual machines where CI/CD tests run.
+
+To run the tests:
+```bash
+cd /path/to/repo
+nf-test test tests/
+```
+
+## 5. Prepare compute resources for running the pipeline on real data
+
+The pipeline has significant compute requirements:
+
+- **Base Requirements:**
+  - 128GB RAM
+  - 64 CPU cores
+  - Required for running the standard pipeline with the full Kraken database (128GB)
+
+- **Additional Requirements for BLAST:**
+  - 256GB RAM when running either the `run` or `run_validation` workflows with BLAST enabled
+
+Ensure your computing environment meets these requirements:
+- For `ec2_local` or `ec2_s3` profiles: Select an EC2 instance with sufficient resources
+- For `batch` profile: Configure AWS Batch to scale to these specifications
+
+> [!NOTE]
+> The following recommendations are based on using the default reference files produced as a result of the  `index` workflow. If you do not have access to this much compute, you can modify the `index` workflow to create smaller reference files, however this will reduce the accuracy of the pipeline.
+>
+> In the situation that you do use smaller reference files, you can modify the required resources by changing the resource specifications in the `config/resources.config` file.
+
+## 6. Run index/reference workflow
 
 > [!TIP]
 > If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output`.
@@ -84,7 +122,7 @@ nextflow run PATH_TO_REPO_DIR -resume
 
 Wait for the workflow to run to completion; this is likely to take several hours at least.
 
-## 5. Run the pipeline on test data
+## 7. Run the pipeline on test data
 
 To confirm that the pipeline works in your hands, we recommend running it on a small test dataset, such as the one provided at `s3://nao-testing/gold-standard-test/raw/`, before running it on larger input data. To do this with our test dataset, follow the instructions below, or do it yourself according to the directions given [here](./docs/usage.md).
 
@@ -127,8 +165,3 @@ Once the pipeline is complete, output and logging files will be available in the
 
 ### Compute resource requirements
 
-To run the pipeline as is you need at least 128GB of memory and 64 cores. This is because we use the whole KrakenDB whihc is large (128GB) and some for processes consume 64 cores. Simiarly, if one would like to run BLAST, they must have at least 256GB of memory. 
-
-To change the compute resources for a process, you can modify the `resources.config` file. This file specifies the compute resources for each process based on the label of the process. For example, to change the compute resources for the `kraken` process, you can add the following to the `resources.config` file:
-
-In the case that you change the resources, you'll need to also change the index.
