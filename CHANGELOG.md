@@ -10,6 +10,8 @@
 - Implement masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
 - Remove TRIMMOMATIC and BBMAP from the pipeline.
 - Replace generate_samplesheet.sh with generate_samplesheet.py
+- Fixed bug in extractUnconcReadID that would cause the pipeline to fail if it contained the string 'YT' in the read id.
+
 
 # v2.6.0.0
 - Updated version to reflect the new versioning scheme, which is described in `docs/version_schema.md`.
