@@ -72,7 +72,7 @@ This instance type matches the GitHub Actions virtual machines where CI/CD tests
 To run the tests:
 ```bash
 cd /path/to/repo
-nf-test test tests/
+nf-test test
 ```
 
 ## 5. Prepare compute resources for running the pipeline on real data
@@ -149,19 +149,3 @@ nextflow run -resume -profile <PROFILE> REPO_DIR
 ```
 
 Once the pipeline is complete, output and logging files will be available in the `output` subdirectory of the base directory specified in the config file.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### Compute resource requirements
-
