@@ -32,7 +32,7 @@ workflow LOAD_SAMPLESHEET {
         }
 
         // Check if grouping column exists in samplesheet
-        check_grouping = new File(sample_sheet).text.readLines()[0].contains('group') ? true : false
+        check_grouping = file(sample_sheet).readLines()[0].contains('group')
         if (grouping != check_grouping) {
             if (grouping && !check_grouping) {
                 throw new Exception("Grouping enabled in config file, but group column absent from samplesheet.")
