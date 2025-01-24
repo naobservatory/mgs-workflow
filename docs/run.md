@@ -137,12 +137,13 @@ A(Reads) --> B[FASTQ]
 B --> C[MULTIQC]
 C --> D[SUMMARIZE_MULTIQC_PAIR]
 D --> E[Process & merge output]
-E --> F(QC basic stats) & G(QC adapter stats) & H(QC quality base stats) & I(QC quality sequence stats)
+E --> F(QC basic stats) & G(QC adapter stats) & H(QC quality base stats) & I(QC quality sequence stats) & J(QC length stats)
 style A fill:#fff,stroke:#000
 style F fill:#000,color:#fff,stroke:#000
 style G fill:#000,color:#fff,stroke:#000
 style H fill:#000,color:#fff,stroke:#000
 style I fill:#000,color:#fff,stroke:#000
+style J fill:#000,color:#fff,stroke:#000
 ```
 
 1. Run FASTQC on each pair of read files
@@ -293,13 +294,15 @@ E --> F(Combined QC basic stats)
 E --> G(Combined QC adapter stats)
 E --> H(Combined QC quality base stats)
 E --> I(Combined QC quality sequence stats)
+E --> J(Combined QC length stats)
 style A fill:#fff,stroke:#000
 style C fill:#fff,stroke:#000
 style F fill:#000,color:#fff,stroke:#000
 style G fill:#000,color:#fff,stroke:#000
 style H fill:#000,color:#fff,stroke:#000
 style I fill:#000,color:#fff,stroke:#000
+style J fill:#000,color:#fff,stroke:#000
 ```
 
-[^tsvs]: Specifically, `qc_basic_stats.tsv.gz`, `qc_adapter_stats.tsv.gz`, `qc_quality_base_stats.tsv.gz` and `qc_quality_sequence_stats.tsv.gz`.
+[^tsvs]: Specifically, `qc_basic_stats.tsv.gz`, `qc_adapter_stats.tsv.gz`, `qc_quality_base_stats.tsv.gz`, `qc_quality_sequence_stats.tsv.gz` and `qc_length_stats.tsv.gz`.
 
