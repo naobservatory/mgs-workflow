@@ -1,10 +1,10 @@
 # Configurations 
 
-Configuartions are specified by `.config` files. These files are used to specify parameters and other configuration options used by Nextflow in executing the pipeline. 
+Configurations are specified by `.config` files. These files are used to specify parameters and other configuration options used by Nextflow in executing the pipeline. 
 
 All configurations are stored in the `configs` directory.
 
-# Workflow specific configurations
+# Workflow-specific configurations
 
 ## Run workflow (`configs/run.config`)
 
