@@ -58,20 +58,19 @@ docker run hello-world
 
 Clone this repo into a new directory as normal.
 
-## 4. Run the pipeline locally via our test suite
+## 4. Run tests
 
-To verify the pipeline works correctly, run the test suite locally. You'll need:
+If possible, we recommend validating the pipeline's basic functionality in your hands by running our test suite. To do this, you'll need sufficient resources on your machine to run our tests locally. You'll need:
+- 4 CPU cores
+- 14GB RAM
+- At least 32GB storage sapce
 
-- **Recommended EC2 Instance:** `m5.xlarge`
-  - 4 CPU cores
-  - 14GB RAM
-  - At least 32GB EBS storage
+> [!TIP]
+> We recommend running the test suite on an `m5.xlarge`, to most closely match the conditions under which our CI/CD tests run with Github Actions. However, any Linux machine with sufficient resources should work.
 
-This instance type matches the GitHub Actions virtual machines where CI/CD tests run.
+To run the tests, clone this repository onto your machine, navigate to the repo directory, and run
 
-To run the tests:
 ```bash
-cd /path/to/repo
 nf-test test
 ```
 
