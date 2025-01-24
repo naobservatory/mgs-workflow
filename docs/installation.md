@@ -109,7 +109,7 @@ cd index
 cp REPO_DIR/configs/index.config nextflow.config
 ```
 
-Next, edit `nextflow.config` such that `params.base_dir` points to the directory (likely on S3) where you want to store your index files. (You shouldn't need to modify anything else about the config file at this stage.)
+Next, edit `nextflow.config` such that `params.base_dir` points to the directory (likely on S3) where you want to store your index files. (You shouldn't need to modify anything else about the config file at this stage. However, if you'd like to, you can [learn more about what each parameter does here](./config.md).)
 
 Next, call `nextflow run` pointing at the repo directory:
 
