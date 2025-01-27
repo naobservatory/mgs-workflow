@@ -11,6 +11,7 @@
 - Remove TRIMMOMATIC and BBMAP from the pipeline.
 - Replace generate_samplesheet.sh with generate_samplesheet.py
 - Fixed bug in extractUnconcReadID that would cause the pipeline to fail if it contained the string 'YT' in the read id.
+- Remove `params.quality_encoding` as it was used only by TRIMMOMATIC
 
 
 # v2.6.0.0

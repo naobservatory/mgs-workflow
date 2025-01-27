@@ -48,7 +48,6 @@ workflow EXTRACT_VIRAL_READS {
         min_kmer_hits
         k
         bbduk_suffix
-        encoding
         fuzzy_match
         grouping
         single_end
