@@ -1,4 +1,4 @@
-# v2.6.1.0 (in progress)
+# v2.6.1.0 (in-progress)
 - Restructured subworkflows:
   - Removed RAW, CLEAN, and PROCESS_OUTPUT subworkflows.
   - Added COUNT_TOTAL_READS subworkflow to count the total number of reads in each sample.
@@ -8,7 +8,9 @@
     - PROFILE: Conducts taxonomic profiling on the trimmed subset reads.
   - Added Fastp adapter trimming after running BBDuk in the EXTRACT_VIRAL_READS subworkflow.
 - Implement masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
-- Replace Trimmomatic with Atria in EXTRACT_VIRAL_READS.
+- Remove TRIMMOMATIC and BBMAP from the pipeline.
+- Fixed bug in extractUnconcReadID that would cause the pipeline to fail if it contained the string 'YT' in the read id.
+- Remove `params.quality_encoding` as it was used only by TRIMMOMATIC
 
 # v2.6.0.0
 - Updated version to reflect the new versioning scheme, which is described in `docs/version_schema.md`.

@@ -22,7 +22,7 @@ process EXTRACT_UNCONC_READ_IDS {
                     continue
                 id = line_split[0]
                 try:
-                    status_field = [f for f in line_split if "YT" in f][0]
+                    status_field = [f for f in line_split if "YT:Z:" in f][0]
                     status = re.findall("YT:Z:(.*)", status_field)[0]
                 except:
                     print(line_split)

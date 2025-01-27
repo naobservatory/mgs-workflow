@@ -6,13 +6,19 @@ if (params.single_end) {
     include { SUBSET_READS_SINGLE_TARGET as SUBSET_READS_TARGET } from "../../../modules/local/subsetReads"
     include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
     include { SUBSET_READS_SINGLE_TARGET; SUBSET_READS_SINGLE_TARGET as SUBSET_READS_TARGET_GROUP } from "../../../modules/local/subsetReads"
-    include { FASTP_SINGLE as FASTP } from "../../../modules/local/fastp"
+    if (params.ont) {
+        include { FILTLONG as FILTER_READS } from "../../../modules/local/filtlong"
+    } else {
+        include { FASTP_SINGLE as FILTER_READS } from "../../../modules/local/fastp"
+    }
+
 } else {
     include { SUBSET_READS_PAIRED_TARGET as SUBSET_READS_TARGET } from "../../../modules/local/subsetReads"
     include { SUBSET_READS_PAIRED_TARGET; SUBSET_READS_PAIRED_TARGET as SUBSET_READS_TARGET_GROUP } from "../../../modules/local/subsetReads"
     include { CONCAT_GROUP_PAIRED as CONCAT_GROUP } from "../../../modules/local/concatGroup"
-    include { FASTP_PAIRED as FASTP } from "../../../modules/local/fastp"
+    include { FASTP_PAIRED as FILTER_READS } from "../../../modules/local/fastp"
 }
+
 
 /***********
 | WORKFLOW |
@@ -60,8 +66,12 @@ workflow SUBSET_TRIM {
         }
 
         // Call fastp adapter trimming
-        fastp_ch = FASTP(grouped_ch, adapter_path)
+        if (params.ont) {
+            trimmed_ch = FILTER_READS(grouped_ch)
+        } else {
+            trimmed_ch = FILTER_READS(grouped_ch, adapter_path)
+        }
     emit:
         subset_reads = grouped_ch
-        trimmed_subset_reads = fastp_ch.reads
+        trimmed_subset_reads = trimmed_ch.reads
 }
