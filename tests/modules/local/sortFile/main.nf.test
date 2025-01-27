@@ -10,7 +10,7 @@ nextflow_process {
     test("Should produce no change when run on an already-sorted gzipped TSV"){
         when {
             params {
-                key = "-t\$\'\\t\' -k1,1n -k2,2n"
+                key = "-t\$\'\\t\' -k3,3nr -k2,2n"
             }
             process {
                 '''
@@ -35,7 +35,7 @@ nextflow_process {
     test("Should successfully sort an unsorted gzipped TSV"){
         when {
             params {
-                key = "-t\$\'\\t\' -k1,1n -k2,2n"
+                key = "-t\$\'\\t\' -k3,3nr -k2,2n"
             }
             process {
                 '''
@@ -61,6 +61,9 @@ nextflow_process {
             def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true, header: false)
             assert tab_out.columnCount == tab_in.columnCount
             assert tab_out.rowCount == tab_in.rowCount
+            // Output tabular content should be sorted according to Groovy
+            def tab_in_sorted = csv(tab_in.table.sortOn("-C2", "C1"))
+            assertTableEquals tab_in_sorted, tab_out
         }
     }
 
