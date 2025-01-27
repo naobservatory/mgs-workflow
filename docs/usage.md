@@ -70,33 +70,12 @@ The pipeline can be run in multiple ways by modifying various configuration vari
   - This profile is the default and attempts to run the pipeline with AWS Batch. This is the most reliable and convenient way to run the pipeline, but requires significant additional setup (described [here](./batch.md)). Before running the pipeline using this profile, make sure `process.queue` in your config file is pointing to the correct Batch job queue.
 - `ec2_local`: **Requires the least setup, but is bottlenecked by your instance's compute, memory and storage.**
   - This profile attempts to run the whole pipeline locally on your EC2 instance, storing all files on instance-linked block storage.
-  - This is simple and can be relatively fast, but requires large CPU, memory and storage allocations. In particular, if you don't use an instance with very high memory, the pipeline is likely to fail when loading the Kraken2 reference DB.
+  - This is simple and can be relatively fast, but requires large CPU, memory and storage allocations: at least 128GB RAM, 64 CPU cores, and 256GB local storage are recommended, though the latter in particular is highly dependent on the size of your dataset.
+  - If running optional BLAST validation, at least 256GB RAM is needed to store the BLAST DB.
 - `ec2_s3`: **Avoids storage issues on your EC2 instance, but is still constrained by local compute and memory.**
   - This profile runs the pipeline on your EC2 instance, but attempts to read and write files to a specified S3 directory. This avoids problems arising from insufficient local storage, but (a) is significantly slower and (b) is still constrained by local compute and memory allocations.
 
 To run the pipeline with a specified profile, run `nextflow run PATH_TO_REPO_DIR -profile PROFILE_NAME -resume`. Calling the pipeline without specifying a profile will run the `batch` profile by default. Future example commands in this README will assume you are using Batch; if you want to instead use a different profile, you'll need to modify the commands accordingly.
-
-### Prepare compute resources for running the pipeline on real data
-
-The pipeline has significant compute requirements:
-
-- **Base Requirements:**
-  - 128GB RAM
-  - 64 CPU cores
-  - Required for running the standard pipeline with the full Kraken database (128GB)
-
-- **Additional Requirements for BLAST:**
-  - 256GB RAM when running either the `run` or `run_validation` workflows with BLAST enabled
-
-Ensure your computing environment meets these requirements:
-- For `ec2_local` or `ec2_s3` profiles: Select an EC2 instance with sufficient resources
-- For `batch` profile: Configure AWS Batch to scale to these specifications
-
-> [!NOTE]
-> The following recommendations are based on using the default reference files produced as a result of the  `index` workflow. If you do not have access to this much compute, you can modify the `index` workflow to create smaller reference files, however this will reduce the accuracy of the pipeline.
->
-> In the situation that you do use smaller reference files, you can modify the required resources by changing the resource specifications in the `config/resources.config` file.
-
 
 ## 3. Running the pipeline
 
