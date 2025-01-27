@@ -1,0 +1,113 @@
+nextflow_process {
+
+    name "Test process FILTER_TSV"
+    script "modules/local/filterTsv/main.nf"
+    process "FILTER_TSV"
+    config "tests/run.config"
+
+    test("Should fail if any column index exceeds number of available columns"){
+        when {
+            params {
+                cols = "1,4"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_nohead.tsv.gz"))
+                input[1] = params.cols
+                input[2] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("\n  ERROR: Not enough columns")
+        }
+    }
+
+    test("Should fail if file is not sorted on the specified columns"){
+        when {
+            params {
+                cols = "0,2"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted_nohead.tsv.gz"))
+                input[1] = params.cols
+                input[2] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("\n  ERROR: File is out of sorted order")
+        }
+    }
+
+    test("Should correctly filter on the specified key (single column 1)"){
+        when {
+            params {
+                cols = 1
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_13_lex_nohead.tsv.gz"))
+                input[1] = params.cols
+                input[2] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Should have expected number of rows and columns
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true, header: false)
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true, header: false)
+            def cols_exp = tab_in.columnCount
+            def rows_exp = tab_in.columns["C0"].toSet().size()
+            assert tab_out.columnCount == cols_exp
+            assert tab_out.rowCount == rows_exp
+            assert tab_out.rowCount != tab_in.rowCount
+            // TODO: Filter table in Groovy and compare to output
+        }
+    }
+
+    test("Should correctly filter on the specified key (two columns)"){
+        when {
+            params {
+                cols = "1,3"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_13_lex_nohead.tsv.gz"))
+                input[1] = params.cols
+                input[2] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Should have expected number of columns
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true, header: false)
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true, header: false)
+            def cols_exp = tab_in.columnCount
+            assert tab_out.columnCount == cols_exp
+            // Should have expected number of rows
+            assert tab_out.rowCount != tab_in.rowCount
+            def key_paste = []
+            for (int i = 0; i < tab_in.rowCount; i++){
+                key_paste += tab_in.columns["C0"][i] + "\t" + tab_in.columns["C2"][i]
+            }
+            def rows_exp = key_paste.toSet().size()
+            assert tab_out.rowCount == rows_exp
+            // TODO: Filter table in Groovy and compare to output
+        }
+    }
+
+}
