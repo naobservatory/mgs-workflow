@@ -1,0 +1,2 @@
+sample,fastq,group
+gold_standard,s3://nao-testing/gold-standard-test/raw/gold_standard_R1.fastq.gz,gold_standard
