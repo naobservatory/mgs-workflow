@@ -4,7 +4,7 @@ nextflow_workflow {
     script "subworkflows/local/loadSampleSheet/main.nf"
     workflow "LOAD_SAMPLESHEET"
 
-    test("Test normal paired-end samplesheet without grouping") {
+    test("Test paired-end samplesheet without grouping") {
         config "tests/run.config"
         when {
             params {}
@@ -26,7 +26,7 @@ nextflow_workflow {
             assert workflow.out.group.size() == 0
         }
     }
-    test("Test normal paired-end samplesheet with grouping") {
+    test("Test paired-end samplesheet with grouping") {
         config "tests/run.config"
         when {
             params {}
@@ -51,7 +51,7 @@ nextflow_workflow {
             )
         }
     }
-    test("Test normal single-end samplesheet without grouping") {
+    test("Test single-end samplesheet without grouping") {
         config "tests/run.config"
         when {
             params {}
@@ -73,7 +73,7 @@ nextflow_workflow {
             assert workflow.out.group.size() == 0
         }
     }
-    test("Test normal single-end samplesheet with grouping") {
+    test("Test single-end samplesheet with grouping") {
         config "tests/run.config"
         when {
             params {}
