@@ -5,6 +5,8 @@
 include { SUBSET_FASTQ } from "../../../modules/local/subsetFastq"
 include { CONVERT_FASTQ_FASTA } from "../../../modules/local/convertFastqFasta"
 include { BLASTN_STREAMED as BLAST } from "../../../modules/local/blast"
+include { SORT_FILE as SORT_BLAST_1 } from "../../../modules/local/sortFile"
+include { SORT_FILE as SORT_BLAST_2 } from "../../../modules/local/sortFile"
 
 /***********
 | WORKFLOW |
@@ -27,6 +29,11 @@ workflow BLAST_VIRAL {
         fasta_ch = CONVERT_FASTQ_FASTA(subset_ch)
         // 3. Run BLAST
         blast_ch = BLAST(fasta_ch, blast_db_dir, blast_db_prefix)
+        // 4. Sort and filter BLAST output
+        sort_str_1 = "-t$\'\\t\' -k1,1 -k2,2 -k7,7nr -k9,9nr"
+        sort_str_2 = "-t$\'\\t\' -k1,1 -k7,7nr"
+        sort_ch_1 = SORT_BLAST_1(blast_ch, sort_str_1, "blast")
+        // TODO: Filter for first line of each query and subject group here
         // Filter BLAST output (keeping forward and reverse separate)
         filter_ch_1 = FILTER_BLAST_FWD(blast_ch_1, 5)
         filter_ch_2 = FILTER_BLAST_REV(blast_ch_2, 5)

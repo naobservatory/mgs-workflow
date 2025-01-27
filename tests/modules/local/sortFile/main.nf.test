@@ -1,0 +1,67 @@
+def checkGzipSorted = { file,key -> ["bash", "-c", "zcat " + file + " | sort -C " + key + " && printf 1 || printf 0"].execute().text.trim() as Integer }
+
+nextflow_process {
+
+    name "Test process SORT_FILE"
+    script "modules/local/sortFile/main.nf"
+    process "SORT_FILE"
+    config "tests/run.config"
+
+    test("Should produce no change when run on an already-sorted gzipped TSV"){
+        when {
+            params {
+                key = "-t\$\'\\t\' -k1,1n -k2,2n"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_nohead.tsv.gz"))
+                input[1] = params.key
+                input[2] = "tsv"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should be sorted
+            def output_sorted = checkGzipSorted(process.out.output[0][1], params.key)
+            assert output_sorted == 1
+            // Output should match input
+            assert path(process.out.output[0][1]).md5 == path(process.out.input[0][1]).md5
+        }
+    }
+
+    test("Should successfully sort an unsorted gzipped TSV"){
+        when {
+            params {
+                key = "-t\$\'\\t\' -k1,1n -k2,2n"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted_nohead.tsv.gz"))
+                input[1] = params.key
+                input[2] = "tsv"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should be sorted
+            def output_sorted = checkGzipSorted(process.out.output[0][1], params.key)
+            assert output_sorted == 1
+            // Output should differ from input
+            def input_sorted = checkGzipSorted(process.out.input[0][1], params.key)
+            assert input_sorted == 0
+            assert path(process.out.output[0][1]).md5 != path(process.out.input[0][1]).md5
+            // Output and input dimensions should match
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true, header: false)
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true, header: false)
+            assert tab_out.columnCount == tab_in.columnCount
+            assert tab_out.rowCount == tab_in.rowCount
+        }
+    }
+
+}
