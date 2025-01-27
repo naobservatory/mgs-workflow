@@ -1,0 +1,90 @@
+
+nextflow_workflow {
+
+    name "Test workflow BLAST_VIRAL_STREAMED"
+    script "subworkflows/local/blastViralStreamed/main.nf"
+    workflow "BLAST_VIRAL_STREAMED"
+
+    test("Should run without failures on paired (interleaved) data") {
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = false
+                    input[2] = false
+                    """
+                }
+            }
+            run("INTERLEAVE_FASTQ") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+                max_rank = 5
+                min_frac = 0.9
+            }
+            workflow {
+                '''
+                input[0] = INTERLEAVE_FASTQ.out.output.collect{it[1]}
+                input[1] = "${params.ref_dir}/results/${params.blast_db_prefix}"
+                input[2] = params.blast_db_prefix
+                input[3] = 0.95
+                input[4] = params.max_rank
+                input[5] = params.min_frac
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // TODO: Validate output
+        }
+    }
+
+    test("Should run without failures on single-end data") {
+        config "tests/run_dev_se.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = false
+                    input[2] = true
+                    """
+                }
+            }
+        }
+        when {
+            params {
+                max_rank = 5
+                min_frac = 0.9
+            }
+            workflow {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet.collect{it[1]}
+                input[1] = "${params.ref_dir}/results/${params.blast_db_prefix}"
+                input[2] = params.blast_db_prefix
+                input[3] = 0.95
+                input[4] = params.max_rank
+                input[5] = params.min_frac
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // TODO: Validate output
+        }
+    }
+
+}
