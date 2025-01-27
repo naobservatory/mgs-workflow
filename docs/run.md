@@ -304,5 +304,5 @@ style I fill:#000,color:#fff,stroke:#000
 style J fill:#000,color:#fff,stroke:#000
 ```
 
-[^tsvs]: Specifically, `qc_basic_stats.tsv.gz`, `qc_adapter_stats.tsv.gz`, `qc_quality_base_stats.tsv.gz`, `qc_quality_sequence_stats.tsv.gz` and `qc_length_stats.tsv.gz`.
+[^tsvs]: Specifically, `subset_qc_basic_stats.tsv.gz`, `subset_qc_adapter_stats.tsv.gz`, `subset_qc_quality_base_stats.tsv.gz`, `subset_qc_quality_sequence_stats.tsv.gz` and `subset_qc_length_stats.tsv.gz`.
 

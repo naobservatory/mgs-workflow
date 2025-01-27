@@ -13,39 +13,39 @@ All pipeline output can be found in the `output` directory, which is broken into
 
 Main heading represents the folder name, and subheadings represent a description of the file's usage. If the file is not in the heading folder name, the relative path is given.
 
-### `input`
+### `input/`
 
 - `adapters.fasta`: FASTA file of adapter sequences used for adapter screening.
 - `run-params.json`: JSON file giving all the parameters passed to the pipeline.
 - `index-params.json`: JSON file giving parameters used to generate index directory (`params.ref_dir`).
 - `samplesheet.csv`: Copy of the samplesheet file used to configure the pipeline (specified by `params.sample_sheet`).
 
-### `logging`
+### `logging/`
 
 - `pipeline-version.txt`: Version of the pipeline used for the run.
 - `time.txt`: Start time of the run.
 - `trace.txt`: Tab delimited log of all the information for each task run in the pipeline including runtime, memory usage, exit status, etc. Can be used to create an execution timeline using the the script `bin/plot-timeline-script.R` after the pipeline has finished running. More information regarding the trace file format can be found [here](https://www.nextflow.io/docs/latest/reports.html#trace-file).
 - `pipeline-version-index.txt`: Version of pipeline used to generate index directory (`params.ref_dir`).
 
-### `intermediates`
+### `intermediates/`
 
-- `/reads/raw_viral/*`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk.
+- `reads/raw_viral/*`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk.
 
-### `results`
+### `results/`
 
 #### QC
 - `total_reads_qc.tsv.gz`: Total number of raw reads in each sample.
-- `qc_basic_stats.tsv.gz`: Summary statistics for each subset sample before and after adapter trimming, including:
+- `subset_qc_basic_stats.tsv.gz`: Summary statistics for each subset sample before and after adapter trimming, including:
     - GC content (`percent GC`);
     - Average read length (`mean_seq_len`);
     - Number of read pairs (`n_read pairs`);
     - Approximate number of base pairs in reads (`n_bases_approx`);
     - Percent duplicates as measured by FASTQC (`percent_duplicates`);
     - Pass/fail scores for each test conducted by FASTQC.
-- `qc_adapter_stats.tsv.gz`: Adapter statistics calculated by FASTQC for subset sample before and after adapter trimming, given as a percentage of reads containing adapter content (`pc_adapters`) at each position along the read (`position`) for each adapter detected (`adapter`) for each read in the read pair (`read_pair`).
-- `qc_quality_base_stats.tsv.gz`: Per-base read-quality statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the mean Phred score (`mean_phred_score`) at each position along the read (`position`) for each read in the read pair (`read_pair`).
-- `qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
-- `qc_length_stats.tsv.gz`: Per-read length statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the number of reads (`n_sequences`) with a given read length (`read_length`) for each read in the read pair (`read_pair`).
+- `subset_qc_adapter_stats.tsv.gz`: Adapter statistics calculated by FASTQC for subset sample before and after adapter trimming, given as a percentage of reads containing adapter content (`pc_adapters`) at each position along the read (`position`) for each adapter detected (`adapter`) for each read in the read pair (`read_pair`).
+- `subset_qc_quality_base_stats.tsv.gz`: Per-base read-quality statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the mean Phred score (`mean_phred_score`) at each position along the read (`position`) for each read in the read pair (`read_pair`).
+- `subset_qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
+- `subset_qc_length_stats.tsv.gz`: Per-read length statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the number of reads (`n_sequences`) with a given read length (`read_length`) for each read in the read pair (`read_pair`).
 
 #### Viral identification
 - `virus_hits_db.tsv.gz`: TSV output by the viral identification phase, giving information about each read pair assigned to a host-infecting virus.
@@ -69,17 +69,17 @@ Main heading represents the folder name, and subheadings represent a description
 
 Main heading represents the folder name, and subheadings describes the tool that consumes the file. Files that are consumed by multiple tools or are not consumed by any tools are put in the `General` subheading. If the file is not in the heading folder name, the relative path is given.
 
-### `input`
+### `input/`
 
 - `index-params.json`: JSON file giving all the parameters passed to the pipeline (useful for trying to reproduce someone else's results).
 
-### `logging`
+### `logging/`
 
 - `pipeline-version.txt`: Version of the pipeline with which index directory was created.
 - `time.txt`: Start time of index workflow run.
 - `trace.txt`: Nextflow trace file containing logging information for each process performed during the workflow run.
 
-### `results`
+### `results/`
 
 #### General
 
