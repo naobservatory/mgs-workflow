@@ -44,9 +44,7 @@ workflow BLAST_VIRAL_STREAMED {
         sort_ch_2 = SORT_BLAST_2(filter_ch_1.output, sort_str_2, "blast")
         // Then filter by bitscore within each query
         filter_ch_2 = FILTER_BLAST(sort_ch_2.output, blast_max_rank, blast_min_frac)
-        // TODO: Incomplete from here
-        // pair_ch = PAIR_BLAST(filter_out_1, filter_out_2)
     emit:
         blast_subset = filter_ch_2.output
-        // blast_paired = pair_ch
+        test_input = reads_in
 }
