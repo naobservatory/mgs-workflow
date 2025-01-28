@@ -1,0 +1,121 @@
+nextflow_workflow {
+
+    name "Test Workflow LOAD_SAMPLESHEET"
+    script "subworkflows/local/loadSampleSheet/main.nf"
+    workflow "LOAD_SAMPLESHEET"
+
+    test("Test paired-end samplesheet without grouping") {
+        config "tests/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/samplesheet.csv")
+                input[1] = false
+                input[2] = false
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.samplesheet.contains(
+                ['gold_standard', ["/nao-testing/gold-standard-test/raw/gold_standard_R1.fastq.gz", "/nao-testing/gold-standard-test/raw/gold_standard_R2.fastq.gz"]]
+            )
+            assert workflow.out.samplesheet.size() == 1
+            assert workflow.out.group.size() == 0
+        }
+    }
+    test("Test paired-end samplesheet with grouping") {
+        config "tests/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/grouping-samplesheet.csv")
+                input[1] = true
+                input[2] = false
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.samplesheet.contains(
+                ['gold_standard', ["/nao-testing/gold-standard-test/raw/gold_standard_R1.fastq.gz", "/nao-testing/gold-standard-test/raw/gold_standard_R2.fastq.gz"]]
+            )
+            assert workflow.out.samplesheet.size() == 1
+            assert workflow.out.group.size() == 1
+            assert workflow.out.group.contains(
+                ['gold_standard', 'gold_standard']
+            )
+        }
+    }
+    test("Test single-end samplesheet without grouping") {
+        config "tests/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/single-end-samplesheet.csv")
+                input[1] = false
+                input[2] = true
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.samplesheet.contains(
+                ['gold_standard', ["/nao-testing/gold-standard-test/raw/gold_standard_R1.fastq.gz"]]
+            )
+            assert workflow.out.samplesheet.size() == 1
+            assert workflow.out.group.size() == 0
+        }
+    }
+    test("Test single-end samplesheet with grouping") {
+        config "tests/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/grouping-single-end-samplesheet.csv")
+                input[1] = true
+                input[2] = true
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.samplesheet.contains(
+                ['gold_standard', ["/nao-testing/gold-standard-test/raw/gold_standard_R1.fastq.gz"]]
+            )
+            assert workflow.out.samplesheet.size() == 1
+            assert workflow.out.group.size() == 1
+            assert workflow.out.group.contains(
+                ['gold_standard', 'gold_standard']
+            )
+        }
+    }
+    test("Test incorrect samplesheet") {
+        config "tests/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/toy-data/incorrect-samplesheet.csv")
+                input[1] = false
+                input[2] = false
+                """
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.exitStatus == 1
+            assert workflow.stdout[2].contains("Invalid samplesheet header")
+        }
+    }
+
+}

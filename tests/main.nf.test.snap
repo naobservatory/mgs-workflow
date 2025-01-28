@@ -3,10 +3,11 @@
         "content": [
             "bracken_reports_merged.tsv.gz:md5,d116fc06ea955409463686df223ec413",
             "kraken_reports_merged.tsv.gz:md5,5d04e8270bfddc7f435bcc0a76bafbcb",
-            "qc_adapter_stats.tsv.gz:md5,fa3f30db6ccfcc22952c5a2981c750b8",
-            "qc_basic_stats.tsv.gz:md5,18acc1fc3a7107f7cd2a886e02e2357c",
-            "qc_quality_base_stats.tsv.gz:md5,13d5395a6039daa23cb0f059c7dd14b2",
-            "qc_quality_sequence_stats.tsv.gz:md5,e4b5747bcb058cab5f48ec116c5e2a03",
+            "subset_qc_adapter_stats.tsv.gz:md5,fa3f30db6ccfcc22952c5a2981c750b8",
+            "subset_qc_basic_stats.tsv.gz:md5,18acc1fc3a7107f7cd2a886e02e2357c",
+            "subset_qc_quality_base_stats.tsv.gz:md5,13d5395a6039daa23cb0f059c7dd14b2",
+            "subset_qc_quality_sequence_stats.tsv.gz:md5,e4b5747bcb058cab5f48ec116c5e2a03",
+            "subset_qc_length_stats.tsv.gz:md5,032d70cbd5bfa40c163c13885447b92a",
             "virus_clade_counts.tsv.gz:md5,1c5712b6d4726908058cd1b5f91ce9f1",
             "virus_hits_db.tsv.gz:md5,5f1f53ac7aba3c241b06e71ce0abf46d",
             "blast_hits_paired.tsv.gz:md5,5b6eb0055bc60be196b2a1b09006f9af",
@@ -18,6 +19,6 @@
             "nf-test": "0.9.2",
             "nextflow": "24.10.3"
         },
-        "timestamp": "2025-01-23T22:37:31.839960743"
+        "timestamp": "2025-01-28T00:19:24.171548787"
     }
 }

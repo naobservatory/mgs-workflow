@@ -34,11 +34,11 @@ workflow RUN_QC {
       multiqc_qseqs_ch = qc_ch.map{ it[3] }.collect().ifEmpty([])
       multiqc_lengths_ch = qc_ch.map{ it[4] }.collect().ifEmpty([])
       // 4. Merge MultiQC outputs
-      basic_out_ch = CONCATENATE_MULTIQC_BASIC(multiqc_basic_ch, "qc_basic_stats")
-      adapt_out_ch = CONCATENATE_MULTIQC_ADAPT(multiqc_adapt_ch, "qc_adapter_stats")
-      qbase_out_ch = CONCATENATE_MULTIQC_QBASE(multiqc_qbase_ch, "qc_quality_base_stats")
-      qseqs_out_ch = CONCATENATE_MULTIQC_QSEQS(multiqc_qseqs_ch, "qc_quality_sequence_stats")
-      lengths_out_ch = CONCATENATE_MULTIQC_LENGTHS(multiqc_lengths_ch, "qc_length_stats")
+      basic_out_ch = CONCATENATE_MULTIQC_BASIC(multiqc_basic_ch, "subset_qc_basic_stats")
+      adapt_out_ch = CONCATENATE_MULTIQC_ADAPT(multiqc_adapt_ch, "subset_qc_adapter_stats")
+      qbase_out_ch = CONCATENATE_MULTIQC_QBASE(multiqc_qbase_ch, "subset_qc_quality_base_stats")
+      qseqs_out_ch = CONCATENATE_MULTIQC_QSEQS(multiqc_qseqs_ch, "subset_qc_quality_sequence_stats")
+      lengths_out_ch = CONCATENATE_MULTIQC_LENGTHS(multiqc_lengths_ch, "subset_qc_length_stats")
     emit:
       qc_basic = basic_out_ch
       qc_adapt = adapt_out_ch
