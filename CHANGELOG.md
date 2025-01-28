@@ -1,18 +1,18 @@
-# v2.6.1.0 (in-progress)
-- Restructured subworkflows:
-  - Removed RAW, CLEAN, and PROCESS_OUTPUT subworkflows.
-  - Added COUNT_TOTAL_READS subworkflow to count the total number of reads in each sample.
-  - Split PROFILE workflow into SUBSET_TRIM, RUN_QC, and PROFILE subworkflows:
-    - SUBSET_TRIM: Subset reads to a user-specified number of reads per sample, and conducts adapter trimming with Fastp, returning the subset reads and the trimmed subset reads.
-    - RUN_QC: Runs QC metrics on the subset reads and the trimmed subset reads.
-    - PROFILE: Conducts taxonomic profiling on the trimmed subset reads.
-  - Added Fastp adapter trimming after running BBDuk in the EXTRACT_VIRAL_READS subworkflow.
-- Implement masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
-- Remove TRIMMOMATIC and BBMAP from the pipeline.
+# v2.7.0.0
+- Implemented masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
+- Removed TRIMMOMATIC and BBMAP from EXTRACT_VIRAL_READS.
+- Restructured subworkflows to take advantage of new viral genome masking:
+    - Split PROFILE workflow into SUBSET_TRIM, RUN_QC, and PROFILE subworkflows
+    - Moved FASTP read cleaning downstream of BBDUK_HITS (in EXTRACT_VIRAL_READS) and subsetting (in SUBSET_TRIM)
+    - Moved FASTQC and MultiQC to after subsetting (in RUN_QC)
+    - Removed RAW, CLEAN, and PROCESS_OUTPUT subworkflows
+    - Added COUNT_TOTAL_READS subworkflow to count the total number of reads in each sample.
 - Replace generate_samplesheet.sh with generate_samplesheet.py
 - Fixed bug in extractUnconcReadID that would cause the pipeline to fail if it contained the string 'YT' in the read id.
 - Remove `params.quality_encoding` as it was used only by TRIMMOMATIC
-
+- Added length distribution information to QC output
+- **Renamed QC output files to reflect the fact that they now only contain QC information on a subset of reads (e.g. `qc_basic_stats.tsv.gz` -> `subset_qc_basic_stats.tsv.gz`)**
+- **New QC output files: `read_counts.tsv.gz`, `subset_qc_length_stats.tsv.gz`**
 
 # v2.6.0.0
 - Updated version to reflect the new versioning scheme, which is described in `docs/version_schema.md`.
