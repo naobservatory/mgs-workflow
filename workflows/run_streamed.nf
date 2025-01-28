@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
+include { LOAD_SAMPLESHEET_STREAMED as LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheetStreamed"
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { EXTRACT_VIRAL_READS_STREAMED as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsStreamed"
 include { SUBSET_TRIM_STREAMED as SUBSET_TRIM } from "../subworkflows/local/subsetTrimStreamed"
