@@ -60,13 +60,6 @@ workflow EXTRACT_VIRAL_READS {
         bt2_other_index_path = "${ref_dir}/results/bt2-other-index"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
 
-        // Read adapter file and create a channel containing just the adapter sequences
-        adapters_ch = Channel
-            .fromPath(adapter_path)
-            .splitFasta(record: [seqString: true])
-            .map { it.seqString }
-            .collect()
-
        // Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
 
