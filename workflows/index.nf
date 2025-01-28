@@ -29,7 +29,7 @@ workflow INDEX {
     // Build viral taxonomy and infection DB
     MAKE_VIRUS_TAXONOMY_DB(params.taxonomy_url, params.virus_host_db_url, params.host_taxon_db, params.virus_taxid, params.viral_taxids_exclude)
     // Get reference DB of viral genomes of interest
-    MAKE_VIRUS_GENOME_DB(params.ncbi_viral_params, MAKE_VIRUS_TAXONOMY_DB.out.db, params.genome_patterns_exclude, params.host_taxa_screen)
+    MAKE_VIRUS_GENOME_DB(params.ncbi_viral_params, MAKE_VIRUS_TAXONOMY_DB.out.db, params.genome_patterns_exclude, params.host_taxa_screen, params.adapters, "20", "3", "0.5", "10")
     // Build viral alignment index
     MAKE_VIRUS_INDEX(MAKE_VIRUS_GENOME_DB.out.fasta)
     // Build other alignment indices
@@ -57,9 +57,7 @@ workflow INDEX {
         MAKE_VIRUS_GENOME_DB.out.fasta >> "results"
         MAKE_VIRUS_GENOME_DB.out.metadata >> "results"
         // Alignment indexes
-        MAKE_HUMAN_INDEX.out.bbm >> "results"
         MAKE_HUMAN_INDEX.out.bt2 >> "results"
-        MAKE_CONTAMINANT_INDEX.out.bbm >> "results"
         MAKE_CONTAMINANT_INDEX.out.bt2 >> "results"
         MAKE_VIRUS_INDEX.out.bt2 >> "results"
         // Other reference files & directories
