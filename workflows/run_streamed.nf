@@ -29,10 +29,8 @@ workflow RUN_STREAMED {
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet
-    // TODO: Drop grouping and update subworkflow
-    LOAD_SAMPLESHEET(params.sample_sheet, params.grouping, params.single_end)
+    LOAD_SAMPLESHEET(params.sample_sheet, params.single_end)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
-    group_ch = LOAD_SAMPLESHEET.out.group
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
 
     // Count reads in files
