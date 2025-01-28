@@ -1,4 +1,5 @@
-// Copy a file while retaining channel structure (useful for testing)
+// Copy a file while retaining channel structure
+// Currently only used for testing
 process COPY_FILE {
     label "single"
     label "coreutils"
@@ -14,6 +15,7 @@ process COPY_FILE {
 }
 
 // Copy a file without sample annotation
+// Currently only used for testing
 process COPY_FILE_BARE {
     label "single"
     label "coreutils"

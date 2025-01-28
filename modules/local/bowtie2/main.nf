@@ -53,6 +53,14 @@ process BOWTIE2_STREAMED {
         io="-x ${idx} --interleaved -"
         par="--threads !{task.cpus} --local --very-sensitive-local !{par_string}"
         # Run pipeline
+        # Outputs a SAM file for all reads, which is then partitioned based on alignment status
+        #   - First branch (samtools view -u -f 12 -) filters SAM to read pairs for which neither mate mapped,
+        #       then extracts and saves FASTQ
+        #   - Second branch (samtools view -u -G 12) filters SAM to read pairs for which either mate mapped,
+        #       then extracts and saves FASTQ
+        #   - Third branch (samtools view -h -G 12) also filters SAM to read pairs for which either mate mapped,
+        #       optionally removes SQ header lines, then saves SAM
+        # Debug statements allow saving of additional SAM files at different steps in the pipeline.
         zcat !{reads_interleaved} \\
             | bowtie2 ${par} ${io} \\
             | tee \\
