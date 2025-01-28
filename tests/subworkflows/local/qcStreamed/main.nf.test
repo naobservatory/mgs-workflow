@@ -77,6 +77,12 @@ nextflow_workflow {
                 assert columns["stage"][0] == stage
                 assert columns["sample"][0] == sample
             }
+            def tsv_lengths = path(workflow.out.qc[0][4]).csv(sep: "\t", decompress: true)
+            with (tsv_qseqs) {
+                assert columnCount == 5
+                assert columns["stage"][0] == stage
+                assert columns["sample"][0] == sample
+            }
         }
     }
 
@@ -149,6 +155,12 @@ nextflow_workflow {
                 assert columns["sample"][0] == sample
             }
             def tsv_qseqs = path(workflow.out.qc[0][3]).csv(sep: "\t", decompress: true)
+            with (tsv_qseqs) {
+                assert columnCount == 5
+                assert columns["stage"][0] == stage
+                assert columns["sample"][0] == sample
+            }
+            def tsv_lengths = path(workflow.out.qc[0][4]).csv(sep: "\t", decompress: true)
             with (tsv_qseqs) {
                 assert columnCount == 5
                 assert columns["stage"][0] == stage

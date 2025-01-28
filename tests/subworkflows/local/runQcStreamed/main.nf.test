@@ -53,6 +53,8 @@ nextflow_workflow {
             assert tsv_qbase.columnCount == 5
             def tsv_qseqs = path(workflow.out.qc_qseqs[0]).csv(sep: "\t", decompress: true)
             assert tsv_qseqs.columnCount == 5
+            def tsv_lengths = path(workflow.out.qc_lengths[0]).csv(sep: "\t", decompress: true)
+            assert tsv_lengths.columnCount == 5
         }
     }
 
@@ -105,6 +107,8 @@ nextflow_workflow {
             assert tsv_qbase.columnCount == 5
             def tsv_qseqs = path(workflow.out.qc_qseqs[0]).csv(sep: "\t", decompress: true)
             assert tsv_qseqs.columnCount == 5
+            def tsv_lengths = path(workflow.out.qc_lengths[0]).csv(sep: "\t", decompress: true)
+            assert tsv_lengths.columnCount == 5
         }
     }
 

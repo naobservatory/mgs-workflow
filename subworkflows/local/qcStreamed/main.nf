@@ -9,6 +9,7 @@ include { CONCATENATE_TSVS as CONCATENATE_MULTIQC_BASIC } from "../../../modules
 include { CONCATENATE_TSVS as CONCATENATE_MULTIQC_ADAPT } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_TSVS as CONCATENATE_MULTIQC_QBASE } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_TSVS as CONCATENATE_MULTIQC_QSEQS } from "../../../modules/local/concatenateTsvs"
+include { CONCATENATE_TSVS as CONCATENATE_MULTIQC_LENGTHS } from "../../../modules/local/concatenateTsvs"
 
 /***********
 | WORKFLOW |
@@ -38,10 +39,11 @@ workflow QC_STREAMED {
         adapt_out_ch = CONCATENATE_MULTIQC_ADAPT(multiqc_adapt_ch, "${stage_label}_subset_qc_adapter_stats")
         qbase_out_ch = CONCATENATE_MULTIQC_QBASE(multiqc_qbase_ch, "${stage_label}_subset_qc_quality_base_stats")
         qseqs_out_ch = CONCATENATE_MULTIQC_QSEQS(multiqc_qseqs_ch, "${stage_label}_subset_qc_quality_sequence_stats")
+        lengths_out_ch = CONCATENATE_MULTIQC_LENGTHS(multiqc_qseqs_ch, "${stage_label}_subset_qc_quality_sequence_stats")
         // 6. Combine outputs into a single output channel
         out_ch = basic_out_ch.combine(adapt_out_ch)
-            .combine(qbase_out_ch).combine(qseqs_out_ch)
-            .map({file1, file2, file3, file4 -> tuple(file1, file2, file3, file4)})
+            .combine(qbase_out_ch).combine(qseqs_out_ch).combine(lengths_out_ch)
+            .map({file1, file2, file3, file4, file5 -> tuple(file1, file2, file3, file4, file5)})
     emit:
         qc = out_ch
         test_input = reads
