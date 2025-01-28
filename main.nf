@@ -3,6 +3,7 @@ include { RUN_VALIDATION } from "./workflows/run_validation"
 include { INDEX } from "./workflows/index"
 include { RUN_DEV_SE } from "./workflows/run_dev_se"
 include { RUN_STREAMED } from "./workflows/run_streamed"
+include { RUN_VALIDATION_STREAMED } from "./workflows/run_validation_streamed"
 
 workflow {
     if (params.mode == "index") {
@@ -15,6 +16,8 @@ workflow {
         RUN_DEV_SE()
     } else if (params.mode == "run_streamed") {
         RUN_STREAMED()
+    } else if (params.mode == "run_validation_streamed") {
+        RUN_VALIDATION_STREAMED()
     }
 }
 
