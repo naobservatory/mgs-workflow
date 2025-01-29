@@ -1,3 +1,6 @@
+# v2.7.0.1
+- Added new script, `bin/run_parallel_test.sh`, that allows users to run nf-test tests locally in parallel
+
 # v2.7.0.0
 - Implemented masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
 - Removed TRIMMOMATIC and BBMAP from EXTRACT_VIRAL_READS.
