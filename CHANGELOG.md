@@ -1,3 +1,6 @@
+# v2.7.0.1
+- Added instructions for what to do should you run out of API requests for containers
+
 # v2.7.0.0
 - Implemented masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
 - Removed TRIMMOMATIC and BBMAP from EXTRACT_VIRAL_READS.
