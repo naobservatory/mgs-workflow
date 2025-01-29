@@ -5,6 +5,7 @@ nextflow_pipeline {
     config "tests/run_validation.config"
     tag "workflow"
     tag "run_validation"
+    tag "validation"
 
     test("Should run without errors") {
         then {
