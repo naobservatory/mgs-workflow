@@ -9,11 +9,12 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
+include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
+
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE } from "../subworkflows/local/profile"
-include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 nextflow.preview.output = true
 
 /*****************
@@ -22,10 +23,10 @@ nextflow.preview.output = true
 
 // Complete primary workflow
 workflow RUN_DEV_SE {
+
     // Load samplesheet
-    LOAD_SAMPLESHEET(params.sample_sheet, params.grouping, params.single_end)
+    LOAD_SAMPLESHEET(params.sample_sheet, params.single_end)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
-    group_ch = LOAD_SAMPLESHEET.out.group
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
 
     // Load kraken db path
@@ -35,13 +36,15 @@ workflow RUN_DEV_SE {
     COUNT_TOTAL_READS(samplesheet_ch, params.single_end)
 
     // Subset reads to target number, and trim adapters
-    SUBSET_TRIM(samplesheet_ch, group_ch, params.n_reads_profile, params.grouping, params.adapters, params.single_end)
+    SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
+        params.adapters, params.single_end)
 
     // Run QC on subset reads before and after adapter trimming
-    RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, "2", "4 GB", params.single_end)
+    RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, params.single_end)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
-    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo", params.single_end)
+    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
+        params.bracken_threshold, params.single_end)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -49,9 +52,9 @@ workflow RUN_DEV_SE {
     time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
     index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
-    .map { file -> file.copyTo("${params.base_dir}/work/params-index.json") }
+        | map { file -> file.copyTo("${params.base_dir}/work/params-index.json") }
     index_pipeline_version_ch = Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt")
-    .map { file -> file.copyTo("${params.base_dir}/work/pipeline-version-index.txt") }
+        | map { file -> file.copyTo("${params.base_dir}/work/pipeline-version-index.txt") }
     publish:
         // Saved inputs
         index_params_ch >> "input"
