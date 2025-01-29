@@ -8,6 +8,8 @@ nextflow_process {
     script "modules/local/headTsv/main.nf"
     process "HEAD_TSV"
     config "tests/run.config"
+    tag "module"
+    tag "head_tsv"
 
     test("Should fail with an appropriate error code if header fields exceed fields in input file"){
         tag "expect_failed"

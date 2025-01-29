@@ -90,6 +90,11 @@ extract_adapter_data <- function(multiqc_json){
   # Extract adapter data from multiqc JSON
   datasets <- multiqc_json$report_plot_data$fastqc_adapter_content_plot$datasets$lines
   data_out <- lapply(datasets, extract_adapter_data_single) %>% bind_rows()
+  # Make sure all columns are present even if no adapters
+  if (nrow(data_out) == 0){
+      data_out <- data_out %>% mutate(file = character(), position = numeric(),
+                                      adapter = character(), pc_adapters = numeric())
+  }
   return(data_out)
 }
 

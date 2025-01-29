@@ -1,9 +1,11 @@
 nextflow_process {
 
-    name "Test process BRACKEN2"
+    name "Test process BRACKEN"
     script "modules/local/bracken/main.nf"
-    process "BRACKEN2"
+    process "BRACKEN"
     config "tests/run_dev_se.config"
+    tag "module"
+    tag "bracken"
 
     setup {
         run("LOAD_SAMPLESHEET") {
@@ -11,8 +13,7 @@ nextflow_process {
             process {
                 """
                 input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
-                input[1] = false
-                input[2] = true
+                input[1] = true
                 """
             }
         }
@@ -34,39 +35,11 @@ nextflow_process {
                 '''
             }
         }
-        run("KRAKEN_STREAMED") {
-            script "modules/local/kraken/main.nf"
-            process {
-                '''
-                input[0] = COPY_FILE.out
-                input[1] = "${params.ref_dir}/results/kraken_db"
-                '''
-            }
-        }
     }
 
-    test("Should run without failures on gzipped input") {
-        tag "gzipped"
-        when {
-            params {}
-            process {
-                '''
-                input[0] = KRAKEN_STREAMED.out.report
-                input[1] = "${params.ref_dir}/results/kraken_db"
-                input[2] = "F"
-                input[3] = "5"
-                '''
-            }
-        }
-        then {
-            // Should run without failures
-            assert process.success
-            // TODO: Add other checks of output format: number of columns, headers, line structure, etc
-        }
-    }
-
-    test("Should run without failures on plain input") {
-        tag "plain"
+    test("Should run without failures on correct input") {
+        tag "single_end"
+        tag "expect_success"
         when {
             params {}
             process {

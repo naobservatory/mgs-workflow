@@ -4,6 +4,8 @@ nextflow_process {
     script "modules/local/addSampleColumn/main.nf"
     process "ADD_SAMPLE_COLUMN"
     config "tests/run.config"
+    tag "module"
+    tag "add_sample_column"
 
     test("Should break when sample_column is already present in tsv"){
         tag "expect_failed"

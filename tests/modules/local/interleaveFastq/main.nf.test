@@ -4,6 +4,8 @@ nextflow_process {
     script "modules/local/interleaveFastq/main.nf"
     process "INTERLEAVE_FASTQ"
     config "tests/run.config"
+    tag "module"
+    tag "interleave_fastq"
 
     setup {
         run("UNLEAVE_FASTQ") {
@@ -18,6 +20,7 @@ nextflow_process {
     }
 
     test("Should run without failures on correct input") {
+        tag "expect_success"
         when {
             params {
             }

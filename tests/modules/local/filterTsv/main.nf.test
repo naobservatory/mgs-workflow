@@ -4,8 +4,11 @@ nextflow_process {
     script "modules/local/filterTsv/main.nf"
     process "FILTER_TSV"
     config "tests/run.config"
+    tag "module"
+    tag "filter_tsv"
 
     test("Should fail if any column index exceeds number of available columns"){
+        tag "expect_failed"
         when {
             params {
                 cols = "1,4"
@@ -27,6 +30,7 @@ nextflow_process {
     }
 
     test("Should fail if file is not sorted on the specified columns"){
+        tag "expect_failed"
         when {
             params {
                 cols = "0,2"
@@ -48,6 +52,7 @@ nextflow_process {
     }
 
     test("Should correctly filter on the specified key (single column 1)"){
+        tag "expect_success"
         when {
             params {
                 cols = 1
@@ -77,6 +82,7 @@ nextflow_process {
     }
 
     test("Should correctly filter on the specified key (two columns)"){
+        tag "expect_success"
         when {
             params {
                 cols = "1,3"

@@ -1,10 +1,14 @@
 nextflow_process {
 
-    name "Test process PROCESS_VIRAL_BOWTIE2_SAM_2"
+    name "Test process PROCESS_VIRAL_BOWTIE2_SAM"
     script "modules/local/processViralBowtie2Sam/main.nf"
-    process "PROCESS_VIRAL_BOWTIE2_SAM_2"
+    process "PROCESS_VIRAL_BOWTIE2_SAM"
+    tag "module"
+    tag "process_viral_bowtie2_sam"
 
     test("On paired data, should run without errors and preserve lines") {
+        tag "expect_success"
+        tag "interleaved"
         config "tests/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
@@ -13,7 +17,6 @@ nextflow_process {
                     '''
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = false
-                    input[2] = false
                     '''
                 }
             }
@@ -25,7 +28,7 @@ nextflow_process {
                     '''
                 }
             }
-            run("BOWTIE2_STREAMED") {
+            run("BOWTIE2") {
                 script "modules/local/bowtie2/main.nf"
                 process {
                     '''
@@ -43,7 +46,7 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = BOWTIE2_STREAMED.out.sam
+                input[0] = BOWTIE2.out.sam
                 input[1] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
                 input[2] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
                 '''

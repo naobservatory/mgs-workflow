@@ -21,5 +21,5 @@ workflow COUNT_TOTAL_READS {
         all_read_counts_ch = read_counts_ch.output.collect()
         read_counts_file = CONCATENATE_TSVS(all_read_counts_ch, "read_counts")
     emit:
-        read_counts = read_counts_file
+        read_counts = read_counts_file.output
 }

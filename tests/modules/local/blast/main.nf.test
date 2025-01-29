@@ -1,9 +1,11 @@
 nextflow_process {
 
-    name "Test process BLASTN_STREAMED"
+    name "Test process BLASTN"
     script "modules/local/blast/main.nf"
-    process "BLASTN_STREAMED"
+    process "BLASTN"
     config "tests/run.config"
+    tag "module"
+    tag "blast"
 
     setup {
         run("LOAD_SAMPLESHEET") {
@@ -12,7 +14,6 @@ nextflow_process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
                 input[1] = false
-                input[2] = false
                 """
             }
         }
@@ -35,6 +36,8 @@ nextflow_process {
     }
 
     test("Should run without failures on correct input") {
+        tag "interleaved"
+        tag "expect_success"
         when {
             params {
             }

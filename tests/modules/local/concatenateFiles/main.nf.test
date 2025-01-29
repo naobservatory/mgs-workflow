@@ -4,6 +4,8 @@ nextflow_process {
     script "modules/local/concatenateFiles/main.nf"
     process "CONCATENATE_FILES"
     config "tests/run.config"
+    tag "module"
+    tag "concatenate_files"
 
     setup {
         run("COPY_FILE_BARE", alias: "COPY_FILE_1") {
@@ -36,6 +38,7 @@ nextflow_process {
     }
 
     test("Should run without failures on a single input file") {
+        tag "expect_success"
         when {
             params {
             }
@@ -56,6 +59,7 @@ nextflow_process {
     }
 
     test("Should run without failures on two input TSVs") {
+        tag "expect_success"
         when {
             params {
             }
@@ -84,6 +88,7 @@ nextflow_process {
     }
 
     test("Should run without failures on three input TSVs") {
+        tag "expect_success"
         when {
             params {
             }

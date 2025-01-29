@@ -1,0 +1,42 @@
+nextflow_pipeline {
+
+    name "Test workflow RUN"
+    script "main.nf" // Running from main so we have access to published files
+    config "tests/run.config"
+    tag "workflow"
+
+    test("RUN workflow should run without errors") {
+        tag "run"
+        tag "main_run"
+        then {
+            // Should run without failures
+            assert workflow.success
+        }
+    }
+
+    test("RUN workflow output should match snapshot") {
+        tag "run_output"
+        tag "main_run_output"
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Should match expected output
+            def base_path = "${launchDir}/output/results/"
+            def gold_files = ["bracken_reports_merged.tsv.gz", "kraken_reports_merged.tsv.gz",
+                "subset_qc_adapter_stats.tsv.gz", "subset_qc_basic_stats.tsv.gz",
+                "subset_qc_quality_base_stats.tsv.gz", "subset_qc_quality_sequence_stats.tsv.gz",
+                "subset_qc_length_stats.tsv.gz", "virus_clade_counts.tsv.gz", "virus_hits_db.tsv.gz",
+                "blast_hits_paired.tsv.gz", "virus_hits_1.fasta.gz", "virus_hits_2.fasta.gz",
+                "read_counts.tsv.gz"]
+            def snapshot_matches = []
+            for (file in gold_files) {
+                snapshot_matches += snapshot(path(base_path + file)).match("run_output")
+            }
+            println(snapshot_matches)
+            for (snap in snapshot_matches) {
+                assert snap
+            }
+        }
+    }
+
+}

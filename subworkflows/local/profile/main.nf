@@ -6,16 +6,16 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-
-if (params.single_end) {
-    include { BBDUK_SINGLE as BBDUK } from "../../../modules/local/bbduk"
-} else {
-    include { BBDUK_PAIRED as BBDUK } from "../../../modules/local/bbduk"
-}
-
-include { BBDUK_HITS } from "../../../modules/local/bbduk"
+include { BBDUK } from "../../../modules/local/bbduk"
 include { TAXONOMY as TAXONOMY_RIBO } from "../../../subworkflows/local/taxonomy"
 include { TAXONOMY as TAXONOMY_NORIBO } from "../../../subworkflows/local/taxonomy"
+include { ADD_FIXED_COLUMN as ADD_KRAKEN_RIBO } from "../../../modules/local/addFixedColumn"
+include { ADD_FIXED_COLUMN as ADD_BRACKEN_RIBO } from "../../../modules/local/addFixedColumn"
+include { ADD_FIXED_COLUMN as ADD_KRAKEN_NORIBO } from "../../../modules/local/addFixedColumn"
+include { ADD_FIXED_COLUMN as ADD_BRACKEN_NORIBO } from "../../../modules/local/addFixedColumn"
+include { CONCATENATE_TSVS as CONCATENATE_KRAKEN } from "../../../modules/local/concatenateTsvs"
+include { CONCATENATE_TSVS as CONCATENATE_BRACKEN } from "../../../modules/local/concatenateTsvs"
+
 include { MERGE_TAXONOMY_RIBO } from "../../../modules/local/mergeTaxonomyRibo"
 
 /****************
@@ -30,21 +30,24 @@ workflow PROFILE {
         min_kmer_fraction
         k
         bbduk_suffix
+        bracken_threshold
         single_end
     main:
         // Separate ribosomal reads
         ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
-        ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix)
+        ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix, !single_end)
         // Run taxonomic profiling separately on ribo and non-ribo reads
-        tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.fail, kraken_db_ch, false, "D", single_end)
-        tax_noribo_ch = TAXONOMY_NORIBO(ribo_ch.reads, kraken_db_ch, false, "D", single_end)
-        // Merge ribo and non-ribo outputs
-        kr_ribo = tax_ribo_ch.kraken_reports.collectFile(name: "kraken_reports_ribo.tsv.gz")
-        kr_noribo = tax_noribo_ch.kraken_reports.collectFile(name: "kraken_reports_noribo.tsv.gz")
-        br_ribo = tax_ribo_ch.bracken.collectFile(name: "bracken_reports_ribo.tsv.gz")
-        br_noribo = tax_noribo_ch.bracken.collectFile(name: "bracken_reports_noribo.tsv.gz")
-        merge_ch = MERGE_TAXONOMY_RIBO(kr_ribo, kr_noribo, br_ribo, br_noribo)
+        tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.match, kraken_db_ch, "D", bracken_threshold, single_end)
+        tax_noribo_ch = TAXONOMY_NORIBO(ribo_ch.nomatch, kraken_db_ch, "D", bracken_threshold, single_end)
+        // Add ribosomal status to output TSVs
+        kr_ribo = ADD_KRAKEN_RIBO(tax_ribo_ch.kraken_reports, "ribosomal", "TRUE", "kraken_reports_ribo")
+        kr_noribo = ADD_KRAKEN_NORIBO(tax_noribo_ch.kraken_reports, "ribosomal", "FALSE", "kraken_reports_noribo")
+        br_ribo = ADD_BRACKEN_RIBO(tax_ribo_ch.bracken, "ribosomal", "TRUE", "bracken_ribo")
+        br_noribo = ADD_BRACKEN_NORIBO(tax_noribo_ch.bracken, "ribosomal", "FALSE", "bracken_noribo")
+        // Concatenate output TSVs
+        kr_out = CONCATENATE_KRAKEN(kr_ribo.output.combine(kr_noribo.output), "kraken_reports_merged")
+        br_out = CONCATENATE_BRACKEN(br_ribo.output.combine(br_noribo.output), "bracken_reports_merged")
     emit:
-        bracken = merge_ch.bracken
-        kraken = merge_ch.kraken
+        bracken = br_out.output
+        kraken = kr_out.output
 }

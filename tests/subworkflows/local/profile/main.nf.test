@@ -1,0 +1,109 @@
+nextflow_workflow {
+
+    name "Test workflow PROFILE"
+    script "subworkflows/local/profile/main.nf"
+    workflow "PROFILE"
+    tag "subworkflow"
+    tag "profile"
+
+    test("Should run without failures on paired (interleaved) input") {
+        tag "expect_success"
+        tag "interleaved"
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = false
+                    """
+                }
+            }
+            run("INTERLEAVE_FASTQ") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    """
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    """
+                }
+            }
+        }
+        when {
+            params {
+            }
+            workflow {
+                '''
+                input[0] = INTERLEAVE_FASTQ.out.output
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                input[2] = "${params.ref_dir}"
+                input[3] = "0.4"
+                input[4] = "27"
+                input[5] = "ribo"
+                input[6] = "1"
+                input[7] = false
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Kraken reports should have expected fields
+            def kraken_report_tab = path(workflow.out.kraken[0]).csv(sep: "\t", decompress: true)
+            def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample", "ribosomal"]
+            assert kraken_report_tab.columnCount == 10
+            assert kraken_report_tab.columnNames == kraken_headers_exp
+            // Bracken output should have expected fields
+            def bracken_tab = path(workflow.out.bracken[0]).csv(sep: "\t", decompress: true)
+            def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample", "ribosomal"]
+            assert bracken_tab.columnCount == 9
+            assert bracken_tab.columnNames == bracken_headers_exp
+        }
+    }
+
+    test("Should run without failures on unpaired input") {
+        config "tests/run_dev_se.config"
+        tag "expect_success"
+        tag "single_end"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = true
+                    """
+                }
+            }
+        }
+        when {
+            params {}
+            workflow {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                input[2] = "${params.ref_dir}"
+                input[3] = "0.4"
+                input[4] = "27"
+                input[5] = "ribo"
+                input[6] = "1"
+                input[7] = true
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Kraken reports should have expected fields
+            def kraken_report_tab = path(workflow.out.kraken[0]).csv(sep: "\t", decompress: true)
+            def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample", "ribosomal"]
+            assert kraken_report_tab.columnCount == 10
+            assert kraken_report_tab.columnNames == kraken_headers_exp
+            // Bracken output should have expected fields
+            def bracken_tab = path(workflow.out.bracken[0]).csv(sep: "\t", decompress: true)
+            def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample", "ribosomal"]
+            assert bracken_tab.columnCount == 9
+            assert bracken_tab.columnNames == bracken_headers_exp
+        }
+    }
+}

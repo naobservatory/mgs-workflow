@@ -4,8 +4,11 @@ nextflow_process {
     script "modules/local/unleaveFastq/main.nf"
     process "UNLEAVE_FASTQ"
     config "tests/run.config"
+    tag "module"
+    tag "unleave_fastq"
 
     test("Should run without failures on correct input") {
+        tag "expect_success"
         when {
             params {
             }

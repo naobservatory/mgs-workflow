@@ -1,0 +1,12 @@
+{
+    "run_output": {
+        "content": [
+            "bracken_reports_merged.tsv.gz:md5,5ad73e1ac48814744eef7c5caa08026d"
+        ],
+        "meta": {
+            "nf-test": "0.9.2",
+            "nextflow": "24.10.3"
+        },
+        "timestamp": "2025-01-29T16:52:10.939518923"
+    }
+}

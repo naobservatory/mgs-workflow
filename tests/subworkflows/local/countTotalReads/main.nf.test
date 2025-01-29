@@ -3,8 +3,12 @@ nextflow_workflow {
     name "Test Workflow COUNT_TOTAL_READS"
     script "subworkflows/local/countTotalReads/main.nf"
     workflow "COUNT_TOTAL_READS"
+    tag "subworkflow"
+    tag "count_total_reads"
 
-    test("Should run without failures") {
+    test("Should run without failures on paired-end data") {
+        tag "expect_success"
+        tag "paired_end"
         config "tests/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
@@ -13,7 +17,6 @@ nextflow_workflow {
                     """
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = false
-                    input[2] = false
                     """
                 }
             }

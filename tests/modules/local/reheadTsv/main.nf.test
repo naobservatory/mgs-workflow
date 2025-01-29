@@ -8,6 +8,8 @@ nextflow_process {
     script "modules/local/reheadTsv/main.nf"
     process "REHEAD_TSV"
     config "tests/run.config"
+    tag "module"
+    tag "rehead_tsv"
 
     test("Should fail with an appropriate error code if the first/only field to modify is not present"){
         tag "expect_failed"

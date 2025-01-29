@@ -1,9 +1,11 @@
 nextflow_process {
 
-    name "Test process CONCATENATE_TSVS_STREAMED"
+    name "Test process CONCATENATE_TSVS"
     script "modules/local/concatenateTsvs/main.nf"
-    process "CONCATENATE_TSVS_STREAMED"
+    process "CONCATENATE_TSVS"
     config "tests/run.config"
+    tag "module"
+    tag "concatenate_tsvs"
 
     setup {
         run("COPY_FILE_BARE", alias: "COPY_FILE_1") {
@@ -36,6 +38,7 @@ nextflow_process {
     }
 
     test("Should fail when input TSV column names don't match") {
+        tag "expect_failed"
         when {
             params {
             }
@@ -55,6 +58,7 @@ nextflow_process {
     }
 
     test("Should run without failures on a single input TSV") {
+        tag "expect_success"
         when {
             params {
             }
@@ -79,6 +83,7 @@ nextflow_process {
     }
 
     test("Should run without failures on two input TSVs") {
+        tag "expect_success"
         when {
             params {
             }
@@ -103,6 +108,7 @@ nextflow_process {
     }
 
     test("Should run without failures on three input TSVs") {
+        tag "expect_success"
         when {
             params {
             }

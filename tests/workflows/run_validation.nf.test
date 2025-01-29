@@ -1,0 +1,16 @@
+nextflow_pipeline {
+
+    name "Test workflow RUN_VALIDATION"
+    script "main.nf" // Running from main so we have access to published files
+    config "tests/run_validation.config"
+    tag "workflow"
+    tag "run_validation"
+
+    test("Should run without errors") {
+        then {
+            // Should run without failures
+            assert workflow.success
+            // TODO: Add tests for published outputs
+        }
+    }
+}

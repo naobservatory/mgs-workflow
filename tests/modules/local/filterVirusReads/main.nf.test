@@ -7,10 +7,12 @@ def filter_tab = { tab_in, threshold -> csv(tab_in.table.where(
 
 nextflow_process {
 
-    name "Test process FILTER_VIRUS_READS_STREAMED"
+    name "Test process FILTER_VIRUS_READS"
     script "modules/local/filterVirusReads/main.nf"
-    process "FILTER_VIRUS_READS_STREAMED"
+    process "FILTER_VIRUS_READS"
     config "tests/run.config"
+    tag "module"
+    tag "filter_virus_reads"
 
     test("Should break when input is missing required headers (seq_id)"){
         tag "expect_failed"

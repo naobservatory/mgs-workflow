@@ -8,8 +8,11 @@ nextflow_process {
     script "modules/local/sortTsv/main.nf"
     process "SORT_TSV"
     config "tests/run.config"
+    tag "module"
+    tag "sort_tsv"
 
     test("Should fail with an appropriate error code if the sort field is not present."){
+        tag "expect_failed"
         when {
             params {}
             process {
@@ -29,6 +32,7 @@ nextflow_process {
     }
 
     test("Should produce no change when run on an already-sorted gzipped TSV"){
+        tag "expect_success"
         when {
             params {}
             process {
@@ -52,6 +56,7 @@ nextflow_process {
     }
 
     test("Should successfully sort an unsorted gzipped TSV"){
+        tag "expect_success"
         when {
             params {}
             process {

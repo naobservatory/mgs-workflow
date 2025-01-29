@@ -6,8 +6,11 @@ nextflow_process {
     script "modules/local/sortFile/main.nf"
     process "SORT_FILE"
     config "tests/run.config"
+    tag "module"
+    tag "sort_file"
 
     test("Should produce no change when run on an already-sorted gzipped TSV"){
+        tag "expect_success"
         when {
             params {
                 key = "-t\$\'\\t\' -k3,3nr -k2,2n"
@@ -33,6 +36,7 @@ nextflow_process {
     }
 
     test("Should successfully sort an unsorted gzipped TSV"){
+        tag "expect_success"
         when {
             params {
                 key = "-t\$\'\\t\' -k3,3nr -k2,2n"

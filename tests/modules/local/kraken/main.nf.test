@@ -1,9 +1,11 @@
 nextflow_process {
 
-    name "Test process KRAKEN_STREAMED"
+    name "Test process KRAKEN"
     script "modules/local/kraken/main.nf"
-    process "KRAKEN_STREAMED"
+    process "KRAKEN"
     config "tests/run_dev_se.config"
+    tag "module"
+    tag "kraken"
 
     setup {
         run("LOAD_SAMPLESHEET") {
@@ -11,8 +13,7 @@ nextflow_process {
             process {
                 """
                 input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
-                input[1] = false
-                input[2] = true
+                input[1] = true
                 """
             }
         }
@@ -28,6 +29,8 @@ nextflow_process {
     }
 
     test("Should run without failures and read counts should match") {
+        tag "expect_success"
+        tag "single_end"
         when {
             params {}
             process {

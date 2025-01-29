@@ -4,6 +4,8 @@ nextflow_process {
     script "modules/local/addFixedColumn/main.nf"
     process "ADD_FIXED_COLUMN"
     config "tests/run.config"
+    tag "module"
+    tag "add_fixed_column"
 
     test("Should break when column is already present in tsv"){
         tag "expect_failed"

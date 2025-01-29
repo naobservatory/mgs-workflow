@@ -3,10 +3,12 @@ nextflow_process {
     name "Test process EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF"
     script "modules/local/extractViralHitsToFastqNoref/main.nf"
     process "EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF"
+    tag "module"
+    tag "extract_viral_hits_to_fastq_noref"
 
     setup {
-        run("LOAD_SAMPLESHEET_STREAMED") {
-            script "subworkflows/local/loadSampleSheetStreamed/main.nf"
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
             process {
                 '''
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
@@ -14,11 +16,11 @@ nextflow_process {
                 '''
             }
         }
-        run("EXTRACT_VIRAL_READS_STREAMED") {
-            script "subworkflows/local/extractViralReadsStreamed/main.nf"
+        run("EXTRACT_VIRAL_READS") {
+            script "subworkflows/local/extractViralReads/main.nf"
             process {
                 '''
-                input[0] = LOAD_SAMPLESHEET_STREAMED.out.samplesheet
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = params.ref_dir
                 input[2] = "${params.ref_dir}/results/kraken_db"
                 input[3] = 20
@@ -34,12 +36,14 @@ nextflow_process {
     }
 
     test("Should run without errors and preserve entries") {
+        tag "interleaved"
+        tag "expect_success"
         config "tests/run.config"
         when {
             params {}
             process {
                 '''
-                input[0] = EXTRACT_VIRAL_READS_STREAMED.out.hits_filtered
+                input[0] = EXTRACT_VIRAL_READS.out.hits_filtered
                 input[1] = false
                 '''
             }

@@ -1,9 +1,11 @@
 nextflow_process {
 
-    name "Test process SUMMARIZE_BBMERGE_STREAMED"
+    name "Test process SUMMARIZE_BBMERGE"
     script "modules/local/summarizeBBMerge/main.nf"
-    process "SUMMARIZE_BBMERGE_STREAMED"
+    process "SUMMARIZE_BBMERGE"
     config "tests/run.config"
+    tag "module"
+    tag "summarize_bbmerge"
 
     setup {
         run("LOAD_SAMPLESHEET") {
@@ -12,7 +14,6 @@ nextflow_process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
                 input[1] = false
-                input[2] = false
                 """
             }
         }
@@ -24,7 +25,7 @@ nextflow_process {
                 """
             }
         }
-        run("BBMERGE_STREAMED") {
+        run("BBMERGE") {
             script "modules/local/bbmerge/main.nf"
             process {
                 """
@@ -35,11 +36,13 @@ nextflow_process {
     }
 
     test("Should run without failures and read counts should match") {
+        tag "expect_success"
+        tag "interleaved"
         when {
             params {}
             process {
                 '''
-                input[0] = BBMERGE_STREAMED.out.reads
+                input[0] = BBMERGE.out.reads
                 '''
             }
         }

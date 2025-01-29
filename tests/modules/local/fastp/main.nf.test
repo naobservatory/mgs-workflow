@@ -1,10 +1,14 @@
 nextflow_process {
 
-    name "Test process FASTP_STREAMED"
+    name "Test process FASTP"
     script "modules/local/fastp/main.nf"
-    process "FASTP_STREAMED"
+    process "FASTP"
+    tag "module"
+    tag "fastp"
 
     test("Should run correctly on interleaved data") {
+        tag "expect_success"
+        tag "interleaved"
         config "tests/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
@@ -13,7 +17,6 @@ nextflow_process {
                     """
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = false
-                    input[2] = false
                     """
                 }
             }
@@ -57,6 +60,8 @@ nextflow_process {
     }
 
     test("Should run correctly on single-end data") {
+        tag "expect_success"
+        tag "single_end"
         config "tests/run_dev_se.config"
         setup {
             run("LOAD_SAMPLESHEET") {
@@ -64,8 +69,7 @@ nextflow_process {
                 process {
                     """
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
-                    input[1] = false
-                    input[2] = true
+                    input[1] = true
                     """
                 }
             }

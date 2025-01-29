@@ -1,9 +1,11 @@
 nextflow_process {
 
-    name "Test process JOIN_FASTQ_STREAMED"
+    name "Test process JOIN_FASTQ"
     script "modules/local/joinFastq/main.nf"
-    process "JOIN_FASTQ_STREAMED"
+    process "JOIN_FASTQ"
     config "tests/run.config"
+    tag "module"
+    tag "join_fastq"
 
     setup {
         run("LOAD_SAMPLESHEET") {
@@ -12,7 +14,6 @@ nextflow_process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
                 input[1] = false
-                input[2] = false
                 """
             }
         }
@@ -24,7 +25,7 @@ nextflow_process {
                 """
             }
         }
-        run("BBMERGE_STREAMED") {
+        run("BBMERGE") {
             script "modules/local/bbmerge/main.nf"
             process {
                 """
@@ -35,11 +36,13 @@ nextflow_process {
     }
 
     test("Should run without failures and read counts should match") {
+        tag "interleaved"
+        tag "expect_success"
         when {
             params {}
             process {
                 '''
-                input[0] = BBMERGE_STREAMED.out.reads
+                input[0] = BBMERGE.out.reads
                 input[1] = true
                 '''
             }

@@ -4,6 +4,8 @@ nextflow_process {
     script "modules/local/joinTsvs/main.nf"
     process "JOIN_TSVS"
     config "tests/run.config"
+    tag "module"
+    tag "join_tsvs"
 
     test("Should break when called on a column not in tsv1"){
         tag "expect_failed"

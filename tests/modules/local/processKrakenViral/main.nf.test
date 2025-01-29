@@ -1,10 +1,14 @@
 nextflow_process {
 
-    name "Test process PROCESS_KRAKEN_VIRAL_2"
+    name "Test process PROCESS_KRAKEN_VIRAL"
     script "modules/local/processKrakenViral/main.nf"
-    process "PROCESS_KRAKEN_VIRAL_2"
+    process "PROCESS_KRAKEN_VIRAL"
+    tag "process_kraken_viral"
+    tag "module"
 
     test("On paired data, should run without errors and preserve lines") {
+        tag "expect_success"
+        tag "interleaved"
         config "tests/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
@@ -13,7 +17,6 @@ nextflow_process {
                     '''
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = false
-                    input[2] = false
                     '''
                 }
             }
@@ -25,8 +28,8 @@ nextflow_process {
                     '''
                 }
             }
-            run("TAXONOMY_STREAMED") {
-                script "subworkflows/local/taxonomyStreamed/main.nf"
+            run("TAXONOMY") {
+                script "subworkflows/local/taxonomy/main.nf"
                 workflow {
                     '''
                     input[0] = INTERLEAVE_FASTQ.out.output
@@ -42,7 +45,7 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = TAXONOMY_STREAMED.out.kraken_output
+                input[0] = TAXONOMY.out.kraken_output
                 input[1] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
                 input[2] = params.host_taxon
                 '''
