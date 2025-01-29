@@ -26,3 +26,19 @@ Jobs may sometimes fail due to insufficient memory or CPU availability, especial
 - **Increase resource allocations in `configs/resources.config`.** This will alter the resources available to all processes with a given tag (e.g. "small").
 - **Increase resource allocation to a specific process.** You can do this by editing the process in the relevant Nextflow file, most likely found at `modules/local/MODULE_NAME/main.nf`.
 Note that in some cases it may not be possible to allocate enough resources to meet the needs of a given process, especially on a resource-constrained machine. In this case, you will need to use a smaller reference file (e.g. a smaller Kraken reference DB) or obtain a larger machine.
+
+## API container errors
+
+Jobs may sometimes fail due to using up [too many API requests to get the containers](https://docs.seqera.io/wave/api). This will look like the following:
+
+```
+Task failed to start - CannotPullImageManifestError: Error response from daemon: toomanyrequests: Request exceeded pull rate limit for IP XX.XXX.XX.XX
+```
+
+To fix this, you can:
+1. Create a seqera account [here](http://cloud.seqera.io/) for free.
+2. Click on the user icon, then click the 'User tokens' section.
+3. Now click 'Add Token' to create a token for your account. Name it whatever you want (e.g. "my-nextflow-token"). Copy the token, and store it somewhere.
+4. Navigate yourself to this repo, open the profiles config file (`configs/profiles.config`), and add in the following line `tower.accessToken=<token`>`, where `<token>` is the token you generated in the last step.
+This will increase your API limit by 4x. If you still keep running into this same issue, you may consider contacting Seqera for more options.
+
