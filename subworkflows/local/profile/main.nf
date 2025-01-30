@@ -16,8 +16,6 @@ include { ADD_FIXED_COLUMN as ADD_BRACKEN_NORIBO } from "../../../modules/local/
 include { CONCATENATE_TSVS as CONCATENATE_KRAKEN } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_TSVS as CONCATENATE_BRACKEN } from "../../../modules/local/concatenateTsvs"
 
-include { MERGE_TAXONOMY_RIBO } from "../../../modules/local/mergeTaxonomyRibo"
-
 /****************
 | MAIN WORKFLOW |
 ****************/
