@@ -22,7 +22,6 @@ workflow SUBSET_TRIM {
       random_seed
     main:
         if (single_end) {
-            // TODO: Consider using output of COUNT_READS rather than re-counting during subsetting (could save a few minutes of clock-time)
             subset_ch = SUBSET_SINGLE(reads_ch, n_reads, "fastq", random_seed)
             inter_ch  = subset_ch
         } else {
