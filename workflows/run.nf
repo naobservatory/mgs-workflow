@@ -44,7 +44,8 @@ workflow RUN {
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
         BLAST_VIRAL(EXTRACT_VIRAL_READS.out.hits_fastq, blast_db_path, params.blast_db_prefix,
-            params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac)
+            params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
+            params.random_seed)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
     } else {
         blast_subset_ch = Channel.empty()
@@ -52,7 +53,7 @@ workflow RUN {
 
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
-        params.adapters, params.single_end)
+        params.adapters, params.single_end, params.random_seed)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, params.single_end)

@@ -17,13 +17,14 @@ workflow SUBSET_TRIM {
       n_reads
       adapter_path
       single_end
+      random_seed
     main:
         if (single_end) {
             // TODO: Consider using output of COUNT_READS rather than re-counting during subsetting (could save a few minutes of clock-time)
-            subset_ch = SUBSET_SINGLE(reads_ch, n_reads, "fastq")
+            subset_ch = SUBSET_SINGLE(reads_ch, n_reads, "fastq", random_seed)
             inter_ch  = subset_ch
         } else {
-            subset_ch = SUBSET_PAIRED(reads_ch, n_reads, "fastq")
+            subset_ch = SUBSET_PAIRED(reads_ch, n_reads, "fastq", random_seed)
             inter_ch  = INTERLEAVE_FASTQ(subset_ch).output
         }
         fastp_ch = FASTP(inter_ch, adapter_path, !single_end)

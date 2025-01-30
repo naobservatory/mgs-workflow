@@ -38,6 +38,7 @@ nextflow_workflow {
                 input[1] = params.n_reads
                 input[2] = params.adapters
                 input[3] = false
+                input[4] = ""
                 '''
             }
         }
@@ -101,6 +102,7 @@ nextflow_workflow {
                 input[1] = params.n_reads
                 input[2] = params.adapters
                 input[3] = true
+                input[4] = ""
                 '''
             }
         }

@@ -45,6 +45,7 @@ nextflow_workflow {
                 input[3] = params.blast_frac
                 input[4] = params.max_rank
                 input[5] = params.min_frac
+                input[6] = ""
                 '''
             }
         }
@@ -123,6 +124,7 @@ nextflow_workflow {
                 input[3] = 0.95
                 input[4] = params.max_rank
                 input[5] = params.min_frac
+                input[6] = ""
                 '''
             }
         }

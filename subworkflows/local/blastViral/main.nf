@@ -22,12 +22,13 @@ workflow BLAST_VIRAL {
         read_fraction
         blast_max_rank
         blast_min_frac
+        random_seed
     main:
         // 1. Subset viral reads for BLAST
         reads_in = Channel.of("merged")
             | combine(viral_fastq)
         subset_ch = (read_fraction < 1)
-            ? SUBSET_FASTQ(reads_in, read_fraction)
+            ? SUBSET_FASTQ(reads_in, read_fraction, random_seed)
             : reads_in
         // 2. Convert to FASTA
         fasta_ch = CONVERT_FASTQ_FASTA(subset_ch.output)

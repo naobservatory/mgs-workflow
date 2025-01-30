@@ -6,6 +6,7 @@ process SUBSET_FASTQ {
     input:
         tuple val(sample), path(fastq)
         val readFraction
+        val randomSeed
     output:
         tuple val(sample), path("${sample}_reads_subset.fastq.gz"), emit: output
         tuple val(sample), path("${sample}_reads_in.fastq.gz"), emit: input
@@ -42,8 +43,10 @@ process SUBSET_FASTQ {
         # Subsample IDs
         frac=$(echo | awk -v f=${rf} '{ ff = f + 0; print ff }')
         echo "Target read fraction: ${frac}"
-        awk -v f=${rf} '
-            BEGIN {frac=f+0;srand()} {if (rand() <= frac) {print}}
+        rseed=!{randomSeed == "" ? "\\$RANDOM" : randomSeed}
+        echo "Random seed: ${rseed}"
+        awk -v f=${rf} -v s=${rseed} '
+            BEGIN {frac=f+0;srand(s);} {if (rand() <= frac) {print}}
         ' all_ids.txt > sample_ids.txt
         echo "Output IDs $(cat sample_ids.txt | wc -l)"
         # Subsample sequences based on IDs
