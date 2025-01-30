@@ -37,7 +37,7 @@ nextflow_process {
         }
     }
 
-    test("Should run without failures on correct input") {
+    test("Should run without failures on correct input (success test only)") {
         tag "single_end"
         tag "expect_success"
         when {
