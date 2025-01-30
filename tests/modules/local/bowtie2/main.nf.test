@@ -1,0 +1,143 @@
+nextflow_process {
+
+    name "Test process BOWTIE2"
+    script "modules/local/bowtie2/main.nf"
+    process "BOWTIE2"
+    config "tests/run.config"
+    tag "module"
+    tag "bowtie2"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = false
+                """
+            }
+        }
+        run("INTERLEAVE_FASTQ") {
+            script "modules/local/interleaveFastq/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                """
+            }
+        }
+    }
+
+    test("When run against viral index, should run without failures and read counts should match") {
+        tag "expect_success"
+        tag "interleaved"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = INTERLEAVE_FASTQ.out.output
+                input[1] = "${params.ref_dir}/results/bt2-virus-index"
+                input[2] = "--score-min G,1,1"
+                input[3] = "virus"
+                input[4] = true
+                input[5] = true
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output reads should have a nonzero number of lines divisible by eight
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines_mapped = countGzipLines(process.out.reads_mapped[0][1])
+            def output_lines_unmapped = countGzipLines(process.out.reads_unmapped[0][1])
+            assert output_lines_mapped > 0
+            assert output_lines_mapped % 8 == 0
+            assert output_lines_unmapped > 0
+            assert output_lines_unmapped % 8 == 0
+            // Total input and output read counts should match
+            def total_input_lines  = countGzipLines(process.out.input[0][1])
+            assert total_input_lines == (output_lines_mapped + output_lines_unmapped)
+            // SAM should equal mapped output reads plus a few header lines
+            def countGzipLinesSam = { file -> ["bash", "-c", "zcat " + file + " | grep -v \"^@\" | wc -l"].execute().text.trim() as Integer }
+            def output_lines_sam = countGzipLinesSam(process.out.sam[0][1])
+            assert output_lines_sam == (output_lines_mapped / 4)
+        }
+    }
+
+    test("When run against human index, should run without failures and read counts should match") {
+        tag "expect_success"
+        tag "interleaved"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = INTERLEAVE_FASTQ.out.output
+                input[1] = "${params.ref_dir}/results/bt2-human-index"
+                input[2] = ""
+                input[3] = "human"
+                input[4] = false
+                input[5] = true
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output reads should have a nonzero number of lines divisible by eight
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines_mapped = countGzipLines(process.out.reads_mapped[0][1])
+            def output_lines_unmapped = countGzipLines(process.out.reads_unmapped[0][1])
+            assert output_lines_mapped > 0
+            assert output_lines_mapped % 8 == 0
+            assert output_lines_unmapped > 0
+            assert output_lines_unmapped % 8 == 0
+            // Total input and output read counts should match
+            def total_input_lines  = countGzipLines(process.out.input[0][1])
+            assert total_input_lines == (output_lines_mapped + output_lines_unmapped)
+            // SAM should equal mapped output reads plus a few header lines
+            def countGzipLinesSam = { file -> ["bash", "-c", "zcat " + file + " | grep -v \"^@\" | wc -l"].execute().text.trim() as Integer }
+            def output_lines_sam = countGzipLinesSam(process.out.sam[0][1])
+            assert output_lines_sam == (output_lines_mapped / 4)
+        }
+    }
+
+    test("When run against nonhuman contaminant index, should run without failures and read counts should match") {
+        tag "expect_success"
+        tag "interleaved"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = INTERLEAVE_FASTQ.out.output
+                input[1] = "${params.ref_dir}/results/bt2-other-index"
+                input[2] = ""
+                input[3] = "other"
+                input[4] = false
+                input[5] = true
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output reads should have a nonzero number of lines divisible by eight
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines_mapped = countGzipLines(process.out.reads_mapped[0][1])
+            def output_lines_unmapped = countGzipLines(process.out.reads_unmapped[0][1])
+            assert output_lines_mapped > 0
+            assert output_lines_mapped % 8 == 0
+            assert output_lines_unmapped > 0
+            assert output_lines_unmapped % 8 == 0
+            // Total input and output read counts should match
+            def total_input_lines  = countGzipLines(process.out.input[0][1])
+            assert total_input_lines == (output_lines_mapped + output_lines_unmapped)
+            // SAM should equal mapped output reads plus a few header lines
+            def countGzipLinesSam = { file -> ["bash", "-c", "zcat " + file + " | grep -v \"^@\" | wc -l"].execute().text.trim() as Integer }
+            def output_lines_sam = countGzipLinesSam(process.out.sam[0][1])
+            assert output_lines_sam == (output_lines_mapped / 4)
+        }
+    }
+}

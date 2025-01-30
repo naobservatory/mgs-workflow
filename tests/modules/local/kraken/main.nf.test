@@ -1,0 +1,53 @@
+nextflow_process {
+
+    name "Test process KRAKEN"
+    script "modules/local/kraken/main.nf"
+    process "KRAKEN"
+    config "tests/run_dev_se.config"
+    tag "module"
+    tag "kraken"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                input[1] = true
+                """
+            }
+        }
+        run("COPY_FILE") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = "input.fastq.gz"
+                """
+            }
+        }
+    }
+
+    test("Should run without failures and read counts should match") {
+        tag "expect_success"
+        tag "single_end"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = COPY_FILE.out
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output lines should match input reads
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines = countGzipLines(process.out.output[0][1])
+            def input_reads  = countGzipLines(process.out.input[0][1]) / 4
+            assert output_lines == input_reads
+        }
+    }
+}

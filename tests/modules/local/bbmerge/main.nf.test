@@ -1,0 +1,58 @@
+nextflow_process {
+
+    name "Test process BBMERGE"
+    script "modules/local/bbmerge/main.nf"
+    process "BBMERGE"
+    config "tests/run.config"
+    tag "module"
+    tag "bbmerge"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = false
+                """
+            }
+        }
+        run("INTERLEAVE_FASTQ") {
+            script "modules/local/interleaveFastq/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                """
+            }
+        }
+    }
+
+    test("Should run without failures and read counts should match") {
+        tag "interleaved"
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = INTERLEAVE_FASTQ.out.output
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Merged reads should have a nonzero number of lines divisible by four
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines_merged = countGzipLines(process.out.reads[0][1][0])
+            assert output_lines_merged > 0
+            assert output_lines_merged % 4 == 0
+            // Unmerged reads should have a nonzero number of lines divisible by eight
+            def output_lines_unmerged = countGzipLines(process.out.reads[0][1][1])
+            assert output_lines_unmerged > 0
+            assert output_lines_unmerged % 8 == 0
+            // Total input and output read counts should match (accounting for merging)
+            def total_input_lines = countGzipLines(process.out.input[0][1])
+            assert total_input_lines == (output_lines_merged * 2) + output_lines_unmerged
+        }
+    }
+}

@@ -1,0 +1,73 @@
+nextflow_process {
+
+    name "Test process EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF"
+    script "modules/local/extractViralHitsToFastqNoref/main.nf"
+    process "EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF"
+    tag "module"
+    tag "extract_viral_hits_to_fastq_noref"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                '''
+                input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = false
+                '''
+            }
+        }
+        run("EXTRACT_VIRAL_READS") {
+            script "subworkflows/local/extractViralReads/main.nf"
+            process {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = params.ref_dir
+                input[2] = "${params.ref_dir}/results/kraken_db"
+                input[3] = 20
+                input[4] = params.adapters
+                input[5] = params.host_taxon
+                input[6] = 1
+                input[7] = 24
+                input[8] = "viral"
+                input[9] = 5
+                '''
+            }
+        }
+    }
+
+    test("Should run without errors and preserve entries") {
+        tag "interleaved"
+        tag "expect_success"
+        config "tests/run.config"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = EXTRACT_VIRAL_READS.out.hits_filtered
+                input[1] = false
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should preserve read count
+            def tab_in = path(process.out.input[0]).csv(sep: "\t", decompress: true)
+            def fastq_out = path(process.out.output[0]).fastq
+            def reads_in = tab_in.rowCount
+            def reads_out = fastq_out.readNames.size()
+            assert reads_in * 2 == reads_out
+            // Read IDs and sequences should match
+            def quals_out = fastq_out.qualityScores
+            def seqs_out = fastq_out.sequences
+            for (int i = 0; i < reads_in; i++) {
+                assert tab_in.columns["seq_id"][i]+" 1" == fastq_out.readNames[2*i]
+                assert tab_in.columns["seq_id"][i]+" 2" == fastq_out.readNames[2*i+1]
+                assert tab_in.columns["query_seq_fwd"][i] == seqs_out[2*i]
+                assert tab_in.columns["query_seq_rev"][i] == seqs_out[2*i+1]
+                assert tab_in.columns["query_qual_fwd"][i] == quals_out[2*i]
+                assert tab_in.columns["query_qual_rev"][i] == quals_out[2*i+1]
+            }
+        }
+    }
+}

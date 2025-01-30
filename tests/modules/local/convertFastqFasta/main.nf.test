@@ -1,0 +1,47 @@
+nextflow_process {
+
+    name "Test process CONVERT_FASTQ_FASTA"
+    script "modules/local/convertFastqFasta/main.nf"
+    process "CONVERT_FASTQ_FASTA"
+    config "tests/run.config"
+    tag "module"
+    tag "convert_fastq_fasta"
+
+    test("Should run without failures on correct input") {
+        tag "expect_success"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq.gz"))
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Input and output read counts should match
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def fasta_out = path(process.out.output[0][1]).fasta
+            def names_in = fastq_in.readNames
+            def seqs_in = fastq_in.sequences
+            def names_out = fasta_out.keySet()
+            def seqs_out = fasta_out.values()
+            assert names_in.size() == names_out.size()
+            // Can't actually check the read orders are identical as the nf-test
+            // fasta plugin only returns an unordered map, but can at least
+            // check that the sorted lists of IDs match and each ID is tied
+            // to the correct sequence
+            assert names_in.sort() == names_out.sort()
+            assert seqs_in.sort() == seqs_out.sort()
+            for (name in names_in) {
+                def seq_in = fastq_in.records[name].getReadString()
+                def seq_out = fasta_out[name]
+                assert seq_in == seq_out
+            }
+        }
+    }
+
+}

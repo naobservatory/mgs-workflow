@@ -1,6 +1,6 @@
-/*****************************************************
-| WORKFLOW: POST-HOC VALIDATION OF PUTATIVE viral READS |
-*****************************************************/
+/********************************************************
+| WORKFLOW: POST-HOC VALIDATION OF PUTATIVE VIRAL READS |
+********************************************************/
 
 import groovy.json.JsonOutput
 import java.time.LocalDateTime
@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { MAKE_VIRUS_READS_FASTA } from "../modules/local/makeVirusReadsFasta"
+include { EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF as EXTRACT_HITS } from "../modules/local/extractViralHitsToFastqNoref"
 include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 nextflow.preview.output = true
 
@@ -22,30 +22,33 @@ workflow RUN_VALIDATION {
     // Start time
     start_time = new Date()
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
+
+    // Get input FASTQ
     if ( params.viral_tsv_collapsed == "" ) {
-    // Option 1: Directly specify FASTA paths in config file (only used if no RUN output DB given)
-        fasta_ch = Channel.value([file(params.viral_fasta_1), file(params.viral_fasta_2)])
+    // Option 1: Directly specify FASTQ path in config (interleaved/single-end)
+        fastq_ch = params.viral_fastq
     } else {
     // Option 2: Extract read sequences from output DB from RUN workflow (default)
         // Define input
-        collapsed_ch = params.viral_tsv_collapsed
-        // Extract virus reads into FASTA format
-        fasta_ch = MAKE_VIRUS_READS_FASTA(collapsed_ch)
+        tsv_ch = params.viral_tsv
+        fastq_ch = EXTRACT_HITS(tsv_ch, params.drop_unpaired).output
     }
+
     // BLAST validation on host-viral reads
-    if ( params.blast_viral_fraction > 0 ) {
-        blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
-        BLAST_VIRAL(fasta_ch, blast_db_path, params.blast_db_prefix, params.blast_viral_fraction)
-    }
+    blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
+    BLAST_VIRAL(fastq_ch, blast_db_path, params.blast_db_prefix,
+        params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
+        params.random_seed)
+
     // Publish results (NB: BLAST workflow has its own publish directive)
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
     time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
     index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
-    .map { file -> file.copyTo("${params.base_dir}/work/params-index.json") }
+        | map { file -> file.copyTo("${params.base_dir}/work/params-index.json") }
     index_pipeline_version_ch = Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt")
-    .map { file -> file.copyTo("${params.base_dir}/work/pipeline-version-index.txt") }
+        | map { file -> file.copyTo("${params.base_dir}/work/pipeline-version-index.txt") }
     publish:
         // Saved inputs
         index_params_ch >> "input"
@@ -56,5 +59,4 @@ workflow RUN_VALIDATION {
         version_ch >> "logging"
         // BLAST outputs
         BLAST_VIRAL.out.blast_subset >> "results"
-        BLAST_VIRAL.out.blast_paired >> "results"
 }
