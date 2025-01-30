@@ -146,6 +146,8 @@ nextflow_process {
                 assert n in names_in
             }
             // Fraction of read pairs in output should approximate input fraction
+            // As each read is sampled independently, the fraction won't be exact, so need some tolerance
+            // Derived a tolerance of 16% by simulating draws from a binomial distribution and taking 95% CI
             def frac_exp = params.read_fraction
             def frac_obs = names_out.size() / names_in.size()
             assert frac_obs / frac_exp <= 10/8.4
