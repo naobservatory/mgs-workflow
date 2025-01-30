@@ -1,3 +1,22 @@
+# v2.8.0.0
+- Major changes to many parts of the pipeline as part of a general performance overhaul
+    - Modified most processes in the RUN and RUN_VALIDATION workflows to stream data in and out rather than reading whole files
+    - As part of the previous change, modified most processes in the RUN and RUN_VALIDATION workflows to work with interleaved rather than paired sequence data
+    - Modified BLASTN filtering to take into account bitscore ratio versus best hit for each query
+    - Replaced many specific tabular manipulation processes with basic operations: JOIN_TSVS, CONCATENATE_TSVS, ADD_FIXED_COLUMN, etc
+    - Removed grouping and group-dependent functionality (in particular, deduplication and clade counting); entire pipeline now operates on a per-sample basis
+    - Added unit tests for many processes and workflows
+    - Added configurable seeding for testing non-deterministic processes via `params.random_seed`
+    - Made Bracken read threshold configurable via `params.bracken_threshold`
+    - Removed numerous orphaned modules and processes
+- Large changes to outputs:
+    - Main output directory no longer contains FASTA files for viral hits (interleaved FASTQ file now saved to intermediates)
+    - Clade counts are no longer produced
+    - QC and BLAST outputs now show statistics for interleaved files rather than showing forward and reverse reads separately
+    - Added new intermediate outputs, including unfiltered viral hits and interleaved FASTQ from EXTRACT_VIRAL_READS
+    - Viral hits TSV moved from `virus_hits_db.tsv.gz` to `virus_hits_filtered.tsv.gz`
+    - Numerous changes to column names in viral hits TSV, mainly to improve clarity
+
 # v2.7.0.0
 - Implemented masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
 - Removed TRIMMOMATIC and BBMAP from EXTRACT_VIRAL_READS.
