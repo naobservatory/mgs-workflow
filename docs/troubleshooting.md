@@ -39,6 +39,6 @@ To fix this, you can:
 1. Create a seqera account [here](http://cloud.seqera.io/) for free.
 2. Click on the user icon, then click the 'User tokens' section.
 3. Now click 'Add Token' to create a token for your account. Name it whatever you want (e.g. "my-nextflow-token"). Copy the token, and store it somewhere.
-4. Navigate yourself to this repo, open the profiles config file (`configs/profiles.config`), and add in the following line `tower.accessToken=<token`>`, where `<token>` is the token you generated in the last step.
+4. Navigate yourself to this repo, open the profiles config file (`configs/profiles.config`), and add in the following line `tower.accessToken=<token>`, where `<token>` is the token you generated in the last step.
 This will increase your API limit by 4x. If you still keep running into this same issue, you may consider contacting Seqera for more options.
 
