@@ -1,0 +1,62 @@
+nextflow_process {
+
+    name "Test process SUMMARIZE_BBMERGE"
+    script "modules/local/summarizeBBMerge/main.nf"
+    process "SUMMARIZE_BBMERGE"
+    config "tests/run.config"
+    tag "module"
+    tag "summarize_bbmerge"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = false
+                """
+            }
+        }
+        run("INTERLEAVE_FASTQ") {
+            script "modules/local/interleaveFastq/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                """
+            }
+        }
+        run("BBMERGE") {
+            script "modules/local/bbmerge/main.nf"
+            process {
+                """
+                input[0] = INTERLEAVE_FASTQ.out.output
+                """
+            }
+        }
+    }
+
+    test("Should run without failures and read counts should match") {
+        tag "expect_success"
+        tag "interleaved"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = BBMERGE.out.reads
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should have expected dimensions
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def input_reads = countGzipLines(process.out.input[0][1]) / 4
+            def tab_out = path(process.out.summary[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount == 2
+            assert tab_out.columnNames == ["seq_id", "bbmerge_frag_length"]
+            assert tab_out.rowCount == input_reads
+            // TODO: Process input fastq directly using available plugins
+        }
+    }
+}

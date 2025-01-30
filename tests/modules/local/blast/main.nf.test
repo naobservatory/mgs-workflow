@@ -1,0 +1,69 @@
+nextflow_process {
+
+    name "Test process BLASTN"
+    script "modules/local/blast/main.nf"
+    process "BLASTN"
+    config "tests/run.config"
+    tag "module"
+    tag "blast"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = false
+                """
+            }
+        }
+        run("INTERLEAVE_FASTQ") {
+            script "modules/local/interleaveFastq/main.nf"
+            process {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                '''
+            }
+        }
+        run("CONVERT_FASTQ_FASTA") {
+            script "modules/local/convertFastqFasta/main.nf"
+            process {
+                '''
+                input[0] = INTERLEAVE_FASTQ.out.output
+                '''
+            }
+        }
+    }
+
+    test("Should run without failures on correct input") {
+        tag "interleaved"
+        tag "expect_success"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = CONVERT_FASTQ_FASTA.out.output
+                input[1] = "${params.ref_dir}/results/${params.blast_db_prefix}"
+                input[2] = params.blast_db_prefix
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output TSV should have expected format
+            def tsv_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true, header: false)
+            def cols_exp = "qseqid sseqid sgi staxid qlen evalue bitscore qcovs length pident mismatch gapopen sstrand qstart qend sstart send"
+            assert tsv_out.columnCount == cols_exp.split(" ").size()
+            // Compare to input FASTA
+            def fasta_in = path(process.out.input[0][1]).fasta
+            def names_in = fasta_in.keySet().sort()
+            def ids_in = names_in.collect{ it.tokenize(" ")[0] }
+            for (entry in tsv_out.columns["C0"]){
+                assert entry in ids_in
+            }
+        }
+    }
+
+}

@@ -1,0 +1,64 @@
+nextflow_process {
+
+    name "Test process JOIN_FASTQ"
+    script "modules/local/joinFastq/main.nf"
+    process "JOIN_FASTQ"
+    config "tests/run.config"
+    tag "module"
+    tag "join_fastq"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = false
+                """
+            }
+        }
+        run("INTERLEAVE_FASTQ") {
+            script "modules/local/interleaveFastq/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                """
+            }
+        }
+        run("BBMERGE") {
+            script "modules/local/bbmerge/main.nf"
+            process {
+                """
+                input[0] = INTERLEAVE_FASTQ.out.output
+                """
+            }
+        }
+    }
+
+    test("Should run without failures and read counts should match") {
+        tag "interleaved"
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = BBMERGE.out.reads
+                input[1] = true
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output reads should have a nonzero number of lines divisible by four
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def output_lines = countGzipLines(process.out.reads[0][1])
+            assert output_lines > 0
+            assert output_lines % 4 == 0
+            // Total input and output read counts should match (accounting for joining)
+            def input_lines_merged = countGzipLines(process.out.input[0][1][0])
+            def input_lines_unmerged = countGzipLines(process.out.input[0][1][1])
+            assert output_lines == input_lines_merged + (input_lines_unmerged / 2)
+        }
+    }
+}

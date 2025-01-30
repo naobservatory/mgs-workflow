@@ -1,0 +1,70 @@
+nextflow_process {
+
+    name "Test process BBDUK_HITS_INTERLEAVE"
+    script "modules/local/bbduk/main.nf"
+    process "BBDUK_HITS_INTERLEAVE"
+    config "tests/run.config"
+    tag "module"
+    tag "bbduk"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = false
+                """
+            }
+        }
+    }
+
+    test("Should run without failures and conserve reads") {
+        tag "expect_success"
+        tag "paired_end"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = "${params.ref_dir}/results/virus-genomes-filtered.fasta.gz"
+                input[2] = "1"
+                input[3] = "24"
+                input[4] = "viral"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should be valid interleaved FASTQ
+            def fastq_fail = path(process.out.fail[0][1]).fastq
+            def fastq_pass = path(process.out.reads[0][1]).fastq
+            def ids_fail = fastq_fail.readNames
+            def ids_pass = fastq_pass.readNames
+            assert ids_fail.size() % 2 == 0
+            assert ids_pass.size() % 2 == 0
+            // Should conserve reads between input and output
+            def fastq_in_1 = path(process.out.input[0][1][0]).fastq
+            def fastq_in_2 = path(process.out.input[0][1][1]).fastq
+            def ids_in_1 = fastq_in_1.readNames
+            def ids_in_2 = fastq_in_2.readNames
+            assert ids_in_1.size() + ids_in_2.size() == ids_pass.size() + ids_fail.size()
+            for (i in ids_in_1) {
+                if (i in ids_fail) {
+                    assert !(i in ids_pass)
+                } else {
+                    assert i in ids_pass
+                }
+            }
+            for (i in ids_in_2) {
+                if (i in ids_fail) {
+                    assert !(i in ids_pass)
+                } else {
+                    assert i in ids_pass
+                }
+            }
+        }
+    }
+}
