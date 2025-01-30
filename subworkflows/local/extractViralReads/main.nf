@@ -93,10 +93,3 @@ workflow EXTRACT_VIRAL_READS {
         test_bowtie = bowtie2_sam_ch.output
         test_joined = out_labeled_ch.output
 }
-
-// Removed functionality, to be moved to a new script or workflow
-// - Grouping for deduplication
-// - Deduplication with Clumpify
-// - Duplicate annotation with Bowtie2
-// - Addition of duplicate information to output TSV
-// - Clade counting
