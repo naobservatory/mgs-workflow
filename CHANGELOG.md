@@ -1,4 +1,4 @@
-# v2.7.0.1
+# v2.7.0.1 (in-progress)
 - Added instructions for what to do should you run out of API requests for containers
 
 # v2.7.0.0
