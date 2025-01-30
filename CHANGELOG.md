@@ -1,5 +1,5 @@
 # v2.7.0.1
-- Fixing mislabeled index that causes the pipeline to fail, and added `adapters` param to the index config file used to run our tests
+- Fixing mislabeled index that causes the pipeline to fail, added `adapters` param to the index config file used to run our tests, updated run test to use new index
 
 # v2.7.0.0
 - Implemented masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
