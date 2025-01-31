@@ -1,3 +1,6 @@
+# v2.7.0.2
+- Updating `pipeline-version.txt`
+
 # v2.7.0.1
 - Fixing mislabeled index that causes the pipeline to fail, added `adapters` param to the index config file used to run our tests, updated `RUN` and `RUN_VALIDATION` tests to use new index (location: `s3://nao-testing/index/20250130`)
 
