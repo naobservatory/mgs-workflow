@@ -1,4 +1,4 @@
-# v2.8.0.0
+# v2.8.0.0 (in development)
 - Major changes to many parts of the pipeline as part of a general performance overhaul
     - Modified most processes in the RUN and RUN_VALIDATION workflows to stream data in and out rather than reading whole files
     - As part of the previous change, modified most processes in the RUN and RUN_VALIDATION workflows to work with interleaved rather than paired sequence data
@@ -16,6 +16,9 @@
     - Added new intermediate outputs, including unfiltered viral hits and interleaved FASTQ from EXTRACT_VIRAL_READS
     - Viral hits TSV moved from `virus_hits_db.tsv.gz` to `virus_hits_filtered.tsv.gz`
     - Numerous changes to column names in viral hits TSV, mainly to improve clarity
+
+# v2.7.0.2
+- Updated `pipeline-version.txt`
 
 # v2.7.0.1
 - Fixed index-related issues from v2.7.0.0:
