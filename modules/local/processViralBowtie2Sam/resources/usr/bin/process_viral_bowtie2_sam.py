@@ -341,12 +341,9 @@ def process_paired_sam(inf, outf, genbank_metadata, viral_taxids):
             fwd_line = rev_line
             rev_line = get_next_alignment(inf)
             continue
-        # Check that pair statuses match and are valid
+        # Check that pair statuses match
         if rev_dict["pair_status"] != fwd_dict["pair_status"]:
             msg = f"Pair status mismatch: {fwd_dict['query_name']}, {fwd_dict['pair_status']}, {rev_dict['pair_status']}"
-            raise ValueError(msg)
-        if fwd_dict["pair_status"] == "UP" or rev_dict["pair_status"] == "UP":
-            msg = f"Both mates align but alignment is unpaired: {fwd_dict['query_name']}"
             raise ValueError(msg)
         # Process pair together
         line = line_from_pair(fwd_dict, rev_dict)
