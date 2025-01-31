@@ -17,6 +17,12 @@
     - Viral hits TSV moved from `virus_hits_db.tsv.gz` to `virus_hits_filtered.tsv.gz`
     - Numerous changes to column names in viral hits TSV, mainly to improve clarity
 
+# v2.7.0.1
+- Fixed index-related issues from v2.7.0.0:
+    - Updated `EXTRACT_VIRAL_READS` to expect updated path to viral genome DB
+    - Added `adapters` param to the index config file used to run our tests
+    - Updated `RUN` and `RUN_VALIDATION` tests to use up-to-date test index (location: `s3://nao-testing/index/20250130`)
+
 # v2.7.0.0
 - Implemented masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.
 - Removed TRIMMOMATIC and BBMAP from EXTRACT_VIRAL_READS.
