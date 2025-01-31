@@ -12,7 +12,7 @@ workflow LOAD_DOWNSTREAM_DATA {
 
         // Validate headers
         def required_headers = ['label', 'hits_tsv', 'groups_tsv']
-        def headers = file(sample_sheet).readLines().first().tokenize(',')*.trim()
+        def headers = file(input_file).readLines().first().tokenize(',')*.trim()
         if (headers != required_headers) {
             throw new Exception("""Invalid input header.
                 Expected: ${required_headers.join(', ')}
@@ -27,4 +27,5 @@ workflow LOAD_DOWNSTREAM_DATA {
     emit:
         input = input_ch
         start_time_str = start_time_str
+        test_input = input_file
 }
