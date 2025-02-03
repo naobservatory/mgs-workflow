@@ -1,6 +1,6 @@
 // Rename fields in a TSV header
 process REHEAD_TSV {
-    label "core_utils"
+    label "python"
     label "single"
     input:
         tuple val(sample), path(tsv)
