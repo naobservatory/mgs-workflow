@@ -1,6 +1,6 @@
 // Filter a gzipped TSV to keep the first line for each combination of values in the specified columns
 process FILTER_TSV {
-    label "core_utils"
+    label "coreutils"
     label "single"
     input:
         tuple val(sample), path(tsv)
