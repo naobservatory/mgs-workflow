@@ -35,7 +35,7 @@ nextflow_process {
             process {
                 '''
                 input[0] = INTERLEAVE_FASTQ.out.output
-                input[1] = "${params.ref_dir}/results/virus-genomes-filtered.fasta.gz"
+                input[1] = "${params.ref_dir}/results/virus-genomes-masked.fasta.gz"
                 input[2] = "0.4"
                 input[3] = "27"
                 input[4] = "ribo"
@@ -89,7 +89,7 @@ nextflow_process {
             process {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = "${params.ref_dir}/results/virus-genomes-filtered.fasta.gz"
+                input[1] = "${params.ref_dir}/results/virus-genomes-masked.fasta.gz"
                 input[2] = "0.4"
                 input[3] = "27"
                 input[4] = "ribo"
