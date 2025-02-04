@@ -29,6 +29,8 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 2")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
         }
     }
 
@@ -50,10 +52,12 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("ValueError: Join field missing from file 2")
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
+            assert process.errorReport.contains("ValueError: Join field missing from file 2")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
         }
     }
 
@@ -79,6 +83,8 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
             assert process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
         }
     }
 
@@ -104,6 +110,62 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
+        }
+    }
+
+    test("Should break when fields are duplicated across files"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_copy.tsv.gz"))
+                input[1] = "x"
+                input[2] = "inner"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert !process.errorReport.contains("ValueError: Join field missing from file 2")
+            assert !process.errorReport.contains("ValueError: Join field missing from file 1")
+            assert !process.errorReport.contains("ValueError: File 1 is not sorted")
+            assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
+        }
+    }
+
+    test("Should break when attempting to strict join on files with incompatible rows"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv.gz"))
+                input[1] = "x"
+                input[2] = "strict"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert !process.errorReport.contains("ValueError: Join field missing from file 2")
+            assert !process.errorReport.contains("ValueError: Join field missing from file 1")
+            assert !process.errorReport.contains("ValueError: File 1 is not sorted")
+            assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert process.errorReport.contains("ValueError: Strict join failed")
         }
     }
 
