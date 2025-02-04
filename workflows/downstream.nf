@@ -25,12 +25,12 @@ workflow DOWNSTREAM {
     input_ch = LOAD_DOWNSTREAM_DATA.out.input
     start_time_str = LOAD_DOWNSTREAM_DATA.out.start_time_str
 
-    // 2. Add group information, partition into per-group TSVs
-    PREPARE_GROUP_TSVS(input_ch)
-    group_ch = PREPARE_GROUP_TSVS.out.groups
-
-    // 3. Mark duplicates
-    MARK_DUPLICATES(group_ch)
+//    // 2. Add group information, partition into per-group TSVs
+//    PREPARE_GROUP_TSVS(input_ch)
+//    group_ch = PREPARE_GROUP_TSVS.out.groups
+//
+//    // 3. Mark duplicates
+//    MARK_DUPLICATES(group_ch)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -44,6 +44,6 @@ workflow DOWNSTREAM {
         time_ch >> "logging"
         version_ch >> "logging"
         // Duplicate results
-        MARK_DUPLICATES.out.tsv >> "results_downstream"
-        MARK_DUPLICATES.out.mapping >> "results_downstream"
+//        MARK_DUPLICATES.out.tsv >> "results_downstream"
+//        MARK_DUPLICATES.out.mapping >> "results_downstream"
 }
