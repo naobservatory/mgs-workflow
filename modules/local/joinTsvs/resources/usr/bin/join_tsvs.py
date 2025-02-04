@@ -101,10 +101,6 @@ def join_tsvs(input_path_1, input_path_2, field, join_type, output_file):
         line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
         # Iterate until we exhaust either file
         while line_1_curr and line_2_curr:
-            # Check for many-to-many join (not supported)
-            if id_1_curr == id_1_next and id_2_curr == id_2_next:
-                msg = f"Unsupported many-to-many join detected for ID {id_1_curr}."
-                raise ValueError(msg)
             # Verify that files are sorted
             check_sorting(id_1_curr, id_1_next, "1", input_path_1)
             check_sorting(id_2_curr, id_2_next, "2", input_path_2)
@@ -124,7 +120,8 @@ def join_tsvs(input_path_1, input_path_2, field, join_type, output_file):
                     line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
                     line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
                 else:
-                    msg = f"Unsupported many-to-many join detected for ID {id_1_curr}."
+                    ids = f"{id_1_curr}, {id_1_next}, {id_2_curr}, {id_2_next}"
+                    msg = f"Unsupported many-to-many join detected for ID {id_1_curr} ({ids})."
                     raise ValueError(msg)
             # If IDs don't match, handle on the basis of join type
             elif id_1_curr < id_2_curr:
