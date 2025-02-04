@@ -27,7 +27,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("ERROR: Could not find sort field in input header")
+            assert process.errorReport.contains("\n  ERROR: Could not find sort field in input header")
         }
     }
 
