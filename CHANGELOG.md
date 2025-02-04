@@ -1,7 +1,4 @@
-# v2.8.0.1 (in-progress)
-- Added instructions for what to do should you run out of API requests for containers
-
-# v2.8.0.0
+# v2.8.0.0 (in development)
 - Major changes to many parts of the pipeline as part of a general performance overhaul
     - Modified most processes in the RUN and RUN_VALIDATION workflows to stream data in and out rather than reading whole files
     - As part of the previous change, modified most processes in the RUN and RUN_VALIDATION workflows to work with interleaved rather than paired sequence data
@@ -19,6 +16,17 @@
     - Added new intermediate outputs, including unfiltered viral hits and interleaved FASTQ from EXTRACT_VIRAL_READS
     - Viral hits TSV moved from `virus_hits_db.tsv.gz` to `virus_hits_filtered.tsv.gz`
     - Numerous changes to column names in viral hits TSV, mainly to improve clarity
+- Updated mislabeled processes
+- Added instructions for what to do should you run out of API requests for containers
+
+# v2.7.0.2
+- Updated `pipeline-version.txt`
+
+# v2.7.0.1
+- Fixed index-related issues from v2.7.0.0:
+    - Updated `EXTRACT_VIRAL_READS` to expect updated path to viral genome DB
+    - Added `adapters` param to the index config file used to run our tests
+    - Updated `RUN` and `RUN_VALIDATION` tests to use up-to-date test index (location: `s3://nao-testing/index/20250130`)
 
 # v2.7.0.0
 - Implemented masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.

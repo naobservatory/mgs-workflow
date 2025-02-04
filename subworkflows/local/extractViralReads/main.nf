@@ -42,8 +42,8 @@ workflow EXTRACT_VIRAL_READS {
         bbduk_suffix
         bracken_threshold
     main:
-        // 0. Get reference paths
-        viral_genome_path = "${ref_dir}/results/virus-genomes-filtered.fasta.gz"
+        // Get reference paths
+        viral_genome_path = "${ref_dir}/results/virus-genomes-masked.fasta.gz"
         genome_meta_path  = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
         bt2_virus_index_path = "${ref_dir}/results/bt2-virus-index"
         bt2_human_index_path = "${ref_dir}/results/bt2-human-index"

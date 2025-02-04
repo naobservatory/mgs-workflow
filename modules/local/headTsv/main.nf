@@ -1,6 +1,6 @@
 // Add a header line to an unheaded TSV file
 process HEAD_TSV {
-    label "core_utils"
+    label "python"
     label "single"
     input:
         tuple val(sample), path(tsv)
