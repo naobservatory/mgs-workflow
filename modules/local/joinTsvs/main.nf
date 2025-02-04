@@ -5,7 +5,7 @@ process JOIN_TSVS {
     input:
         tuple val(sample), path(tsv1), path(tsv2)
         val(join_field)
-        val(join_type) // inner, left, right, outer
+        val(join_type) // inner, left, right, outer, strict
         val(label)
     output:
         tuple val(sample), path("${sample}_${label}_${join_type}_joined_${join_field}.tsv.gz"), emit: output
