@@ -8,12 +8,12 @@ process ADD_FIXED_COLUMN {
         val(value)
         val(label)
     output:
-        path("${label}_labeled.tsv.gz"), emit: output
-        path("${label}_in.tsv.gz"), emit: input
+        path("labeled_${label}_${tsv}"), emit: output
+        path("input_${tsv}"), emit: input
     shell:
         '''
-        add_fixed_column.py !{tsv} !{column} !{value} !{label}_labeled.tsv.gz
+        add_fixed_column.py !{tsv} !{column} !{value} labeled_!{label}_!{tsv}
         # Link input files for testing
-        ln -s !{tsv} !{label}_in.tsv.gz
+        ln -s !{tsv} input_!{tsv}
         '''
 }
