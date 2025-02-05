@@ -17,8 +17,9 @@
     - Viral hits TSV moved from `virus_hits_db.tsv.gz` to `virus_hits_filtered.tsv.gz`
     - Numerous changes to column names in viral hits TSV, mainly to improve clarity
 - Updated mislabeled processes
+- Fixed bug where multiqc doesn't output sequence length stats if all sequences are the same length
 - Added instructions for what to do should you run out of API requests for containers
--  Unzipped gold standard reference output in `test-data/gold-standard-results`
+- Unzipped gold standard reference output in `test-data/gold-standard-results`
 
 # v2.7.0.2
 - Updated `pipeline-version.txt`

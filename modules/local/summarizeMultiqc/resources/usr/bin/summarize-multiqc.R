@@ -112,6 +112,12 @@ extract_length_data_single <- function(length_dataset){
 extract_length_data <- function(multiqc_json){
   # Extract length data from multiqc JSON
   datasets <- multiqc_json$report_plot_data$fastqc_sequence_length_distribution_plot$datasets$lines
+  if (is.null(datasets) || length(datasets) == 0){
+    datasets <- multiqc_json$report_general_stats_headers$avg_sequence_length$dmax
+    filename <- names(multiqc_json$report_saved_raw_data$multiqc_general_stats)
+    seq_num <- multiqc_json$report_saved_raw_data$multiqc_general_stats[[filename]]$`FastQC_mqc-generalstats-fastqc-total_sequences`
+    return(tibble(length=datasets, n_sequences=seq_num, file=filename))
+  }
   data_out <- lapply(datasets, extract_length_data_single) %>% bind_rows()
   return(data_out)
 }
