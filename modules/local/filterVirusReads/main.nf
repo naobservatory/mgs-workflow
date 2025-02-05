@@ -1,24 +1,16 @@
-// Filter virus reads by alignment score and assignment status
+// Filter virus reads by alignment score and assignment status (streamed version)
 process FILTER_VIRUS_READS {
-    label "tidyverse"
-    label "single_cpu_16GB_memory"
+    label "biopython"
+    label "single"
     input:
-        path(virus_hits)
-        val(score_threshold)
+        path(hits_tsv)
+        val(score_threshold) // Length-normalized Bowtie2 alignment score
     output:
-        path("virus_hits_putative_filtered.tsv.gz")
+        path("virus_hits_filtered.tsv.gz"), emit: output
+        path("virus_hits_in.tsv.gz"), emit: input
     shell:
         '''
-        #!/usr/bin/env Rscript
-        library(tidyverse)
-        score_threshold <- !{score_threshold}
-        data <- read_tsv("!{virus_hits}", col_names = TRUE, show_col_types = FALSE)
-        filtered <- mutate(data, kraken_hit_host_virus = as.logical(!is.na(str_match(kraken_encoded_hits, paste0(" ", as.character(taxid), ":"))))) %>%
-            mutate(adj_score_fwd = replace_na(adj_score_fwd, 0), adj_score_rev = replace_na(adj_score_rev, 0)) %>%
-            filter((!kraken_classified) | kraken_assigned_host_virus > 0) %>% # Remove reads that are assigned to a non-host-virus taxon
-            filter(adj_score_fwd > score_threshold | adj_score_rev > score_threshold | kraken_assigned_host_virus == 1)
-        print(dim(data))
-        print(dim(filtered))
-        write_tsv(filtered, "virus_hits_putative_filtered.tsv.gz")
+        filter_virus_reads.py !{hits_tsv} !{score_threshold} virus_hits_filtered.tsv.gz
+        ln -s !{hits_tsv} virus_hits_in.tsv.gz
         '''
 }

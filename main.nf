@@ -32,4 +32,8 @@ output {
         path "intermediates/reads/raw_viral"
         tags nextflow_file_class: "intermediate", "nextflow.io/temporary": "false"
     }
+    intermediates {
+        path "intermediates"
+        tags nextflow_file_class: "intermediate", "nextflow.io/temporary": "false"
+    }
 }

@@ -30,7 +30,6 @@ if (opt$single_end == "true") {
   stop("single_end must be 'true' or 'false'")
 }
 
-
 # Set input paths
 multiqc_json_path <- file.path(opt$input_dir, "multiqc_data.json")
 fastqc_tsv_path <- file.path(opt$input_dir, "multiqc_fastqc.txt")
@@ -42,6 +41,7 @@ out_path_adapters <- file.path(opt$output_dir, paste0(id_out, "_qc_adapter_stats
 out_path_quality_base <- file.path(opt$output_dir, paste0(id_out, "_qc_quality_base_stats.tsv.gz"))
 out_path_quality_sequence <- file.path(opt$output_dir, paste0(id_out, "_qc_quality_sequence_stats.tsv.gz"))
 out_path_lengths <- file.path(opt$output_dir, paste0(id_out, "_qc_length_stats.tsv.gz"))
+
 #=====================#
 # AUXILIARY FUNCTIONS #
 #=====================#
@@ -53,36 +53,25 @@ process_n_bases <- function(n_bases_vec){
   # Adjust val based on unit
   val_out = ifelse(unit == "Gbp", val * 10^9, val) # TODO: Add other units as they come up
   val_out = ifelse(unit == "Mbp", val_out * 10^6, val_out)
+  val_out = ifelse(unit == "kbp", val_out * 10^3, val_out)
   return(val_out)
 }
 
-basic_info_fastqc <- function(fastqc_tsv, multiqc_json){
+basic_info_fastqc <- function(fastqc_tsv, multiqc_json, single_end){
   # Read in basic stats from multiqc JSON
   stats_json <- multiqc_json$report_general_stats_data
   tab_json <- lapply(names(stats_json),
                      function(x) stats_json[[x]] %>% mutate(file=x)) %>% bind_rows() %>%
     summarize(percent_gc = mean(percent_gc),
               mean_seq_len = mean(avg_sequence_length),
-              n_read_pairs = total_sequences[1],
+              n_reads_single = sum(total_sequences),
+              n_read_pairs = ifelse(single_end, NA, sum(total_sequences) / 2),
               percent_duplicates = mean(percent_duplicates))
   # Read in basic stats from fastqc TSV
   tab_tsv <- fastqc_tsv %>%
-    mutate(n_bases_approx = process_n_bases(`Total Bases`)) %>%
+    mutate(n_bases_approx = process_n_bases(`Total Bases`) %>% as.numeric) %>%
     select(n_bases_approx, per_base_sequence_quality:adapter_content) %>%
     summarize_all(function(x) paste(x, collapse="/"))
-
-  if (single_end) {
-    tab_tsv <- tab_tsv %>%
-      mutate(n_bases_approx = n_bases_approx %>% as.numeric)
-  } else {
-    tab_tsv <- tab_tsv %>%
-      mutate(n_bases_approx = n_bases_approx %>%
-             str_split("/") %>%
-             sapply(as.numeric) %>%
-             colSums())
-  }
-
-  # Combine
   return(bind_cols(tab_json, tab_tsv))
 }
 
@@ -97,6 +86,18 @@ extract_adapter_data_single <- function(adapter_dataset){
   return(data)
 }
 
+extract_adapter_data <- function(multiqc_json){
+  # Extract adapter data from multiqc JSON
+  datasets <- multiqc_json$report_plot_data$fastqc_adapter_content_plot$datasets$lines
+  data_out <- lapply(datasets, extract_adapter_data_single) %>% bind_rows()
+  # Make sure all columns are present even if no adapters
+  if (nrow(data_out) == 0){
+      data_out <- data_out %>% mutate(file = character(), position = numeric(),
+                                      adapter = character(), pc_adapters = numeric())
+  }
+  return(data_out)
+}
+
 extract_length_data_single <- function(length_dataset){
   # Convert a single JSON length dataset into a tibble
   data <- lapply(1:length(length_dataset$name), function(n)
@@ -108,19 +109,15 @@ extract_length_data_single <- function(length_dataset){
   return(data)
 }
 
-# NB: Current paired version can't distinguish or annotate forward vs reverse reads in these plots.
-# TODO: Restore this functionality (will require workflow restructuring).
-
-extract_adapter_data <- function(multiqc_json){
-  # Extract adapter data from multiqc JSON
-  datasets <- multiqc_json$report_plot_data$fastqc_adapter_content_plot$datasets$lines
-  data_out <- lapply(datasets, extract_adapter_data_single) %>% bind_rows()
-  return(data_out)
-}
-
 extract_length_data <- function(multiqc_json){
   # Extract length data from multiqc JSON
   datasets <- multiqc_json$report_plot_data$fastqc_sequence_length_distribution_plot$datasets$lines
+  if (is.null(datasets) || length(datasets) == 0){
+    datasets <- multiqc_json$report_general_stats_headers$avg_sequence_length$dmax
+    filename <- names(multiqc_json$report_saved_raw_data$multiqc_general_stats)
+    seq_num <- multiqc_json$report_saved_raw_data$multiqc_general_stats[[filename]]$`FastQC_mqc-generalstats-fastqc-total_sequences`
+    return(tibble(length=datasets, n_sequences=seq_num, file=filename))
+  }
   data_out <- lapply(datasets, extract_length_data_single) %>% bind_rows()
   return(data_out)
 }
@@ -171,10 +168,10 @@ fastqc_tsv <- readr::read_tsv(fastqc_tsv_path, show_col_types = FALSE)
 
 # Process
 add_info <- function(tab) mutate(tab, stage=opt$stage, sample=opt$sample)
-basic_info <- basic_info_fastqc(fastqc_tsv, multiqc_json) %>% add_info
+basic_info <- basic_info_fastqc(fastqc_tsv, multiqc_json, single_end) %>% add_info
 adapters <- extract_adapter_data(multiqc_json) %>% add_info
-lengths <- extract_length_data(multiqc_json) %>% add_info
 per_base_quality <- extract_per_base_quality(multiqc_json) %>% add_info
+lengths <- extract_length_data(multiqc_json) %>% add_info
 per_sequence_quality <- extract_per_sequence_quality(multiqc_json) %>% add_info
 
 # Write tables

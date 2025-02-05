@@ -2,6 +2,10 @@
 work/*
 output/*
 *.swp
+*.swo
+*.swn
+*.swm
+*.swl
 test/work
 test/output
 test/.nextflow*
@@ -9,4 +13,4 @@ test/.nextflow*
 pipeline_report.txt
 
 .nf-test/
-.nf-test.log
+.nf-test*

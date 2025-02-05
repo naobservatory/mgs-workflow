@@ -26,7 +26,7 @@ def open_by_suffix(filename, mode="r"):
 
 def extract_assignment(name_and_taxid):
     """Extract assigned name and taxid (if any) from kraken DB field."""
-    pattern = "^(.*) [(]taxid ([0-9]+)[)]$"
+    pattern = "(.*) [(]taxid ([0-9]+)[)]$"
     name, taxid = re.findall(pattern, name_and_taxid)[0]
     return(name, taxid)
 

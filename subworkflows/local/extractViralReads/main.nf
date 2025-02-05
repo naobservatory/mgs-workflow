@@ -1,36 +1,29 @@
+// Version of EXTRACT_VIRAL_READS that uses streaming and interleaved files to minimize memory requirements and loading times
+
 /***************************
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { BBDUK_HITS } from "../../../modules/local/bbduk"
+include { BBDUK_HITS_INTERLEAVE as BBDUK_HITS } from "../../../modules/local/bbduk"
 include { CUTADAPT } from "../../../modules/local/cutadapt"
+include { FASTP } from "../../../modules/local/fastp"
 include { BOWTIE2 as BOWTIE2_VIRUS } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
-include { PROCESS_VIRAL_BOWTIE2_SAM } from "../../../modules/local/processViralBowtie2Sam"
-include { COUNT_ALIGNMENT_DUPLICATES } from "../../../modules/local/countAlignmentDuplicates"
-include { EXTRACT_UNCONC_READ_IDS } from "../../../modules/local/extractUnconcReadIDs"
-include { EXTRACT_UNCONC_READS } from "../../../modules/local/extractUnconcReads"
-include { COMBINE_MAPPED_BOWTIE2_READS } from "../../../modules/local/combineMappedBowtie2Reads"
 include { TAXONOMY } from "../../../subworkflows/local/taxonomy"
+include { PROCESS_VIRAL_BOWTIE2_SAM } from "../../../modules/local/processViralBowtie2Sam"
 include { PROCESS_KRAKEN_VIRAL } from "../../../modules/local/processKrakenViral"
-include { MERGE_SAM_KRAKEN } from "../../../modules/local/mergeSamKraken"
-include { MERGE_TSVS as MERGE_TSVS_BOWTIE2_KRAKEN } from "../../../modules/local/mergeTsvs"
-include { MERGE_TSVS as MERGE_TSVS_BBMERGE } from "../../../modules/local/mergeTsvs"
-include { MERGE_TSVS as MERGE_TSVS_DEDUP } from "../../../modules/local/mergeTsvs"
-include { MERGE_TSVS as MERGE_TSVS_ALIGNMENT_DUPLICATES } from "../../../modules/local/mergeTsvs"
+include { SORT_TSV as SORT_KRAKEN_VIRAL } from "../../../modules/local/sortTsv"
+include { SORT_TSV as SORT_BOWTIE_VIRAL } from "../../../modules/local/sortTsv"
+include { SORT_TSV as SORT_BBMERGE } from "../../../modules/local/sortTsv"
+include { REHEAD_TSV as REHEAD_BOWTIE_VIRAL } from "../../../modules/local/reheadTsv"
+include { JOIN_TSVS as JOIN_KRAKEN_BOWTIE } from "../../../modules/local/joinTsvs"
+include { JOIN_TSVS as JOIN_BBMERGE } from "../../../modules/local/joinTsvs"
+include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
+include { CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
 include { FILTER_VIRUS_READS } from "../../../modules/local/filterVirusReads"
-include { COLLAPSE_VIRUS_READS } from "../../../modules/local/collapseVirusReads"
-include { ADD_FRAG_DUP_TO_VIRUS_READS } from "../../../modules/local/addFragDupToVirusReads"
-include { MAKE_VIRUS_READS_FASTA } from "../../../modules/local/makeVirusReadsFasta"
-include { COUNT_VIRUS_CLADES } from "../../../modules/local/countVirusClades"
-if (params.single_end) {
-    include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
-    include { FASTP_SINGLE as FASTP } from "../../../modules/local/fastp"
-} else {
-    include { CONCAT_GROUP_PAIRED as CONCAT_GROUP } from "../../../modules/local/concatGroup"
-    include { FASTP_PAIRED as FASTP } from "../../../modules/local/fastp"
-}
+include { CONCATENATE_FILES } from "../../../modules/local/concatenateFiles"
+include { EXTRACT_VIRAL_HITS_TO_FASTQ } from "../../../modules/local/extractViralHitsToFastq"
 
 /***********
 | WORKFLOW |
@@ -39,7 +32,6 @@ if (params.single_end) {
 workflow EXTRACT_VIRAL_READS {
     take:
         reads_ch
-        group_ch
         ref_dir
         kraken_db_ch
         aln_score_threshold
@@ -48,70 +40,56 @@ workflow EXTRACT_VIRAL_READS {
         min_kmer_hits
         k
         bbduk_suffix
-        fuzzy_match
-        grouping
-        single_end
+        bracken_threshold
     main:
-        // Get reference paths.
-        viral_genome_path = "${ref_dir}/results/virus-genomes-filtered.fasta.gz"
+        // Get reference paths
+        viral_genome_path = "${ref_dir}/results/virus-genomes-masked.fasta.gz"
         genome_meta_path  = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
         bt2_virus_index_path = "${ref_dir}/results/bt2-virus-index"
         bt2_human_index_path = "${ref_dir}/results/bt2-human-index"
         bt2_other_index_path = "${ref_dir}/results/bt2-other-index"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
-
-       // Run initial screen against viral genomes with BBDuk
+        // 1. Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
-
-        // Run FASTP
-        fastp_ch = FASTP(bbduk_ch.fail, adapter_path)
-
-        // Carry out stringent adapter removal with Cutadapt and Trimmomatic
+        // 2. Carry out stringent adapter removal with FASTP and Cutadapt
+        fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
         adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path)
-
-        // Grouping for deduplication
-        if (grouping) {
-            // Join samplesheet with trimmed_reads and update fastq files
-            trim_group_ch = group_ch.join(adapt_ch.reads, by: 0)
-            .map { sample, group, reads -> tuple(sample, reads[0], reads[1], group) }
-            .groupTuple(by: 3)
-            // Split into multi-sample and single-sample groups
-            multi_sample_groups = trim_group_ch.filter { it[0].size() > 1 }
-            single_sample_groups = trim_group_ch.filter { it[0].size() == 1 }
-                .map { samples, fwd_list, rev_list, group -> tuple(group, [fwd_list[0], rev_list[0]]) }
-            grouped_ch = CONCAT_GROUP(multi_sample_groups).mix(single_sample_groups)
-        } else {
-            grouped_ch = adapt_ch.reads
-        }
-        // Run Bowtie2 against a viral database and process output
-        bowtie2_ch = BOWTIE2_VIRUS(grouped_ch, bt2_virus_index_path, "--no-unal --no-sq --score-min G,1,1", "virus")
+        // 3. Run Bowtie2 against a viral database and process output
+        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, "--score-min G,1,1", "virus", true, false)
+        // 4. Filter contaminants
+        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, "", "human", false, false)
+        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, "", "other", false, false)
+        // 5. Run Kraken on filtered viral candidates (via taxonomy subworkflow)
+        tax_ch = TAXONOMY(other_bt2_ch.reads_unmapped, kraken_db_ch, "F", bracken_threshold, false)
+        // 6. Process and combine Kraken and Bowtie2 output
         bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path)
-        alignment_dup_summary = COUNT_ALIGNMENT_DUPLICATES(bowtie2_sam_ch, fuzzy_match.toInteger())
-        bowtie2_unconc_ids_ch = EXTRACT_UNCONC_READ_IDS(bowtie2_ch.sam)
-        bowtie2_unconc_reads_ch = EXTRACT_UNCONC_READS(bowtie2_ch.reads_unconc.combine(bowtie2_unconc_ids_ch, by: 0))
-        bowtie2_reads_combined_ch = COMBINE_MAPPED_BOWTIE2_READS(bowtie2_ch.reads_conc.combine(bowtie2_unconc_reads_ch, by: 0))
-        // Filter contaminants
-        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_reads_combined_ch, bt2_human_index_path, "", "human")
-        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unconc, bt2_other_index_path, "", "other")
-        // Run Kraken on filtered viral candidates
-        tax_ch = TAXONOMY(other_bt2_ch.reads_unconc, kraken_db_ch, true, "F", single_end)
-        // Process Kraken output and merge with Bowtie2 output across samples
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
-        bowtie2_kraken_merged_ch = MERGE_SAM_KRAKEN(kraken_output_ch.combine(bowtie2_sam_ch, by: 0))
-        merged_ch = MERGE_TSVS_BOWTIE2_KRAKEN(bowtie2_kraken_merged_ch.collect().ifEmpty([]), "bowtie2_kraken_merged")
-        merged_bbmerge_results = MERGE_TSVS_BBMERGE(tax_ch.bbmerge_summary.collect().ifEmpty([]), "bbmerge")
-        merged_dedup_results = MERGE_TSVS_DEDUP(tax_ch.dedup_summary.collect().ifEmpty([]), "dedup")
-        merged_alignment_dup_results = MERGE_TSVS_ALIGNMENT_DUPLICATES(alignment_dup_summary.collect().ifEmpty([]), "alignment_duplicates")
-        // Filter and process putative hit TSV
-        filtered_ch = FILTER_VIRUS_READS(merged_ch, aln_score_threshold)
-        collapsed_ch = COLLAPSE_VIRUS_READS(filtered_ch)
-        collapsed_frag_dup_ch = ADD_FRAG_DUP_TO_VIRUS_READS(collapsed_ch, merged_bbmerge_results, merged_dedup_results, merged_alignment_dup_results)
-        fasta_ch = MAKE_VIRUS_READS_FASTA(collapsed_frag_dup_ch)
-        // Count clades
-        count_ch = COUNT_VIRUS_CLADES(collapsed_frag_dup_ch, virus_db_path)
+        bowtie2_sam_rehead_ch = REHEAD_BOWTIE_VIRAL(bowtie2_sam_ch.output, "query_name", "seq_id", "bowtie2_viral")
+        bowtie2_sam_sorted_ch = SORT_BOWTIE_VIRAL(bowtie2_sam_rehead_ch.output, "seq_id", "bowtie2_viral")
+        kraken_sorted_ch = SORT_KRAKEN_VIRAL(kraken_output_ch.output, "seq_id", "kraken_viral")
+        out_combined_ch = bowtie2_sam_sorted_ch.sorted.combine(kraken_sorted_ch.sorted, by: 0)
+        out_joined_ch = JOIN_KRAKEN_BOWTIE(out_combined_ch, "seq_id", "inner", "bowtie2_kraken_viral")
+        // 7. Add BBMerge summary information
+        bbmerge_sorted_ch = SORT_BBMERGE(tax_ch.bbmerge_summary, "seq_id", "bbmerge_summary")
+        bbmerge_combined_ch = out_joined_ch.output.combine(bbmerge_sorted_ch.sorted, by: 0)
+        out_joined_ch_2 = JOIN_BBMERGE(bbmerge_combined_ch, "seq_id", "left", "viral_bbmerge")
+        out_labeled_ch = ADD_SAMPLE_COLUMN(out_joined_ch_2.output, "sample", "viral_bbmerge")
+        // 8. Concatenate across reads
+        label_combined_ch = out_labeled_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
+        concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_all")
+        // 9. Filter by length-normalized alignment score
+        filter_ch = FILTER_VIRUS_READS(concat_ch.output, aln_score_threshold)
+        // 10. Extract filtered virus hits in FASTQ format
+        fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ sample, file -> file }.collect().ifEmpty([])
+        fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
+        fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(filter_ch.output, fastq_unfiltered_concat.output)
     emit:
-        tsv = collapsed_frag_dup_ch
-        fasta = fasta_ch
-        counts = count_ch
         bbduk_match = bbduk_ch.fail
+        hits_all = concat_ch.output
+        hits_filtered = filter_ch.output
+        hits_fastq = fastq_ch.fastq
+        test_reads  = other_bt2_ch.reads_unmapped
+        test_kraken = kraken_output_ch.output
+        test_bowtie = bowtie2_sam_ch.output
+        test_joined = out_labeled_ch.output
 }
