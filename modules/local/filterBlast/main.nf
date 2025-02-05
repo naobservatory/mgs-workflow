@@ -1,7 +1,7 @@
 // Process & filter BLAST output into TSV
 // Streamed version (final filter only, earlier filtering handled by FILTER_TSV)
 process FILTER_BLAST {
-    label "biopython"
+    label "python"
     label "single"
     input:
         tuple val(sample), path(blast_hits_sorted) // Must be sorted on query ID (ascending) and bitscore (descending)

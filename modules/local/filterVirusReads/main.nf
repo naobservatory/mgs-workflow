@@ -1,6 +1,6 @@
 // Filter virus reads by alignment score and assignment status (streamed version)
 process FILTER_VIRUS_READS {
-    label "biopython"
+    label "python"
     label "single"
     input:
         path(hits_tsv)

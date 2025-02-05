@@ -1,5 +1,5 @@
 process EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF {
-    label "biopython"
+    label "python"
     label "single"
     input:
         tuple path(tsv) // Viral hits TSV
