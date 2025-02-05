@@ -1,7 +1,7 @@
 // Join and concatenate partially-merged interleaved FASTQ files into a single read file
 // TODO: Consider replacing with a Rust script for speed
 process JOIN_FASTQ {
-    label "python"
+    label "biopython"
     label "single"
     input:
         tuple val(sample), path(reads) // Merged single reads, then unmerged interleaved
