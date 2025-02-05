@@ -28,15 +28,26 @@ fi
 declare -a pids
 declare -a statuses
 
+temp_dir=$(mktemp -d)
+error_log="./test_logs.txt"
+touch "$error_log"
+
 # Download any plugins as running in parallel doesn't guarantee that they install properly
 nf-test update-plugins
-sleep 10
+sleep 2
 
 # Create sequence of shard numbers (1 to total_threads)
 for shard in $(seq 1 "$total_threads"); do
     (
         echo "Running shard ${shard}/${total_threads}..."
-        nf-test test --shard "${shard}/${total_threads}" "$@"
+        nf-test test --shard "${shard}/${total_threads}" "$@" &> "$temp_dir/error_${shard}.log"
+        exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            echo "Shard ${shard} failed with exit code $exit_code" >> "$error_log"
+            cat "$temp_dir/error_${shard}.log" >> "$error_log"
+            echo "---" >> "$error_log"
+        fi
+        exit $exit_code
     ) &
     pids+=($!) # Store process ID
 done
@@ -45,20 +56,22 @@ done
 for pid in "${pids[@]}"; do
     wait "$pid"
     statuses+=($?)
-done
-
-# Check exit statuses
-all_passed=true
-for status in "${statuses[@]}"; do
-    if [ "$status" -ne 0 ]; then
-        all_passed=false
-        echo "One or more test shards failed with exit status: $status"
+    
+    # Collect failed shards
+    if [ ${statuses[-1]} -ne 0 ]; then
+        failed_shards=true
     fi
 done
 
-if $all_passed; then
-    echo "All test shards completed successfully"
-    exit 0
-else
+# Check exit statuses
+if [ "$failed_shards" == "true" ]; then
+    echo "Some test shards failed. Check the test log at: $error_log"
+    grep "FAILED" "$error_log"
     exit 1
+else
+    echo "All test shards completed successfully"
+    rm -rf "$temp_dir"
+    exit 0
 fi
+
+rm -rf ${temp_dir}
