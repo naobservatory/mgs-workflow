@@ -17,6 +17,7 @@
     - Viral hits TSV moved from `virus_hits_db.tsv.gz` to `virus_hits_filtered.tsv.gz`
     - Numerous changes to column names in viral hits TSV, mainly to improve clarity
 - Updated mislabeled processes
+- Added instructions for what to do should you run out of API requests for containers
 -  Unzipped gold standard reference output in `test-data/gold-standard-results`
 
 # v2.7.0.2
