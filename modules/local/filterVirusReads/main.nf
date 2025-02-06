@@ -5,12 +5,13 @@ process FILTER_VIRUS_READS {
     input:
         path(hits_tsv)
         val(score_threshold) // Length-normalized Bowtie2 alignment score
+        val(label) // Output filename (needed for publishing)
     output:
-        path("virus_hits_filtered.tsv.gz"), emit: output
-        path("virus_hits_in.tsv.gz"), emit: input
+        path("${label}.tsv.gz"), emit: output
+        path("input_${hits_tsv}"), emit: input
     shell:
         '''
-        filter_virus_reads.py !{hits_tsv} !{score_threshold} virus_hits_filtered.tsv.gz
-        ln -s !{hits_tsv} virus_hits_in.tsv.gz
+        filter_virus_reads.py !{hits_tsv} !{score_threshold} !{label}.tsv.gz
+        ln -s !{hits_tsv} input_!{hits_tsv}
         '''
 }

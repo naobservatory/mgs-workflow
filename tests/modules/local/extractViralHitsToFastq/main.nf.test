@@ -8,6 +8,35 @@ nextflow_process {
     tag "module"
     tag "extract_viral_hits_to_fastq"
 
+    setup {
+        run("GZIP_FILE", alias: "GZIP_FASTQ") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test_fastq")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq"))
+                '''
+            }
+        }
+        run("GZIP_FILE", alias: "GZIP_SORTED") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test_fastq")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                '''
+            }
+        }
+        run("GZIP_FILE", alias: "GZIP_HITS") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test_fastq")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/virus-hits-test.tsv"))
+                '''
+            }
+        }
+    }
 
     test("Should fail with appropriate error when seq_id is missing from input tsv") {
         tag "expect_failed"
@@ -15,8 +44,8 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"
-                input[1] = "${projectDir}/test-data/toy-data/test-random.fastq.gz"
+                input[0] = GZIP_SORTED.out.map{it[1]}
+                input[1] = GZIP_FASTQ.out.map{it[1]}
                 '''
             }
         }
@@ -33,8 +62,8 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = "${projectDir}/test-data/toy-data/virus-hits-test.tsv.gz"
-                input[1] = "${projectDir}/test-data/toy-data/test-random.fastq.gz"
+                input[0] = GZIP_HITS.out.map{it[1]}
+                input[1] = GZIP_FASTQ.out.map{it[1]}
                 '''
             }
         }

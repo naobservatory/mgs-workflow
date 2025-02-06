@@ -7,12 +7,12 @@ process ADD_SAMPLE_COLUMN {
         val(sample_column)
         val(label)
     output:
-        tuple val(sample), path("${sample}_${label}_labeled.tsv.gz"), emit: output
-        tuple val(sample), path("${sample}_${label}_in.tsv.gz"), emit: input
+        tuple val(sample), path("labeled_${label}_${tsv}"), emit: output
+        tuple val(sample), path("input_${tsv}"), emit: input
     shell:
         '''
-        add_sample_column.py !{tsv} !{sample} !{sample_column} !{sample}_!{label}_labeled.tsv.gz
+        add_sample_column.py !{tsv} !{sample} !{sample_column} labeled_!{label}_!{tsv}
         # Link input files for testing
-        ln -s !{tsv} !{sample}_!{label}_in.tsv.gz
+        ln -s !{tsv} input_!{tsv}
         '''
 }

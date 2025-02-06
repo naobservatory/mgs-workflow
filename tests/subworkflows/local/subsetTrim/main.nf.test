@@ -7,7 +7,7 @@ def filter_tab = { tab_in, threshold -> csv(tab_in.table.where(
 
 nextflow_workflow {
 
-    name "Test workflow SUBSET_TRIM"
+    name "Test subworkflow SUBSET_TRIM"
     script "subworkflows/local/subsetTrim/main.nf"
     workflow "SUBSET_TRIM"
     tag "subworkflow"

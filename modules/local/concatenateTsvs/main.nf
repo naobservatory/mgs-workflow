@@ -7,10 +7,10 @@ process CONCATENATE_TSVS {
         val(name)
     output:
         path("${name}.tsv.gz"), emit: output
-        path("${name}_in_0.tsv.gz"), emit: input
+        path("input_${tsvs[0]}"), emit: input
     shell:
         '''
         concatenate_tsvs.py -o !{name}.tsv.gz !{tsvs}
-        ln -s !{tsvs[0]} !{name}_in_0.tsv.gz # Link input to output for testing
+        ln -s !{tsvs[0]} input_!{tsvs[0]} # Link input to output for testing
         '''
 }
