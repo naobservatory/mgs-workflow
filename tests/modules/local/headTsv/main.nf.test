@@ -18,7 +18,7 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "a,b,c,d"
                 input[2] = "test"
                 '''
@@ -38,7 +38,7 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "a,b"
                 input[2] = "test"
                 '''
@@ -58,7 +58,7 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "a,b,c"
                 input[2] = "test"
                 '''
@@ -68,8 +68,8 @@ nextflow_process {
             // Should run without failures
             assert process.success
             // Output and input dimensions should match
-            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true, header: false)
-            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", header: false)
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
             assert tab_out.columnCount == tab_in.columnCount
             assert tab_out.rowCount == tab_in.rowCount
             // Output should have expected headers

@@ -64,13 +64,13 @@ workflow EXTRACT_VIRAL_READS {
         // 6. Process and combine Kraken and Bowtie2 output
         bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path)
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
-        bowtie2_sam_rehead_ch = REHEAD_BOWTIE_VIRAL(bowtie2_sam_ch.output, "query_name", "seq_id", "bowtie2_viral")
-        bowtie2_sam_sorted_ch = SORT_BOWTIE_VIRAL(bowtie2_sam_rehead_ch.output, "seq_id", "bowtie2_viral")
-        kraken_sorted_ch = SORT_KRAKEN_VIRAL(kraken_output_ch.output, "seq_id", "kraken_viral")
+        bowtie2_sam_rehead_ch = REHEAD_BOWTIE_VIRAL(bowtie2_sam_ch.output, "query_name", "seq_id")
+        bowtie2_sam_sorted_ch = SORT_BOWTIE_VIRAL(bowtie2_sam_rehead_ch.output, "seq_id")
+        kraken_sorted_ch = SORT_KRAKEN_VIRAL(kraken_output_ch.output, "seq_id")
         out_combined_ch = bowtie2_sam_sorted_ch.sorted.combine(kraken_sorted_ch.sorted, by: 0)
         out_joined_ch = JOIN_KRAKEN_BOWTIE(out_combined_ch, "seq_id", "inner", "bowtie2_kraken_viral")
         // 7. Add BBMerge summary information
-        bbmerge_sorted_ch = SORT_BBMERGE(tax_ch.bbmerge_summary, "seq_id", "bbmerge_summary")
+        bbmerge_sorted_ch = SORT_BBMERGE(tax_ch.bbmerge_summary, "seq_id")
         bbmerge_combined_ch = out_joined_ch.output.combine(bbmerge_sorted_ch.sorted, by: 0)
         out_joined_ch_2 = JOIN_BBMERGE(bbmerge_combined_ch, "seq_id", "left", "viral_bbmerge")
         out_labeled_ch = ADD_SAMPLE_COLUMN(out_joined_ch_2.output, "sample", "viral_bbmerge")
@@ -78,7 +78,7 @@ workflow EXTRACT_VIRAL_READS {
         label_combined_ch = out_labeled_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
         concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_all")
         // 9. Filter by length-normalized alignment score
-        filter_ch = FILTER_VIRUS_READS(concat_ch.output, aln_score_threshold)
+        filter_ch = FILTER_VIRUS_READS(concat_ch.output, aln_score_threshold, "virus_hits_filtered")
         // 10. Extract filtered virus hits in FASTQ format
         fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ sample, file -> file }.collect().ifEmpty([])
         fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
