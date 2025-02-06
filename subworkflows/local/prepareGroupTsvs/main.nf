@@ -19,8 +19,8 @@ workflow PREPARE_GROUP_TSVS {
         // 1. Sort inputs by sample ID
         input_ch = input_files.map{ label, input, groups -> tuple(label, input) }
         groups_ch = input_files.map{ label, input, groups -> tuple(label, groups) }
-        input_sorted_ch = SORT_INPUT(input_ch, "sample", "input").sorted
-        groups_sorted_ch = SORT_GROUPS(groups_ch, "sample", "groups").sorted
+        input_sorted_ch = SORT_INPUT(input_ch, "sample").sorted
+        groups_sorted_ch = SORT_GROUPS(groups_ch, "sample").sorted
         combined_sorted_ch = input_sorted_ch.combine(groups_sorted_ch, by: 0)
         // 2. Add group information to hit TSVs
         joined_ch = JOIN_TSVS(combined_sorted_ch, "sample", "strict", "input").output

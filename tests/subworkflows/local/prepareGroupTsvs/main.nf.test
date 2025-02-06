@@ -17,6 +17,24 @@ nextflow_workflow {
                 """
             }
         }
+        run("COPY_FILE", alias: "COPY_HITS") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                '''
+                input[0] = LOAD_DOWNSTREAM_DATA.out.input.map{ label, hits, groups -> tuple(label, hits) }
+                input[1] = "test_hits.tsv.gz"
+                '''
+            }
+        }
+        run("COPY_FILE", alias: "COPY_GROUPS") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                '''
+                input[0] = LOAD_DOWNSTREAM_DATA.out.input.map{ label, hits, groups -> tuple(label, groups) }
+                input[1] = "test_groups.tsv"
+                '''
+            }
+        }
     }
 
     test("Should run without failures") {
@@ -26,7 +44,7 @@ nextflow_workflow {
             }
             workflow {
                 '''
-                input[0] = LOAD_DOWNSTREAM_DATA.out.input
+                input[0] = COPY_HITS.out.combine(COPY_GROUPS.out, by: 0)
                 '''
             }
         }
@@ -34,12 +52,12 @@ nextflow_workflow {
             // Should run without failures
             assert workflow.success
             // Output of join should have expected dimensions
-            def input_tabs = workflow.out.test_in.collect{path(it[0][1]).csv(sep: "\t", decompress: true)}
-            def group_tabs = workflow.out.test_in.collect{path(it[0][2]).csv(sep: "\t", decompress: true)}
-            def output_tabs = workflow.out.test_join.collect{path(it[0][1]).csv(sep: "\t", decompress: true)}
+            def input_tabs = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t", decompress: true)}
+            def group_tabs = workflow.out.test_in.collect{path(it[2]).csv(sep: "\t")}
+            def output_tabs = workflow.out.test_join.collect{path(it[1]).csv(sep: "\t", decompress: true)}
             assert input_tabs.size() == group_tabs.size()
             assert input_tabs.size() == output_tabs.size()
-            for (int i=0; i < input_tabs.size; i++){
+            for (int i=0; i < input_tabs.size(); i++){
                 assert input_tabs[i].rowCount == output_tabs[i].rowCount
                 assert input_tabs[i].columnCount + group_tabs[i].columnCount - 1 == output_tabs[i].columnCount
             }
