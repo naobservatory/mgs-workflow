@@ -6,14 +6,13 @@ process REHEAD_TSV {
         tuple val(sample), path(tsv)
         val(old_fields)
         val(new_fields)
-        val(label)
     output:
-        tuple val(sample), path("${sample}_${label}_renamed.tsv.gz"), emit: output
-        tuple val(sample), path("${sample}_${label}_in.tsv.gz"), emit: input
+        tuple val(sample), path("renamed_${tsv}"), emit: output
+        tuple val(sample), path("input_${tsv}"), emit: input
     shell:
         '''
-        rehead_tsv.py !{tsv} !{old_fields} !{new_fields} !{sample}_!{label}_renamed.tsv.gz
+        rehead_tsv.py !{tsv} !{old_fields} !{new_fields} renamed_!{tsv}
         # Link input to output for testing
-        ln -s !{tsv} !{sample}_!{label}_in.tsv.gz
+        ln -s !{tsv} input_!{tsv}
         '''
 }

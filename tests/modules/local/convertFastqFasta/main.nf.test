@@ -7,6 +7,18 @@ nextflow_process {
     tag "module"
     tag "convert_fastq_fasta"
 
+    setup {
+        run("GZIP_FILE") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq"))
+                '''
+            }
+        }
+    }
+
     test("Should run without failures on correct input") {
         tag "expect_success"
         when {
@@ -14,8 +26,7 @@ nextflow_process {
             }
             process {
                 '''
-                input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq.gz"))
+                input[0] = GZIP_FILE.out
                 '''
             }
         }

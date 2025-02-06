@@ -1,6 +1,6 @@
 nextflow_workflow {
 
-    name "Test workflow PROFILE"
+    name "Test subworkflow PROFILE"
     script "subworkflows/local/profile/main.nf"
     workflow "PROFILE"
     tag "subworkflow"

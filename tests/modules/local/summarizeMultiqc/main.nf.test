@@ -1,6 +1,6 @@
 nextflow_process {
 
-    name "Test Process SUMMARIZE_MULTIQC"
+    name "Test process SUMMARIZE_MULTIQC"
     script "modules/local/summarizeMultiqc/main.nf"
     process "SUMMARIZE_MULTIQC"
     tag "module"

@@ -1,6 +1,6 @@
 nextflow_workflow {
 
-    name "Test workflow RUN_QC"
+    name "Test subworkflow RUN_QC"
     script "subworkflows/local/runQc/main.nf"
     workflow "RUN_QC"
     tag "subworkflow"

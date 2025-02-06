@@ -1,6 +1,6 @@
 nextflow_workflow {
 
-    name "Test Workflow COUNT_TOTAL_READS"
+    name "Test subworkflow COUNT_TOTAL_READS"
     script "subworkflows/local/countTotalReads/main.nf"
     workflow "COUNT_TOTAL_READS"
     tag "subworkflow"
@@ -34,7 +34,6 @@ nextflow_workflow {
 
         then {
             assert workflow.success
-            println(workflow.out.read_counts[0])
             def file_out = path(workflow.out.read_counts[0]).csv(sep: "\t", decompress: true) 
             assert file_out.rowCount == 1
             assert file_out.columnNames == ['sample', 'n_reads_single', 'n_read_pairs']
