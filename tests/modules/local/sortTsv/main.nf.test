@@ -1,6 +1,5 @@
 def checkGzipSorted = { file -> ["bash", "-c", "zcat " + file + " | tail -n +2 | sort -t '\t' -k1,1 -C && printf 1 || printf 0"].execute().text.trim() as Integer }
-def countGzipLines = { file -> path(file).linesGzip.size() }
-def getGzipHeader = { file -> ["bash", "-c", "zcat " + file + " | head -n 1"].execute().text.trim() }
+def checkPlaintextSorted = { file -> ["bash", "-c", "cat " + file + " | tail -n +2 | sort -t '\t' -k1,1 -C && printf 1 || printf 0"].execute().text.trim() as Integer }
 
 nextflow_process {
 
@@ -18,29 +17,27 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv"))
                 input[1] = "a" // Not in header
-                input[2] = "test_sorted"
                 '''
             }
         }
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("ERROR: Could not find sort field in input header")
+            assert process.errorReport.contains("\n  ERROR: Could not find sort field in input header")
         }
     }
 
-    test("Should produce no change when run on an already-sorted gzipped TSV"){
+    test("Should produce no change when run on an already-sorted plaintext TSV"){
         tag "expect_success"
         when {
             params {}
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "x"
-                input[2] = "test_sorted"
                 '''
             }
         }
@@ -48,23 +45,67 @@ nextflow_process {
             // Should run without failures
             assert process.success
             // Output should be sorted
-            def output_sorted = checkGzipSorted(process.out.sorted[0][1])
+            def output_sorted = checkPlaintextSorted(process.out.sorted[0][1])
             assert output_sorted == 1
             // Output should match input
-            assert path(process.out.sorted[0][1]).md5 == path(process.out.input[0][1]).md5
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.sorted[0][1]).csv(sep: "\t")
+            assertTableEquals tab_in, tab_out
         }
     }
 
-    test("Should successfully sort an unsorted gzipped TSV"){
+    test("Should successfully sort an unsorted plaintext TSV"){
         tag "expect_success"
         when {
             params {}
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv"))
                 input[1] = "x"
-                input[2] = "test_sorted"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Input should be unsorted
+            def input_sorted = checkPlaintextSorted(process.out.input[0][1])
+            assert input_sorted == 0
+            // Output should be sorted
+            def output_sorted = checkPlaintextSorted(process.out.sorted[0][1])
+            assert output_sorted == 1
+            // Output and input dimensions should match
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.sorted[0][1]).csv(sep: "\t")
+            assert tab_out.columnCount == tab_in.columnCount
+            assert tab_out.rowCount == tab_in.rowCount
+            // Output and input headers should match
+            assert tab_out.columnNames == tab_in.columnNames
+            // Output should differ from input
+            assert tab_in.columns["x"] != tab_out.columns["x"]
+        }
+    }
+
+    test("Should successfully sort an unsorted gzipped TSV"){
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv"))
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_FILE.out
+                input[1] = "x"
                 '''
             }
         }

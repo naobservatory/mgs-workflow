@@ -12,8 +12,8 @@ nextflow_process {
             script "modules/local/copyFile/main.nf"
             process {
                 """
-                input[0] = "${projectDir}/test-data/toy-data/test-random.fastq.gz"
-                input[1] = "input_1.fastq.gz"
+                input[0] = "${projectDir}/test-data/toy-data/test-random.fastq"
+                input[1] = "input_1.fastq"
                 """
             }
         }
@@ -21,8 +21,8 @@ nextflow_process {
             script "modules/local/copyFile/main.nf"
             process {
                 """
-                input[0] = "${projectDir}/test-data/toy-data/test-random.fastq.gz"
-                input[1] = "input_2.fastq.gz"
+                input[0] = "${projectDir}/test-data/toy-data/test-random.fastq"
+                input[1] = "input_2.fastq"
                 """
             }
         }
@@ -30,8 +30,8 @@ nextflow_process {
             script "modules/local/copyFile/main.nf"
             process {
                 """
-                input[0] = "${projectDir}/test-data/toy-data/test-random.fastq.gz"
-                input[1] = "input_3.fastq.gz"
+                input[0] = "${projectDir}/test-data/toy-data/test-random.fastq"
+                input[1] = "input_3.fastq"
                 """
             }
         }
@@ -46,7 +46,7 @@ nextflow_process {
                 '''
                 input[0] = COPY_FILE_1.out
                 input[1] = "test_single"
-                input[2] = "fastq.gz"
+                input[2] = "fastq"
                 '''
             }
         }
@@ -67,7 +67,7 @@ nextflow_process {
                 '''
                 input[0] = COPY_FILE_1.out.combine(COPY_FILE_2.out)
                 input[1] = "test_double"
-                input[2] = "fastq.gz"
+                input[2] = "fastq"
                 '''
             }
         }
@@ -96,7 +96,7 @@ nextflow_process {
                 '''
                 input[0] = COPY_FILE_1.out.combine(COPY_FILE_2.out).combine(COPY_FILE_3.out)
                 input[1] = "test_triple"
-                input[2] = "fastq.gz"
+                input[2] = "fastq"
                 '''
             }
         }

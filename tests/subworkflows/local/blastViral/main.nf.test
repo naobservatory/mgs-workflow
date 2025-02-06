@@ -2,7 +2,7 @@ def checkGzipSorted = { file,key -> ["bash", "-c", "zcat " + file + " | sort -C 
 
 nextflow_workflow {
 
-    name "Test workflow BLAST_VIRAL"
+    name "Test subworkflow BLAST_VIRAL"
     script "subworkflows/local/blastViral/main.nf"
     workflow "BLAST_VIRAL"
     tag "subworkflow"
