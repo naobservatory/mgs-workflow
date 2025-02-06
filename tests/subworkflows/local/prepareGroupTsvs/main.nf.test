@@ -61,6 +61,11 @@ nextflow_workflow {
                 assert input_tabs[i].rowCount == output_tabs[i].rowCount
                 assert input_tabs[i].columnCount + group_tabs[i].columnCount - 1 == output_tabs[i].columnCount
             }
+            // Partitioning should have no effect (only one sample per dataset)
+            def part_tabs = workflow.out.test_part.collect{path(it[1]).csv(sep: "\t", decompress: true)}
+            for (int i=0; i < input_tabs.size(); i++){
+                assertTableEquals output_tabs[i], part_tabs[i]
+            }
         }
     }
 }
