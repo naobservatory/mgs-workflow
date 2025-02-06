@@ -12,8 +12,8 @@ nextflow_process {
             script "modules/local/copyFile/main.nf"
             process {
                 """
-                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"
-                input[1] = "input_tsv_1.tsv.gz"
+                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                input[1] = "input_tsv_1.tsv"
                 """
             }
         }
@@ -21,8 +21,8 @@ nextflow_process {
             script "modules/local/copyFile/main.nf"
             process {
                 """
-                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"
-                input[1] = "input_tsv_2.tsv.gz"
+                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                input[1] = "input_tsv_2.tsv"
                 """
             }
         }
@@ -30,8 +30,8 @@ nextflow_process {
             script "modules/local/copyFile/main.nf"
             process {
                 """
-                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"
-                input[1] = "input_tsv_3.tsv.gz"
+                input[0] = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                input[1] = "input_tsv_3.tsv"
                 """
             }
         }
@@ -45,7 +45,7 @@ nextflow_process {
             process {
                 '''
                 input[0] = COPY_FILE_1.out
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv"))
                 input[1] = "test_mismatch"
                 '''
             }
@@ -73,7 +73,7 @@ nextflow_process {
             // Should run without failures
             assert process.success
             // Output should have correct dimensions
-            def tab_in = path(process.out.input[0]).csv(sep: "\t", decompress: true)
+            def tab_in = path(process.out.input[0]).csv(sep: "\t")
             def tab_out = path(process.out.output[0]).csv(sep: "\t", decompress: true)
             assert tab_in.columnCount == tab_out.columnCount
             assert tab_in.rowCount == tab_out.rowCount
@@ -98,7 +98,7 @@ nextflow_process {
             // Should run without failures
             assert process.success
             // Output should have correct dimensions
-            def tab_in = path(process.out.input[0]).csv(sep: "\t", decompress: true)
+            def tab_in = path(process.out.input[0]).csv(sep: "\t")
             def tab_out = path(process.out.output[0]).csv(sep: "\t", decompress: true)
             assert tab_in.columnCount == tab_out.columnCount
             assert tab_in.rowCount * 2 == tab_out.rowCount
@@ -123,7 +123,7 @@ nextflow_process {
             // Should run without failures
             assert process.success
             // Output should have correct dimensions
-            def tab_in = path(process.out.input[0]).csv(sep: "\t", decompress: true)
+            def tab_in = path(process.out.input[0]).csv(sep: "\t")
             def tab_out = path(process.out.output[0]).csv(sep: "\t", decompress: true)
             assert tab_in.columnCount == tab_out.columnCount
             assert tab_in.rowCount * 3 == tab_out.rowCount

@@ -1,6 +1,6 @@
 nextflow_process {
 
-    name "Test Process COUNT_READS"
+    name "Test process COUNT_READS"
     script "modules/local/countReads/main.nf"
     process "COUNT_READS"
     tag "module"

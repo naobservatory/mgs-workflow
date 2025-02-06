@@ -8,12 +8,20 @@ nextflow_process {
     tag "interleave_fastq"
 
     setup {
+        run("GZIP_FILE") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq"))
+                '''
+            }
+        }
         run("UNLEAVE_FASTQ") {
             script "modules/local/unleaveFastq/main.nf"
             process {
                 '''
-                input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq.gz"))
+                input[0] = GZIP_FILE.out
                 '''
             }
         }

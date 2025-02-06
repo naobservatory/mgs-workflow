@@ -1,6 +1,6 @@
 nextflow_workflow {
 
-    name "Test Workflow LOAD_SAMPLESHEET"
+    name "Test subworkflow LOAD_SAMPLESHEET"
     script "subworkflows/local/loadSampleSheet/main.nf"
     workflow "LOAD_SAMPLESHEET"
     tag "load_samplesheet"

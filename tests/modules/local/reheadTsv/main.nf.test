@@ -18,10 +18,9 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "xyz" // Not in header
                 input[2] = "abc"
-                input[3] = "test"
                 '''
             }
         }
@@ -39,10 +38,9 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "x,xyz" // Not in header
                 input[2] = "a,abc"
-                input[3] = "test"
                 '''
             }
         }
@@ -60,10 +58,9 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "x,y"
                 input[2] = "a"
-                input[3] = "test"
                 '''
             }
         }
@@ -81,10 +78,9 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "x"
                 input[2] = "a,b"
-                input[3] = "test"
                 '''
             }
         }
@@ -102,10 +98,9 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "x"
                 input[2] = "x"
-                input[3] = "test"
                 '''
             }
         }
@@ -124,10 +119,9 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "x,y"
                 input[2] = "x,y"
-                input[3] = "test"
                 '''
             }
         }
@@ -146,10 +140,9 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "x"
                 input[2] = "test"
-                input[3] = "test"
                 '''
             }
         }
@@ -157,8 +150,8 @@ nextflow_process {
             // Should run without failures
             assert process.success
             // Output and input dimensions should match
-            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true)
-            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
             assert tab_out.columnCount == tab_in.columnCount
             assert tab_out.rowCount == tab_in.rowCount
             // Output and input headers should match except for intended substitution
@@ -182,10 +175,9 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "x,y"
                 input[2] = "a,b"
-                input[3] = "test"
                 '''
             }
         }
@@ -193,8 +185,8 @@ nextflow_process {
             // Should run without failures
             assert process.success
             // Output and input dimensions should match
-            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true)
-            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
             assert tab_out.columnCount == tab_in.columnCount
             assert tab_out.rowCount == tab_in.rowCount
             // Output and input headers should match except for intended substitution

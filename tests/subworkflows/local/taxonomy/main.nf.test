@@ -1,6 +1,6 @@
 nextflow_workflow {
 
-    name "Test workflow TAXONOMY"
+    name "Test subworkflow TAXONOMY"
     script "subworkflows/local/taxonomy/main.nf"
     workflow "TAXONOMY"
     tag "subworkflow"

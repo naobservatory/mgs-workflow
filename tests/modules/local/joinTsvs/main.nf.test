@@ -14,8 +14,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv"))
                 input[1] = "v"
                 input[2] = "inner"
                 input[3] = "test"
@@ -39,8 +39,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv"))
                 input[1] = "y"
                 input[2] = "inner"
                 input[3] = "test"
@@ -64,8 +64,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv.gz"))
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
                 input[1] = "x"
                 input[2] = "inner"
                 input[3] = "test"
@@ -89,8 +89,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv"))
                 input[1] = "x"
                 input[2] = "inner"
                 input[3] = "test"
@@ -114,8 +114,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv"))
                 input[1] = "x"
                 input[2] = "inner"
                 input[3] = "test"
@@ -126,8 +126,8 @@ nextflow_process {
             // Should run without errors
             assert process.success
             // Should have all columns from both inputs (and no others)
-            def tab_in_1 = path(process.out.input[0][1][0]).csv(sep: "\t", decompress: true)
-            def tab_in_2 = path(process.out.input[0][1][1]).csv(sep: "\t", decompress: true)
+            def tab_in_1 = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_in_2 = path(process.out.input[0][2]).csv(sep: "\t")
             def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_out.columnCount == tab_in_1.columnCount + tab_in_2.columnCount - 1
             for (col in tab_in_1.columnNames) {
@@ -154,8 +154,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv"))
                 input[1] = "x"
                 input[2] = "left"
                 input[3] = "test"
@@ -166,8 +166,8 @@ nextflow_process {
             // Should run without errors
             assert process.success
             // Should have all columns from both inputs (and no others)
-            def tab_in_1 = path(process.out.input[0][1][0]).csv(sep: "\t", decompress: true)
-            def tab_in_2 = path(process.out.input[0][1][1]).csv(sep: "\t", decompress: true)
+            def tab_in_1 = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_in_2 = path(process.out.input[0][2]).csv(sep: "\t")
             def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_out.columnCount == tab_in_1.columnCount + tab_in_2.columnCount - 1
             for (col in tab_in_1.columnNames) {
@@ -188,8 +188,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv"))
                 input[1] = "x"
                 input[2] = "right"
                 input[3] = "test"
@@ -200,8 +200,8 @@ nextflow_process {
             // Should run without errors
             assert process.success
             // Should have all columns from both inputs (and no others)
-            def tab_in_1 = path(process.out.input[0][1][0]).csv(sep: "\t", decompress: true)
-            def tab_in_2 = path(process.out.input[0][1][1]).csv(sep: "\t", decompress: true)
+            def tab_in_1 = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_in_2 = path(process.out.input[0][2]).csv(sep: "\t")
             def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_out.columnCount == tab_in_1.columnCount + tab_in_2.columnCount - 1
             for (col in tab_in_1.columnNames) {
@@ -222,8 +222,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv.gz"))
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv.gz"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv"))
                 input[1] = "x"
                 input[2] = "outer"
                 input[3] = "test"
@@ -234,8 +234,8 @@ nextflow_process {
             // Should run without errors
             assert process.success
             // Should have all columns from both inputs (and no others)
-            def tab_in_1 = path(process.out.input[0][1][0]).csv(sep: "\t", decompress: true)
-            def tab_in_2 = path(process.out.input[0][1][1]).csv(sep: "\t", decompress: true)
+            def tab_in_1 = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_in_2 = path(process.out.input[0][2]).csv(sep: "\t")
             def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_out.columnCount == tab_in_1.columnCount + tab_in_2.columnCount - 1
             for (col in tab_in_1.columnNames) {
