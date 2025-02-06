@@ -9,16 +9,27 @@ nextflow_process {
     tag "module"
     tag "sort_file"
 
+
     test("Should produce no change when run on an already-sorted gzipped TSV"){
         tag "expect_success"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_nohead.tsv"))
+                    '''
+                }
+            }
+        }
         when {
             params {
                 key = "-t\$\'\\t\' -k3,3nr -k2,2n"
             }
             process {
                 '''
-                input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_nohead.tsv.gz"))
+                input[0] = GZIP_FILE.out
                 input[1] = params.key
                 input[2] = "tsv"
                 '''
@@ -37,14 +48,24 @@ nextflow_process {
 
     test("Should successfully sort an unsorted gzipped TSV"){
         tag "expect_success"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted_nohead.tsv"))
+                    '''
+                }
+            }
+        }
         when {
             params {
                 key = "-t\$\'\\t\' -k3,3nr -k2,2n"
             }
             process {
                 '''
-                input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted_nohead.tsv.gz"))
+                input[0] = GZIP_FILE.out
                 input[1] = params.key
                 input[2] = "tsv"
                 '''

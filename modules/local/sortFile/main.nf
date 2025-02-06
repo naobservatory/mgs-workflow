@@ -1,7 +1,7 @@
 // Sort a gzipped file by a user-specified key string
 // TODO: Expand to handle plaintext files
 process SORT_FILE {
-    label "core_utils"
+    label "coreutils"
     label "single"
     input:
         tuple val(sample), path(file)

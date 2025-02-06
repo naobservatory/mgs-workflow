@@ -7,6 +7,36 @@ nextflow_process {
     tag "module"
     tag "filter_tsv"
 
+    setup {
+        run("GZIP_FILE", alias: "GZIP_SORTED") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_nohead.tsv"))
+                '''
+            }
+        }
+        run("GZIP_FILE", alias: "GZIP_UNSORTED") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted_nohead.tsv"))
+                '''
+            }
+        }
+        run("GZIP_FILE", alias: "GZIP_LEX") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_13_lex_nohead.tsv"))
+                '''
+            }
+        }
+    }
+
     test("Should fail if any column index exceeds number of available columns"){
         tag "expect_failed"
         when {
@@ -15,8 +45,7 @@ nextflow_process {
             }
             process {
                 '''
-                input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_nohead.tsv.gz"))
+                input[0] = GZIP_SORTED.out
                 input[1] = params.cols
                 input[2] = "test"
                 '''
@@ -37,8 +66,7 @@ nextflow_process {
             }
             process {
                 '''
-                input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted_nohead.tsv.gz"))
+                input[0] = GZIP_UNSORTED.out
                 input[1] = params.cols
                 input[2] = "test"
                 '''
@@ -59,8 +87,7 @@ nextflow_process {
             }
             process {
                 '''
-                input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_13_lex_nohead.tsv.gz"))
+                input[0] = GZIP_LEX.out
                 input[1] = params.cols
                 input[2] = "test"
                 '''
@@ -89,8 +116,7 @@ nextflow_process {
             }
             process {
                 '''
-                input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_13_lex_nohead.tsv.gz"))
+                input[0] = GZIP_LEX.out
                 input[1] = params.cols
                 input[2] = "test"
                 '''

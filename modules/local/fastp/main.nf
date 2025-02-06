@@ -30,6 +30,15 @@ process FASTP {
         par="--cut_front --cut_tail --correction --detect_adapter_for_pe --trim_poly_x --cut_mean_quality 20 --average_qual 20 --qualified_quality_phred 20 --verbose --dont_eval_duplication --thread !{task.cpus} --low_complexity_filter"
         # Execute
         zcat !{reads} | fastp ${io} ${par} | gzip -c > ${op}
+        # Handle empty output (fastp doesn't handle gzipping empty output properly)
+        if [[ ! -s ${of} ]]; then
+            mv ${of} ${of%.gz}
+            gzip ${of%.gz}
+        fi
+        if [[ ! -s ${op} ]]; then
+            mv ${op} ${op%.gz}
+            gzip ${op%.gz}
+        fi
         # Link input to output for testing
         ln -s !{reads} !{sample}_fastp_in.fastq.gz
         '''
