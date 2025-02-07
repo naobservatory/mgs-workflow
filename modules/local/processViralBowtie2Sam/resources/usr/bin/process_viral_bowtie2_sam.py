@@ -198,10 +198,15 @@ def line_from_pair(dict_1, dict_2):
     fwd_dict = dict_1 if dict_1["is_mate_1"] else dict_2
     rev_dict = dict_1 if not dict_1["is_mate_1"] else dict_2
     # Calculate length-adjusted alignment scores
-    adj_score_fwd = float(fwd_dict["alignment_score"]) / math.log(float(fwd_dict["query_len"]))
-    adj_score_rev = float(rev_dict["alignment_score"]) / math.log(float(rev_dict["query_len"]))
-    adj_score_max = max(adj_score_fwd, adj_score_rev)
-    score_fwd_max = adj_score_fwd >= adj_score_rev
+    try:
+        adj_score_fwd = float(fwd_dict["alignment_score"]) / math.log(float(fwd_dict["query_len"]))
+        adj_score_rev = float(rev_dict["alignment_score"]) / math.log(float(rev_dict["query_len"]))
+        adj_score_max = max(adj_score_fwd, adj_score_rev)
+        score_fwd_max = adj_score_fwd >= adj_score_rev
+    except Exception as e:
+        print(fwd_dict)
+        print(rev_dict)
+        raise e
     # Calculate scalar values for conflicting alignments
     if fwd_dict["genome_id"] == rev_dict["genome_id"]:
         genome_id_best = fwd_dict["genome_id"]
@@ -219,7 +224,7 @@ def line_from_pair(dict_1, dict_2):
             taxid_all = fwd_dict["taxid"]
         else:
             taxid_best = fwd_dict["taxid"] if score_fwd_max else rev_dict["taxid"]
-            taxid_list = [fwd_dict["taxid"], rev_dict["taxid"]]
+            taxid_list = [str(fwd_dict["taxid"]), str(rev_dict["taxid"])]
             taxid_all = "/".join(taxid_list) if score_fwd_max else "/".join(taxid_list[::-1])
     # Prepare dictionary for output
     out_dict = {
@@ -345,8 +350,13 @@ def process_paired_sam(inf, outf, genbank_metadata, viral_taxids):
         if rev_dict["pair_status"] != fwd_dict["pair_status"]:
             msg = f"Pair status mismatch: {fwd_dict['query_name']}, {fwd_dict['pair_status']}, {rev_dict['pair_status']}"
             raise ValueError(msg)
-        # Process pair together
-        line = line_from_pair(fwd_dict, rev_dict)
+        # If either line is missing a valid alignment, process the other as solo, else process pair together
+        if fwd_dict["alignment_score"] is None:
+            line = line_from_single(rev_dict)
+        elif rev_dict["alignment_score"] is None:
+            line = line_from_single(fwd_dict)
+        else:
+            line = line_from_pair(fwd_dict, rev_dict)
         outf.write(line)
         fwd_line = get_next_alignment(inf)
         rev_line = get_next_alignment(inf)
