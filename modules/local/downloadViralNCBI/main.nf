@@ -1,6 +1,6 @@
 // Download entire viral Genbank DB
 process DOWNLOAD_VIRAL_NCBI {
-    label "biopython"
+    label "ncbi_genome_download"
     label "max"
     input:
         val(ncbi_viral_params)

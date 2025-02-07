@@ -1,6 +1,6 @@
 // Add a column to a TSV with a specified name and value
 process ADD_FIXED_COLUMN {
-    label "biopython"
+    label "python"
     label "single"
     input:
         path(tsv)

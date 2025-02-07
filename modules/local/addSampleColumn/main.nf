@@ -1,6 +1,6 @@
 // Add a column to a TSV with sample ID
 process ADD_SAMPLE_COLUMN {
-    label "biopython"
+    label "python"
     label "single"
     input:
         tuple val(sample), path(tsv)
