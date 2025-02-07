@@ -1,3 +1,6 @@
+# v2.7.0.3
+- Fixing link to configuration file in `README.md`
+
 # v2.7.0.2
 - Updating `pipeline-version.txt`
 
