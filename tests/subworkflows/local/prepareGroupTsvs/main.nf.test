@@ -66,6 +66,33 @@ nextflow_workflow {
             for (int i=0; i < input_tabs.size(); i++){
                 assertTableEquals output_tabs[i], part_tabs[i]
             }
+            // Restructured data should preserve paths
+            def paths_pre = []
+            for (int i=0; i < input_tabs.size(); i++){
+                paths_pre += workflow.out.test_part[i][1]
+            }
+            def paths_post = []
+            for (int i=0; i < workflow.out.test_grps.size(); i++){
+                paths_post += workflow.out.test_grps[i][1]
+            }
+            assert paths_pre.sort() == paths_post.sort()
+            // Restructured data should have expected structure
+            def groups = []
+            for (int i=0; i < group_tabs.size(); i++){
+                groups += group_tabs[i].columns["group"]
+            }
+            groups = groups.unique().sort()
+            assert groups.size() == workflow.out.test_grps.size()
+            // Each restructured group should have expected size
+            def group_sizes = groups.collect{0}
+            for (int i=0; i < groups.size(); i++){
+                for (t in group_tabs) {
+                    if (groups[i] in t.columns["group"]){
+                        group_sizes[i] += 1
+                    }
+                }
+                assert group_sizes[i] == workflow.out.test_grps[i][1].size()
+            }
         }
     }
 }
