@@ -62,6 +62,8 @@ for pid in "${pids[@]}"; do
         failed_shards=true
     fi
 done
+# Remove temp dir
+rm -rf "$temp_dir"
 
 # Check exit statuses
 if [ "$failed_shards" == "true" ]; then
@@ -70,8 +72,5 @@ if [ "$failed_shards" == "true" ]; then
     exit 1
 else
     echo "All test shards completed successfully"
-    rm -rf "$temp_dir"
     exit 0
 fi
-
-rm -rf ${temp_dir}
