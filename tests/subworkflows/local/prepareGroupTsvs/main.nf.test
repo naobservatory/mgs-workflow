@@ -54,17 +54,17 @@ nextflow_workflow {
             // Output of join should have expected dimensions
             def input_tabs = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t", decompress: true)}
             def group_tabs = workflow.out.test_in.collect{path(it[2]).csv(sep: "\t")}
-            def output_tabs = workflow.out.test_join.collect{path(it[1]).csv(sep: "\t", decompress: true)}
+            def join_tabs = workflow.out.test_join.collect{path(it[1]).csv(sep: "\t", decompress: true)}
             assert input_tabs.size() == group_tabs.size()
-            assert input_tabs.size() == output_tabs.size()
+            assert input_tabs.size() == join_tabs.size()
             for (int i=0; i < input_tabs.size(); i++){
-                assert input_tabs[i].rowCount == output_tabs[i].rowCount
-                assert input_tabs[i].columnCount + group_tabs[i].columnCount - 1 == output_tabs[i].columnCount
+                assert input_tabs[i].rowCount == join_tabs[i].rowCount
+                assert input_tabs[i].columnCount + group_tabs[i].columnCount - 1 == join_tabs[i].columnCount
             }
             // Partitioning should have no effect (only one sample per dataset)
             def part_tabs = workflow.out.test_part.collect{path(it[1]).csv(sep: "\t", decompress: true)}
             for (int i=0; i < input_tabs.size(); i++){
-                assertTableEquals output_tabs[i], part_tabs[i]
+                assertTableEquals join_tabs[i], part_tabs[i]
             }
             // Restructured data should preserve paths
             def paths_pre = []
@@ -93,6 +93,10 @@ nextflow_workflow {
                 }
                 assert group_sizes[i] == workflow.out.test_grps[i][1].size()
             }
+            // Final output should correctly concatenate restructured groups while preserving row count
+            def output_tabs = workflow.out.groups.collect{path(it[1]).csv(sep: "\t", decompress: true)}
+            assert output_tabs.size() < input_tabs.size()
+            assert output_tabs.collect{it.rowCount}.sum() == input_tabs.collect{it.rowCount}.sum()
         }
     }
 }

@@ -6,7 +6,7 @@ include { SORT_TSV as SORT_INPUT } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_GROUPS } from "../../../modules/local/sortTsv"
 include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
 include { PARTITION_TSV } from "../../../modules/local/partitionTsv"
-//include { CONCATENATE_TSVS_LABELED } from "../../../modules/local/concatenateTsvs"
+include { CONCATENATE_TSVS_LABELED } from "../../../modules/local/concatenateTsvs"
 
 /***********
 | WORKFLOW |
@@ -44,11 +44,10 @@ workflow PREPARE_GROUP_TSVS {
             }
         // Then rearrange channel to [[group1, [paths]], [group2, [paths]], ...]
         partitioned_grouped_ch = partitioned_tuple_ch.map{it[0]}.groupTuple()
-//        // 5. Concatenate TSVs for each group
-//        concat_ch = CONCATENATE_TSVS_LABELED(partitioned_grouped_ch, "grouped")
+        // 5. Concatenate TSVs for each group
+        concat_ch = CONCATENATE_TSVS_LABELED(partitioned_grouped_ch, "grouped").output
     emit:
-        //groups = concat_ch
-        // TODO: Add more outputs for testing as needed
+        groups = concat_ch
         test_in = input_files
         test_join = joined_ch
         test_part = partitioned_ch
