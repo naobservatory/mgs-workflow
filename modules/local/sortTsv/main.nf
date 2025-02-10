@@ -1,7 +1,7 @@
 // Sort a gzipped TSV by a specified column header
 // TODO: Expand to handle plaintext TSVs
 process SORT_TSV {
-    label "core_utils"
+    label "coreutils"
     label "single"
     input:
         tuple val(sample), path(tsv)
