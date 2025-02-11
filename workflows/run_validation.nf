@@ -59,4 +59,5 @@ workflow RUN_VALIDATION {
         version_ch >> "logging"
         // BLAST outputs
         BLAST_VIRAL.out.blast_subset >> "results"
+        BLAST_VIRAL.out.subset_reads >> "results"
 }
