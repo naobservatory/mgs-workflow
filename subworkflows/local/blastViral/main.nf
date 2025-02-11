@@ -45,11 +45,11 @@ workflow BLAST_VIRAL {
         sort_str_2 = "-t\$\'\\t\' -k1,1 -k7,7nr"
         sort_ch_2 = SORT_BLAST_2(filter_ch_1.output, sort_str_2, "blast")
         // Then filter by bitscore within each query
-        filter_ch_2 = FILTER_BLAST(sort_ch_2.output, blast_max_rank, blast_min_frac)
+        filter_ch_2 = FILTER_BLAST(sort_ch_2.output, blast_max_rank, blast_min_frac).output
         // Rename subset FASTA file for output
-        copy_ch = COPY_FILE(fasta_ch, "blast_input_subset.fasta.gz")
+        copy_ch = COPY_FILE(fasta_ch.output, "blast_input_subset.fasta.gz")
     emit:
-        blast_subset = filter_ch_2.output
+        blast_subset = filter_ch_2
         subset_reads = copy_ch
         test_input = reads_in
 }
