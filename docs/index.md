@@ -2,7 +2,7 @@
 
 The index workflow generates static index files from reference data. These reference data and indices don't depend on the reads processed by the run workflow, so a set of indices built by the index workflow can be used by multiple instantiations of the run workflow — no need to rebuild indices for every set of reads. The index workflow should be run once per reasonable length of time, balancing two considerations: Many of these index/reference files are derived from publicly available reference genomes or other resources, and should thus be updated and re-run periodically as new versions of these become available; however, to keep results comparable across datasets analyzed with the run workflow, this should be done relatively rarely.
 
-Key inputs to the index workflow include:
+Key [inputs](./config.md) to the index workflow include:
 - A TSV specifying names and taxonomic IDs (taxids) for host taxa for which to search for host-infecting viruses.
 - A URL linking to a suitable Kraken2 database for taxonomic profiling (typically the [latest release](https://benlangmead.github.io/aws-indexes/k2) of the `k2_standard` database).
 - URLS for up-to-date releases of reference genomes for various common contaminant species that can confound the identification of HV reads (currently [human](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9606), [cow](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9913), [pig](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=9823), [carp](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=7962)[^carp], [mouse](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=10090), [*E. coli*](https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=562)).
