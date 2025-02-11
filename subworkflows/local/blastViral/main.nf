@@ -9,6 +9,7 @@ include { SORT_FILE as SORT_BLAST_1 } from "../../../modules/local/sortFile"
 include { SORT_FILE as SORT_BLAST_2 } from "../../../modules/local/sortFile"
 include { FILTER_TSV } from "../../../modules/local/filterTsv"
 include { FILTER_BLAST } from "../../../modules/local/filterBlast"
+include { COPY_FILE } from "../../../modules/local/copyFile"
 
 /***********
 | WORKFLOW |
@@ -45,7 +46,10 @@ workflow BLAST_VIRAL {
         sort_ch_2 = SORT_BLAST_2(filter_ch_1.output, sort_str_2, "blast")
         // Then filter by bitscore within each query
         filter_ch_2 = FILTER_BLAST(sort_ch_2.output, blast_max_rank, blast_min_frac)
+        // Rename subset FASTA file for output
+        copy_ch = COPY_FILE(fasta_ch, "blast_input_subset.fasta.gz")
     emit:
         blast_subset = filter_ch_2.output
+        subset_reads = copy_ch
         test_input = reads_in
 }
