@@ -46,11 +46,11 @@ For example:
 
 The config file specifies parameters and other configuration options used by Nextflow in executing the pipeline. To create a config file for your pipeline run, copy `configs/run.config` into your launch directory as a file named `nextflow.config`, then modify the file as follows:
 
-    - Make sure `params.mode = "run"`; this instructs the pipeline to execute the [core run workflow](./run.md).
-    - Edit `params.ref_dir` to point to the directory containing the outputs of the reference workflow.
-    - Edit `params.sample_sheet` to point to your sample sheet.
-    - Edit `params.base_dir` to point to the directory in which Nextflow should put the pipeline working and output directories.
-    - If running on AWS Batch (see below), edit `process.queue` to the name of your Batch job queue.
+- Make sure `params.mode = "run"`; this instructs the pipeline to execute the [core run workflow](./run.md).
+- Edit `params.ref_dir` to point to the directory containing the outputs of the reference workflow.
+- Edit `params.sample_sheet` to point to your sample sheet.
+- Edit `params.base_dir` to point to the directory in which Nextflow should put the pipeline working and output directories.
+- If running on AWS Batch (see below), edit `process.queue` to the name of your Batch job queue.
 
 Most other entries in the config file can be left at their default values for most runs. See [here](./config.md) for a full description of config file parameters and their meanings.
 
@@ -98,6 +98,9 @@ where `<PATH/TO/PIPELINE/DIR>` specifies the path to the directory containing th
 Once the pipeline has finished, output and logging files will be available in the `output` subdirectory of the base directory specified in the config file.
 
 ## 4. Cleaning up
+
+> [!IMPORTANT]
+> To avoid high storage costs, make sure not to skip this step.
 
 Running nextflow pipelines will create a large number of files in the working directory. To avoid high storage costs, **it's important you clean up these files when they are no longer needed**. You can do this manually, or by running the `nextflow clean` command in the launch directory.
 
