@@ -29,12 +29,14 @@ Main heading represents the folder name, and subheadings represent a description
 
 ### `intermediates/`
 
+- `virus_hits_all.tsv.gz`: Complete list of putative viral reads identified by the EXTRACT_VIRAL_READS subworkflow, prior to filtering with FILTER_VIRUS_READS.
+- `virus_hits_filtered.tsv.gz`: Filtered viral hits in FASTQ format.
 - `reads/raw_viral/*`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk.
 
 ### `results/`
 
 #### QC
-- `total_reads_qc.tsv.gz`: Total number of raw reads in each sample.
+- `read_counts.tsv.gz`: Total number of raw reads in each sample.
 - `subset_qc_basic_stats.tsv.gz`: Summary statistics for each subset sample before and after adapter trimming, including:
     - GC content (`percent GC`);
     - Average read length (`mean_seq_len`);
@@ -48,22 +50,15 @@ Main heading represents the folder name, and subheadings represent a description
 - `subset_qc_length_stats.tsv.gz`: Per-read length statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the number of reads (`n_sequences`) with a given read length (`read_length`) for each read in the read pair (`read_pair`).
 
 #### Viral identification
-- `virus_hits_db.tsv.gz`: TSV output by the viral identification phase, giving information about each read pair assigned to a host-infecting virus.
-- `virus_clade_counts.tsv.gz`: Summary of the previous file giving the number of HV read pairs mapped to each viral taxon. Includes both read pairs mapped directly to that taxon (`n_reads_direct`) and to that taxon plus all descendent taxa (`n_reads_clade`).
+- `virus_hits_filtered.tsv.gz`: TSV output from EXTRACT_VIRAL_READS, giving information about each read pair assigned to a host-infecting virus.
 
 #### Taxonomic identification
-- `kraken_reports_merged.tsv.gz`: Kraken output reports in TSV format, labeled by sample and ribosomal status for subset trimmed samples.
-- `bracken_reports_merged.tsv.gz`: Bracken output reports in TSV format, labeled by sample and ribosomal status for subset trimmed samples.
+- `kraken_reports_merged.tsv.gz`: Kraken output reports in TSV format, labeled by sample and ribosomal status.
+- `bracken_reports_merged.tsv.gz`: Bracken output reports in TSV format, labeled by sample and ribosomal status.
 
 #### BLAST
-- `blast_hits_paired.tsv.gz`: Summarized BLASTN output for putative HV read pairs, giving, for each read pair and subject taxid:
-    - The number of reads in the read pair with high-scoring matches to that taxid (`n_reads`).
-    - The best bitscores of alignments to that taxid for each matching read (`bitscore_max` and `bitscore_min`)[^bitscore].
-- `blast_forward_only.tsv.gz`: Summarized BLASTN output for putative HV read pairs, giving, for each read pair and subject taxid:
-- `blast_reverse_only.tsv.gz`: Summarized BLASTN output for putative HV read pairs, giving, for each read pair and subject taxid:
-
-[^bitscore]: If only one read aligns to the target, these two fields will be identical. If not, they will give the higher and lower of the best bitscores for the two reads in the pair..
-
+- `merged_blast_filtered.tsv.gz`: Filtered tabular BLASTN output for putative HV reads.
+- `merged_blast_input_subset.fasta.gz`: Subset interleaved FASTA used as input to BLASTN (useful for identifying which reads were included in the subset for downstream analysis).
 
 ## Index workflow
 
@@ -104,5 +99,5 @@ Main heading represents the folder name, and subheadings describes the tool that
 
 #### BBduk
 
-- `virus-genomes-filtered.fasta.gz`: FASTA file containing host-infecting viral genomes downloaded from viral Genbank (filtered to remove transgenic, contaminated, or erroneous sequences).
+- `virus-genomes-masked.fasta.gz`: FASTA file containing host-infecting viral genomes downloaded from viral Genbank (filtered to remove transgenic, contaminated, or erroneous sequences).
 - `ribo-ref-concat.fasta.gz`: Reference database of ribosomal LSU and SSU sequences from SILVA.
