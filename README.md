@@ -25,4 +25,4 @@ The pipeline currently consists of three workflows:
     - [Configuration files](docs/config.md)
     - [Pipeline outputs](docs/output.md)
 - **Other:**
-    - [Version Schema](docs/version_schema.md)
+    - [Version Schema](docs/versioning.md)
