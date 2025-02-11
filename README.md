@@ -13,7 +13,7 @@ This Nextflow pipeline is designed to process metagenomic sequencing data, chara
     - [Index workflow](docs/index.md)
     - [Run workflow](docs/run.md)
 - **Configuration and output:**
-    - [Configuration files](docs/configs.md)
+    - [Configuration files](docs/config.md)
     - [Pipeline outputs](docs/output.md)
 - **Other:**
     - [Version Schema](docs/version_schema.md)
