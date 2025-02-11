@@ -58,24 +58,25 @@ To perform these functions, the workflow runs a series of subworkflows responsib
 This subworkflow loads the samplesheet and creates a channel containing the samplesheet data, in the structure expected by the pipeline. If provided, it also creates a channel containing the grouping information used to combine samples for downstream analysis. (No diagram is provided for this subworkflow.)
 
 ### Subset and trim reads (SUBSET_TRIM)
-This subworkflow uses [Seqtk](https://github.com/lh3/seqtk) to randomly subsample the input reads to a target number[^target] (default 1 million read pairs per sample) to save time and and compute on downstream steps while still providing a reliable statistical picture of the overall sample. Following downsampling, reads undergo adapter trimming and quality screening with [FASTP](https://github.com/OpenGene/fastp), which both screens for adapters and trims low-quality and low-complexity sequences.
+This subworkflow uses [Seqtk](https://github.com/lh3/seqtk) to randomly subsample the input reads to a target number[^target] (default 1 million read pairs per sample) to save time and and compute on downstream steps while still providing a reliable statistical picture of the overall sample. Following downsampling, read pairs are combined into a single interleaved file, which then undergoes adapter trimming and quality screening with [FASTP](https://github.com/OpenGene/fastp).
 
-[^target]: More precisely, the subworkflow uses the total read count and target read number to calculate a fraction $p$ of the input reads that should be retained, then keeps each read from the input data with probability $p$. Since each read is kept or discarded independently of the others, the final read count will not exactly match the target number; however, it will be very close for sufficiently large input files.
+[^target]: More precisely, the subworkflow uses the total read count and target read number to calculate a fraction *p* of the input reads that should be retained, then keeps each read from the input data with probability *p*. Since each read is kept or discarded independently of the others, the final read count will not exactly match the target number; however, it will be very close for sufficiently large input files.
 
 ```mermaid
 ---
-title: TRIM_AND_SUBSET
+title: SUBSET_TRIM
 config:
   layout: horizontal
 ---
 flowchart LR
-A(Raw reads)  --> B[Subset with Seqtk]
-B --> C[Trim with FASTP]
-B --> D(Subset reads)
-C --> E(Subset trimmed reads)
+A(Raw paired reads) --> B[Interleave reads]
+B --> C[Subset with Seqtk]
+C --> D[Trim with FASTP]
+C --> E(Subset reads)
+D --> F(Subset trimmed reads)
 style A fill:#fff,stroke:#000
-style D fill:#000,color:#fff,stroke:#000
 style E fill:#000,color:#fff,stroke:#000
+style F fill:#000,color:#fff,stroke:#000
 ```
 
 ## Helper workflows
@@ -91,37 +92,36 @@ config:
   layout: horizontal
 ---
 flowchart LR
-A(Reads) -.-> |Optional|B[CLUMPIFY_PAIRED]
-A --> C[BBMERGE]
-B -.-> C[BBMERGE]
-C -.-> D[CLUMPIFY_SINGLE]
-C --> E[KRAKEN]
-D -.-> E[KRAKEN]
-E --> G(Kraken output)
-E --> F[BRACKEN]
-F --> H(Bracken output)
-subgraph "Read deduplication"
+A(Interleaved reads) --> B[BBMERGE]
+B --> C(Merging summary output)
+B --> D[KRAKEN]
+D --> E[Process Kraken output]
+E --> F(Kraken output)
+D --> G[BRACKEN]
+G --> H[Process Bracken output]
+H --> I(Bracken output)
+subgraph "Merging read pairs"
 B
-D
-end
-subgraph "Paired reads to single reads"
-C
 end
 subgraph "Taxonomic profiling"
+D
+G
+end
+subgraph "Processing output"
 E
-F
+H
 end
 style A fill:#fff,stroke:#000
-style G fill:#000,color:#fff,stroke:#000
-style H fill:#000,color:#fff,stroke:#000
+style B fill:#000,color:#fff,stroke:#000
+style F fill:#000,color:#fff,stroke:#000
+style I fill:#000,color:#fff,stroke:#000
 ```
 
-1. If enabled, reads are first deduplicated using [Clumpify](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/clumpify-guide/)[^dedup]
-2. Read pairs are then processed with [BBMerge](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmerge-guide/)[^merge] to create single sequences. Any pairs that cannot be merged are joined end-to-end with an "N" base between them.
-3. When deduplication is enabled, the merged reads undergo a second round of Clumpify deduplication.
-4. Finally, reads are taxonomically classified using [Kraken2](https://ccb.jhu.edu/software/kraken2/) with the reference database from the index workflow. [Bracken](https://ccb.jhu.edu/software/bracken/) then processes these results to generate detailed taxonomic abundance estimates.
+1. Input read pairs are processed with [BBMerge](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmerge-guide/)[^merge] to create single sequences. Any pairs that cannot be merged are joined end-to-end with an "N" base between them.
+2. Reads are taxonomically classified using [Kraken2](https://ccb.jhu.edu/software/kraken2/) with the reference database from the index workflow. 
+3. [Bracken](https://ccb.jhu.edu/software/bracken/) then processes these results to generate detailed taxonomic abundance estimates.
+4. Finally, the outputs from Kraken2 and Bracken are processed and combined into well-formatted TSVs for downstream processing.
 
-[^dedup]: Which identifies and collapses groups of reads that are identical modulo some specified error rate.
 [^merge]: Which aligns and merges read pairs with significant overlap.
 
 ### QC (QC)
