@@ -20,6 +20,7 @@
 - Fixed bug where multiqc doesn't output sequence length stats if all sequences are the same length
 - Added instructions for what to do should you run out of API requests for containers
 - Unzipped files in `test-data` directory
+- Removed defaults from config files
 - Added new script, `bin/run_parallel_test.sh`, that allows users to run nf-test tests locally in parallel
 - Fixed mislabeled parameter in RUN_VALIDATION workflow
 
