@@ -24,7 +24,7 @@ workflow RUN_VALIDATION {
     start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
 
     // Get input FASTQ
-    if ( params.viral_tsv_collapsed == "" ) {
+    if ( params.viral_tsv == "" ) {
     // Option 1: Directly specify FASTQ path in config (interleaved/single-end)
         fastq_ch = params.viral_fastq
     } else {
