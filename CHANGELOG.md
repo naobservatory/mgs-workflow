@@ -23,6 +23,7 @@
     - Added new script, `bin/run_parallel_test.sh`, that allows users to run nf-test tests locally in parallel
     - Assorted updates to documentation
     - Removed some defaults from config files
+    - Fixed mislabeled parameter in RUN_VALIDATION workflow
 
 # v2.7.0.3
 - Fixing link to configuration file in `README.md`
