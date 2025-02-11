@@ -23,6 +23,7 @@ nextflow_pipeline {
                 path("${launchDir}/output/results/bracken_reports_merged.tsv.gz"),
                 path("${launchDir}/output/results/kraken_reports_merged.tsv.gz"),
                 path("${launchDir}/output/results/merged_blast_filtered.tsv.gz"),
+                path("${launchDir}/output/results/merged_blast_input_subset.fasta.gz"),
                 path("${launchDir}/output/results/read_counts.tsv.gz"),
                 path("${launchDir}/output/results/subset_qc_adapter_stats.tsv.gz"),
                 path("${launchDir}/output/results/subset_qc_basic_stats.tsv.gz"),
