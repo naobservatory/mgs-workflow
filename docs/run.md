@@ -247,12 +247,12 @@ config:
 ---
 flowchart LR
 A("Interleaved viral FASTQ file<br>(EXTRACT_VIRAL_READS)") -.-> |Optional|B[Subset with Seqtk]
-B --> C[Convert FASTQ to FASTA]
+B -.-> C[Convert FASTQ to FASTA]
 A -.-> C
 C --> D[BLASTN]
 D --> E[Filter BLASTN output]
-G --> H(Filtered tabular BLAST results)
-B --> I(Subset input reads)
+E --> H(Filtered tabular BLAST results)
+C --> I(Subset input reads)
 style A fill:#fff,stroke:#000
 style H fill:#000,color:#fff,stroke:#000
 style I fill:#000,color:#fff,stroke:#000
@@ -270,7 +270,7 @@ style I fill:#000,color:#fff,stroke:#000
 This subworkflow counts the total number of reads in the input files, then merges read counts from all samples into one output TSV. (No diagram is provided for this subworkflow.)
 
 ### QC and output phase (RUN_QC)
-This subworkflow generates quality metrics on the raw and cleaned read subsets output by SUBSET_TRIM. Reads are analyzed with [FASTQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://multiqc.info/), then extracted into easy-to-parse TSV files[^tsvs] for downstream processing.
+This subworkflow calls [QC](#qc-qc) on the raw and cleaned read subsets output by SUBSET_TRIM, then concatenates the outputs across the two pipeline stages.
 
 ```mermaid
 ---
@@ -295,6 +295,3 @@ style H fill:#000,color:#fff,stroke:#000
 style I fill:#000,color:#fff,stroke:#000
 style J fill:#000,color:#fff,stroke:#000
 ```
-
-[^tsvs]: Specifically, `subset_qc_basic_stats.tsv.gz`, `subset_qc_adapter_stats.tsv.gz`, `subset_qc_quality_base_stats.tsv.gz`, `subset_qc_quality_sequence_stats.tsv.gz` and `subset_qc_length_stats.tsv.gz`.
-
