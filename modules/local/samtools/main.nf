@@ -1,6 +1,7 @@
 // Return reads that did not align to reference as FASTQ (streamed version)
 process SAMTOOLS_FILTER {
     label "samtools"
+    label "small"
     input:
         tuple val(sample), path(sam)
         val(suffix)
