@@ -14,7 +14,7 @@ process SAMTOOLS_FILTER {
         out=!{sample}_!{suffix}.fastq.gz
         var="fastq -n -f 4"
         # Execute samtools
-        samtools ${var} !{sam} | gzip > ${out}
+        cat !{sam} | samtools ${var} - | gzip > ${out}
         # Link input to output for testing
         ln -s !{sam} !{sample}_in.sam
         '''
