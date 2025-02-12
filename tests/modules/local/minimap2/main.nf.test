@@ -42,4 +42,28 @@ nextflow_process {
             assert nAlignments > 0
         }
     }
+
+    test("When run against ribo index, should run without failures and return properly formatted SAM") {
+        tag "expect_success"
+        tag "single_end"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-ribo-index/ribo-ref-concat-unique.mmi"
+                input[2] = "ribo"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Both @SQ headers and alignments should be present
+            def nHeaders = ["bash", "-c", "cat " + process.out.sam[0][1] + " | grep -c '^@SQ'"].execute().text.trim() as Integer
+            def nAlignments = ["bash", "-c", "cat " + process.out.sam[0][1] + " | grep -v '^@' | wc -l"].execute().text.trim() as Integer
+            assert nHeaders > 0
+            assert nAlignments > 0
+        }
+    }
 }
