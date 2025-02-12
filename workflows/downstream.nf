@@ -25,10 +25,10 @@ workflow DOWNSTREAM {
     input_ch = LOAD_DOWNSTREAM_DATA.out.input
     start_time_str = LOAD_DOWNSTREAM_DATA.out.start_time_str
 
-//    // 2. Add group information, partition into per-group TSVs
-//    PREPARE_GROUP_TSVS(input_ch)
-//    group_ch = PREPARE_GROUP_TSVS.out.groups
-//
+    // 2. Add group information, partition into per-group TSVs
+    PREPARE_GROUP_TSVS(input_ch)
+    group_ch = PREPARE_GROUP_TSVS.out.groups
+
 //    // 3. Mark duplicates
 //    MARK_DUPLICATES(group_ch)
 

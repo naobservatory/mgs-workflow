@@ -33,7 +33,7 @@ nextflow_workflow {
         }
     }
 
-    test("Test incorrect input file") {
+    test("Should fail on invalid input file") {
         tag "expect_failed"
         when {
             params {}
