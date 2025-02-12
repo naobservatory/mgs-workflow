@@ -1,41 +1,87 @@
 nextflow_process {
 
-    name "Test Process COUNT_READS"
+    name "Test process COUNT_READS"
     script "modules/local/countReads/main.nf"
     process "COUNT_READS"
+    tag "module"
+    tag "count_reads"
 
-    test("Should run without failures") {
+    test("Should run without failures on paired data") {
+        tag "expect_success"
+        tag "paired_end"
         config "tests/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
-                    input[0] = "${baseDir}/test-data/samplesheet.csv"
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = false
-                    input[2] = false
                     """
                 }
             }
         }
-
         when {
             params {}
             process {
                 """
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = false
                 """
             }
         }
-
         then {
+            // Should run without failures
             assert process.success
-            def file_out = path(process.out[0][0]).csv(sep: "\t") 
+            // Should have expected structure
+            def file_out = path(process.out.output[0]).csv(sep: "\t") 
             assert file_out.rowCount == 1
-            assert file_out.columnNames == ["sample", "total_read_count"]
-            assert file_out.rows[0] == ["total_read_count": 165, "sample": "gold_standard"]
+            assert file_out.columnNames == ["sample", "n_reads_single", "n_read_pairs"]
+            // Read count should be correct
+            def sample_name = process.out.input[0][0]
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def reads_in = fastq_in.getNumberOfRecords()
+            assert file_out.rows[0] == ["sample": sample_name, "n_reads_single": reads_in * 2, "n_read_pairs": reads_in]
         }
+    }
 
+    test("Should run without failures on single-end data") {
+        tag "expect_success"
+        tag "single_end"
+        config "tests/run_dev_se.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = true
+                    """
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = true
+                """
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Should have expected structure
+            def file_out = path(process.out.output[0]).csv(sep: "\t") 
+            assert file_out.rowCount == 1
+            assert file_out.columnNames == ["sample", "n_reads_single", "n_read_pairs"]
+            // Read count should be correct
+            def sample_name = process.out.input[0][0]
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def reads_in = fastq_in.getNumberOfRecords()
+            assert file_out.rows[0] == ["sample": sample_name, "n_reads_single": reads_in, "n_read_pairs": ""]
+        }
     }
 
 }

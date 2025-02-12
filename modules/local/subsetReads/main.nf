@@ -87,6 +87,7 @@ process SUBSET_READS_PAIRED_TARGET {
         tuple val(sample), path(reads)
         val readTarget
         val suffix
+        val randomSeed
     output:
         tuple val(sample), path("${sample}_subset_{1,2}.${suffix}.gz")
     shell:
@@ -108,9 +109,10 @@ process SUBSET_READS_PAIRED_TARGET {
             frac=$(awk -v a=${n_reads} -v b=!{readTarget} 'BEGIN {result = b/a; print (result > 1) ? 1.0 : result}')
             echo "Read fraction for subsetting: ${frac}"
             # Carry out subsetting
-            seed=${RANDOM}
-            seqtk sample -s ${seed} ${in1} ${frac} | gzip -c > ${out1}
-            seqtk sample -s ${seed} ${in2} ${frac} | gzip -c > ${out2}
+            rseed=!{randomSeed == "" ? "\\$RANDOM" : randomSeed}
+            echo "Random seed: ${rseed}"
+            seqtk sample -s ${rseed} ${in1} ${frac} | gzip -c > ${out1}
+            seqtk sample -s ${rseed} ${in2} ${frac} | gzip -c > ${out2}
         fi
         # Count reads for validation
         echo "Output reads: $(zcat ${out1} | wc -l | awk '{ print $1/4 }')"
@@ -125,6 +127,7 @@ process SUBSET_READS_SINGLE_TARGET {
         tuple val(sample), path(reads)
         val readTarget
         val suffix
+        val randomSeed
     output:
         tuple val(sample), path("${sample}_subset.${suffix}.gz")
     shell:
@@ -143,8 +146,9 @@ process SUBSET_READS_SINGLE_TARGET {
             frac=$(awk -v a=${n_reads} -v b=!{readTarget} 'BEGIN {result = b/a; print (result > 1) ? 1.0 : result}')
             echo "Read fraction for subsetting: ${frac}"
             # Carry out subsetting
-            seed=${RANDOM}
-            seqtk sample -s ${seed} ${in} ${frac} | gzip -c > ${out}
+            rseed=!{randomSeed == "" ? "\\$RANDOM" : randomSeed}
+            echo "Random seed: ${rseed}"
+            seqtk sample -s ${rseed} ${in} ${frac} | gzip -c > ${out}
         fi
         # Count reads for validation
         echo "Output reads: $(zcat ${out} | wc -l | awk '{ print $1/4 }')"

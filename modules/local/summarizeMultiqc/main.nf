@@ -1,4 +1,4 @@
-// Extract paired MultiQC data into a more usable form
+// Extract MultiQC data into a more usable form (single/interleaved version)
 process SUMMARIZE_MULTIQC {
     label "R"
     label "single"

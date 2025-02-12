@@ -1,0 +1,38 @@
+nextflow_pipeline {
+
+    name "Test workflow RUN"
+    script "main.nf" // Running from main so we have access to published files
+    config "tests/run.config"
+    tag "workflow"
+
+    test("RUN workflow should run without errors") {
+        tag "run"
+        tag "main_run"
+        then {
+            // Should run without failures
+            assert workflow.success
+        }
+    }
+
+    test("RUN workflow output should match snapshot") {
+        tag "run_output"
+        tag "main_run_output"
+        then {
+            assert workflow.success
+            assert snapshot(
+                path("${launchDir}/output/results/bracken_reports_merged.tsv.gz"),
+                path("${launchDir}/output/results/kraken_reports_merged.tsv.gz"),
+                path("${launchDir}/output/results/merged_blast_filtered.tsv.gz"),
+                path("${launchDir}/output/results/merged_blast_input_subset.fasta.gz"),
+                path("${launchDir}/output/results/read_counts.tsv.gz"),
+                path("${launchDir}/output/results/subset_qc_adapter_stats.tsv.gz"),
+                path("${launchDir}/output/results/subset_qc_basic_stats.tsv.gz"),
+                path("${launchDir}/output/results/subset_qc_length_stats.tsv.gz"),
+                path("${launchDir}/output/results/subset_qc_quality_base_stats.tsv.gz"),
+                path("${launchDir}/output/results/subset_qc_quality_sequence_stats.tsv.gz"),
+                path("${launchDir}/output/results/virus_hits_filtered.tsv.gz"),
+            ).match("run_output")
+        }
+    }
+
+}

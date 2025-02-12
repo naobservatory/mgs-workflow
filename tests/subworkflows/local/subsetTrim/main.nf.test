@@ -1,45 +1,142 @@
+// Helper function: manual table filtering
+def filter_tab = { tab_in, threshold -> csv(tab_in.table.where(
+    tab_in.table.intColumn("kraken_assigned_host_virus").isEqualTo(1).or(
+        tab_in.table.numberColumn("bowtie2_length_normalized_score_max").isGreaterThanOrEqualTo(threshold).and(
+            tab_in.table.intColumn("kraken_assigned_host_virus").isEqualTo(2).or(
+                tab_in.table.booleanColumn("kraken_classified").isFalse()))))) }
+
 nextflow_workflow {
 
-    name "Test Workflow SUBSET_TRIM"
+    name "Test subworkflow SUBSET_TRIM"
     script "subworkflows/local/subsetTrim/main.nf"
     workflow "SUBSET_TRIM"
+    tag "subworkflow"
+    tag "subset_trim"
 
-    test("Should run without failures") {
+    test("Should run without failures on paired data") {
         config "tests/run.config"
+        tag "paired_end"
+        tag "expect_success"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
-                    input[0] = "${baseDir}/test-data/samplesheet.csv"
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = false
-                    input[2] = false
                     """
                 }
             }
         }
-
         when {
-            params {}
+            params {
+                n_reads = 49
+            }
             workflow {
-                """
-                input[0] = LOAD_SAMPLESHEET.out.samplesheet // reads_ch
-                input[1] = LOAD_SAMPLESHEET.out.group // group_ch
-                input[2] = params.n_reads_profile // n_reads
-                input[3] = params.grouping // grouping
-                input[4] = params.adapters // adapter_path
-                input[5] = params.single_end // single_end
-                """
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = params.n_reads
+                input[2] = params.adapters
+                input[3] = false
+                input[4] = false
+                input[5] = ""
+                '''
             }
         }
-
         then {
+            // Should run without failures
             assert workflow.success
-            def countGzipLines = { file -> path(file).linesGzip.size() }
-            assert countGzipLines(workflow.out.subset_reads[0][1][0]) == 165 * 4
-            assert countGzipLines(workflow.out.trimmed_subset_reads[0][1][0]) == 135 * 4
+            // Output should be valid interleaved FASTQ
+            def fastq_out_subset = path(workflow.out.subset_reads[0][1]).fastq
+            def fastq_out_trimmed = path(workflow.out.trimmed_subset_reads[0][1]).fastq
+            def fastq_out_failed = path(workflow.out.test_failed[0][1]).fastq
+            def n_reads_subset = fastq_out_subset.getNumberOfRecords()
+            def n_reads_trimmed = fastq_out_trimmed.getNumberOfRecords()
+            def n_reads_failed = fastq_out_failed.getNumberOfRecords()
+            assert n_reads_subset % 2 == 0
+            assert n_reads_trimmed % 2 == 0
+            assert n_reads_failed % 2 == 0
+            // Subset output should approximate expected read count
+            // NB: Not exact due to independent sampling
+            // TODO: Calculate confidence interval in a more principled way
+            def exp_reads_min = params.n_reads * 0.75
+            def exp_reads_max = params.n_reads * 1.25
+            assert n_reads_subset >= exp_reads_min * 2
+            assert n_reads_subset <= exp_reads_max * 2
+            // FASTP output should conserve subset reads
+            assert n_reads_subset == n_reads_trimmed + n_reads_failed
+            def ids_subset = fastq_out_subset.readNames.collect{ it.tokenize(" ")[0] }
+            def ids_trimmed = fastq_out_trimmed.readNames.collect{ it.tokenize(" ")[0] }
+            def ids_failed = fastq_out_failed.readNames.collect{ it.tokenize(" ")[0] }
+            for (id in ids_subset) {
+                if (id in ids_trimmed) {
+                    assert !(id in ids_failed)
+                } else {
+                    assert (id in ids_failed)
+                }
+            }
         }
+    }
 
+    test("Should run without failures on single-end data") {
+        config "tests/run_dev_se.config"
+        tag "single_end"
+        tag "expect_success"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = true
+                    """
+                }
+            }
+        }
+        when {
+            params {
+                n_reads = 109
+            }
+            workflow {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = params.n_reads
+                input[2] = params.adapters
+                input[3] = true
+                input[4] = false
+                input[5] = ""
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Subset output should approximate expected read count
+            // NB: Not exact due to independent sampling
+            // TODO: Calculate confidence interval in a more principled way
+            def fastq_out_subset = path(workflow.out.subset_reads[0][1]).fastq
+            def n_reads_subset = fastq_out_subset.getNumberOfRecords()
+            def exp_reads_min = params.n_reads * 0.75
+            def exp_reads_max = params.n_reads * 1.25
+            assert n_reads_subset >= exp_reads_min
+            assert n_reads_subset <= exp_reads_max
+            // FASTP output should conserve subset reads
+            def fastq_out_trimmed = path(workflow.out.trimmed_subset_reads[0][1]).fastq
+            def fastq_out_failed = path(workflow.out.test_failed[0][1]).fastq
+            def n_reads_trimmed = fastq_out_trimmed.getNumberOfRecords()
+            def n_reads_failed = fastq_out_failed.getNumberOfRecords()
+            assert n_reads_subset == n_reads_trimmed + n_reads_failed
+            def ids_subset = fastq_out_subset.readNames.collect{ it.tokenize(" ")[0] }
+            def ids_trimmed = fastq_out_trimmed.readNames.collect{ it.tokenize(" ")[0] }
+            def ids_failed = fastq_out_failed.readNames.collect{ it.tokenize(" ")[0] }
+            for (id in ids_subset) {
+                if (id in ids_trimmed) {
+                    assert !(id in ids_failed)
+                } else {
+                    assert (id in ids_failed)
+                }
+            }
+        }
     }
 
 }

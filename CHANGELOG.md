@@ -1,11 +1,41 @@
+# v2.8.0.0
+- Major changes to many parts of the pipeline as part of a general performance overhaul
+    - Modified most processes in the RUN and RUN_VALIDATION workflows to stream data in and out rather than reading whole files
+    - As part of the previous change, modified most processes in the RUN and RUN_VALIDATION workflows to work with interleaved rather than paired sequence data
+    - Modified BLASTN filtering to take into account bitscore ratio versus best hit for each query
+    - Replaced many specific tabular manipulation processes with basic operations: JOIN_TSVS, CONCATENATE_TSVS, ADD_FIXED_COLUMN, etc
+    - Removed grouping and group-dependent functionality (in particular, deduplication and clade counting); entire pipeline now operates on a per-sample basis
+    - Added unit tests for many processes and workflows
+    - Added configurable seeding for testing non-deterministic processes via `params.random_seed`
+    - Made Bracken read threshold configurable via `params.bracken_threshold`
+    - Removed numerous orphaned modules and processes
+- Large changes to outputs:
+    - Main output directory no longer contains FASTA files for viral hits (interleaved FASTQ file now saved to intermediates)
+    - Clade counts are no longer produced
+    - QC and BLAST outputs now show statistics for interleaved files rather than showing forward and reverse reads separately
+    - Added new intermediate outputs, including unfiltered viral hits and interleaved FASTQ from EXTRACT_VIRAL_READS
+    - Viral hits TSV moved from `virus_hits_db.tsv.gz` to `virus_hits_filtered.tsv.gz`
+    - Numerous changes to column names in viral hits TSV, mainly to improve clarity
+- Minor changes and fixes:
+    - Updated mislabeled processes
+    - Fixed bug where multiqc doesn't output sequence length stats if all sequences are the same length
+    - Unzipped files in `test-data` directory
+    - Added new script, `bin/run_parallel_test.sh`, that allows users to run nf-test tests locally in parallel
+    - Assorted updates to documentation
+    - Removed some defaults from config files
+    - Fixed mislabeled parameter in RUN_VALIDATION workflow
+
 # v2.7.0.3
 - Fixing link to configuration file in `README.md`
 
 # v2.7.0.2
-- Updating `pipeline-version.txt`
+- Updated `pipeline-version.txt`
 
 # v2.7.0.1
-- Fixing mislabeled index that causes the pipeline to fail, added `adapters` param to the index config file used to run our tests, updated `RUN` and `RUN_VALIDATION` tests to use new index (location: `s3://nao-testing/index/20250130`)
+- Fixed index-related issues from v2.7.0.0:
+    - Updated `EXTRACT_VIRAL_READS` to expect updated path to viral genome DB
+    - Added `adapters` param to the index config file used to run our tests
+    - Updated `RUN` and `RUN_VALIDATION` tests to use up-to-date test index (location: `s3://nao-testing/index/20250130`)
 
 # v2.7.0.0
 - Implemented masking of viral genome reference in index workflow with MASK_GENOME_FASTA to remove adapter, low-entropy and repeat sequences.

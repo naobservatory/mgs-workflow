@@ -89,4 +89,4 @@ The last step you need to complete on AWS itself is to set up a job queue that N
 
 ## 4. Run Nextflow with Batch
 
-Finally, you need to use all the infrastructure you've just set up to actually run a Nextflow workflow! We recommend using our test dataset to get started. [Click here to see how to run the pipeline on the test dataset](./installation.md#5-run-the-pipeline-on-test-data).
+Finally, you need to use all the infrastructure you've just set up to actually run a Nextflow workflow! We recommend using our [test dataset](https://github.com/naobservatory/mgs-workflow/blob/will-merge-master/docs/installation.md#6-run-the-pipeline-on-test-data) to get started.

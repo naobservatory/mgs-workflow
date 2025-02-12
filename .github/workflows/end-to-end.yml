@@ -85,7 +85,7 @@ jobs:
           sudo mv nf-test /usr/local/bin/
 
       - name: Run run workflow
-        run: nf-test test --tag run_output --verbose
+        run: nf-test test --tag run_output --verbose --ci
 
   test-validation:
     runs-on: ubuntu-latest

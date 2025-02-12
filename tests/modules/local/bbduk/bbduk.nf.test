@@ -1,0 +1,121 @@
+nextflow_process {
+
+    name "Test process BBDUK"
+    script "modules/local/bbduk/main.nf"
+    process "BBDUK"
+    tag "module"
+    tag "bbduk"
+
+    test("Should run without failures and conserve reads on interleaved input") {
+        tag "expect_success"
+        tag "interleaved"
+        config "tests/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = false
+                    """
+                }
+            }
+            run("INTERLEAVE_FASTQ") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = INTERLEAVE_FASTQ.out.output
+                input[1] = "${params.ref_dir}/results/virus-genomes-masked.fasta.gz"
+                input[2] = "0.4"
+                input[3] = "27"
+                input[4] = "ribo"
+                input[5] = true
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Input and output should be valid interleaved fastq
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def fastq_match = path(process.out.match[0][1]).fastq
+            def fastq_nomatch = path(process.out.nomatch[0][1]).fastq
+            def ids_in = fastq_in.readNames
+            def ids_match = fastq_match.readNames
+            def ids_nomatch = fastq_nomatch.readNames
+            assert ids_in.size() % 2 == 0
+            assert ids_match.size() % 2 == 0
+            assert ids_nomatch.size() % 2 == 0
+            // Should conserve reads between input and output
+            assert ids_in.size() == ids_match.size() + ids_nomatch.size()
+            for (i in ids_in) {
+                if (i in ids_match) {
+                    assert !(i in ids_nomatch)
+                } else {
+                    assert i in ids_nomatch
+                }
+            }
+        }
+    }
+
+    test("Should run without failures and conserve reads on single-end input") {
+        tag "expect_success"
+        tag "single_end"
+        config "tests/run_dev_se.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = true
+                    """
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = "${params.ref_dir}/results/virus-genomes-masked.fasta.gz"
+                input[2] = "0.4"
+                input[3] = "27"
+                input[4] = "ribo"
+                input[5] = false
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Should conserve reads between input and output
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def fastq_match = path(process.out.match[0][1]).fastq
+            def fastq_nomatch = path(process.out.nomatch[0][1]).fastq
+            def ids_in = fastq_in.readNames
+            def ids_match = fastq_match.readNames
+            def ids_nomatch = fastq_nomatch.readNames
+            assert ids_in.size() == ids_match.size() + ids_nomatch.size()
+            for (i in ids_in) {
+                if (i in ids_match) {
+                    assert !(i in ids_nomatch)
+                } else {
+                    assert i in ids_nomatch
+                }
+            }
+        }
+    }
+
+}
