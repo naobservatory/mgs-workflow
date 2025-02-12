@@ -1,4 +1,4 @@
-// Return reads that did not align to reference as FASTQ
+// Return reads that did not align to reference as FASTQ (streamed version)
 process SAMTOOLS_FILTER {
     label "samtools"
     input:
@@ -6,11 +6,15 @@ process SAMTOOLS_FILTER {
         val(suffix)
     output:
         tuple val(sample), path("${sample}_${suffix}.fastq.gz"), emit: reads
+        tuple val(sample), path("${sample}_in.sam"), emit: input
     shell:
         '''
-        in=!{sam}
+        # Define output
         out=!{sample}_!{suffix}.fastq.gz
         var="fastq -n -f 4"
-        samtools ${var} ${in} | gzip > ${out}
+        # Execute samtools
+        samtools ${var} !{sam} | gzip > ${out}
+        # Link input to output for testing
+        ln -s !{sam} !{sample}_in.sam
         '''
 }

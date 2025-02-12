@@ -8,12 +8,15 @@ process MINIMAP2_ONT {
         val(suffix)
     output:
         tuple val(sample), path("${sample}_${suffix}_minimap2.sam"), emit: sam
+        tuple val(sample), path("${sample}_in.fastq.gz"), emit: input
     shell:
         '''
-        # Define input/output
-        i=!{reads}
+        # Define input
         o=!{sample}_!{suffix}_minimap2.sam
         ref=!{contaminant_ref}
-        minimap2 -a ${ref} ${i} -o ${o}
+        # Run minimap2
+        zcat !{reads} | minimap2 -a ${ref} /dev/fd/0 > ${o}
+        # Link input to output for testing
+        ln -s !{reads} !{sample}_in.fastq.gz
         '''
 }

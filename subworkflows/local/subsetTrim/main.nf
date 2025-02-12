@@ -37,7 +37,7 @@ workflow SUBSET_TRIM {
             if (human_read_filtering) {
                 minimap2_human_index = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
                 minimap2_ch = MINIMAP2_HUMAN(cleaned_ch, minimap2_human_index, "human")
-                cleaned_ch = SAMTOOLS_FILTER(minimap2_ch, "no-human")
+                cleaned_ch = SAMTOOLS_FILTER(minimap2_ch.sam, "no-human")
             }
         } else {
             cleaned_ch = FASTP(inter_ch, adapter_path, !single_end)
