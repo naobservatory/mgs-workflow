@@ -42,41 +42,20 @@ nextflow_process {
             }
         }
         then {
-
+            // Should run without failures
             assert process.success
 
-            // Debug output
-            println "Examining SAM and FASTQ contents:"
-
+            // Output FASTQ ids should be identical to unmapped read ids in input SAM
             def fastq_out = path(process.out.reads[0][1]).fastq
-            def names_out = fastq_out.readNames
-            println "First 5 reads from output FASTQ:"
-            names_out.take(5).each { println it }
+            def read_ids_out = fastq_out.readNames.toSet()
 
-//            // Debug SAM file
-//            def samFile =process.out.input[0][1]
-//            println "\nSAM file location"
-//
-//            // Check if file exists and has content
-//            println "SAM file exists"
-//            println samFile.exists()
-//            println "SAM file size"
-//            println samFile.size()
-//
-//            // Try to read first few lines of SAM
-//            println "\nFirst few lines of SAM file:"
-//            println samFile.text.readLines().take(5).join('\n')
-//
-//            // Get unmapped read IDs from SAM file (flag 4)
-//            def samOutput = ["bash", "-c", """
-//                cat samFile | \
-//                awk '\$2==4 {print \$1}' | \
-//                sort | uniq | head -n 5
-//            """].execute().text.trim()
-//
-//            println "\nFirst 5 unmapped reads from SAM:"
-//            println samOutput
+            def samlines = sam(process.out.input[0][1]).getSamLines()
+            def unmapped_read_ids = samlines
+                .findAll { line -> line.split('\t')[1] == '4' }  // Only keep lines where flag = 4
+                .collect { line -> line.split('\t')[0] }         // Get read IDs
+                .toSet()                                  // Convert to Set to remove duplicates
 
+            assert unmapped_read_ids == read_ids_out
         }
     }
 }
