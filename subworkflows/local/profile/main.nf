@@ -16,6 +16,11 @@ include { ADD_FIXED_COLUMN as ADD_BRACKEN_NORIBO } from "../../../modules/local/
 include { CONCATENATE_TSVS as CONCATENATE_KRAKEN } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_TSVS as CONCATENATE_BRACKEN } from "../../../modules/local/concatenateTsvs"
 
+if (params.ont) {
+    include { MINIMAP2_ONT as MINIMAP2_RIBO } from "../../../modules/local/minimap2"
+    include { SAMTOOLS_SEPARATE } from "../../../modules/local/samtools"
+}
+
 /****************
 | MAIN WORKFLOW |
 ****************/
@@ -27,13 +32,19 @@ workflow PROFILE {
         ref_dir
         min_kmer_fraction
         k
-        bbduk_suffix
+        ribo_suffix
         bracken_threshold
         single_end
     main:
         // Separate ribosomal reads
-        ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
-        ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix, !single_end)
+        if (params.ont) {
+            ribo_path = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-ribo-index/ribo-ref-concat-unique.mmi"
+            mapped_ch = MINIMAP2_RIBO(reads_ch, ribo_path, ribo_suffix)
+            ribo_ch = SAMTOOLS_SEPARATE(mapped_ch, ribo_suffix)
+        } else {
+            ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
+            ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, ribo_suffix, !single_end)
+        }
         // Run taxonomic profiling separately on ribo and non-ribo reads
         tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.match, kraken_db_ch, "D", bracken_threshold, single_end)
         tax_noribo_ch = TAXONOMY_NORIBO(ribo_ch.nomatch, kraken_db_ch, "D", bracken_threshold, single_end)
