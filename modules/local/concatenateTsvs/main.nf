@@ -1,6 +1,6 @@
 // Concatenate multiple TSVs (streamed version with Python)
 process CONCATENATE_TSVS {
-    label "biopython"
+    label "python"
     label "single"
     input:
         path(tsvs)

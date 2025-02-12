@@ -35,7 +35,7 @@ nextflow_workflow {
             params {
                 max_rank = 5
                 min_frac = 0.9
-                blast_frac = 0.95
+                blast_frac = 0.9
             }
             workflow {
                 '''
@@ -84,6 +84,22 @@ nextflow_workflow {
             for (i in ids_out) {
                 assert i in ids_in
             }
+            // Fraction of reads in subset output should approximate input fraction
+            def fasta_out = path(workflow.out.subset_reads[0][1]).fasta
+            def ids_sub = fasta_out.keySet().collect{ it.tokenize(" ")[0] }.toSet()
+            def frac_exp = params.blast_frac
+            def frac_obs = ids_sub.size() / ids_in.size()
+            def ci_tolerance = 0.877 // Derived by simulating draws from a binomial distribution and taking 95% CI
+            assert frac_obs / frac_exp <= 1/ci_tolerance
+            assert frac_obs / frac_exp >= ci_tolerance
+            // All subset seq IDs should be in input
+            for (i in ids_sub) {
+                assert i in ids_in
+            }
+            // All seq IDs should be in subset read output
+            for (i in ids_out) {
+                assert i in ids_sub
+            }
         }
     }
 
@@ -115,13 +131,14 @@ nextflow_workflow {
             params {
                 max_rank = 5
                 min_frac = 0.9
+                blast_frac = 0.9
             }
             workflow {
                 '''
                 input[0] = COPY_FILE.out.collect{it[1]}
                 input[1] = "${params.ref_dir}/results/${params.blast_db_prefix}"
                 input[2] = params.blast_db_prefix
-                input[3] = 0.95
+                input[3] = params.blast_frac
                 input[4] = params.max_rank
                 input[5] = params.min_frac
                 input[6] = ""
@@ -162,6 +179,22 @@ nextflow_workflow {
             def ids_out = tab_out.columns["qseqid"].toSet()
             for (i in ids_out) {
                 assert i in ids_in
+            }
+            // Fraction of reads in subset output should approximate input fraction
+            def fasta_out = path(workflow.out.subset_reads[0][1]).fasta
+            def ids_sub = fasta_out.keySet().collect{ it.tokenize(" ")[0] }.toSet()
+            def frac_exp = params.blast_frac
+            def frac_obs = ids_sub.size() / ids_in.size()
+            def ci_tolerance = 0.877 // Derived by simulating draws from a binomial distribution and taking 95% CI
+            assert frac_obs / frac_exp <= 1/ci_tolerance
+            assert frac_obs / frac_exp >= ci_tolerance
+            // All subset seq IDs should be in input
+            for (i in ids_sub) {
+                assert i in ids_in
+            }
+            // All seq IDs should be in subset read output
+            for (i in ids_out) {
+                assert i in ids_sub
             }
         }
     }

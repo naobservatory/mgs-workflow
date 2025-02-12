@@ -1,0 +1,92 @@
+nextflow_process {
+
+    name "Test process SORT_FASTQ"
+    script "modules/local/sortFastq/main.nf"
+    process "SORT_FASTQ"
+    config "tests/run.config"
+    tag "module"
+    tag "sort_fastq"
+
+    test("Should produce no change in already-sorted input") {
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq"))
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_FILE.out
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Input and output records should match
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def fastq_out = path(process.out.input[0][1]).fastq
+            assert fastq_in.records == fastq_out.records
+            assert fastq_in.readNames == fastq_out.readNames
+            assert fastq_in.sequences == fastq_out.sequences
+            // Output names should be sorted
+            assert fastq_out.readNames.toSorted() == fastq_out.readNames
+        }
+    }
+
+    test("Should correctly sort unsorted input") {
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/test-random-shuffled.fastq"))
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_FILE.out
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Input and output read counts should not match
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def fastq_out = path(process.out.output[0][1]).fastq
+            assert fastq_in.readNames != fastq_out.readNames
+            assert fastq_in.sequences != fastq_out.sequences
+            // Input should be unsorted, but output should be sorted
+            def names_in = fastq_in.readNames
+            def names_out = fastq_out.readNames
+            assert names_in.toSorted() != names_in
+            assert names_out.toSorted() == names_out
+            // Sorted names should match between input and output
+            assert names_in.toSorted() == names_out.toSorted()
+            // Name/sequence mapping should be preserved
+            for (n in names_in) {
+                def records_in = fastq_in.records[n]
+                def records_out = fastq_out.records[n]
+                assert records_in.getReadHeader() == records_out.getReadHeader()
+                assert records_in.getReadString() == records_out.getReadString()
+                assert records_in.getBaseQualityString() == records_out.getBaseQualityString()
+            }
+        }
+    }
+
+}

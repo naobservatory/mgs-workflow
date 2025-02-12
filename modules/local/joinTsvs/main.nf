@@ -1,6 +1,6 @@
 // Join two sorted TSVs on a specified column header
 process JOIN_TSVS {
-    label "biopython"
+    label "python"
     label "single"
     input:
         tuple val(sample), path(tsv1), path(tsv2)

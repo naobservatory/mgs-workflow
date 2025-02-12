@@ -1,4 +1,4 @@
-# Version naming scheme for mgs-workflow
+# Pipeline versioning
 
 From version 2.6.0.0 we're adopting a new 4-number versioning scheme, described below. The primary purpose of this system is to communicate clearly to users of the pipeline what changes they must make when interpreting or using the outputs of the pipeline in downstream applications
 
