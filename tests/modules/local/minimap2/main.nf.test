@@ -1,0 +1,45 @@
+nextflow_process {
+
+    name "Test process MINIMAP2_ONT"
+    script "modules/local/minimap2/main.nf"
+    process "MINIMAP2_ONT"
+    config "tests/run_dev_se.config"
+    tag "module"
+    tag "minimap2"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                input[1] = true
+                """
+            }
+        }
+    }
+
+    test("When run against human index, should run without failures and return properly formatted SAM") {
+        tag "expect_success"
+        tag "single_end"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
+                input[2] = "human"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Both @SQ headers and alignments should be present
+            def nHeaders = ["bash", "-c", "cat " + process.out.sam[0][1] + " | grep -c '^@SQ'"].execute().text.trim() as Integer
+            def nAlignments = ["bash", "-c", "cat " + process.out.sam[0][1] + " | grep -v '^@' | wc -l"].execute().text.trim() as Integer
+            assert nHeaders > 0
+            assert nAlignments > 0
+        }
+    }
+}
