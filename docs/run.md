@@ -58,24 +58,25 @@ To perform these functions, the workflow runs a series of subworkflows responsib
 This subworkflow loads the samplesheet and creates a channel containing the samplesheet data, in the structure expected by the pipeline. If provided, it also creates a channel containing the grouping information used to combine samples for downstream analysis. (No diagram is provided for this subworkflow.)
 
 ### Subset and trim reads (SUBSET_TRIM)
-This subworkflow uses [Seqtk](https://github.com/lh3/seqtk) to randomly subsample the input reads to a target number[^target] (default 1 million read pairs per sample) to save time and and compute on downstream steps while still providing a reliable statistical picture of the overall sample. Following downsampling, reads undergo adapter trimming and quality screening with [FASTP](https://github.com/OpenGene/fastp), which both screens for adapters and trims low-quality and low-complexity sequences.
+This subworkflow uses [Seqtk](https://github.com/lh3/seqtk) to randomly subsample the input reads to a target number[^target] (default 1 million read pairs per sample) to save time and and compute on downstream steps while still providing a reliable statistical picture of the overall sample. Following downsampling, read pairs are combined into a single interleaved file, which then undergoes adapter trimming and quality screening with [FASTP](https://github.com/OpenGene/fastp).
 
-[^target]: More precisely, the subworkflow uses the total read count and target read number to calculate a fraction $p$ of the input reads that should be retained, then keeps each read from the input data with probability $p$. Since each read is kept or discarded independently of the others, the final read count will not exactly match the target number; however, it will be very close for sufficiently large input files.
+[^target]: More precisely, the subworkflow uses the total read count and target read number to calculate a fraction *p* of the input reads that should be retained, then keeps each read from the input data with probability *p*. Since each read is kept or discarded independently of the others, the final read count will not exactly match the target number; however, it will be very close for sufficiently large input files.
 
 ```mermaid
 ---
-title: TRIM_AND_SUBSET
+title: SUBSET_TRIM
 config:
   layout: horizontal
 ---
 flowchart LR
-A(Raw reads)  --> B[Subset with Seqtk]
-B --> C[Trim with FASTP]
-B --> D(Subset reads)
-C --> E(Subset trimmed reads)
+A(Raw paired reads) --> B[Interleave reads]
+B --> C[Subset with Seqtk]
+C --> D[Trim with FASTP]
+C --> E(Subset reads)
+D --> F(Subset trimmed reads)
 style A fill:#fff,stroke:#000
-style D fill:#000,color:#fff,stroke:#000
 style E fill:#000,color:#fff,stroke:#000
+style F fill:#000,color:#fff,stroke:#000
 ```
 
 ## Helper workflows
@@ -91,41 +92,41 @@ config:
   layout: horizontal
 ---
 flowchart LR
-A(Reads) -.-> |Optional|B[CLUMPIFY_PAIRED]
-A --> C[BBMERGE]
-B -.-> C[BBMERGE]
-C -.-> D[CLUMPIFY_SINGLE]
-C --> E[KRAKEN]
-D -.-> E[KRAKEN]
-E --> G(Kraken output)
-E --> F[BRACKEN]
-F --> H(Bracken output)
-subgraph "Read deduplication"
+A(Interleaved reads) --> B[BBMERGE]
+B --> C(Merging summary output)
+B --> D[KRAKEN]
+D --> E[Process Kraken output]
+E --> F(Kraken output)
+D --> G[BRACKEN]
+G --> H[Process Bracken output]
+H --> I(Bracken output)
+subgraph "Merging read pairs"
 B
-D
-end
-subgraph "Paired reads to single reads"
-C
 end
 subgraph "Taxonomic profiling"
+D
+G
+end
+subgraph "Processing output"
 E
-F
+H
 end
 style A fill:#fff,stroke:#000
-style G fill:#000,color:#fff,stroke:#000
-style H fill:#000,color:#fff,stroke:#000
+style C fill:#000,color:#fff,stroke:#000
+style F fill:#000,color:#fff,stroke:#000
+style I fill:#000,color:#fff,stroke:#000
 ```
 
-1. If enabled, reads are first deduplicated using [Clumpify](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/clumpify-guide/)[^dedup]
-2. Read pairs are then processed with [BBMerge](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmerge-guide/)[^merge] to create single sequences. Any pairs that cannot be merged are joined end-to-end with an "N" base between them.
-3. When deduplication is enabled, the merged reads undergo a second round of Clumpify deduplication.
-4. Finally, reads are taxonomically classified using [Kraken2](https://ccb.jhu.edu/software/kraken2/) with the reference database from the index workflow. [Bracken](https://ccb.jhu.edu/software/bracken/) then processes these results to generate detailed taxonomic abundance estimates.
+1. Input read pairs are processed with [BBMerge](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmerge-guide/)[^merge] to create single sequences. Any pairs that cannot be merged are joined end-to-end with an "N" base between them.
+2. Reads are taxonomically classified using [Kraken2](https://ccb.jhu.edu/software/kraken2/) with the reference database from the index workflow. 
+3. [Bracken](https://ccb.jhu.edu/software/bracken/) then processes these results to generate detailed taxonomic abundance estimates.
+4. Finally, the outputs from Kraken2 and Bracken are processed and combined into well-formatted TSVs for downstream processing.
 
-[^dedup]: Which identifies and collapses groups of reads that are identical modulo some specified error rate.
 [^merge]: Which aligns and merges read pairs with significant overlap.
 
 ### QC (QC)
 This phase conducts quality control on any set of reads. It is called by [RUN_QC](#qc-and-output-run_qc) twice, once for the subset reads and once for the subset trimmed reads.
+
 ```mermaid
 ---
 title: QC
@@ -133,11 +134,10 @@ config:
   layout: horizontal
 ---
 flowchart LR
-A(Reads) --> B[FASTQ]
+A(Interleaved reads) --> B[FASTQ]
 B --> C[MULTIQC]
-C --> D[SUMMARIZE_MULTIQC_PAIR]
-D --> E[Process & merge output]
-E --> F(QC basic stats) & G(QC adapter stats) & H(QC quality base stats) & I(QC quality sequence stats) & J(QC length stats)
+C --> D[SUMMARIZE_MULTIQC]
+D --> F(QC basic stats) & G(QC adapter stats) & H(QC quality base stats) & I(QC quality sequence stats) & J(QC length stats)
 style A fill:#fff,stroke:#000
 style F fill:#000,color:#fff,stroke:#000
 style G fill:#000,color:#fff,stroke:#000
@@ -146,11 +146,9 @@ style I fill:#000,color:#fff,stroke:#000
 style J fill:#000,color:#fff,stroke:#000
 ```
 
-1. Run FASTQC on each pair of read files
-2. Extract data with MultiQC for each pair of read files
-3. Summarize MultiQC information for each pair of read files
-4. Process and merge outputs
-
+1. Input reads are run through [FASTQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) to generate quality-control metrics.
+2. The output of FASTQC is then run through [MultiQC](https://multiqc.info/) to extract QC information into a more usable form.
+3. The output of MultiQC is then processed and summarized into a series of summary TSV files.
 
 ## Analysis subworkflows
 
@@ -166,18 +164,17 @@ config:
 ---
 flowchart LR
 A(Raw reads) --> B["BBDuk <br> (viral index)"]
-B --> M(Raw reads after BBDuk)
+B --> M(BBDuk-screened raw reads)
 B --> C[FASTP]
 C --> D[Cutadapt]
 D --> E["Bowtie2 <br> (viral index)"]
 E --> F["Bowtie2 <br> (human index)"]
 F --> G["Bowtie2 <br> (other contaminants index)"]
 G --> H[TAXONOMY]
-H --> I[Filter by alignment score and assignment]
+H --> |Kraken output| I[Filter by alignment score and Kraken assignment]
 E --> I
-I --> J(Viral reads with metadata)
-I --> K(Viral clade counts)
-I --> N("Forward and reverse fasta file of all viral reads")
+I --> J(Viral hits table)
+I --> K(Interleaved viral FASTQ)
 
 subgraph "Filter for viral reads"
 B
@@ -194,15 +191,14 @@ end
 style A fill:#fff,stroke:#000
 style J fill:#000,color:#fff,stroke:#000
 style K fill:#000,color:#fff,stroke:#000
-style N fill:#000,color:#fff,stroke:#000
 style M fill:#000,color:#fff,stroke:#000
 ```
 
 1. To begin with, the raw reads are screened against a database of vertebrate-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least one 24-mer matching any vertebrate-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative vertebrate-infecting viral reads while discarding the vast majority of non-HV reads, reducing the cost associated with the rest of this phase.
 2. Surviving reads undergo additional adapter trimming with [FASTP](https://github.com/OpenGene/fastp) and [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) to remove any residual adapter contamination that might lead to false positive results.
-3. Next, reads are aligned to the previously-mentioned database of vertebrate-infecting viral genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative HV reads as possible. The SAM and FASTQ files are processed to generate new read files containing any read pair for which at least one read matches the HV database.
+3. Next, reads are aligned to the previously-mentioned database of vertebrate-infecting viral genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative HV reads as possible. The output files are processed to generate new read files containing any read pair for which at least one read matches the HV database.
 4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using Bowtie2 in series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
-5. Surviving read pairs are then taxonomically profiled using the [TAXONOMY subworkflow](#taxonomic-assignment-taxonomy), which deduplicates, merges and profiles the reads.
+5. Surviving read pairs are then taxonomically profiled using the [TAXONOMY subworkflow](#taxonomic-assignment-taxonomy) to generate Kraken2 taxonomic assignments.
 6.  Finally, reads are assigned a final vertebrate-infecting virus status if they:
     - Are classified as vertebrate-infecting virus by both Bowtie2 and Kraken2; or
     - Are unassigned by Kraken and align to an vertebrate-infecting virus taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
@@ -211,7 +207,7 @@ style M fill:#000,color:#fff,stroke:#000
 
 ### Taxonomic profiling (PROFILE)
 
-The goal of this subworkflow is to give an overview of the taxonomic composition of the cleaned and subset reads from the preprocessing phase. In particular, it gives an estimate of (i) the fraction of ribosomal reads in the dataset, (ii) the taxonomic breakdown of the dataset at the domain level[^eukarya], and (iii) more detailed abundance estimates for lower-level taxa.
+The goal of this subworkflow is to give an overview of the taxonomic composition of the cleaned and subset reads from the preprocessing phase. In particular, it gives an estimate of (a) the fraction of ribosomal reads in the dataset, (b) the taxonomic breakdown of the dataset at the domain level[^eukarya], and (c) more detailed abundance estimates for lower-level taxa.
 
 ```mermaid
 ---
@@ -223,10 +219,10 @@ flowchart LR
 A("Subset trimmed reads <br> (SUBSET_TRIM)") --> B["BBDuk <br> (SILVA index)"]
 B --> |Ribosomal reads| C[TAXONOMY]
 B --> |Non-ribosomal reads| D[TAXONOMY]
-C --> E[Merge output]
+C --> E[Combine output]
 D --> E
-E --> F(kraken_reports_merged)
-E --> G(bracken_reports_merged)
+E --> F(Combined Kraken reports)
+E --> G(Combined Bracken reports)
 subgraph "Ribosomal classification"
 B
 end
@@ -250,25 +246,21 @@ config:
   layout: horizontal
 ---
 flowchart LR
-A("Forward and reverse fasta file of all viral reads <br> (EXTRACT_VIRAL_READS)") -.-> |Optional|B[Subset with Seqtk]
-B --> |Forward read|C[BLASTN]
-B --> |Reverse read|D[BLASTN]
-C --> E[Filter BLASTN output]
-D --> F[Filter BLASTN output]
-E & F --> G[Process & merge output]
-G --> H(BLAST assignment with metadata)
-G --> I(Forward read used for BLAST)
-G --> J(Reverse read used for BLAST)
+A("Interleaved viral FASTQ file<br>(EXTRACT_VIRAL_READS)") -.-> |Optional|B[Subset with Seqtk]
+B -.-> C[Convert FASTQ to FASTA]
+A -.-> C
+C --> D[BLASTN]
+D --> E[Filter BLASTN output]
+E --> H(Filtered tabular BLAST results)
+C --> I(Subset input reads)
 style A fill:#fff,stroke:#000
 style H fill:#000,color:#fff,stroke:#000
 style I fill:#000,color:#fff,stroke:#000
-style J fill:#000,color:#fff,stroke:#000
 ```
 
-1. Reads are subset if `params.blast_hv_fraction` is less than 1, else if `params.blast_hv_fraction` is 1, then BLAST is run on all host viral reads.
-2. Forward and reverse reads are aligned separately with BLASTN.
-3. BLASTN outputs are filtered to keep only the best-scoring alignment for each read.
-4. Output from both reads are combined into a single file, with columns for the read ID, the subject taxid, and the alignment score.
+1. Input FASTQ files are subset as appropriate (based on `params.blast_hv_fraction`), then converted to FASTA.
+2. Reads in FASTA format are aligned to the specified NCBI database (default `core_nt`) with BLASTN.
+3. Tabular BLASTN outputs are filtered to keep only the best-scoring alignment for each combination of read and subject sequence, then filtered again to keep only alignments for each read that (a) are in the top N alignments for that read (default N=5), or (b) have a bitscore at least P% as high as the best-scoring alignment (default P=90).
 
 [^blast]: Setting `params.blast_hv_fraction` to 0 skips this step altogether.
 
@@ -278,7 +270,7 @@ style J fill:#000,color:#fff,stroke:#000
 This subworkflow counts the total number of reads in the input files, then merges read counts from all samples into one output TSV. (No diagram is provided for this subworkflow.)
 
 ### QC and output phase (RUN_QC)
-This subworkflow generates quality metrics on the raw and cleaned read subsets output by SUBSET_TRIM. Reads are analyzed with [FASTQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [MultiQC](https://multiqc.info/), then extracted into easy-to-parse TSV files[^tsvs] for downstream processing.
+This subworkflow calls [QC](#qc-qc) on the raw and cleaned read subsets output by SUBSET_TRIM, then concatenates the outputs across the two pipeline stages.
 
 ```mermaid
 ---
@@ -303,6 +295,3 @@ style H fill:#000,color:#fff,stroke:#000
 style I fill:#000,color:#fff,stroke:#000
 style J fill:#000,color:#fff,stroke:#000
 ```
-
-[^tsvs]: Specifically, `subset_qc_basic_stats.tsv.gz`, `subset_qc_adapter_stats.tsv.gz`, `subset_qc_quality_base_stats.tsv.gz`, `subset_qc_quality_sequence_stats.tsv.gz` and `subset_qc_length_stats.tsv.gz`.
-

@@ -47,8 +47,10 @@ workflow RUN {
             params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
             params.random_seed)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
+        blast_reads_ch = BLAST_VIRAL.out.subset_reads
     } else {
         blast_subset_ch = Channel.empty()
+        blast_reads_ch = Channel.empty()
     }
 
     // Subset reads to target number, and trim adapters
@@ -99,4 +101,5 @@ workflow RUN {
         PROFILE.out.kraken >> "results"
         // Validation output (if any)
         blast_subset_ch >> "results"
+        blast_reads_ch >> "results"
 }

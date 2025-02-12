@@ -11,17 +11,20 @@ The rest of this page describes the specific options present in each config file
 This configuration file controls the pipeline's main RUN workflow. Its options are as follows:
 
 - `params.mode = "run"` [str]: This instructs the pipeline to execute the [core run workflow](./workflows/run.nf).
+- `params.ont = false` [bool]: Run the pipeline with Illumina data (ONT data is under development but not yet fully supported)
 - `params.base_dir` [str]: Path to the parent directory for the pipeline working and output directories.
 - `params.ref_dir` [str]: Path to the directory containing the outputs of the [`index` workflow](./docs/index.md).
 - `params.sample_sheet` [str]: Path to the [sample sheet](./docs/usage.md#11-the-sample-sheet) used for the pipeline run.
 - `params.adapters` [str]: Path to the adapter file for adapter trimming (default [`ref/adapters.fasta`](./ref/adapters.fasta).
-- `params.grouping` [bool]: Whether to group samples by the `group` column in the sample sheet.
 - `params.n_reads_profile` [int]: The number of reads per sample to run through taxonomic profiling (default 1 million).
 - `params.bt2_score_threshold` [float]: The length-normalized Bowtie2 score threshold above which a read is considered a valid hit for a host-infecting virus (typically 15 or 20).
-- `params.blast_viral_fraction` [float]: The fraction of putative host-infecting virus reads to validate with BLASTN (0 = don't run BLAST).
-- `params.fuzzy_match_alignment_duplicates` [int]: Fuzzy matching the start coordinate of reads for identification of duplicates through alignment (0 = exact matching; options are 0, 1, or 2).
-- `params.host_taxon` [str]: The taxon to use for host-infecting virus identification with Kraken2.
+- `params.bracken_threshold` [int]: Minimum number of reads that must be assigned to a taxon for Bracken to include it. (Default 10, can be lowered for testing on very small datasets)
+- `params.host_taxon` [str]: Host taxon to use for host-infecting virus identification with Kraken2. (default "vertebrate")
+- `random_seed` [str]: Random seem for non-deterministic processes. Should generally be blank  ("") in non-test settings.
 - `params.blast_db_prefix` [str]: The prefix for the BLAST database to use for host-infecting virus identification (should match the index workflow's `params.blast_db_name`).
+- `params.blast_viral_fraction` [float]: The fraction of putative host-infecting virus reads to validate with BLASTN (0 = don't run BLAST).
+- `params.blast_min_frac` [float]: Keep BLAST hits whose bitscore is at least this fraction of the best bitscore for that query. (default 0.9)
+- `params.blast_max_rank` [int]: Keep BLAST hits whose dense bitscore rank for that query is at most this value.
 - `process.queue` [str]: The [AWS Batch job queue](./docs/batch.md) to use for this pipeline run.
 
 ## Index workflow (`configs/index.config`)
@@ -44,5 +47,3 @@ This configuration file controls the pipeline's main RUN workflow. Its options a
 - `params.virus_taxid` [int]: The NCBI taxid for the Viruses taxon (currently 10239).
 - `params.viral_taxids_exclude` [str]: Space-separated string of taxids to hard-exclude from the list of host-infecting viruses. Currently includes phage taxa that Virus-Host DB erroneously classifies as human-infecting.
 - `params.host_taxa_screen`: Space-separated list of host taxon names to screen for when building the viral genome database. Should correspond to taxa included in `params.host_taxon_db`.
-- `params.kraken_memory`: Placeholder to initialize `run` workflow params to avoid warnings
-- `params.classify_dedup_subset`: Placeholder to initialize `run` workflow params to avoid warnings

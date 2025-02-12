@@ -47,21 +47,47 @@ nextflow_process {
         then {
             // Should run without failures
             assert process.success
-            // Output reads should have a nonzero number of lines divisible by eight
-            def countGzipLines = { file -> path(file).linesGzip.size() }
-            def output_lines_mapped = countGzipLines(process.out.reads_mapped[0][1])
-            def output_lines_unmapped = countGzipLines(process.out.reads_unmapped[0][1])
-            assert output_lines_mapped > 0
-            assert output_lines_mapped % 8 == 0
-            assert output_lines_unmapped > 0
-            assert output_lines_unmapped % 8 == 0
+            // Output reads should be valid FASTQ with expected header structure
+            def fastq_mapped = path(process.out.reads_mapped[0][1]).fastq
+            def fastq_unmapped = path(process.out.reads_unmapped[0][1]).fastq
+            for (n in fastq_mapped.readNames) {
+                assert n.tokenize(" ").size() == 2
+            }
+            for (n in fastq_unmapped.readNames) {
+                assert n.tokenize(" ").size() == 2
+            }
+            // Output reads should be correctly interleaved
+            def ids_mapped = fastq_mapped.readNames.collect{it.tokenize(" ")[0]}
+            def ids_unmapped = fastq_unmapped.readNames.collect{it.tokenize(" ")[0]}
+            def num_mapped = fastq_mapped.readNames.collect{it.tokenize(" ")[1]}
+            def num_unmapped = fastq_unmapped.readNames.collect{it.tokenize(" ")[1]}
+            assert ids_mapped.size() % 2 == 0
+            assert ids_unmapped.size() % 2 == 0
+            for (int i=0; i<ids_mapped.size()/2; i++){
+                assert ids_mapped[2*i] == ids_mapped[2*i+1]
+                assert num_mapped[2*i] == "1"
+                assert num_mapped[2*i+1] == "2"
+            }
+            for (int i=0; i<ids_unmapped.size()/2; i++){
+                assert ids_unmapped[2*i] == ids_unmapped[2*i+1]
+                assert num_unmapped[2*i] == "1"
+                assert num_unmapped[2*i+1] == "2"
+            }
             // Total input and output read counts should match
-            def total_input_lines  = countGzipLines(process.out.input[0][1])
-            assert total_input_lines == (output_lines_mapped + output_lines_unmapped)
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def ids_in = fastq_in.readNames.collect{it.tokenize(" ")[0]}
+            assert ids_in.size() == ids_mapped.size() + ids_unmapped.size()
+            for (i in ids_in) {
+                if (i in ids_mapped) {
+                    assert !(i in ids_unmapped)
+                } else {
+                    assert (i in ids_unmapped)
+                }
+            }
             // SAM should equal mapped output reads plus a few header lines
             def countGzipLinesSam = { file -> ["bash", "-c", "zcat " + file + " | grep -v \"^@\" | wc -l"].execute().text.trim() as Integer }
             def output_lines_sam = countGzipLinesSam(process.out.sam[0][1])
-            assert output_lines_sam == (output_lines_mapped / 4)
+            assert output_lines_sam == ids_mapped.size()
         }
     }
 
@@ -85,21 +111,47 @@ nextflow_process {
         then {
             // Should run without failures
             assert process.success
-            // Output reads should have a nonzero number of lines divisible by eight
-            def countGzipLines = { file -> path(file).linesGzip.size() }
-            def output_lines_mapped = countGzipLines(process.out.reads_mapped[0][1])
-            def output_lines_unmapped = countGzipLines(process.out.reads_unmapped[0][1])
-            assert output_lines_mapped > 0
-            assert output_lines_mapped % 8 == 0
-            assert output_lines_unmapped > 0
-            assert output_lines_unmapped % 8 == 0
+            // Output reads should be valid FASTQ with expected header structure
+            def fastq_mapped = path(process.out.reads_mapped[0][1]).fastq
+            def fastq_unmapped = path(process.out.reads_unmapped[0][1]).fastq
+            for (n in fastq_mapped.readNames) {
+                assert n.tokenize(" ").size() == 2
+            }
+            for (n in fastq_unmapped.readNames) {
+                assert n.tokenize(" ").size() == 2
+            }
+            // Output reads should be correctly interleaved
+            def ids_mapped = fastq_mapped.readNames.collect{it.tokenize(" ")[0]}
+            def ids_unmapped = fastq_unmapped.readNames.collect{it.tokenize(" ")[0]}
+            def num_mapped = fastq_mapped.readNames.collect{it.tokenize(" ")[1]}
+            def num_unmapped = fastq_unmapped.readNames.collect{it.tokenize(" ")[1]}
+            assert ids_mapped.size() % 2 == 0
+            assert ids_unmapped.size() % 2 == 0
+            for (int i=0; i<ids_mapped.size()/2; i++){
+                assert ids_mapped[2*i] == ids_mapped[2*i+1]
+                assert num_mapped[2*i] == "1"
+                assert num_mapped[2*i+1] == "2"
+            }
+            for (int i=0; i<ids_unmapped.size()/2; i++){
+                assert ids_unmapped[2*i] == ids_unmapped[2*i+1]
+                assert num_unmapped[2*i] == "1"
+                assert num_unmapped[2*i+1] == "2"
+            }
             // Total input and output read counts should match
-            def total_input_lines  = countGzipLines(process.out.input[0][1])
-            assert total_input_lines == (output_lines_mapped + output_lines_unmapped)
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def ids_in = fastq_in.readNames.collect{it.tokenize(" ")[0]}
+            assert ids_in.size() == ids_mapped.size() + ids_unmapped.size()
+            for (i in ids_in) {
+                if (i in ids_mapped) {
+                    assert !(i in ids_unmapped)
+                } else {
+                    assert (i in ids_unmapped)
+                }
+            }
             // SAM should equal mapped output reads plus a few header lines
             def countGzipLinesSam = { file -> ["bash", "-c", "zcat " + file + " | grep -v \"^@\" | wc -l"].execute().text.trim() as Integer }
             def output_lines_sam = countGzipLinesSam(process.out.sam[0][1])
-            assert output_lines_sam == (output_lines_mapped / 4)
+            assert output_lines_sam == ids_mapped.size()
         }
     }
 
@@ -123,21 +175,47 @@ nextflow_process {
         then {
             // Should run without failures
             assert process.success
-            // Output reads should have a nonzero number of lines divisible by eight
-            def countGzipLines = { file -> path(file).linesGzip.size() }
-            def output_lines_mapped = countGzipLines(process.out.reads_mapped[0][1])
-            def output_lines_unmapped = countGzipLines(process.out.reads_unmapped[0][1])
-            assert output_lines_mapped > 0
-            assert output_lines_mapped % 8 == 0
-            assert output_lines_unmapped > 0
-            assert output_lines_unmapped % 8 == 0
+            // Output reads should be valid FASTQ with expected header structure
+            def fastq_mapped = path(process.out.reads_mapped[0][1]).fastq
+            def fastq_unmapped = path(process.out.reads_unmapped[0][1]).fastq
+            for (n in fastq_mapped.readNames) {
+                assert n.tokenize(" ").size() == 2
+            }
+            for (n in fastq_unmapped.readNames) {
+                assert n.tokenize(" ").size() == 2
+            }
+            // Output reads should be correctly interleaved
+            def ids_mapped = fastq_mapped.readNames.collect{it.tokenize(" ")[0]}
+            def ids_unmapped = fastq_unmapped.readNames.collect{it.tokenize(" ")[0]}
+            def num_mapped = fastq_mapped.readNames.collect{it.tokenize(" ")[1]}
+            def num_unmapped = fastq_unmapped.readNames.collect{it.tokenize(" ")[1]}
+            assert ids_mapped.size() % 2 == 0
+            assert ids_unmapped.size() % 2 == 0
+            for (int i=0; i<ids_mapped.size()/2; i++){
+                assert ids_mapped[2*i] == ids_mapped[2*i+1]
+                assert num_mapped[2*i] == "1"
+                assert num_mapped[2*i+1] == "2"
+            }
+            for (int i=0; i<ids_unmapped.size()/2; i++){
+                assert ids_unmapped[2*i] == ids_unmapped[2*i+1]
+                assert num_unmapped[2*i] == "1"
+                assert num_unmapped[2*i+1] == "2"
+            }
             // Total input and output read counts should match
-            def total_input_lines  = countGzipLines(process.out.input[0][1])
-            assert total_input_lines == (output_lines_mapped + output_lines_unmapped)
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def ids_in = fastq_in.readNames.collect{it.tokenize(" ")[0]}
+            assert ids_in.size() == ids_mapped.size() + ids_unmapped.size()
+            for (i in ids_in) {
+                if (i in ids_mapped) {
+                    assert !(i in ids_unmapped)
+                } else {
+                    assert (i in ids_unmapped)
+                }
+            }
             // SAM should equal mapped output reads plus a few header lines
             def countGzipLinesSam = { file -> ["bash", "-c", "zcat " + file + " | grep -v \"^@\" | wc -l"].execute().text.trim() as Integer }
             def output_lines_sam = countGzipLinesSam(process.out.sam[0][1])
-            assert output_lines_sam == (output_lines_mapped / 4)
+            assert output_lines_sam == ids_mapped.size()
         }
     }
 }
