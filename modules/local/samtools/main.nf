@@ -27,19 +27,19 @@ process SAMTOOLS_SEPARATE {
         tuple val(sample), path(sam)
         val(suffix)
     output:
-        tuple val(sample), path("${sample}_${suffix}_samtools_fail.fastq.gz"), emit: nomatch
-        tuple val(sample), path("${sample}_${suffix}_samtools_pass.fastq.gz"), emit: match
+        tuple val(sample), path("${sample}_${suffix}_samtools_match.fastq.gz"), emit: match
+        tuple val(sample), path("${sample}_${suffix}_samtools_nomatch.fastq.gz"), emit: nomatch
         tuple val(sample), path("${sample}_in.sam"), emit: input
     shell:
         '''
         # Define output
-        of=!{sample}_!{suffix}_samtools_fail.fastq.gz
-        op=!{sample}_!{suffix}_samtools_pass.fastq.gz
-        of_var="fastq -n -F 4"
-        op_var="fastq -n -f 4"
+        om=!{sample}_!{suffix}_samtools_match.fastq.gz
+        on=!{sample}_!{suffix}_samtools_nomatch.fastq.gz
+        om_var="fastq -n -F 4"
+        on_var="fastq -n -f 4"
         # Execute samtools
-        samtools ${of_var} ${in} | gzip > ${of}
-        samtools ${op_var} ${in} | gzip > ${op}
+        cat !{sam} | samtools ${om_var} - | gzip > ${om}
+        cat !{sam} | samtools ${on_var} - | gzip > ${on}
         # Link input to output for testing
         ln -s !{sam} !{sample}_in.sam
         '''
