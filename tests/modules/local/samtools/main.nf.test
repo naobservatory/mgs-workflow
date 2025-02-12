@@ -42,7 +42,10 @@ nextflow_process {
             }
         }
         then {
+            // Should run without failures
             assert process.success
+
+            // Output FASTQ ids should be identical to unmapped read ids in input SAM
             def fastq_out = path(process.out.reads[0][1]).fastq
             def read_ids_out = fastq_out.readNames.toSet()
 
