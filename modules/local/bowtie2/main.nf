@@ -41,12 +41,14 @@ process BOWTIE2 {
                 >(samtools view -u -f 12 - \\
                     !{ debug ? "| tee >(samtools view -h - | gzip -c > test_unmapped.sam.gz)" : "" } \\
                     | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
-                        -0 /dev/stdout -s /dev/stdout - \\
+                        -0 /dev/stdout -s /dev/stdout -N - \\
+                    | sed '1~4 s/\\/\\([12]\\)\$/ \\1/' \\
                     | gzip -c > ${un}) \\
                 >(samtools view -u -G 12 - \\
                     !{ debug ? "| tee >(samtools view -h - | gzip -c > test_mapped.sam.gz)" : "" } \\
                     | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
-                        -0 /dev/stdout -s /dev/stdout - \\
+                        -0 /dev/stdout -s /dev/stdout -N - \\
+                    | sed '1~4 s/\\/\\([12]\\)\$/ \\1/' \\
                     | gzip -c > ${al}) \\
             | samtools view -h -G 12 - \\
             !{ remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
