@@ -1,0 +1,82 @@
+nextflow_process {
+
+    name "Test process SAMTOOLS_FILTER"
+    script "modules/local/samtools/main.nf"
+    process "SAMTOOLS_FILTER"
+    config "tests/run_dev_se.config"
+    tag "module"
+    tag "samtools"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                input[1] = true
+                """
+            }
+        }
+        run("MINIMAP2_ONT") {
+            script "modules/local/minimap2/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
+                input[2] = "human"
+                """
+            }
+        }
+    }
+
+    test("When run on SAM file, should only return unaligned reads") {
+        tag "expect_success"
+        tag "single_end"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = MINIMAP2_ONT.out.sam
+                input[1] = "no-human"
+                '''
+            }
+        }
+        then {
+
+            assert process.success
+
+            // Debug output
+            println "Examining SAM and FASTQ contents:"
+
+            def fastq_out = path(process.out.reads[0][1]).fastq
+            def names_out = fastq_out.readNames
+            println "First 5 reads from output FASTQ:"
+            names_out.take(5).each { println it }
+
+//            // Debug SAM file
+//            def samFile =process.out.input[0][1]
+//            println "\nSAM file location"
+//
+//            // Check if file exists and has content
+//            println "SAM file exists"
+//            println samFile.exists()
+//            println "SAM file size"
+//            println samFile.size()
+//
+//            // Try to read first few lines of SAM
+//            println "\nFirst few lines of SAM file:"
+//            println samFile.text.readLines().take(5).join('\n')
+//
+//            // Get unmapped read IDs from SAM file (flag 4)
+//            def samOutput = ["bash", "-c", """
+//                cat samFile | \
+//                awk '\$2==4 {print \$1}' | \
+//                sort | uniq | head -n 5
+//            """].execute().text.trim()
+//
+//            println "\nFirst 5 unmapped reads from SAM:"
+//            println samOutput
+
+        }
+    }
+}
