@@ -35,10 +35,11 @@ Jobs may sometimes fail due to using up [too many API requests to get the contai
 Task failed to start - CannotPullImageManifestError: Error response from daemon: toomanyrequests: Request exceeded pull rate limit for IP XX.XXX.XX.XX
 ```
 
-To fix this, you can:
+To fix this, you can [obtain a user token](https://metagenomics-pipelines.readthedocs.io/en/latest/nf_tower.html) from Seqera, which will increase your API limit by 4x. To do this:
+
 1. Create a seqera account [here](http://cloud.seqera.io/) for free.
 2. Click on the user icon, then click the 'User tokens' section.
 3. Now click 'Add Token' to create a token for your account. Name it whatever you want (e.g. "my-nextflow-token"). Copy the token, and store it somewhere.
-4. Navigate yourself to this repo, open the profiles config file (`configs/profiles.config`), and add in the following line `tower.accessToken=<token>`, where `<token>` is the token you generated in the last step.
-This will increase your API limit by 4x. If you still keep running into this same issue, you may consider contacting Seqera for more options.
+4. Finally, you need to provide your user token to Nextflow. You can do this by either (a) setting the environment variable `TOWER_ACCESS_TOKEN` to your token value, or (b) setting the variable `tower.accessToken` to your token value in your Nextflow configuration file (in this case, we recommend adding this to `configs/profiles.config` to apply to all subsequent pipeline runs).
 
+If you still keep running into this same issue, you may consider contacting Seqera for more options.

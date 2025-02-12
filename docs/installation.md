@@ -63,7 +63,7 @@ Clone this repo into a new directory as normal.
 If possible, we recommend validating the pipeline's basic functionality in your hands by running our test suite. To do this, you'll need sufficient resources on your machine to run our tests locally. You'll need:
 - 4 CPU cores
 - 14GB RAM
-- At least 32GB storage sapce
+- At least 32GB storage space
 
 > [!TIP]
 > We recommend running the test suite on an `m5.xlarge`, to most closely match the conditions under which our CI/CD tests run with Github Actions. However, any Linux machine with sufficient resources should work.
@@ -102,7 +102,7 @@ Wait for the workflow to run to completion; this is likely to take several hours
 
 ## 6. Run the pipeline on test data
 
-To confirm that the pipeline works in your hands, we recommend running it on a small test dataset, such as the one provided at `s3://nao-testing/gold-standard-test/raw/`, before running it on larger input data. To do this with our test dataset, follow the instructions below, or do it yourself according to the directions given [here](./docs/usage.md).
+To confirm that the pipeline works in your hands, we recommend running it on a small test dataset, such as the one provided at `s3://nao-testing/gold-standard-test/raw/`, before running it on larger input data. To do this with our test dataset, follow the instructions below, or do it yourself according to the directions given [here](./usage.md).
 
 1. Prepare the launch directory:
     - Create a clean launch directory outside the repository directory.
@@ -119,7 +119,7 @@ cp REPO_DIR/test-data/samplesheet.csv samplesheet.csv
 2. Edit the config file (`nextflow.config`):
     - Edit `params.ref_dir` to point to the index directory you chose or created above (specifically `PATH_TO_REF_DIR/output`)
     - Edit `params.base_dir` to point to where you would like the pipeline to save intermediate and final pipeline outputs.
-3. Choose a profile as described [here](./docs/usage.md).
+3. Choose a profile as described [here](./usage.md).
 4. Run the pipeline from the launch directory:
 
 ```

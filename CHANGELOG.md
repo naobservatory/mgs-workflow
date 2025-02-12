@@ -16,13 +16,17 @@
     - Added new intermediate outputs, including unfiltered viral hits and interleaved FASTQ from EXTRACT_VIRAL_READS
     - Viral hits TSV moved from `virus_hits_db.tsv.gz` to `virus_hits_filtered.tsv.gz`
     - Numerous changes to column names in viral hits TSV, mainly to improve clarity
-- Updated mislabeled processes
-- Fixed bug where multiqc doesn't output sequence length stats if all sequences are the same length
-- Added instructions for what to do should you run out of API requests for containers
-- Unzipped files in `test-data` directory
-- Removed defaults from config files
-- Added new script, `bin/run_parallel_test.sh`, that allows users to run nf-test tests locally in parallel
-- Fixed mislabeled parameter in RUN_VALIDATION workflow
+- Minor changes and fixes:
+    - Updated mislabeled processes
+    - Fixed bug where multiqc doesn't output sequence length stats if all sequences are the same length
+    - Unzipped files in `test-data` directory
+    - Added new script, `bin/run_parallel_test.sh`, that allows users to run nf-test tests locally in parallel
+    - Assorted updates to documentation
+    - Removed some defaults from config files
+    - Fixed mislabeled parameter in RUN_VALIDATION workflow
+
+# v2.7.0.3
+- Fixing link to configuration file in `README.md`
 
 # v2.7.0.2
 - Updated `pipeline-version.txt`
