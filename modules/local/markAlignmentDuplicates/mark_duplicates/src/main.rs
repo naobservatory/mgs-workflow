@@ -72,7 +72,7 @@ fn average_quality_score(quality_fwd: &str, quality_rev: &str) -> f64 {
     (fwd_score + rev_score) / 2.0
 }
 
-fn process_tsv(input_path: &str, output_path: &str) -> std::io::Result<()> {
+fn process_tsv(input_path: &str, output_path: &str) -> Result<(), Box<dyn Error>> {
     // Open the input file
     let file = File::open(input_path)?;
     let reader = BufReader::new(file);
@@ -81,7 +81,7 @@ fn process_tsv(input_path: &str, output_path: &str) -> std::io::Result<()> {
     let mut duplicates: HashMap<PositionKey, Vec<(String, Option<i32>, f64)>> = HashMap::new();
     // Skip the header line
     let mut lines = reader.lines();
-    let _header = lines.next().ok_or(std::io::Error::new(std::io::ErrorKind::InvalidData, "Empty file"))??;
+    let _header = lines.next().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Empty file"))??;
     // Write header (corrected)
     writeln!(writer, "query_name\tfragment_length\texemplar\tdup_count")?;
      // Read and process the input file
@@ -90,23 +90,30 @@ fn process_tsv(input_path: &str, output_path: &str) -> std::io::Result<()> {
         let fields: Vec<&str> = line.split('\t').collect();
         // Check if the line has the correct number of fields
         if fields.len() < 23 {
-            eprintln!("Line {} has fewer than 23 fields: {:?}", index + 1, fields);
-            continue;
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("Line {} has fewer than 23 fields: {:?}", index + 1, fields),
+            ).into());
         }
         let query_name = fields[0].to_string();
         let genome_id = fields[1].to_string();
         let fragment_length = parse_int_or_na(fields[3]);
-        let aln_start = parse_int_or_na(fields[10]);
-        let aln_end = parse_int_or_na(fields[11]);
+        let ref_start_fwd = parse_int_or_na(fields[10]);
+        let ref_start_rev = parse_int_or_na(fields[11]);
         let quality_fwd = fields[20].to_string();
         let quality_rev = fields[21].to_string();
+        // Normalize the coordinates: if both values are present, use the minimum and maximum
+        let (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
+            (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
+            _ => (ref_start_fwd, ref_start_rev),
+        };
         // Calculate the average quality score of the forward and reverse reads
         let avg_quality = average_quality_score(&quality_fwd, &quality_rev);
         // Create a PositionKey for the current read
         let key = PositionKey {
             genome_id: genome_id.clone(),
-            aln_start,
-            aln_end,
+            aln_start: aln_start,
+            aln_end: aln_end,
         };
         // Add the read to the duplicates HashMap
         duplicates.entry(key).or_default().push((query_name, fragment_length, avg_quality));
@@ -136,7 +143,7 @@ fn process_tsv(input_path: &str, output_path: &str) -> std::io::Result<()> {
 // Define the deviation value
 static mut DEVIATION: i32 = 0;
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     // Check if the correct number of arguments are provided
     if args.len() != 4 {
@@ -161,6 +168,7 @@ fn main() -> std::io::Result<()> {
     unsafe {
         DEVIATION = deviation;
     }
+
     // Run the main processing function
     match process_tsv(input_path, output_path) {
         Ok(_) => println!("Processing complete."),
