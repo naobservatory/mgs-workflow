@@ -1,0 +1,225 @@
+nextflow_process {
+
+    name "Test process MARK_ALIGNMENT_DUPLICATES"
+    script "modules/local/markAlignmentDuplicates/main.nf"
+    process "MARK_ALIGNMENT_DUPLICATES"
+    tag "module"
+    tag "mark_alignment_duplicates"
+
+    // FAILURE TESTS //
+
+    test("Should break when passed an empty input TSV") {
+        tag "expect_failed"
+        when {
+            params {
+                deviation = 0
+                tsv = "${projectDir}/test-data/toy-data/empty_file.txt"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("Empty input file")
+            !assert process.errorReport.contains("Missing required header")
+            !assert process.errorReport.contains("Incorrect field count in line")
+            !assert process.errorReport.contains("Deviation must be an integer")
+            !assert process.errorReport.contains("Deviation must be at most 2")
+        }
+    }
+
+    test("Should break when passed an invalid line (inappropriate field count)") {
+        tag "expect_failed"
+        when {
+            params {
+                deviation = 0
+                tsv = "${projectDir}/test-data/toy-data/test-virus-hits-invalid-line.tsv"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            !assert process.errorReport.contains("Empty input file")
+            !assert process.errorReport.contains("Missing required header")
+            assert process.errorReport.contains("Incorrect field count in line")
+            !assert process.errorReport.contains("Deviation must be an integer")
+            !assert process.errorReport.contains("Deviation must be at most 2")
+        }
+    }
+
+    test("Should break when passed an invalid header (missing required column)") {
+        tag "expect_failed"
+        when {
+            params {
+                deviation = 0
+                tsv = "${projectDir}/test-data/toy-data/test-virus-hits-invalid-header.tsv"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            !assert process.errorReport.contains("Empty input file")
+            assert process.errorReport.contains("Missing required header")
+            !assert process.errorReport.contains("Incorrect field count in line")
+            !assert process.errorReport.contains("Deviation must be an integer")
+            !assert process.errorReport.contains("Deviation must be at most 2")
+        }
+    }
+
+    test("Should break when passed an invalid deviation (not an integer)") {
+        tag "expect_failed"
+        when {
+            params {
+                deviation = "test"
+                tsv = "${projectDir}/test-data/toy-data/test-virus-hits-valid.tsv"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            !assert process.errorReport.contains("Empty input file")
+            !assert process.errorReport.contains("Missing required header")
+            !assert process.errorReport.contains("Incorrect field count in line")
+            assert process.errorReport.contains("Deviation must be an integer")
+            !assert process.errorReport.contains("Deviation must be at most 2")
+        }
+    }
+
+    test("Should break when passed an invalid deviation (too big)") {
+        tag "expect_failed"
+        when {
+            params {
+                deviation = 100
+                tsv = "${projectDir}/test-data/toy-data/test-virus-hits-valid.tsv"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            !assert process.errorReport.contains("Empty input file")
+            !assert process.errorReport.contains("Missing required header")
+            !assert process.errorReport.contains("Incorrect field count in line")
+            !assert process.errorReport.contains("Deviation must be an integer")
+            assert process.errorReport.contains("Deviation must be at most 2")
+        }
+    }
+
+    // SUCCESS TESTS //
+
+    test("Should run without errors on real input (plaintext)") {
+        tag "expect_success"
+        when {
+            params {
+                deviation = 1
+                tsv = "${projectDir}/test-data/gold-standard-results/virus_hits_filtered.tsv"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should have expected dimensions
+            def tab_in = path(params.tsv).csv(sep: "\t")
+            def tab_out = path(process.out[0][1]).clv(sep: "\t", decompress: true)
+            assert tab_in.rowCount == tab_out.rowCount
+            assert tab_in.columnCount == tab_out.columnCount - 2
+            // Output should have expected headers
+            assert tab_in.columnNames + ["bowtie2_dup_exemplar", "bowtie2_dup_count"] == tab_out.columnNames
+            // Old columns should be unchanged
+            for (c in tab_in.columnNames) {
+                assert tab_in.columns[c] == tab_out.columns[c]
+            }
+            // Output stats should be consistent (not checking correctness here)
+            for (r in tab_out.rows) {
+                def exemplar = r["bowtie2_dup_exemplar"]
+                assert exemplar in tab_out.columns["seq_id"] // Exemplar should be a real read
+                assert r["bowtie2_dup_count"] == tab_out.columns["bowtie2_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
+            }
+        }
+    }
+
+    test("Should run without errors on real input (compressed)") {
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE") {
+                params {
+                    tsv = "${projectDir}/test-data/gold-standard-results/virus_hits_filtered.tsv"
+                }
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+                deviation = 1
+                tsv = GZIP_FILE.out
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should have expected dimensions
+            def tab_in = path(params.tsv).csv(sep: "\t")
+            def tab_out = path(process.out[0][1]).clv(sep: "\t", decompress: true)
+            assert tab_in.rowCount == tab_out.rowCount
+            assert tab_in.columnCount == tab_out.columnCount - 2
+            // Output should have expected headers
+            assert tab_in.columnNames + ["bowtie2_dup_exemplar", "bowtie2_dup_count"] == tab_out.columnNames
+            // Old columns should be unchanged
+            for (c in tab_in.columnNames) {
+                assert tab_in.columns[c] == tab_out.columns[c]
+            }
+            // Output stats should be consistent (not checking correctness here)
+            for (r in tab_out.rows) {
+                def exemplar = r["bowtie2_dup_exemplar"]
+                assert exemplar in tab_out.columns["seq_id"] // Exemplar should be a real read
+                assert r["bowtie2_dup_count"] == tab_out.columns["bowtie2_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
+            }
+        }
+    }
+
+}
