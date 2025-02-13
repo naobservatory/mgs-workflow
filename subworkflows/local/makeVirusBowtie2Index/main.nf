@@ -9,7 +9,7 @@ include { BOWTIE2_INDEX } from "../../../modules/local/bowtie2"
 | WORKFLOW |
 ***********/
 
-workflow MAKE_VIRUS_INDEX {
+workflow MAKE_VIRUS_BOWTIE2_INDEX {
     take:
         virus_genome_fasta
     main:
