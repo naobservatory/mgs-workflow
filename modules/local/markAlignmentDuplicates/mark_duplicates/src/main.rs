@@ -4,6 +4,38 @@ use std::collections::HashMap;
 use std::env;
 use std::hash::{Hash, Hasher};
 use std::error::Error;
+use flate2::{Compression as GzCompression, write::GzEncoder, read::GzDecoder};
+use bzip2::{Compression as BzCompression, write::BzEncoder, read::BzDecoder};
+
+// Define a reader based on the file extension
+fn open_reader(filename: &str) -> std::io::Result<Box<dyn BufRead>> {
+    let file = File::open(filename)?;
+    if filename.ends_with(".gz") {
+        let decoder = GzDecoder::new(file);
+        Ok(Box::new(BufReader::new(decoder)))
+    } else if filename.ends_with(".bz2") {
+        let decoder = BzDecoder::new(file);
+        Ok(Box::new(BufReader::new(decoder)))
+    } else {
+        Ok(Box::new(BufReader::new(file)))
+    }
+}
+
+// Defune a writer based on the file extension
+fn open_writer(filename: &str) -> std::io::Result<Box<dyn Write>> {
+    if filename.ends_with(".gz") {
+        let file = File::create(filename)?;
+        let encoder = GzEncoder::new(file, GzCompression::default());
+        Ok(Box::new(BufWriter::new(encoder)))
+    } else if filename.ends_with(".bz2") {
+        let file = File::create(filename)?;
+        let encoder = BzEncoder::new(file, BzCompression::default());
+        Ok(Box::new(BufWriter::new(encoder)))
+    } else {
+        let file = File::create(filename)?;
+        Ok(Box::new(BufWriter::new(file)))
+    }
+}
 
 // Define the PositionKey struct to store the genome_id, forward and reverse reference start positions
 #[derive(Debug, Clone, Eq)]
@@ -75,9 +107,8 @@ fn average_quality_score(quality_fwd: &str, quality_rev: &str) -> f64 {
 
 fn process_tsv(input_path: &str, output_path: &str) -> Result<(), Box<dyn Error>> {
     // Open the input file
-    let file = File::open(input_path)?;
-    let reader = BufReader::new(file);
-    let mut writer = BufWriter::new(File::create(output_path)?);
+    let reader = open_reader(input_path)?;
+    let mut writer = open_writer(output_path)?;
     // Create a HashMap to store duplicate information
     let mut duplicates: HashMap<PositionKey, Vec<(String, f64, Vec<String>)>> = HashMap::new();
     // Skip the header line
