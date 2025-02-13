@@ -25,7 +25,6 @@ impl PartialEq for PositionKey {
 fn compare_positions(a: Option<i32>, b: Option<i32>, deviation: i32) -> bool {
     match (a, b) {
         (Some(x), Some(y)) => (x - y).abs() <= deviation,
-        //(None, None) => true,
         _ => false,
     }
 }
