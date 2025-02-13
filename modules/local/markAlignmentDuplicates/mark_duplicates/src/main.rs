@@ -82,7 +82,7 @@ fn process_tsv(input_path: &str, output_path: &str) -> Result<(), Box<dyn Error>
     let mut duplicates: HashMap<PositionKey, Vec<(String, f64, Vec<String>)>> = HashMap::new();
     // Skip the header line
     let mut lines = reader.lines();
-    let header_line = lines.next().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Empty file"))??;
+    let header_line = lines.next().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Empty input file"))??;
     let headers: Vec<&str> = header_line.split('\t').collect();
     let header_count = headers.len(); // Number of header fields
     // Build a map from header fields to indices
@@ -108,7 +108,7 @@ fn process_tsv(input_path: &str, output_path: &str) -> Result<(), Box<dyn Error>
         if fields.len() != header_count {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Incorrect field count in Line {}: {} (observed) vs {} (expected)", index + 1, fields.len(), header_count),
+                format!("Incorrect field count in line {}: {} (observed) vs {} (expected)", index + 1, fields.len(), header_count),
             ).into());
         }
         let query_name = fields[indices["seq_id"]].to_string();
@@ -175,18 +175,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Check if the deviation value is valid
     if deviation != 0 && deviation != 1 && deviation != 2 {
         return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!(
-            "Error: deviation must be 0, 1, or 2"
+            "Deviation must be at most 2"
         )).into());
     }
     // Set the deviation value
     unsafe {
         DEVIATION = deviation;
     }
-
     // Run the main processing function
-    match process_tsv(input_path, output_path) {
-        Ok(_) => println!("Processing complete."),
-        Err(e) => eprintln!("Error processing file: {:?}", e),
-    }
-    Ok(())
+    return process_tsv(input_path, output_path)
 }
