@@ -1,1 +1,20 @@
-seq_id	bowtie2_genome_id_all	bowtie2_ref_start_fwd	bowtie2_ref_start_rev	query_qual_fwd	query_qual_rev
+seq_id	bowtie2_genome_id_all	bowtie2_ref_start_fwd	bowtie2_ref_start_rev	query_qual_fwd	query_qual_rev	exemplar_exp_0	exemplar_exp_1	exemplar_exp_2
+grp_1_0	test_gid_1	1	100	IIIIII	IIIIII	grp_1_2	grp_1_2	grp_1_2
+grp_1_1	test_gid_1	1	100	IIIIII	IIIIII	grp_1_2	grp_1_2	grp_1_2
+grp_1_2	test_gid_1	1	100	JJJJJJ	JJJJJJ	grp_1_2	grp_1_2	grp_1_2
+grp_1_3	test_gid_1	100	1	IIIIII	IIIIII	grp_1_2	grp_1_2	grp_1_2
+grp_1_4	test_gid_1	100	1	IIIIII	IIIIII	grp_1_2	grp_1_2	grp_1_2
+grp_2_0	test_gid_2	50	150	JJJJJJ	JJJJJJ	grp_2_0	grp_2_0	grp_2_0
+grp_2_1	test_gid_2	50	150	JJJJJJ	JJJJJJ	grp_2_0	grp_2_0	grp_2_0
+grp_2_2	test_gid_2	150	50	JJJJJJ	JJJJJJ	grp_2_0	grp_2_0	grp_2_0
+grp_2_3	test_gid_2	49	151	JJJJJJ	JJJJJJ	grp_2_3	grp_2_0	grp_2_0
+grp_2_4	test_gid_2	151	49	JJJJJJ	JJJJJJ	grp_2_3	grp_2_0	grp_2_0
+grp_2_5	test_gid_2	48	152	JJJJJJ	JJJJJJ	grp_2_5	grp_2_3	grp_2_0
+grp_2_6	test_gid_2	152	48	JJJJJJ	JJJJJJ	grp_2_5	grp_2_3	grp_2_0
+grp_2_7	test_gid_2	53	153	JJJJJJ	JJJJJJ	grp_2_7	grp_2_7	grp_2_7
+grp_2_8	test_gid_2	153	53	JJJJJJ	JJJJJJ	grp_2_7	grp_2_7	grp_2_7
+grp_3_0	test_gid_3	200	300	JJJJJJ	JJJJJJ	grp_3_0	grp_3_0	grp_3_0
+grp_3_1	test_gid_3	200	300	JJJJJJ	JJJJJJ	grp_3_0	grp_3_0	grp_3_0
+grp_3_2	test_gid_3	100	500	JJJJJJ	JJJJJJ	grp_3_2	grp_3_2	grp_3_2
+grp_3_3	test_gid_3	500	100	JJJJJJ	JJJJJJ	grp_3_2	grp_3_2	grp_3_2
+grp_4_0	test_gid_4	200	300	JJJJJJ	JJJJJJ	grp_4_0	grp_4_0	grp_4_0

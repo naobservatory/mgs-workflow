@@ -226,4 +226,47 @@ nextflow_process {
         }
     }
 
+    test("Should produce correct output on controlled toy data (max deviation 1)") {
+        tag "expect_success"
+        tag "deep_test"
+        when {
+            params {
+                tsv = "${projectDir}/test-data/toy-data/test-virus-hits-valid.tsv"
+                deviation = 1
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should have expected dimensions
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_in.rowCount == tab_out.rowCount
+            assert tab_in.columnCount == tab_out.columnCount - 2
+            // Output should have expected headers
+            assert tab_in.columnNames + ["bowtie2_dup_exemplar", "bowtie2_dup_count"] == tab_out.columnNames
+            // Output should contain expected sequence IDs
+            assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
+            def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
+            // Old columns should be unchanged
+            for (c in tab_in.columnNames) {
+                assert tab_out.columns[c] == line_mapping.collect{ idx -> tab_in.columns[c][idx] }
+            }
+            // Output stats should be consistent and match pre-defined expectations
+            def col_exp = "exemplar_exp_" + params.deviation.toString()
+            for (r in tab_out.rows) {
+                def exemplar = r["bowtie2_dup_exemplar"]
+                assert exemplar in tab_out.columns["seq_id"] // Exemplar should be a real read
+                assert r["bowtie2_dup_count"] == tab_out.columns["bowtie2_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
+                assert exemplar == r[col_exp]
+            }
+        }
+    }
+
 }

@@ -166,9 +166,13 @@ fn process_tsv(input_path: &str, output_path: &str) -> Result<(), Box<dyn Error>
     }
     // Process duplicates and write output
     for (_key, group) in duplicates {
-        // Find the exemplar (read with the highest average quality score)
+        // Find the exemplar as the read with the highest average quality score
+        // If reads tie, take the lexicographically first one
         let exemplar = group.iter()
-            .max_by(|a, b| a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal))
+            .max_by(|a, b| {
+                let quality_cmp = a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal);
+                if quality_cmp == std::cmp::Ordering::Equal { b.0.cmp(&a.0) } else { quality_cmp }
+            })
             .unwrap()
             .0.clone();
         let dup_count = group.len();
