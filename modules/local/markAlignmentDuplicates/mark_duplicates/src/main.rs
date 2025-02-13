@@ -3,6 +3,7 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::collections::HashMap;
 use std::env;
 use std::hash::{Hash, Hasher};
+use std::error::Error;
 
 // Define the PositionKey struct to store the genome_id, forward and reverse reference start positions
 #[derive(Debug, Clone, Eq)]
@@ -78,30 +79,44 @@ fn process_tsv(input_path: &str, output_path: &str) -> Result<(), Box<dyn Error>
     let reader = BufReader::new(file);
     let mut writer = BufWriter::new(File::create(output_path)?);
     // Create a HashMap to store duplicate information
-    let mut duplicates: HashMap<PositionKey, Vec<(String, Option<i32>, f64)>> = HashMap::new();
+    let mut duplicates: HashMap<PositionKey, Vec<(String, f64, Vec<String>)>> = HashMap::new();
     // Skip the header line
     let mut lines = reader.lines();
-    let _header = lines.next().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Empty file"))??;
-    // Write header (corrected)
-    writeln!(writer, "query_name\tfragment_length\texemplar\tdup_count")?;
-     // Read and process the input file
-     for (index, line) in lines.enumerate() {
+    let header_line = lines.next().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Empty file"))??;
+    let headers: Vec<&str> = header_line.split('\t').collect();
+    let header_count = headers.len(); // Number of header fields
+    // Build a map from header fields to indices
+    let header_indices: std::collections::HashMap<_, _> = headers.iter().enumerate().map(|(i, &s)| (s, i)).collect();
+    // Define required header fields
+    let required_headers = vec![
+        "seq_id", "bowtie2_genome_id_all", "bowtie2_ref_start_fwd", "bowtie2_ref_start_rev",
+        "query_qual_fwd", "query_qual_rev"
+    ];
+    // Build a lookup for required headers
+    let mut indices = std::collections::HashMap::new();
+    for header in required_headers {
+        let idx = header_indices.get(header)
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Missing required header: {}", header)))?;
+        indices.insert(header, *idx);
+    }
+    // Write header with additional columns
+    writeln!(writer, "{}\t{}\t{}", headers.join("\t"), "bowtie2_dup_exemplar", "bowtie2_dup_count")?;
+    // Read and process the input file
+    for (index, line) in lines.enumerate() {
         let line = line?;
-        let fields: Vec<&str> = line.split('\t').collect();
-        // Check if the line has the correct number of fields
-        if fields.len() < 23 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Line {} has fewer than 23 fields: {:?}", index + 1, fields),
+        let fields: Vec<String> = line.split('\t').map(|s| s.to_string()).collect();
+        if fields.len() != header_count {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Incorrect field count in Line {}: {} (observed) vs {} (expected)", index + 1, fields.len(), header_count),
             ).into());
         }
-        let query_name = fields[0].to_string();
-        let genome_id = fields[1].to_string();
-        let fragment_length = parse_int_or_na(fields[3]);
-        let ref_start_fwd = parse_int_or_na(fields[10]);
-        let ref_start_rev = parse_int_or_na(fields[11]);
-        let quality_fwd = fields[20].to_string();
-        let quality_rev = fields[21].to_string();
+        let query_name = fields[indices["seq_id"]].to_string();
+        let genome_id = fields[indices["bowtie2_genome_id_all"]].to_string();
+        let ref_start_fwd = parse_int_or_na(&fields[indices["bowtie2_ref_start_fwd"]]);
+        let ref_start_rev = parse_int_or_na(&fields[indices["bowtie2_ref_start_rev"]]);
+        let quality_fwd = fields[indices["query_qual_fwd"]].to_string();
+        let quality_rev = fields[indices["query_qual_rev"]].to_string();
         // Normalize the coordinates: if both values are present, use the minimum and maximum
         let (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
             (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
@@ -116,22 +131,21 @@ fn process_tsv(input_path: &str, output_path: &str) -> Result<(), Box<dyn Error>
             aln_end: aln_end,
         };
         // Add the read to the duplicates HashMap
-        duplicates.entry(key).or_default().push((query_name, fragment_length, avg_quality));
+        duplicates.entry(key).or_default().push((query_name, avg_quality, fields));
     }
     // Process duplicates and write output
     for (_key, group) in duplicates {
-        // Find the exemplar (read with the highest average quality score). 4 refers to the index of the avg_quality in the tuple.
+        // Find the exemplar (read with the highest average quality score)
         let exemplar = group.iter()
             .max_by(|a, b| a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap()
             .0.clone();
         let dup_count = group.len();
-        for (query_name, fragment_length, _avg_quality) in group {
+        for (_query_name, _avg_quality, fields) in group {
             writeln!(
                 writer,
-                "{}\t{}\t{}\t{}",
-                query_name,
-                fragment_length.unwrap_or(-1), // Use -1 for NA values
+                "{}\t{}\t{}",
+                fields.join("\t"),
                 exemplar,
                 dup_count
             )?;
