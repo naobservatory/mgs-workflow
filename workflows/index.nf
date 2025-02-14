@@ -13,9 +13,9 @@ include { MAKE_VIRUS_TAXONOMY_DB } from "../subworkflows/local/makeVirusTaxonomy
 include { MAKE_VIRUS_GENOME_DB } from "../subworkflows/local/makeVirusGenomeDB"
 include { JOIN_RIBO_REF } from "../modules/local/joinRiboRef"
 include { DOWNLOAD_BLAST_DB } from "../modules/local/downloadBlastDB"
-include { MAKE_VIRUS_INDEX } from "../subworkflows/local/makeVirusIndex"
 include { MAKE_HUMAN_INDEX } from "../subworkflows/local/makeHumanIndex"
 include { MAKE_RIBO_INDEX } from "../subworkflows/local/makeRiboIndex"
+include { MAKE_VIRUS_INDEX } from "../subworkflows/local/makeVirusIndex"
 include { MAKE_CONTAMINANT_INDEX } from "../subworkflows/local/makeContaminantIndex"
 include { EXTRACT_TARBALL as EXTRACT_KRAKEN_DB } from "../modules/local/extractTarball"
 
