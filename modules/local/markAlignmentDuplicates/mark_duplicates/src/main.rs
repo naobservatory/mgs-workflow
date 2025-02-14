@@ -2,8 +2,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::collections::HashMap;
 use std::env;
-use std::hash::{Hash, Hasher};
 use std::error::Error;
+use std::cmp::Ordering;
 use flate2::{Compression as GzCompression, write::GzEncoder, read::GzDecoder};
 use bzip2::{Compression as BzCompression, write::BzEncoder, read::BzDecoder};
 
@@ -37,21 +37,23 @@ fn open_writer(filename: &str) -> std::io::Result<Box<dyn Write>> {
     }
 }
 
-// Define the PositionKey struct to store the genome_id, forward and reverse reference start positions
-#[derive(Debug, Clone, Eq)]
-struct PositionKey {
+// Define a ReadEntry struct to store the read information
+#[derive(Debug, Clone)]
+struct ReadEntry {
+    query_name: String,
     genome_id: String,
     aln_start: Option<i32>,
     aln_end: Option<i32>,
+    avg_quality: f64,
+    fields: Vec<String>,
 }
 
-// Implement the PartialEq trait for PositionKey
-impl PartialEq for PositionKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.genome_id == other.genome_id &&
-        unsafe { compare_positions(self.aln_start, other.aln_start, DEVIATION) } &&
-        unsafe { compare_positions(self.aln_end, other.aln_end, DEVIATION) }
-    }
+// Implement a custom match function for comparing ReadEntries
+// (Not a valid equality relation as not transitive)
+fn match_reads(a: &ReadEntry, b: &ReadEntry) -> bool {
+    a.genome_id == b.genome_id &&
+    unsafe { compare_positions(a.aln_start, b.aln_start, DEVIATION) } &&
+    unsafe { compare_positions(a.aln_end, b.aln_end, DEVIATION) }
 }
 
 // Compare the positions with a deviation
@@ -62,23 +64,15 @@ fn compare_positions(a: Option<i32>, b: Option<i32>, deviation: i32) -> bool {
     }
 }
 
-// Implement the Hash trait for PositionKey
-impl Hash for PositionKey {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.genome_id.hash(state);
-        unsafe {
-            hash_position(self.aln_start, DEVIATION, state);
-            hash_position(self.aln_end, DEVIATION, state);
-        }
-    }
-}
-
-// Hash the position with a deviation
-fn hash_position<H: Hasher>(pos: Option<i32>, deviation: i32, state: &mut H) {
-    if let Some(p) = pos {
-        ((p + deviation) / (2 * deviation + 1)).hash(state);
+// Implement ordered comparison for ReadEntry
+fn compare_reads(a: &ReadEntry, b: &ReadEntry) -> Ordering {
+    // Compare by average quality score
+    let quality_cmp = a.avg_quality.partial_cmp(&b.avg_quality).unwrap_or(Ordering::Equal);
+    // If equal, compare by query name (in reverse order)
+    if quality_cmp == Ordering::Equal {
+        b.query_name.cmp(&a.query_name)
     } else {
-        None::<i32>.hash(state);
+        quality_cmp
     }
 }
 
@@ -105,87 +99,182 @@ fn average_quality_score(quality_fwd: &str, quality_rev: &str) -> f64 {
     (fwd_score + rev_score) / 2.0
 }
 
-fn process_tsv(input_path: &str, output_path: &str) -> Result<(), Box<dyn Error>> {
-    // Open the input file
-    let reader = open_reader(input_path)?;
-    let mut writer = open_writer(output_path)?;
-    // Create a HashMap to store duplicate information
-    let mut duplicates: HashMap<PositionKey, Vec<(String, f64, Vec<String>)>> = HashMap::new();
-    // Skip the header line
-    let mut lines = reader.lines();
-    let header_line = lines.next().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Empty input file"))??;
-    let headers: Vec<&str> = header_line.split('\t').collect();
-    let header_count = headers.len(); // Number of header fields
+fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, usize), Box<dyn Error>> {
+    // Split the line by tabs and collect the headers
+    let headers: Vec<&str> = line.split('\t').collect();
+    let header_count: usize = headers.len();
     // Build a map from header fields to indices
-    let header_indices: std::collections::HashMap<_, _> = headers.iter().enumerate().map(|(i, &s)| (s, i)).collect();
+    let header_indices: HashMap<_, _> = headers.iter().enumerate().map(|(i, &s)| (s, i)).collect();
     // Define required header fields
     let required_headers = vec![
         "seq_id", "bowtie2_genome_id_all", "bowtie2_ref_start_fwd", "bowtie2_ref_start_rev",
         "query_qual_fwd", "query_qual_rev"
     ];
     // Build a lookup for required headers
-    let mut indices = std::collections::HashMap::new();
+    let mut indices = HashMap::new();
     for header in required_headers {
         let idx = header_indices.get(header)
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Missing required header: {}", header)))?;
         indices.insert(header, *idx);
     }
-    // Write header with additional columns
-    writeln!(writer, "{}\t{}\t{}", headers.join("\t"), "bowtie2_dup_exemplar", "bowtie2_dup_count")?;
+    // Return output
+    Ok((headers, indices, header_count))
+}
+
+fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadEntry {
+    // Extract required fields
+    let query_name = fields[indices["seq_id"]].to_string();
+    let genome_id = fields[indices["bowtie2_genome_id_all"]].to_string();
+    let ref_start_fwd = parse_int_or_na(&fields[indices["bowtie2_ref_start_fwd"]]);
+    let ref_start_rev = parse_int_or_na(&fields[indices["bowtie2_ref_start_rev"]]);
+    let quality_fwd = fields[indices["query_qual_fwd"]].to_string();
+    let quality_rev = fields[indices["query_qual_rev"]].to_string();
+    // Normalize the coordinates: if both values are present, use the minimum and maximum
+    let (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
+        (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
+        _ => (ref_start_fwd, ref_start_rev),
+    };
+    // Calculate the average quality score of the forward and reverse reads
+    let avg_quality = average_quality_score(&quality_fwd, &quality_rev);
+    // Return the ReadEntry
+    ReadEntry { query_name, genome_id, aln_start, aln_end, avg_quality, fields }
+}
+
+// TODO: Handle split-ID read pairs
+
+fn extract_read_groups(input_path: &str) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>), Box<dyn Error>> {
+    // Open the input file
+    let reader = open_reader(input_path)?;
+    // Create a HashMap to store duplicate information
+    let mut groups: HashMap<String, Vec<Vec<ReadEntry>>> = HashMap::new();
+    // Process the header line and derive the required fields
+    let mut lines = reader.lines();
+    let header_line = lines.next().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Empty input file"))??;
+    let (headers, indices, header_count) = process_header_line(&header_line)?;
+    // Create the output header line
+    let mut headers_out = headers.clone();
+    headers_out.push("bowtie2_dup_exemplar");
+    let header_out = headers_out.join("\t");
     // Read and process the input file
     for (index, line) in lines.enumerate() {
+        // Extract fields and verify count
         let line = line?;
         let fields: Vec<String> = line.split('\t').map(|s| s.to_string()).collect();
         if fields.len() != header_count {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Incorrect field count in line {}: {} (observed) vs {} (expected)", index + 1, fields.len(), header_count),
+                format!("Incorrect field count in line {}: {} (observed) vs {} (expected)", 
+                    index + 1, fields.len(), header_count),
             ).into());
         }
-        let query_name = fields[indices["seq_id"]].to_string();
-        let genome_id = fields[indices["bowtie2_genome_id_all"]].to_string();
-        let ref_start_fwd = parse_int_or_na(&fields[indices["bowtie2_ref_start_fwd"]]);
-        let ref_start_rev = parse_int_or_na(&fields[indices["bowtie2_ref_start_rev"]]);
-        let quality_fwd = fields[indices["query_qual_fwd"]].to_string();
-        let quality_rev = fields[indices["query_qual_rev"]].to_string();
-        // Normalize the coordinates: if both values are present, use the minimum and maximum
-        let (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
-            (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
-            _ => (ref_start_fwd, ref_start_rev),
-        };
-        // Calculate the average quality score of the forward and reverse reads
-        let avg_quality = average_quality_score(&quality_fwd, &quality_rev);
-        // Create a PositionKey for the current read
-        let key = PositionKey {
-            genome_id: genome_id.clone(),
-            aln_start: aln_start,
-            aln_end: aln_end,
-        };
-        // Add the read to the duplicates HashMap
-        duplicates.entry(key).or_default().push((query_name, avg_quality, fields));
+        // Create a ReadEntry from the fields
+        let read_entry = make_read_entry(fields.clone(), &indices);
+        // Add the read to the groups HashMap
+        groups = add_read_to_groups(groups, read_entry);
     }
-    // Process duplicates and write output
-    for (_key, group) in duplicates {
-        // Find the exemplar as the read with the highest average quality score
-        // If reads tie, take the lexicographically first one
-        let exemplar = group.iter()
-            .max_by(|a, b| {
-                let quality_cmp = a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal);
-                if quality_cmp == std::cmp::Ordering::Equal { b.0.cmp(&a.0) } else { quality_cmp }
-            })
-            .unwrap()
-            .0.clone();
-        let dup_count = group.len();
-        for (_query_name, _avg_quality, fields) in group {
-            writeln!(
-                writer,
-                "{}\t{}\t{}",
-                fields.join("\t"),
-                exemplar,
-                dup_count
-            )?;
+    Ok((header_out, groups))
+}
+
+fn process_read_groups(header_out: &str, groups: HashMap<String, Vec<Vec<ReadEntry>>>,
+    output_path_db: &str, output_path_meta: &str) -> Result<(), Box<dyn Error>> {
+    // Open the output files
+    let mut writer_db = open_writer(output_path_db)?;
+    let mut writer_meta = open_writer(output_path_meta)?;
+    // Write the header line to the output files
+    let header_meta = "bowtie2_genome_id_all\tbowtie2_dup_exemplar\tbowtie2_dup_count\tbowtie2_dup_pairwise_match_frac";
+    writeln!(writer_db, "{}", header_out)?;
+    writeln!(writer_meta, "{}", header_meta)?;
+    // Process each group of reads
+    for (id, id_group) in groups {
+        for dup_group in id_group {
+            // Find the exemplar using compare_reads
+            let exemplar = dup_group.iter().max_by(|a, b| compare_reads(a, b)).unwrap().query_name.clone();
+            // Calculate size of duplicate group
+            let dup_count = dup_group.len();
+            // Calculate fraction of pairwise matches (as a QC metric for the group as a whole)
+            let pairwise_match_frac: f64;
+            if dup_count == 1 {
+                pairwise_match_frac = 1.0;
+            } else {
+                let mut pairwise_match_count: f64 = 0.0;
+                let dup_count_float: f64 = dup_count as f64;
+                let n_pairs: f64 = dup_count_float * (dup_count_float - 1.0) / 2.0;
+                for i in 0..dup_count {
+                    for j in (i + 1)..dup_count {
+                        let read_i = &dup_group[i];
+                        let read_j = &dup_group[j];
+                        // Match using ReadEntry PartialEq implementation
+                        if match_reads(read_i, read_j) {
+                            pairwise_match_count += 1.0;
+                        }
+                    }
+                }
+                pairwise_match_frac = pairwise_match_count / n_pairs;
+            }
+            // Write duplicate group entry to metadata file
+            writeln!(writer_meta, "{}\t{}\t{}\t{}", id, exemplar, dup_count, pairwise_match_frac)?;
+            // Write individual entries to main output file
+            for read_entry in dup_group {
+                writeln!(writer_db, "{}\t{}", read_entry.fields.join("\t"), exemplar)?;
+            }
         }
     }
+    Ok(())
+}
+
+fn add_read_to_groups(
+    mut groups: HashMap<String, Vec<Vec<ReadEntry>>>,
+    read_entry: ReadEntry,
+) -> HashMap<String, Vec<Vec<ReadEntry>>> {
+    // Check if the genome_id is already present
+    if !groups.contains_key(&read_entry.genome_id) {
+        // If not, create a new ID entry and add the read entry to it as a new group
+        groups.insert(read_entry.genome_id.clone(), Vec::new());
+        groups.get_mut(&read_entry.genome_id).unwrap().push(vec![read_entry]);
+    } else {
+        // Otherwise, compare the read entry with each group in the ID entry
+        let mut groups_match = Vec::new();
+        for i in 0.. groups[&read_entry.genome_id].len() {
+            for j in 0..groups[&read_entry.genome_id][i].len() {
+                if match_reads(&read_entry, &groups[&read_entry.genome_id][i][j]) {
+                    groups_match.push(i);
+                    break;
+                }
+            }
+        }
+        // If no matches, create a new group in the ID entry and add the read entry to it
+        if groups_match.is_empty() {
+            groups.get_mut(&read_entry.genome_id).unwrap().push(vec![read_entry]);
+        // If exactly one match, add the read entry to that group
+        } else if groups_match.len() == 1 {
+            groups.get_mut(&read_entry.genome_id).unwrap()[groups_match[0]].push(read_entry);
+        // If multiple matches, combine them into a new group, add the read entry, then
+        // delete the old groups
+        } else {
+            // Combine the groups into a new group
+            let mut combined_group = Vec::new();
+            for i in groups_match.iter() {
+                combined_group.extend(groups[&read_entry.genome_id][*i].clone());
+            }
+            // Add the read entry to the combined group
+            combined_group.push(read_entry.clone());
+            // Add the combined group to the ID entry
+            groups.get_mut(&read_entry.genome_id).unwrap().push(combined_group);
+            // Remove the old groups in reverse order (to avoid index shifting)
+            for i in groups_match.iter().rev() {
+                groups.get_mut(&read_entry.genome_id).unwrap().remove(*i);
+            }
+        }
+    }
+    // Return the updated groups
+    groups
+}
+
+fn process_tsv(input_path: &str, output_path_db: &str, output_path_meta: &str) -> Result<(), Box<dyn Error>> {
+    // Extract read groups from the input file
+    let (header_out, groups) = extract_read_groups(input_path)?;
+    // Process read groups and write output
+    process_read_groups(&header_out, groups, output_path_db, output_path_meta)?;
     Ok(())
 }
 
@@ -195,16 +284,17 @@ static mut DEVIATION: i32 = 0;
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     // Check if the correct number of arguments are provided
-    if args.len() != 4 {
+    if args.len() != 5 {
         return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!(
-            "Usage: {} <input_file> <output_file> <deviation>", args[0]
+            "Usage: {} <input_file> <output_file_db> <output_file_meta> <deviation>", args[0]
         )).into());
     }
     // Parse the input and output file paths
     let input_path = &args[1];
-    let output_path = &args[2];
+    let output_path_db = &args[2];
+    let output_path_meta = &args[3];
     // Parse the deviation value
-    let deviation: i32 = args[3].parse().map_err(|_| {
+    let deviation: i32 = args[4].parse().map_err(|_| {
         std::io::Error::new(std::io::ErrorKind::InvalidInput, "Deviation must be an integer")
     })?;
     // Check if the deviation value is valid
@@ -218,5 +308,5 @@ fn main() -> Result<(), Box<dyn Error>> {
         DEVIATION = deviation;
     }
     // Run the main processing function
-    return process_tsv(input_path, output_path)
+    return process_tsv(input_path, output_path_db, output_path_meta);
 }
