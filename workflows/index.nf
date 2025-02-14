@@ -57,14 +57,14 @@ workflow INDEX {
         // Virus genome database
         MAKE_VIRUS_GENOME_DB.out.fasta >> "results"
         MAKE_VIRUS_GENOME_DB.out.metadata >> "results"
-        // Bowtie2 alignment indexes
-        MAKE_HUMAN_INDEX.out.bt2 >> "results"
-        MAKE_CONTAMINANT_INDEX.out.bt2 >> "results"
-        MAKE_VIRUS_INDEX.out.bt2 >> "results"
         // Other reference files & directories
         JOIN_RIBO_REF.out.ribo_ref >> "results"
         DOWNLOAD_BLAST_DB.out.db >> "results"
         EXTRACT_KRAKEN_DB.out >> "results"
+        // Bowtie2 alignment indexes
+        MAKE_HUMAN_INDEX.out.bt2 >> "results"
+        MAKE_CONTAMINANT_INDEX.out.bt2 >> "results"
+        MAKE_VIRUS_INDEX.out.bt2 >> "results"
         // Minimap2 alignment indices
         MAKE_VIRUS_INDEX.out.mm2 >> "results"
         MAKE_HUMAN_INDEX.out.mm2 >> "results"
