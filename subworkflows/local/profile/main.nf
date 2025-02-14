@@ -17,7 +17,7 @@ include { CONCATENATE_TSVS as CONCATENATE_KRAKEN } from "../../../modules/local/
 include { CONCATENATE_TSVS as CONCATENATE_BRACKEN } from "../../../modules/local/concatenateTsvs"
 
 if (params.ont) {
-    include { MINIMAP2_ONT as MINIMAP2_RIBO } from "../../../modules/local/minimap2"
+    include { MINIMAP2 as MINIMAP2_RIBO } from "../../../modules/local/minimap2"
     include { SAMTOOLS_SEPARATE } from "../../../modules/local/samtools"
 }
 
@@ -38,9 +38,9 @@ workflow PROFILE {
     main:
         // Separate ribosomal reads
         if (params.ont) {
-            ribo_path = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-ribo-index/ribo-ref-concat-unique.mmi"
-            mapped_ch = MINIMAP2_RIBO(reads_ch, ribo_path, ribo_suffix)
-            ribo_ch = SAMTOOLS_SEPARATE(mapped_ch, ribo_suffix)
+            ribo_ref = "${projectDir}/.nf-test/tests/11ca21fed5d9a06b0da1df25bba245cb/output/results/mm2-human-index"
+            mapped_ch = MINIMAP2_RIBO(reads_ch, ribo_ref, ribo_suffix, false)
+            ribo_ch = mapped_ch.reads_mapped
         } else {
             ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
             ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, ribo_suffix, !single_end)

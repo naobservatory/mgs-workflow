@@ -1,8 +1,7 @@
 nextflow_process {
-
-    name "Test process MINIMAP2_ONT"
+    name "Test process MINIMAP2"
     script "modules/local/minimap2/main.nf"
-    process "MINIMAP2_ONT"
+    process "MINIMAP2"
     config "tests/run_dev_se.config"
     tag "module"
     tag "minimap2"
@@ -19,7 +18,7 @@ nextflow_process {
         }
     }
 
-    test("When run against human index, should run without failures and return properly formatted SAM") {
+    test("Should correctly partition reads based on alignment status") {
         tag "expect_success"
         tag "single_end"
         when {
@@ -27,43 +26,46 @@ nextflow_process {
             process {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-human-index/chm13v2.0.mmi"
-                input[2] = "human"
+                input[1] = "${projectDir}/.nf-test/tests/11ca21fed5d9a06b0da1df25bba245cb/output/results/mm2-human-index"
+                input[2] = "test"
+                input[3] = false
                 '''
             }
         }
         then {
             // Should run without failures
             assert process.success
-            // Both @SQ headers and alignments should be present
-            def nHeaders = ["bash", "-c", "cat " + process.out.sam[0][1] + " | grep -c '^@SQ'"].execute().text.trim() as Integer
-            def nAlignments = ["bash", "-c", "cat " + process.out.sam[0][1] + " | grep -v '^@' | wc -l"].execute().text.trim() as Integer
-            assert nHeaders > 0
-            assert nAlignments > 0
-        }
-    }
 
-    test("When run against ribo index, should run without failures and return properly formatted SAM") {
-        tag "expect_success"
-        tag "single_end"
-        when {
-            params {}
-            process {
-                '''
-                input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = "s3://nao-mgs-simon/ont-indices/2024-12-14/minimap2-ribo-index/ribo-ref-concat-unique.mmi"
-                input[2] = "ribo"
-                '''
-            }
-        }
-        then {
-            // Should run without failures
-            assert process.success
-            // Both @SQ headers and alignments should be present
-            def nHeaders = ["bash", "-c", "cat " + process.out.sam[0][1] + " | grep -c '^@SQ'"].execute().text.trim() as Integer
-            def nAlignments = ["bash", "-c", "cat " + process.out.sam[0][1] + " | grep -v '^@' | wc -l"].execute().text.trim() as Integer
-            assert nHeaders > 0
-            assert nAlignments > 0
+            // Check all expected output files exist
+            assert path(process.out.sam[0][1]).exists()
+            assert path(process.out.reads_mapped[0][1]).exists()
+            assert path(process.out.reads_unmapped[0][1]).exists()
+            assert path(process.out.input[0][1]).exists()
+
+            // Get read IDs from output FASTQ files
+            def fastq_mapped = path(process.out.reads_mapped[0][1]).fastq
+            def fastq_unmapped = path(process.out.reads_unmapped[0][1]).fastq
+            def fastq_read_ids_mapped = fastq_mapped.readNames.toSet()
+            def fastq_read_ids_unmapped = fastq_unmapped.readNames.toSet()
+
+            // Get read IDs from SAM file
+            def samlines = sam(process.out.sam[0][1]).getSamLines()
+            def sam_read_ids_mapped = samlines
+                .collect { line -> line.split('\t')[0] }  // Get read IDs
+                .toSet()
+
+            // Get input read IDs
+            def input_reads = path(process.out.input[0][1]).fastq.readNames.toSet()
+
+            // Verify read partitioning is correct
+            assert sam_read_ids_mapped == fastq_read_ids_mapped
+
+            // Verify no overlapping reads between mapped and unmapped sets
+            assert fastq_read_ids_mapped.intersect(fastq_read_ids_unmapped).size() == 0
+
+            // Verify input FASTQ contains all reads
+            assert input_reads == fastq_read_ids_mapped + fastq_read_ids_unmapped
         }
     }
 }
+
