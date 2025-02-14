@@ -2,6 +2,7 @@ seq_id	bowtie2_genome_id_all	bowtie2_ref_start_fwd	bowtie2_ref_start_rev	query_q
 grp_1_0	test_gid_1	1	100	IIIIII	IIIIII	grp_1_1	grp_1_1	grp_1_1	Exact duplicate with grp_1_1
 grp_1_1	test_gid_1	1	100	JJJJJJ	JJJJJJ	grp_1_1	grp_1_1	grp_1_1	Group 1 exemplar
 grp_1_2	test_gid_1	100	1	JJJJJJ	JJJJJJ	grp_1_1	grp_1_1	grp_1_1	RC duplicate with grp_1_1
+grp_1_3	test_gid_1	100	1	IIIIII	IIIIII	grp_1_1	grp_1_1	grp_1_1	RC duplicate with grp_1_1
 grp_2_0	test_gid_2	50	150	JJJJJJ	JJJJJJ	grp_2_0	grp_2_0	grp_2_0	Group 2 exemplar
 grp_2_1	test_gid_2	150	50	JJJJJJ	JJJJJJ	grp_2_0	grp_2_0	grp_2_0	RC duplicate with grp_2_0
 grp_2_2	test_gid_2	49	151	JJJJJJ	JJJJJJ	grp_2_2	grp_2_0	grp_2_0	1-off duplicate with grp_2_0
