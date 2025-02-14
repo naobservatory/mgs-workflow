@@ -12,6 +12,6 @@ process MINIMAP2_INDEX {
         odir="!{outdir}"
         mkdir ${odir}
         preset="lr:hq"
-        minimap2 -x ${preset} -d ${odir}/minimap2_index.mmi !{reference_fasta}
+        minimap2 -x ${preset} -d ${odir}/mm2_index.mmi !{reference_fasta}
         '''
 }
