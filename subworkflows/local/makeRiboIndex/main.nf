@@ -3,7 +3,7 @@
 ***************************/
 
 include { MINIMAP2_INDEX } from "../../../modules/local/minimap2"
-include { MARK_DUPLICATE_FASTA_HEADERS } from "../../../modules/local/markDuplicateHeaders"
+include { MARK_DUPLICATE_FASTA_HEADERS } from "../../../modules/local/markDuplicateFastaHeaders"
 
 /***********
 | WORKFLOW |
