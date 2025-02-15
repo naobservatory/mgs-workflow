@@ -16,7 +16,7 @@ process MINIMAP2 {
         '''
         set -euo pipefail
         # Prepare inputs
-        idx="!{index_dir}/minimap2_index.mmi"
+        idx="!{index_dir}/mm2_index.mmi"
         sam="!{sample}_!{suffix}_minimap2_mapped.sam.gz"
         al="!{sample}_!{suffix}_minimap2_mapped.fastq.gz"
         un="!{sample}_!{suffix}_minimap2_unmapped.fastq.gz"
