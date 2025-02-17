@@ -37,7 +37,8 @@ workflow RUN_DEV_SE {
 
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
-        params.adapters, params.single_end, params.ont, params.random_seed)
+        params.adapters, params.single_end,
+        params.random_seed, params.ont)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, params.single_end)
