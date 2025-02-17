@@ -10,11 +10,12 @@ import java.time.LocalDateTime
 ***************************/
 
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
-
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE } from "../subworkflows/local/profile"
+include { EXTRACT_VIRAL_READS_ONT as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsONT"
+include { EXTRACT_VIRAL_READS_SHORT as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsShort"
 nextflow.preview.output = true
 
 /*****************
@@ -23,17 +24,26 @@ nextflow.preview.output = true
 
 // Complete primary workflow
 workflow RUN_DEV_SE {
+    // Setting reference paths
+    kraken_db_path = "${params.ref_dir}/results/kraken_db"
+    blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet
     LOAD_SAMPLESHEET(params.sample_sheet, params.single_end)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
 
-    // Load kraken db path
-    kraken_db_path = "${params.ref_dir}/results/kraken_db"
-
     // Count reads in files
     COUNT_TOTAL_READS(samplesheet_ch, params.single_end)
+
+    // Extract viral reads
+    if params.ont {
+        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.host_taxon)
+    } else {
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path,
+            params.bt2_score_threshold, params.adapters, params.host_taxon,
+            "1", "24", "viral", params.bracken_threshold)
+    }
 
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
@@ -73,6 +83,7 @@ workflow RUN_DEV_SE {
         RUN_QC.out.qc_qseqs >> "results"
         RUN_QC.out.qc_lengths >> "results"
         // Final results
+        EXTRACT_VIRAL_READS.out.hv_tsv >> "results"
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
 }
