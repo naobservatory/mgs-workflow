@@ -90,6 +90,7 @@ workflow EXTRACT_VIRAL_READS {
         fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(filter_ch.output, fastq_unfiltered_concat.output)
     emit:
         bbduk_match = bbduk_ch.fail
+        bbduk_trimmed = adapt_ch.reads
         hits_all = concat_ch.output
         hits_filtered = filter_ch.output
         hits_fastq = fastq_ch.fastq
