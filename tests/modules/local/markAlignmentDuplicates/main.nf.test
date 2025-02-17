@@ -562,4 +562,154 @@ nextflow_process {
         }
     }
 
+    test("Should produce correct output on controlled toy data (max deviation 1, split genome ID)") {
+        tag "expect_success"
+        tag "deep_test"
+        tag "split_test"
+        when {
+            params {
+                tsv = "${projectDir}/test-data/toy-data/test-virus-hits-valid-split.tsv"
+                deviation = 1
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should have expected dimensions
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            def tab_meta = path(process.out.output[0][2]).csv(sep: "\t", decompress: true)
+            assert tab_out.rowCount == tab_in.rowCount
+            assert tab_out.columnCount == tab_in.columnCount + 1
+            // Output should have expected headers
+            assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
+            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            // Output should contain expected sequence IDs
+            assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
+            def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
+            // Old columns should be unchanged
+            for (c in tab_in.columnNames) {
+                assert tab_out.columns[c] == line_mapping.collect{ idx -> tab_in.columns[c][idx] }
+            }
+            // Output stats should be consistent (not checking correctness yet)
+            for (r in tab_meta.rows) {
+                def exemplar = r["bowtie2_dup_exemplar"]
+                assert exemplar in tab_out.columns["seq_id"] // Exemplar should be a real read
+                assert r["bowtie2_dup_count"] == tab_out.columns["bowtie2_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
+            }
+            assert tab_meta.columns["bowtie2_dup_count"].sum() == tab_out.rowCount
+            // Each sequence should be assigned to the expected exemplar for the specified deviation
+            def col_exp = "exemplar_exp_" + params.deviation.toString()
+            for (r in tab_out.rows) {
+                assert r["bowtie2_dup_exemplar"] == r[col_exp]
+            }
+        }
+    }
+
+    test("Should produce correct output on controlled toy data (max deviation 0, split genome ID)") {
+        tag "expect_success"
+        tag "deep_test"
+        tag "split_test"
+        when {
+            params {
+                tsv = "${projectDir}/test-data/toy-data/test-virus-hits-valid-split.tsv"
+                deviation = 0
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should have expected dimensions
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            def tab_meta = path(process.out.output[0][2]).csv(sep: "\t", decompress: true)
+            assert tab_out.rowCount == tab_in.rowCount
+            assert tab_out.columnCount == tab_in.columnCount + 1
+            // Output should have expected headers
+            assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
+            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            // Output should contain expected sequence IDs
+            assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
+            def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
+            // Old columns should be unchanged
+            for (c in tab_in.columnNames) {
+                assert tab_out.columns[c] == line_mapping.collect{ idx -> tab_in.columns[c][idx] }
+            }
+            // Output stats should be consistent (not checking correctness yet)
+            for (r in tab_meta.rows) {
+                def exemplar = r["bowtie2_dup_exemplar"]
+                assert exemplar in tab_out.columns["seq_id"] // Exemplar should be a real read
+                assert r["bowtie2_dup_count"] == tab_out.columns["bowtie2_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
+            }
+            assert tab_meta.columns["bowtie2_dup_count"].sum() == tab_out.rowCount
+            // Each sequence should be assigned to the expected exemplar for the specified deviation
+            def col_exp = "exemplar_exp_" + params.deviation.toString()
+            for (r in tab_out.rows) {
+                assert r["bowtie2_dup_exemplar"] == r[col_exp]
+            }
+        }
+    }
+
+    test("Should produce correct output on controlled toy data (max deviation 2, split genome ID)") {
+        tag "expect_success"
+        tag "deep_test"
+        tag "split_test"
+        when {
+            params {
+                tsv = "${projectDir}/test-data/toy-data/test-virus-hits-valid-split.tsv"
+                deviation = 2
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.tsv))
+                input[1] = params.deviation
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should have expected dimensions
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            def tab_meta = path(process.out.output[0][2]).csv(sep: "\t", decompress: true)
+            assert tab_out.rowCount == tab_in.rowCount
+            assert tab_out.columnCount == tab_in.columnCount + 1
+            // Output should have expected headers
+            assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
+            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            // Output should contain expected sequence IDs
+            assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
+            def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
+            // Old columns should be unchanged
+            for (c in tab_in.columnNames) {
+                assert tab_out.columns[c] == line_mapping.collect{ idx -> tab_in.columns[c][idx] }
+            }
+            // Output stats should be consistent (not checking correctness yet)
+            for (r in tab_meta.rows) {
+                def exemplar = r["bowtie2_dup_exemplar"]
+                assert exemplar in tab_out.columns["seq_id"] // Exemplar should be a real read
+                assert r["bowtie2_dup_count"] == tab_out.columns["bowtie2_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
+            }
+            assert tab_meta.columns["bowtie2_dup_count"].sum() == tab_out.rowCount
+            // Each sequence should be assigned to the expected exemplar for the specified deviation
+            def col_exp = "exemplar_exp_" + params.deviation.toString()
+            for (r in tab_out.rows) {
+                assert r["bowtie2_dup_exemplar"] == r[col_exp]
+            }
+        }
+    }
+
 }
