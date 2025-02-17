@@ -44,7 +44,7 @@ workflow RUN_DEV_SE {
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
     PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-        params.bracken_threshold, params.single_end)
+        params.bracken_threshold, params.single_end, params.ont)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
