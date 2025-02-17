@@ -1,3 +1,6 @@
+# v2.8.1.0-dev
+- Changed Bowtie2 to use global alignment for viral read identification.
+
 # v2.8.0.0
 - Major changes to many parts of the pipeline as part of a general performance overhaul
     - Modified most processes in the RUN and RUN_VALIDATION workflows to stream data in and out rather than reading whole files
