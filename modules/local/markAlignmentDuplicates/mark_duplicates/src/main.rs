@@ -129,15 +129,36 @@ fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadE
     let ref_start_rev = parse_int_or_na(&fields[indices["bowtie2_ref_start_rev"]]);
     let quality_fwd = fields[indices["query_qual_fwd"]].to_string();
     let quality_rev = fields[indices["query_qual_rev"]].to_string();
-    // Normalize the coordinates: if both values are present, use the minimum and maximum
-    let (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
-        (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
-        _ => (ref_start_fwd, ref_start_rev),
+    // Handle split assignments
+    let genome_id_sorted: String;
+    let aln_start: Option<i32>;
+    let aln_end: Option<i32>;
+    if genome_id.contains('/') {
+        // Split genome_id by "/", sort the parts, and join them
+        let parts: Vec<&str> = genome_id.split('/').collect();
+        let mut sorted_parts = parts.clone();
+        sorted_parts.sort();
+        genome_id_sorted = sorted_parts.join("/");
+        // Get the index of the first genome ID in the sorted list
+        let genome_id_index = sorted_parts.iter().position(|&s| s == parts[0]).unwrap();
+        // Arrange start coordinates to correspond to sorted genome IDs
+        (aln_start, aln_end) = if genome_id_index == 0 {
+            (ref_start_fwd, ref_start_rev)
+        } else {
+            (ref_start_rev, ref_start_fwd)
+        };
+    } else {
+        // If only one genome ID, use it directly
+        genome_id_sorted = genome_id;
+        // Normalize coordinates: if values are present, use the minimum and maximum
+        (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
+            (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
+            _ => (ref_start_fwd, ref_start_rev),
+        };
     };
-    // Calculate the average quality score of the forward and reverse reads
     let avg_quality = average_quality_score(&quality_fwd, &quality_rev);
     // Return the ReadEntry
-    ReadEntry { query_name, genome_id, aln_start, aln_end, avg_quality, fields }
+    ReadEntry { query_name, genome_id: genome_id_sorted, aln_start, aln_end, avg_quality, fields }
 }
 
 // TODO: Handle split-ID read pairs
