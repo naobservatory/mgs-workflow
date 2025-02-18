@@ -1,5 +1,4 @@
 // Copy a file while retaining channel structure
-// Currently only used for testing
 process COPY_FILE {
     label "single"
     label "coreutils"

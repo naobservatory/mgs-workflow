@@ -29,6 +29,9 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 2")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
         }
     }
 
@@ -50,10 +53,13 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("ValueError: Join field missing from file 2")
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
+            assert process.errorReport.contains("ValueError: Join field missing from file 2")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
         }
     }
 
@@ -79,6 +85,9 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
             assert process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
         }
     }
 
@@ -104,6 +113,93 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
+        }
+    }
+
+    test("Should break when fields are duplicated across files"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_copy.tsv"))
+                input[1] = "x"
+                input[2] = "inner"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert !process.errorReport.contains("ValueError: Join field missing from file 2")
+            assert !process.errorReport.contains("ValueError: Join field missing from file 1")
+            assert !process.errorReport.contains("ValueError: File 1 is not sorted")
+            assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
+        }
+    }
+
+    test("Should break when attempting to perform a many-to-many join"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_rename.tsv"))
+                input[1] = "x"
+                input[2] = "inner"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert !process.errorReport.contains("ValueError: Join field missing from file 2")
+            assert !process.errorReport.contains("ValueError: Join field missing from file 1")
+            assert !process.errorReport.contains("ValueError: File 1 is not sorted")
+            assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
+            assert !process.errorReport.contains("ValueError: Strict join failed")
+        }
+    }
+
+    test("Should break when attempting to strict join on files with incompatible rows"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_2.tsv"))
+                input[1] = "x"
+                input[2] = "strict"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert !process.errorReport.contains("ValueError: Join field missing from file 2")
+            assert !process.errorReport.contains("ValueError: Join field missing from file 1")
+            assert !process.errorReport.contains("ValueError: File 1 is not sorted")
+            assert !process.errorReport.contains("ValueError: File 2 is not sorted")
+            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
+            assert process.errorReport.contains("ValueError: Strict join failed")
         }
     }
 
@@ -141,7 +237,7 @@ nextflow_process {
             def ids_2 = tab_in_2.columns["x"]
             def match = 0
             for (i in ids_1){
-                match += (i in ids_2) ? 1 : 0
+                match += ids_2.count(i)
             }
             assert tab_out.rowCount == match
         }
@@ -177,7 +273,13 @@ nextflow_process {
                 assert col in tab_out.columnNames
             }
             // Should have expected number of rows
-            assert tab_out.rowCount == tab_in_1.rowCount
+            def ids_1 = tab_in_1.columns["x"]
+            def ids_2 = tab_in_2.columns["x"]
+            def match = 0
+            for (i in ids_1){
+                match += Math.max(ids_2.count(i),1)
+            }
+            assert tab_out.rowCount == match
         }
     }
 
@@ -211,7 +313,13 @@ nextflow_process {
                 assert col in tab_out.columnNames
             }
             // Should have expected number of rows
-            assert tab_out.rowCount == tab_in_2.rowCount
+            def ids_1 = tab_in_1.columns["x"]
+            def ids_2 = tab_in_2.columns["x"]
+            def match = 0
+            for (i in ids_2){
+                match += Math.max(ids_1.count(i),1)
+            }
+            assert tab_out.rowCount == match
         }
     }
 
@@ -247,11 +355,55 @@ nextflow_process {
             // Should have expected number of rows
             def ids_1 = tab_in_1.columns["x"]
             def ids_2 = tab_in_2.columns["x"]
+            def match = 0
             def mismatch = 0
             for (i in ids_1){
-                mismatch += (i in ids_2) ? 0 : 1
+                match += Math.max(ids_2.count(i),1)
             }
-            assert tab_out.rowCount == tab_in_2.rowCount + mismatch
+            for (i in ids_2){
+                mismatch += (i in ids_1) ? 0 : 1
+            }
+            assert tab_out.rowCount == match + mismatch
+        }
+    }
+
+    test("Should strict-join without errors on correct input and produce correct output"){
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted_rename_unique.tsv"))
+                input[1] = "x"
+                input[2] = "strict"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Should have all columns from both inputs (and no others)
+            def tab_in_1 = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_in_2 = path(process.out.input[0][2]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount == tab_in_1.columnCount + tab_in_2.columnCount - 1
+            for (col in tab_in_1.columnNames) {
+                assert col in tab_out.columnNames
+            }
+            for (col in tab_in_2.columnNames) {
+                assert col in tab_out.columnNames
+            }
+            // Should have expected number of rows
+            def ids_1 = tab_in_1.columns["x"]
+            def ids_2 = tab_in_2.columns["x"]
+            def match = 0
+            for (i in ids_1){
+                match += ids_2.count(i)
+            }
+            assert tab_out.rowCount == match
         }
     }
 
