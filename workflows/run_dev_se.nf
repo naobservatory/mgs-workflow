@@ -14,8 +14,8 @@ include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE } from "../subworkflows/local/profile"
-include { EXTRACT_VIRAL_READS_ONT as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsONT"
-include { EXTRACT_VIRAL_READS_SHORT as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsShort"
+include { EXTRACT_VIRAL_READS_ONT } from "../subworkflows/local/extractViralReadsONT"
+include { EXTRACT_VIRAL_READS_SHORT } from "../subworkflows/local/extractViralReadsShort"
 nextflow.preview.output = true
 
 /*****************
@@ -40,15 +40,13 @@ workflow RUN_DEV_SE {
     if params.ont {
         EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.host_taxon)
     } else {
-        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path,
-            params.bt2_score_threshold, params.adapters, params.host_taxon,
-            "1", "24", "viral", params.bracken_threshold)
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", params.bracken_threshold)
     }
 
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
         params.adapters, params.single_end,
-        params.random_seed, params.ont)
+        params.ont, params.random_seed)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, params.single_end)
@@ -83,7 +81,8 @@ workflow RUN_DEV_SE {
         RUN_QC.out.qc_qseqs >> "results"
         RUN_QC.out.qc_lengths >> "results"
         // Final results
-        EXTRACT_VIRAL_READS.out.hv_tsv >> "results"
+        EXTRACT_VIRAL_READS_ONT.out.hv_tsv >> "results" when params.ont
+        EXTRACT_VIRAL_READS_SHORT.out.hv_tsv >> "results" when !params.ont
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
 }
