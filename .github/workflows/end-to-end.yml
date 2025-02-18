@@ -141,7 +141,7 @@ jobs:
       - name: Run DOWNSTREAM workflow
         run: nf-test test --tag downstream --verbose
 
-  test-run-output:
+  test-downstream-output:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
