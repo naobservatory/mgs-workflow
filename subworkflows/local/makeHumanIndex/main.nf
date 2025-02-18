@@ -21,5 +21,5 @@ workflow MAKE_HUMAN_INDEX {
         minimap2_ch = MINIMAP2_INDEX(genome_ch, "mm2-human-index")
     emit:
         bt2 = bowtie2_ch
-        mm2 = minimap2_ch
+        mm2 = minimap2_ch.output
 }

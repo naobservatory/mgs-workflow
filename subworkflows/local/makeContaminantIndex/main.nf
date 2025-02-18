@@ -37,5 +37,5 @@ workflow MAKE_CONTAMINANT_INDEX {
         minimap2_ch = MINIMAP2_INDEX(genome_ch, "mm2-other-index")
     emit:
         bt2 = bowtie2_ch
-        mm2 = minimap2_ch
+        mm2 = minimap2_ch.output
 }

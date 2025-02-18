@@ -19,7 +19,7 @@ workflow MAKE_VIRUS_INDEX {
         minimap2_ch = MINIMAP2_INDEX(mask_ch, "mm2-virus-index")
     emit:
         bt2 = bowtie2_ch
-        mm2 = minimap2_ch
+        mm2 = minimap2_ch.output
 }
 // TODO: Add k-mer index generation
 // TODO: Consider changing masking tool
