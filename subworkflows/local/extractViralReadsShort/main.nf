@@ -29,7 +29,7 @@ include { EXTRACT_VIRAL_HITS_TO_FASTQ } from "../../../modules/local/extractVira
 | WORKFLOW |
 ***********/
 
-workflow EXTRACT_VIRAL_READS {
+workflow EXTRACT_VIRAL_READS_SHORT {
     take:
         reads_ch
         ref_dir

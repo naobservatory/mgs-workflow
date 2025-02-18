@@ -13,7 +13,7 @@ include { MINIMAP2 as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
 | WORKFLOW |
 ***********/
 
-workflow EXTRACT_ONT_VIRAL_READS {
+workflow EXTRACT_VIRAL_READS_ONT {
     take:
         reads_ch
         ref_dir
