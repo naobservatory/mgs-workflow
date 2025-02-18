@@ -21,7 +21,7 @@ fn open_reader(filename: &str) -> std::io::Result<Box<dyn BufRead>> {
     }
 }
 
-// Defune a writer based on the file extension
+// Define a writer based on the file extension
 fn open_writer(filename: &str) -> std::io::Result<Box<dyn Write>> {
     if filename.ends_with(".gz") {
         let file = File::create(filename)?;
