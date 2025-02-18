@@ -270,4 +270,68 @@ nextflow_process {
         }
     }
 
+    test("Should generate appropriate output for uniform read lengths") {
+        tag "expect_success"
+        tag "interleaved"
+        config "tests/run.config"
+        setup {
+            run("FASTQC_LABELED") {
+                script "modules/local/fastqc/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq"))
+                    input[1] = "1"
+                    input[2] = "1 GB"
+                    '''
+                }
+            }
+            run("MULTIQC_LABELED") {
+                script "modules/local/multiqc/main.nf"
+                process {
+                    '''
+                    input[0] = "test"
+                    input[1] = FASTQC_LABELED.out.zip
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+                data_path = "${projectDir}/test-data/toy-data/test-random.fastq"
+            }
+            process {
+                """
+                input[0] = MULTIQC_LABELED.out.data
+                input[1] = false
+                """
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Basic stats TSV should match input reads
+            def fastq_in = path(params.data_path).fastq
+            def tsv_basic  = path(process.out[0][0][0]).csv(sep: "\t", decompress: true)
+            with (tsv_basic) {
+                assert columns["n_reads_single"][0] == fastq_in.readNames.size()
+                assert columns["n_read_pairs"][0] == columns["n_reads_single"][0] / 2
+                assert columns["mean_seq_len"][0] == fastq_in.sequences[0].length()
+                assert columns["n_bases_approx"][0] == columns["n_reads_single"][0] * columns["mean_seq_len"][0]
+            }
+            // Length stats should match expected output for uniform reads
+            def tsv_lengths = path(process.out[0][0][4]).csv(sep: "\t", decompress: true)
+            def stage = tsv_basic.columns["stage"][0]
+            def sample = tsv_basic.columns["sample"][0]
+            with (tsv_lengths) {
+                assert columnCount == 5
+                assert rowCount == 1
+                assert columns["stage"][0] == stage
+                assert columns["sample"][0] == sample
+                assert columns["n_sequences"][0] == fastq_in.readNames.size()
+                assert columns["length"][0] == fastq_in.sequences[0].length()
+            }
+        }
+    }
+
 }

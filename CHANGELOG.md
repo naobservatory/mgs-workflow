@@ -1,4 +1,4 @@
-# v2.8.0.0 (in development)
+# v2.8.0.0
 - Major changes to many parts of the pipeline as part of a general performance overhaul
     - Modified most processes in the RUN and RUN_VALIDATION workflows to stream data in and out rather than reading whole files
     - As part of the previous change, modified most processes in the RUN and RUN_VALIDATION workflows to work with interleaved rather than paired sequence data
