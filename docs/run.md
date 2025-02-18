@@ -1,6 +1,6 @@
 # RUN WORKFLOW
 
-This page describes the structure and function of the `run` workflow, which is responsible for the primary analysis of the pipeline. For usage instructions, see [here](./docs/usage.md).
+This page describes the structure and function of the `run` workflow, which is responsible for the primary analysis of the pipeline. For usage instructions, see [here](./usage.md).
 
 ## Workflow structure
 
