@@ -1,5 +1,8 @@
-# v2.8.0.1-dev
+# v2.8.1.0-dev
 - Added downstream duplicate marking functionality via new DOWNSTREAM workflow
+- Fixed JOIN_TSVS to correctly handle many-to-one joins
+- Added strict join mode to JOIN_TSVS
+- Altered PROCESS_VIRAL_BOWTIE2_SAM to make ordering of genome IDs for split alignments predictable (necessary for downstream duplicate marking)
 
 # v2.8.0.0
 - Major changes to many parts of the pipeline as part of a general performance overhaul
