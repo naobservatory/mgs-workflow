@@ -7,6 +7,7 @@ process JOIN_RIBO_REF {
         val(lsu_url)
     output:
         path("ribo-ref-concat.fasta.gz"), emit: ribo_ref
+        tuple path("ssu_ref_input.fasta.gz"), path("lsu_ref_input.fasta.gz"), emit: input
     shell:
         '''
         # Download references
@@ -17,7 +18,7 @@ process JOIN_RIBO_REF {
             zcat ${ref}_ref.fasta.gz | awk -v suffix=$ref '
             /^>/ {
                 pos = index($0, " ")
-                print (pos > 0) ? substr($0,1,pos-1) "-" suffix substr($0,pos) : $0 "-" suffix
+                print (pos > 0) ? substr($0,1,pos-1) "::" toupper(suffix) substr($0,pos) : $0 "::" toupper(suffix)
                 next
             }
             { print }' | gzip > ${ref}_ref_suffix.fasta.gz
@@ -26,5 +27,9 @@ process JOIN_RIBO_REF {
         # Update input files for concatenation
         in="ssu_ref_suffix.fasta.gz lsu_ref_suffix.fasta.gz"
         cat ${in} > ribo-ref-concat.fasta.gz
+
+        # Return input files for testing
+        ln -s ssu_ref.fasta.gz ssu_ref_input.fasta.gz
+        ln -s lsu_ref.fasta.gz lsu_ref_input.fasta.gz
         '''
 }
