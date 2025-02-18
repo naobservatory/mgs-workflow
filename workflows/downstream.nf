@@ -11,6 +11,7 @@ import java.time.LocalDateTime
 
 include { LOAD_DOWNSTREAM_DATA } from "../subworkflows/local/loadDownstreamData"
 include { PREPARE_GROUP_TSVS } from "../subworkflows/local/prepareGroupTsvs"
+include { MARK_VIRAL_DUPLICATES } from "../subworkflows/local/markViralDuplicates"
 
 nextflow.preview.output = true
 
@@ -29,8 +30,8 @@ workflow DOWNSTREAM {
     PREPARE_GROUP_TSVS(input_ch)
     group_ch = PREPARE_GROUP_TSVS.out.groups
 
-//    // 3. Mark duplicates
-//    MARK_DUPLICATES(group_ch)
+    // 3. Mark duplicates
+    MARK_VIRAL_DUPLICATES(group_ch, params.aln_dup_deviation)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -44,6 +45,5 @@ workflow DOWNSTREAM {
         time_ch >> "logging"
         version_ch >> "logging"
         // Duplicate results
-//        MARK_DUPLICATES.out.tsv >> "results_downstream"
-//        MARK_DUPLICATES.out.mapping >> "results_downstream"
+        MARK_VIRAL_DUPLICATES.out.dup >> "results_downstream"
 }

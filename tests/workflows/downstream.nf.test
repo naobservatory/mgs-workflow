@@ -1,0 +1,31 @@
+nextflow_pipeline {
+
+    name "Test workflow DOWNSTREAM"
+    script "main.nf" // Running from main so we have access to published files
+    config "tests/downstream.config"
+    tag "workflow"
+
+    test("DOWNSTREAM workflow should run without errors") {
+        tag "downstream"
+        tag "main_downstream"
+        then {
+            assert workflow.success
+        }
+    }
+
+    test("DOWNSTREAM workflow output should match snapshot") {
+        tag "downstream_output"
+        tag "main_downstream_output"
+        tag "snapshot"
+        then {
+            assert workflow.success
+            assert snapshot(
+                path("${launchDir}/output/results_downstream/gs1_duplicate_reads.tsv.gz"),
+                path("${launchDir}/output/results_downstream/gs1_duplicate_stats.tsv.gz"),
+                path("${launchDir}/output/results_downstream/gs2_duplicate_reads.tsv.gz"),
+                path("${launchDir}/output/results_downstream/gs2_duplicate_stats.tsv.gz"),
+            ).match("downstream_output")
+        }
+    }
+
+}

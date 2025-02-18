@@ -15,7 +15,7 @@ workflow {
         RUN_DEV_SE()
     } else if (params.mode == "downstream") {
         DOWNSTREAM()
-    {
+    }
 }
 
 output {
