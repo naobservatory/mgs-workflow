@@ -42,6 +42,7 @@ nextflow_workflow {
                 input[5] = "ribo"
                 input[6] = "1"
                 input[7] = false
+                input[8] = false
                 '''
             }
         }
@@ -88,6 +89,7 @@ nextflow_workflow {
                 input[5] = "ribo"
                 input[6] = "1"
                 input[7] = true
+                input[8] = false
                 '''
             }
         }
