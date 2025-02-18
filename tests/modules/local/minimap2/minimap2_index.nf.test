@@ -1,0 +1,43 @@
+nextflow_process {
+    name "Test process MINIMAP2_INDEX"
+    script "modules/local/minimap2/main.nf"
+    process "MINIMAP2_INDEX"
+    config "tests/index.config"
+    tag "module"
+    tag "minimap2_index"
+
+    test("Should run without failures and properly create a ribosomal reference index") {
+        tag "expect_success"
+        setup {
+            run("JOIN_RIBO_REF") {
+                script "modules/local/joinRiboRef/main.nf"
+                process {
+                    '''
+                    input[0] = {params.ssu_url}
+                    input[1] = {params.lsu_url}
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = JOIN_RIBO_REF.out.ribo_ref
+                input[1] = "mm2-ribo-index"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+
+            // Check that output directory exists and contains index file
+            assert path(process.out.output[0]).exists()
+            assert path("${process.out.output[0]}/mm2_index.mmi").exists()
+
+        }
+    }
+}
+
