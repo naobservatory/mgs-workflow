@@ -20,9 +20,9 @@ workflow EXTRACT_VIRAL_READS_ONT {
     main:
         // Get reference_paths
         // TODO: RENAME HV INDEX TO VIRUS INDEX
-        minimap2_hv_index = "${projectDir}/.nf-test/tests/11ca21fed5d9a06b0da1df25bba245cb/output/results/mm2-virus-index"
-        minimap2_human_index = "${projectDir}/.nf-test/tests/11ca21fed5d9a06b0da1df25bba245cb/output/results/mm2-human-index"
-        minimap2_contam_index = "${projectDir}/.nf-test/tests/11ca21fed5d9a06b0da1df25bba245cb/output/results/mm2-other-index"
+        minimap2_hv_index = "${projectDir}/test-index/mm2-virus-index"
+        minimap2_human_index = "${projectDir}/test-index/mm2-human-index"
+        minimap2_contam_index = "${projectDir}/test-index/mm2-other-index"
         genome_meta_path = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
 
@@ -39,12 +39,19 @@ workflow EXTRACT_VIRAL_READS_ONT {
 
         // Identify virus reads
         virus_minimap2_ch = MINIMAP2_VIRUS(no_contam_ch, minimap2_hv_index, "virus", false)
-        virus_sam_ch = virus_minimap2_ch.sam
 
-        merged_sam_ch = MERGE_SAM(virus_sam_ch.collect(), "hv")
+        virus_sam_ch = virus_minimap2_ch.sam
+        // Print contents of virus_sam_ch for debugging
+        virus_sam_ch.view { "SAM file: $it" }
+
+        virus_sam_files = virus_sam_ch.map { it[1] }
+        virus_sam_files.view { "SAM file: $it" }
+        // Merge SAM files
+        merged_sam_ch = MERGE_SAM(virus_sam_files, "hv")
 
         // Generate HV TSV
         hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(merged_sam_ch, genome_meta_path, virus_db_path, host_taxon)
+
     emit:
         hv_tsv = hv_tsv_ch.output
 }
