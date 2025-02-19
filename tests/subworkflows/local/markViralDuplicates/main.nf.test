@@ -3,7 +3,7 @@ nextflow_workflow {
     name "Test workflow MARK_VIRAL_DUPLICATES"
     script "subworkflows/local/markViralDuplicates/main.nf"
     workflow "MARK_VIRAL_DUPLICATES"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "subworkflow"
     tag "downstream"
     tag "mark_viral_duplicates"

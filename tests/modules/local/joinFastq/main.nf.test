@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process JOIN_FASTQ"
     script "modules/local/joinFastq/main.nf"
     process "JOIN_FASTQ"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "join_fastq"
 

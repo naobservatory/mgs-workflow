@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process CUTADAPT"
     script "modules/local/cutadapt/main.nf"
     process "CUTADAPT"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "cutadapt"
 

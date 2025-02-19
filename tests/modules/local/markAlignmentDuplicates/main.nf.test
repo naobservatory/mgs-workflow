@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process MARK_ALIGNMENT_DUPLICATES"
     script "modules/local/markAlignmentDuplicates/main.nf"
     process "MARK_ALIGNMENT_DUPLICATES"
-    config "tests/downstream.config"
+    config "tests/configs/downstream.config"
     tag "module"
     tag "mark_alignment_duplicates"
 

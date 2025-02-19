@@ -6,7 +6,7 @@ nextflow_process {
     name "Test process SORT_TSV"
     script "modules/local/sortTsv/main.nf"
     process "SORT_TSV"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "sort_tsv"
 

@@ -2,7 +2,7 @@ nextflow_pipeline {
 
     name "Test workflow DOWNSTREAM"
     script "main.nf" // Running from main so we have access to published files
-    config "tests/downstream.config"
+    config "tests/configs/downstream.config"
     tag "workflow"
 
     test("DOWNSTREAM workflow should run without errors") {
