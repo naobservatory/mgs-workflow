@@ -1,6 +1,6 @@
 process MERGE_SAM {
     label "samtools"
-
+    label "large"
     input:
         path(sam_files)
         val prefix
