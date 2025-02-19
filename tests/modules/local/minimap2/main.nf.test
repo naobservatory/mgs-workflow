@@ -1,5 +1,4 @@
 nextflow_process {
-
     name "Test process MINIMAP2_INDEX"
     script "modules/local/minimap2/main.nf"
     process "MINIMAP2_INDEX"
@@ -41,4 +40,3 @@ nextflow_process {
         }
     }
 }
-
