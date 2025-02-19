@@ -26,7 +26,7 @@ nextflow_process {
             process {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = "${projectDir}/.nf-test/tests/11ca21fed5d9a06b0da1df25bba245cb/output/results/mm2-human-index"
+                input[1] = "${ref_dir}/mm2-human-index"
                 input[2] = "test"
                 input[3] = false
                 '''
