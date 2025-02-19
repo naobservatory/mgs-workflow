@@ -1,0 +1,162 @@
+def filter_tab = { tab_in, column, value -> csv(tab_in.table.where(tab_in.table.intColumn(column).isEqualTo(value))) }
+
+nextflow_process {
+
+    name "Test process PARTITION_TSV"
+    script "modules/local/partitionTsv/main.nf"
+    process "PARTITION_TSV"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "partition_tsv"
+
+    test("Should fail with an appropriate error code if the input file is empty"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[1] = "x"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Input file is empty")
+            assert !process.errorReport.contains("ValueError: Required column is missing")
+            assert !process.errorReport.contains("ValueError: Input file is not sorted by partition column")
+        }
+    }
+
+    test("Should fail with an appropriate error code if the partition column is missing"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert !process.errorReport.contains("ValueError: Input file is empty")
+            assert process.errorReport.contains("ValueError: Required column is missing")
+            assert !process.errorReport.contains("ValueError: Input file is not sorted by partition column")
+        }
+    }
+
+    test("Should fail with an appropriate error code if the partition column is not sorted"){
+        tag "expect_failed"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_unsorted.tsv"))
+                input[1] = "x"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert !process.errorReport.contains("ValueError: Input file is empty")
+            assert !process.errorReport.contains("ValueError: Required column is missing")
+            assert process.errorReport.contains("ValueError: Input file is not sorted by partition column")
+        }
+    }
+
+    test("Should produce no change when input file is empty (apart from headers)"){
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_empty.tsv"))
+                input[1] = "x"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Should only produce a single output
+            assert process.out.output[0][1].getClass() == String
+            // Input and output should match
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
+            assertTableEquals tab_in, tab_out
+            assert tab_out.rowCount == 0
+        }
+    }
+
+    test("Should produce no change when partition file has only one value") {
+        tag "expect_success"
+        when {
+            params {
+                column = "x"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_single.tsv"))
+                input[1] = params.column
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Should only produce a single output
+            assert process.out.output[0][1].getClass() == String
+            // Input and output should match
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
+            assertTableEquals tab_in, tab_out
+            // Verify only one partition value
+            def part_set = tab_out.columns[params.column] as Set
+            assert part_set.size() == 1
+        }
+    }
+
+    test("Should correctly partition multi-value file") {
+        tag "expect_success"
+        when {
+            params {
+                column = "x"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = params.column
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Should produce expected number of output tables
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tabs_out = process.out.output[0][1].collect{path(it).csv(sep: "\t")}
+            def part_set = tab_in.columns[params.column] as Set
+            def n_levels = part_set.size()
+            assert tabs_out.size() == n_levels
+            // Each partition should have expected content
+            for (t in tabs_out) {
+                def index = t.columns[params.column][0]
+                def tab_in_filtered = filter_tab(tab_in, params.column, index)
+                assertTableEquals t, tab_in_filtered
+            }
+        }
+    }
+
+}
+

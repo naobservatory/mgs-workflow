@@ -9,7 +9,7 @@ nextflow_workflow {
     test("Test paired-end samplesheet") {
         tag "expect_success"
         tag "paired_end"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         when {
             params {}
             workflow {
@@ -32,7 +32,7 @@ nextflow_workflow {
     test("Test single-end samplesheet") {
         tag "expect_success"
         tag "single_end"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         when {
             params {}
             workflow {
@@ -55,7 +55,7 @@ nextflow_workflow {
     test("Test incorrect samplesheet") {
         tag "expect_failed"
         tag "paired_end"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         when {
             params {}
             workflow {

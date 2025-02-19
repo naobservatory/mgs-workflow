@@ -6,8 +6,9 @@
     - [Usage instructions](docs/usage.md)
     - [Troubleshooting](docs/troubleshooting.md)
 - **Workflow details:**
-    - [Index workflow](docs/index.md)
-    - [Run workflow](docs/run.md)
+    - [INDEX workflow](docs/index.md)
+    - [RUN workflow](docs/run.md)
+    - [DOWNSTREAM workflow](docs/downstream.md)
 - **Configuration and output:**
     - [Configuration files](docs/config.md)
     - [Pipeline outputs](docs/output.md)

@@ -38,7 +38,7 @@ nextflow_process {
     test("Should run without errors and preserve entries") {
         tag "interleaved"
         tag "expect_success"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         when {
             params {}
             process {

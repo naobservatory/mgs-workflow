@@ -14,3 +14,21 @@ process CONCATENATE_TSVS {
         ln -s !{tsvs[0]} input_!{tsvs[0]} # Link input to output for testing
         '''
 }
+
+// Labeled version
+process CONCATENATE_TSVS_LABELED {
+    label "biopython"
+    label "single"
+    input:
+        tuple val(label), path(tsvs)
+        val(name)
+    output:
+        tuple val(label), path("${label}_${name}.tsv.gz"), emit: output
+        tuple val(label), path("${label}_input_${tsvs[0]}"), emit: input
+    shell:
+        println(tsvs)
+        '''
+        concatenate_tsvs.py -o !{label}_!{name}.tsv.gz !{tsvs}
+        ln -s !{tsvs[0]} !{label}_input_!{tsvs[0]} # Link input to output for testing
+        '''
+}
