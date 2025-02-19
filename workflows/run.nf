@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
-include { EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReads"
+include { EXTRACT_VIRAL_READS_SHORT as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsShort"
 include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE} from "../subworkflows/local/profile"
@@ -43,7 +43,7 @@ workflow RUN {
 
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
-        BLAST_VIRAL(EXTRACT_VIRAL_READS.out.hits_fastq, blast_db_path, params.blast_db_prefix,
+        BLAST_VIRAL(EXTRACT_VIRAL_READS_SHORT.out.hits_fastq, blast_db_path, params.blast_db_prefix,
             params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
             params.random_seed)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset

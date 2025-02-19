@@ -4,11 +4,10 @@
 
 include { DUSTMASKER_FASTQ_GZIPPED } from "../../../modules/local/dustmasker"
 include { MINIMAP2 as MINIMAP2_VIRUS } from "../../../modules/local/minimap2"
-include { SAMTOOLS_KEEP_AS_SAM } from "../../../modules/local/samtools"
-include { CONCAT_GROUP_SINGLE as CONCAT_GROUP } from "../../../modules/local/concatGroup"
-// include { MERGE_SAM } from "../../../modules/local/samtools"
 include { MINIMAP2 as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
-
+include { MINIMAP2 as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
+include { MERGE_SAM } from "../../../modules/local/samtools"
+include { PROCESS_VIRAL_MINIMAP2_SAM } from "../../../modules/local/processViralMinimap2Sam"
 /***********
 | WORKFLOW |
 ***********/
@@ -21,9 +20,9 @@ workflow EXTRACT_VIRAL_READS_ONT {
     main:
         // Get reference_paths
         // TODO: RENAME HV INDEX TO VIRUS INDEX
-        minimap2_hv_index = "${ref_dir}/results/minimap2-hv-index"
-        minimap2_human_index = "${ref_dir}/results/minimap2-human-index"
-        minimap2_contam_index = "${ref_dir}/results/minimap2-other-index"
+        minimap2_hv_index = "${projectDir}/.nf-test/tests/11ca21fed5d9a06b0da1df25bba245cb/output/results/mm2-virus-index"
+        minimap2_human_index = "${projectDir}/.nf-test/tests/11ca21fed5d9a06b0da1df25bba245cb/output/results/mm2-human-index"
+        minimap2_contam_index = "${projectDir}/.nf-test/tests/11ca21fed5d9a06b0da1df25bba245cb/output/results/mm2-other-index"
         genome_meta_path = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
 
@@ -35,17 +34,17 @@ workflow EXTRACT_VIRAL_READS_ONT {
         no_human_ch = human_minimap2_ch.reads_unmapped
 
         // Identify other contaminants
-        contam_minimap2_ch = MINIMAP2_CONTAM(no_human_ch, minimap2_contam_index, "other")
+        contam_minimap2_ch = MINIMAP2_CONTAM(no_human_ch, minimap2_contam_index, "other", false)
         no_contam_ch = contam_minimap2_ch.reads_unmapped
 
         // Identify virus reads
-        virus_minimap2_ch = MINIMAP2_VIRUS(no_contam_ch, minimap2_hv_index, "virus")
+        virus_minimap2_ch = MINIMAP2_VIRUS(no_contam_ch, minimap2_hv_index, "virus", false)
         virus_sam_ch = virus_minimap2_ch.sam
 
-        merged_sam_ch = MERGE_SAM(virus_sam_ch.sam.collect(), "hv")
+        merged_sam_ch = MERGE_SAM(virus_sam_ch.collect(), "hv")
 
         // Generate HV TSV
-        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(virus_ch, genome_meta_path, virus_db_path)
+        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(merged_sam_ch, genome_meta_path, virus_db_path, host_taxon)
     emit:
-        hits_filtered = hv_tsv_ch.output
+        hv_tsv = hv_tsv_ch.output
 }
