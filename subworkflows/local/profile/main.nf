@@ -36,7 +36,7 @@ workflow PROFILE {
     main:
         // Separate ribosomal reads
         if (ont) {
-            ribo_ref = "${projectDir}/.nf-test/tests/11ca21fed5d9a06b0da1df25bba245cb/output/results/mm2-ribo-index"
+            ribo_ref = "${projectDir}/test-index/mm2-ribo-index"
             mapped_ch = MINIMAP2_RIBO(reads_ch, ribo_ref, ribo_suffix, false)
             ribo_ch = mapped_ch
         } else {
