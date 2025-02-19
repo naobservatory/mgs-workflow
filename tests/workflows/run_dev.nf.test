@@ -5,7 +5,7 @@ nextflow_pipeline {
     tag "workflow"
 
     test("Single-end RUN workflow should run without errors") {
-        config "tests/run_dev_se.config"
+        config "tests/configs/run_dev_se.config"
         tag "run_dev_se"
         tag "main_run_dev_se"
         then {
@@ -15,7 +15,7 @@ nextflow_pipeline {
     }
 
     test("ONT RUN workflow should run without errors") {
-        config "tests/run_dev_ont.config"
+        config "tests/configs/run_dev_ont.config"
         tag "run_dev_ont"
         tag "main_run_dev_ont"
         then {

@@ -7,7 +7,7 @@ nextflow_process {
     name "Test process HEAD_TSV"
     script "modules/local/headTsv/main.nf"
     process "HEAD_TSV"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "head_tsv"
 

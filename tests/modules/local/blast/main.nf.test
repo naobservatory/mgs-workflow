@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process BLASTN"
     script "modules/local/blast/main.nf"
     process "BLASTN"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "blast"
 

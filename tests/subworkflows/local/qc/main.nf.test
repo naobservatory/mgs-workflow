@@ -7,7 +7,7 @@ nextflow_workflow {
     tag "qc"
 
     test("Should run without failures on paired data") {
-        config "tests/run.config"
+        config "tests/configs/run.config"
         tag "expect_success"
         tag "interleaved"
         setup {
@@ -90,7 +90,7 @@ nextflow_workflow {
     }
 
     test("Should run without failures on single-end data") {
-        config "tests/run_dev_se.config"
+        config "tests/configs/run_dev_se.config"
         tag "expect_success"
         tag "single_end"
         setup {

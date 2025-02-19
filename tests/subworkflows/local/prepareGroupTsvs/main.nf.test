@@ -3,7 +3,7 @@ nextflow_workflow {
     name "Test workflow PREPARE_GROUP_TSVS"
     script "subworkflows/local/prepareGroupTsvs/main.nf"
     workflow "PREPARE_GROUP_TSVS"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "subworkflow"
     tag "downstream"
     tag "prepare_group_tsvs"

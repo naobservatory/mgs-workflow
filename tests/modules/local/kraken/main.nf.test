@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process KRAKEN"
     script "modules/local/kraken/main.nf"
     process "KRAKEN"
-    config "tests/run_dev_se.config"
+    config "tests/configs/run_dev_se.config"
     tag "module"
     tag "kraken"
 

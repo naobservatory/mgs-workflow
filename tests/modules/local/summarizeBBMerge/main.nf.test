@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process SUMMARIZE_BBMERGE"
     script "modules/local/summarizeBBMerge/main.nf"
     process "SUMMARIZE_BBMERGE"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "summarize_bbmerge"
 

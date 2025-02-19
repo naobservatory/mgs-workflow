@@ -9,7 +9,7 @@ nextflow_process {
     test("On paired data, should run without errors and preserve lines") {
         tag "expect_success"
         tag "interleaved"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"

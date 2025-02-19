@@ -11,7 +11,7 @@ nextflow_workflow {
     test("Should run without failures on paired (interleaved) data") {
         tag "expect_success"
         tag "interleaved"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
@@ -106,7 +106,7 @@ nextflow_workflow {
     test("Should run without failures on single-end data") {
         tag "expect_success"
         tag "single_end"
-        config "tests/run_dev_se.config"
+        config "tests/configs/run_dev_se.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"

@@ -2,7 +2,7 @@ nextflow_pipeline {
 
     name "Test workflow RUN_VALIDATION"
     script "main.nf" // Running from main so we have access to published files
-    config "tests/run_validation.config"
+    config "tests/configs/run_validation.config"
     tag "workflow"
     tag "run_validation"
     tag "validation"

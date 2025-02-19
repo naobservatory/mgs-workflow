@@ -3,7 +3,7 @@ nextflow_workflow {
     name "Test Workflow LOAD_DOWNSTREAM_DATA"
     script "subworkflows/local/loadDownstreamData/main.nf"
     workflow "LOAD_DOWNSTREAM_DATA"
-    config "tests/downstream.config"
+    config "tests/configs/downstream.config"
     tag "load_downstream_data"
     tag "subworkflow"
     tag "downstream"

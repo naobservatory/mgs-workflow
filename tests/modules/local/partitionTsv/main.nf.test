@@ -5,7 +5,7 @@ nextflow_process {
     name "Test process PARTITION_TSV"
     script "modules/local/partitionTsv/main.nf"
     process "PARTITION_TSV"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "partition_tsv"
 

@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process SORT_FASTQ"
     script "modules/local/sortFastq/main.nf"
     process "SORT_FASTQ"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "sort_fastq"
 
