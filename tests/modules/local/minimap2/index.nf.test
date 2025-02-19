@@ -1,0 +1,48 @@
+nextflow_process {
+    name "Test process MINIMAP2_INDEX"
+    script "modules/local/minimap2/main.nf"
+    process "MINIMAP2"
+    config "tests/configs/index.config"
+    tag "module"
+    tag "minimap2_index"
+
+    test("Should run without failures and properly create a reference") {
+        tag "expect_success"
+        setup {
+            run("MINIMAP2_INDEX") {
+                script "modules/local/minimap2/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/toy-data/sars_cov_2.fasta.gz"
+                    input[1] = "mm2-sars-cov-2-index"
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = tuple("sars_cov_2", "${projectDir}/test-data/toy-data/sars_cov_2.fasta.gz")
+                input[1] = MINIMAP2_INDEX.out.output
+                input[2] = "test"
+                input[3] = false
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+
+            // Assess if mapped reads match input reference
+            def fastq_mapped = path(process.out.reads_mapped[0][1]).fastq
+            def fastq_sequence = fastq_mapped.sequences.toSet()
+
+            def index_input = path(process.out.input[0][1]).fasta
+            def index_sequence = index_input.values().toSet()
+
+            assert fastq_sequence == index_sequence
+        }
+    }
+}
