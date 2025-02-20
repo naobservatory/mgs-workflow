@@ -13,8 +13,16 @@ nextflow_process {
                 script "modules/local/minimap2/main.nf"
                 process {
                     '''
-                    input[0] = "${projectDir}/test-data/toy-data/sars_cov_2.fasta.gz"
-                    input[1] = "mm2-sars-cov-2-index"
+                    input[0] = "${projectDir}/test-data/toy-data/norovirus_GI.fasta"
+                    input[1] = "mm2-norovirus-index"
+                    '''
+                }
+            }
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = tuple("norovirus_GI", "${projectDir}/test-data/toy-data/norovirus_GI.fasta")
                     '''
                 }
             }
@@ -24,7 +32,7 @@ nextflow_process {
             }
             process {
                 '''
-                input[0] = tuple("sars_cov_2", "${projectDir}/test-data/toy-data/sars_cov_2.fasta.gz")
+                input[0] = GZIP_FILE.out
                 input[1] = MINIMAP2_INDEX.out.output
                 input[2] = "test"
                 input[3] = false
@@ -35,7 +43,7 @@ nextflow_process {
             // Should run without failures
             assert process.success
 
-            // Assess if mapped reads match input reference
+            // Assess if mapped genome sequence matches input reference genome
             def fastq_mapped = path(process.out.reads_mapped[0][1]).fastq
             def fastq_sequence = fastq_mapped.sequences.toSet()
 

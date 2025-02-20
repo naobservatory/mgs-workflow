@@ -3,19 +3,19 @@ nextflow_process {
     name "Test process JOIN_RIBO_REF"
     script "modules/local/joinRiboRef/main.nf"
     process "JOIN_RIBO_REF"
-    config "tests/index.config"
+    config "configs/index-for-run-test.config"
     tag "module"
     tag "join_ribo_ref"
 
-    test("Should run without failures and properly concatenate SSU and LSU references") {
+    test("Should run without failures and properly concatenate two references, adding SSU and LSU suffixes") {
         tag "expect_success"
         when {
             params {
             }
             process {
                 '''
-                input[0] = {params.ssu_url}
-                input[1] = {params.lsu_url}
+                input[0] = params.influenza_url
+                input[1] = params.influenza_url
                 '''
             }
         }
@@ -50,6 +50,13 @@ nextflow_process {
             // Validate SSU occurrences in combined reads
             def ssu_count = reads_ids_combined.count { it.contains("::SSU") }
             assert ssu_count == n_reads_ssu
+
+            // Validate that removal of SSU and LSU suffixes from combined reads matches the input reads
+            def reads_ids_combined_no_suffix = reads_ids_combined.collect { it.replace("::SSU", "").replace("::LSU", "") }.toSet()
+
+            def read_ids_in = reads_ids_ssu + reads_ids_lsu
+
+            assert reads_ids_combined_no_suffix == read_ids_in
         }
     }
 }

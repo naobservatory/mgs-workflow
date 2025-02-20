@@ -2,7 +2,7 @@ nextflow_process {
     name "Test process MINIMAP2"
     script "modules/local/minimap2/main.nf"
     process "MINIMAP2"
-    config "tests/configs/run_dev_se.config"
+    config "configs/index-for-run-test.config"
     tag "module"
     tag "minimap2"
 
@@ -16,17 +16,25 @@ nextflow_process {
                 """
             }
         }
+        run("MAKE_HUMAN_INDEX") {
+            script "subworkflows/local/makeHumanIndex/main.nf"
+            process {
+                """
+                input[0] = params.human_url
+                """
+            }
+        }
     }
 
     test("Should correctly partition reads based on alignment status") {
         tag "expect_success"
-        tag "single_end"
+
         when {
             params {}
             process {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = "${ref_dir}/mm2-human-index"
+                input[1] = MAKE_HUMAN_INDEX.out.mm2
                 input[2] = "test"
                 input[3] = false
                 '''
