@@ -19,15 +19,14 @@ workflow EXTRACT_VIRAL_READS_ONT {
         host_taxon
     main:
         // Get reference_paths
-        // TODO: RENAME HV INDEX TO VIRUS INDEX
-        minimap2_hv_index = "${projectDir}/test-index/mm2-virus-index"
+        minimap2_virus_index = "${projectDir}/test-index/mm2-virus-index"
         minimap2_human_index = "${projectDir}/test-index/mm2-human-index"
         minimap2_contam_index = "${projectDir}/test-index/mm2-other-index"
         genome_meta_path = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
 
         // Drop non-complex reads
-        // masked_ch = DUSTMASKER_FASTQ_GZIPPED(reads_ch)
+        masked_ch = DUSTMASKER_FASTQ_GZIPPED(reads_ch)
 
         // Drop human reads before pathogen identification
         human_minimap2_ch = MINIMAP2_HUMAN(reads_ch, minimap2_human_index, "human", false)
@@ -38,7 +37,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
         no_contam_ch = contam_minimap2_ch.reads_unmapped
 
         // Identify virus reads
-        virus_minimap2_ch = MINIMAP2_VIRUS(no_contam_ch, minimap2_hv_index, "virus", false)
+        virus_minimap2_ch = MINIMAP2_VIRUS(no_contam_ch, minimap2_virus_index, "virus", false)
 
         virus_sam_ch = virus_minimap2_ch.sam.map { it[1] }
 
