@@ -60,6 +60,6 @@ process MINIMAP2 {
             | samtools view -h -F 4 - \
             !{ remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
         # Link input to output for testing
-        ln -s ${reads} ${sample}_!{suffix}_minimap2_in.fastq.gz
+        ln -s ${reads} !{sample}_!{suffix}_minimap2_in.fastq.gz
         '''
 }

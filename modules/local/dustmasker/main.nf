@@ -26,7 +26,7 @@ process DUSTMASKER_FASTQ_GZIPPED {
     shell:
         '''
         set -e
-        reads = !{reads}
+        reads=!{reads}
         zcat -f ${reads} | \
             # Convert FASTQ to FASTA
             sed -n '1~4s/^@/>/p;2~4p' | \
@@ -35,9 +35,9 @@ process DUSTMASKER_FASTQ_GZIPPED {
             # Replace masked bases with N
             sed '/^>/!s/[a-z]/N/g' | \
             # Gzip FASTA
-            gzip > ${sample}_masked.fasta.gz
+            gzip > !{sample}_masked.fasta.gz
 
         # Link input to output for testing
-        ln -s ${reads} ${sample}_in.fastq.gz
+        ln -s ${reads} !{sample}_in.fastq.gz
         '''
 }
