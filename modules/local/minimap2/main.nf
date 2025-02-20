@@ -39,6 +39,7 @@ process MINIMAP2 {
         '''
         set -euo pipefail
         # Prepare inputs
+        reads="!{reads}"
         idx="!{index_dir}/mm2_index.mmi"
         sam="!{sample}_!{suffix}_minimap2_mapped.sam.gz"
         al="!{sample}_!{suffix}_minimap2_mapped.fastq.gz"
@@ -49,7 +50,7 @@ process MINIMAP2 {
         #   - First branch (samtools view -u -f 4 -) filters SAM to unaligned reads and saves FASTQ
         #   - Second branch (samtools view -u -F 4 -) filters SAM to aligned reads and saves FASTQ
         #   - Third branch (samtools view -h -F 4 -) also filters SAM to aligned reads and saves SAM
-        zcat !{reads} \
+        zcat ${reads} \
             | minimap2 -a ${idx} /dev/fd/0 \
             | tee \
                 >(samtools view -u -f 4 - \
@@ -59,6 +60,6 @@ process MINIMAP2 {
             | samtools view -h -F 4 - \
             !{ remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
         # Link input to output for testing
-        ln -s !{reads} !{sample}_!{suffix}_minimap2_in.fastq.gz
+        ln -s ${reads} ${sample}_!{suffix}_minimap2_in.fastq.gz
         '''
 }
