@@ -1,4 +1,4 @@
-// Extract information from a Minimap2 SAM file based on Genbank download metadata
+// Process SAM file(filter out non-host-taxon identifying reads, add reference taxid and name, turn into TSV)
 process PROCESS_VIRAL_MINIMAP2_SAM {
     label "pysam"
     label "single"
