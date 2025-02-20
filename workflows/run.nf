@@ -43,7 +43,7 @@ workflow RUN {
 
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
-        BLAST_VIRAL(EXTRACT_VIRAL_READS_SHORT.out.hits_fastq, blast_db_path, params.blast_db_prefix,
+        BLAST_VIRAL(EXTRACT_VIRAL_READS.out.hits_fastq, blast_db_path, params.blast_db_prefix,
             params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
             params.random_seed)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset

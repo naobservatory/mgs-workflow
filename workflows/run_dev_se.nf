@@ -56,11 +56,13 @@ workflow RUN_DEV_SE {
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
     if ( params.ont ) {
-        PROFILE.out.bracken = Channel.empty()
-        PROFILE.out.kraken = Channel.empty()
+        bracken_ch = Channel.empty()
+        kraken_ch = Channel.empty()
     } else {
         PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
             params.bracken_threshold, params.single_end)
+        bracken_ch = PROFILE.out.bracken
+        kraken_ch = PROFILE.out.kraken
     }
 
     // Publish results
@@ -90,6 +92,6 @@ workflow RUN_DEV_SE {
         RUN_QC.out.qc_lengths >> "results"
         // Final results
         EXTRACT_VIRAL_READS.out.hv_tsv >> "results"
-        PROFILE.out.bracken >> "results"
-        PROFILE.out.kraken >> "results"
+        bracken_ch >> "results"
+        kraken_ch >> "results"
 }
