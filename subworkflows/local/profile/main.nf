@@ -15,8 +15,6 @@ include { ADD_FIXED_COLUMN as ADD_KRAKEN_NORIBO } from "../../../modules/local/a
 include { ADD_FIXED_COLUMN as ADD_BRACKEN_NORIBO } from "../../../modules/local/addFixedColumn"
 include { CONCATENATE_TSVS as CONCATENATE_KRAKEN } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_TSVS as CONCATENATE_BRACKEN } from "../../../modules/local/concatenateTsvs"
-include { MINIMAP2 as MINIMAP2_RIBO } from "../../../modules/local/minimap2"
-
 
 /****************
 | MAIN WORKFLOW |
@@ -29,35 +27,16 @@ workflow PROFILE {
         ref_dir
         min_kmer_fraction
         k
-        ribo_suffix
+        bbduk_suffix
         bracken_threshold
         single_end
-        ont
     main:
         // Separate ribosomal reads
-        if (ont) {
-            ribo_ref = "${projectDir}/test-index/mm2-ribo-index"
-            mapped_ch = MINIMAP2_RIBO(reads_ch, ribo_ref, ribo_suffix, false)
-            ribo_ch = mapped_ch
-        } else {
-            ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
-            ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, ribo_suffix, !single_end)
-        }
+        ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
+        ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix, !single_end)
         // Run taxonomic profiling separately on ribo and non-ribo reads
-        tax_ribo_ch = TAXONOMY_RIBO(
-            ont ? ribo_ch.reads_mapped : ribo_ch.match,
-            kraken_db_ch,
-            "D",
-            bracken_threshold,
-            single_end
-        )
-        tax_noribo_ch = TAXONOMY_NORIBO(
-            ont ? ribo_ch.reads_unmapped : ribo_ch.nomatch,
-            kraken_db_ch,
-            "D",
-            bracken_threshold,
-            single_end
-        )
+        tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.match, kraken_db_ch, "D", bracken_threshold, single_end)
+        tax_noribo_ch = TAXONOMY_NORIBO(ribo_ch.nomatch, kraken_db_ch, "D", bracken_threshold, single_end)
         // Add ribosomal status to output TSVs
         kr_ribo = ADD_KRAKEN_RIBO(tax_ribo_ch.kraken_reports, "ribosomal", "TRUE", "ribo")
         kr_noribo = ADD_KRAKEN_NORIBO(tax_noribo_ch.kraken_reports, "ribosomal", "FALSE", "noribo")
