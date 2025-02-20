@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process ADD_FIXED_COLUMN"
     script "modules/local/addFixedColumn/main.nf"
     process "ADD_FIXED_COLUMN"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "add_fixed_column"
 

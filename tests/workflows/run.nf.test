@@ -2,7 +2,7 @@ nextflow_pipeline {
 
     name "Test workflow RUN"
     script "main.nf" // Running from main so we have access to published files
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "workflow"
 
     test("RUN workflow should run without errors") {

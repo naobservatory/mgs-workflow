@@ -43,6 +43,43 @@ def fill_left(placeholder_1, row_2, id_2, field_index_1, field_index_2):
     merged_row += [val for i, val in enumerate(row_2) if i != field_index_2]
     return merged_row
 
+def process_headers(header_1, header_2, field):
+    """Read, join and check headers from both files."""
+    # Verify that the field exists in both files
+    if field not in header_1:
+        raise ValueError(f"Join field missing from file 1 ('{field}').")
+    if field not in header_2:
+        raise ValueError(f"Join field missing from file 2 ('{field}').")
+    # Check for duplicate field names across files
+    for h in header_1:
+        if h != field and h in header_2:
+            msg = f"Duplicate field name found across both files: '{h}'."
+            raise ValueError(msg)
+    for h in header_2:
+        if h != field and h in header_1:
+            msg = f"Duplicate field name found across both files: '{h}'."
+            raise ValueError(msg)
+    # Get index of join field
+    field_index_1 = header_1.index(field)
+    field_index_2 = header_2.index(field)
+    # Prepare new header
+    merged_header = header_1 + \
+            [h for i, h in enumerate(header_2) if i != field_index_2]
+    return merged_header, field_index_1, field_index_2
+
+def get_line_id(file, field_index):
+    """Get the next line ID from a file."""
+    line = file.readline()
+    row = line.rstrip("\n").split("\t") if line else None
+    id = row[field_index] if row else None
+    return line, row, id
+
+def check_sorting(id_curr, id_next, file_str, input_path):
+    """Check that the file is sorted and raise an error if not."""
+    if id_next is not None and id_curr > id_next:
+        msg = f"File {file_str} is not sorted: encountered ID {id_curr} after {id_next} ({input_path})."
+        raise ValueError(msg)
+
 def join_tsvs(input_path_1, input_path_2, field, join_type, output_file):
     """Join two TSV files linewise on a shared column."""
     # Open files
@@ -50,80 +87,85 @@ def join_tsvs(input_path_1, input_path_2, field, join_type, output_file):
         # Read header lines
         header_1 = file_1.readline().strip().split("\t")
         header_2 = file_2.readline().strip().split("\t")
-        # Verify that the field exists in both files
-        if field not in header_1:
-            raise ValueError(f"Join field missing from file 1 ('{field}', {input_path_1}).")
-        if field not in header_2:
-            raise ValueError(f"Join field missing from file 2 ('{field}', {input_path_2}).")
-        # Get index of join field
-        field_index_1 = header_1.index(field)
-        field_index_2 = header_2.index(field)
-        # Write new header
-        merged_header = header_1 + [h for i, h in enumerate(header_2) if i != field_index_2]
+        # Process and write header
+        merged_header, field_index_1, field_index_2 = \
+                process_headers(header_1, header_2, field)
         write_line(merged_header, output)
         # Define placeholders for non-inner joins
         placeholder_file1 = ["NA"] * (len(header_1) - 1)
         placeholder_file2 = ["NA"] * (len(header_2) - 1)
-        # Initialise trackers for verifying files are sorted
-        last_id_file1 = None
-        last_id_file2 = None
-        # Get first line from each file
-        line_1 = file_1.readline()
-        line_2 = file_2.readline()
+        # Get first two lines from each file
+        line_1_curr, row_1_curr, id_1_curr = get_line_id(file_1, field_index_1)
+        line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
+        line_2_curr, row_2_curr, id_2_curr = get_line_id(file_2, field_index_2)
+        line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
         # Iterate until we exhaust either file
-        while line_1 and line_2:
-            # Get IDs and verify sorting
-            row_1 = line_1.rstrip("\n").split("\t")
-            row_2 = line_2.rstrip("\n").split("\t")
-            id_1 = row_1[field_index_1]
-            id_2 = row_2[field_index_2]
-            #print(id_1, id_2, last_id_file1, last_id_file2)
-            if last_id_file1 is not None and id_1 < last_id_file1:
-                raise ValueError(f"File 1 is not sorted: encountered ID {id_1} after {last_id_file1} ({input_path_1}).")
-            if last_id_file2 is not None and id_2 < last_id_file2:
-                raise ValueError(f"File 2 is not sorted: encountered ID {id_2} after {last_id_file2} ({input_path_2}).")
-            last_id_file1 = id_1
-            last_id_file2 = id_2
-            if id_1 == id_2:
-                # Regardless of join type, if IDs match, write to output and advance both files
-                merged_row = row_1 + [val for i, val in enumerate(row_2) if i != field_index_2]
+        while line_1_curr and line_2_curr:
+            # Verify that files are sorted
+            check_sorting(id_1_curr, id_1_next, "1", input_path_1)
+            check_sorting(id_2_curr, id_2_next, "2", input_path_2)
+            # If IDs match, write to output and check for one-to-many join
+            if id_1_curr == id_2_curr:
+                merged_row = row_1_curr + [val for i, val in enumerate(row_2_curr) if i != field_index_2]
                 write_line(merged_row, output)
-                line_1 = file_1.readline()
-                line_2 = file_2.readline()
-            elif id_1 < id_2:
+                if id_1_curr != id_1_next and id_2_curr != id_2_next:
+                    line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
+                    line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
+                    line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
+                    line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
+                elif id_1_curr != id_1_next:
+                    line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
+                    line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
+                elif id_2_curr != id_2_next:
+                    line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
+                    line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
+                else:
+                    ids = f"{id_1_curr}, {id_1_next}, {id_2_curr}, {id_2_next}"
+                    msg = f"Unsupported many-to-many join detected for ID {id_1_curr} ({ids})."
+                    raise ValueError(msg)
+            # If IDs don't match, handle on the basis of join type
+            elif id_1_curr < id_2_curr:
                 # File 2 is missing ID present in file 1
-                if join_type in ("left", "outer"):
-                    merged_row = fill_right(row_1, placeholder_file2)
+                if join_type == "strict":
+                    msg = f"Strict join failed: ID {id_1_curr} missing from file 2."
+                    raise ValueError(msg)
+                elif join_type in ("left", "outer"):
+                    merged_row = fill_right(row_1_curr, placeholder_file2)
                     write_line(merged_row, output)
-                line_1 = file_1.readline()
+                line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
+                line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
             else:
                 # File 1 is missing ID present in file 2
+                if join_type == "strict":
+                    msg = f"Strict join failed: ID {id_2_curr} missing from file 1."
+                    raise ValueError(msg)
                 if join_type in ("right", "outer"):
-                    merged_row = fill_left(placeholder_file1, row_2, id_2, field_index_1, field_index_2)
+                    merged_row = fill_left(placeholder_file1, row_2_curr, id_2_curr, field_index_1, field_index_2)
                     write_line(merged_row, output)
-                line_2 = file_2.readline()
+                line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
+                line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
         # Read out file 1
-        while line_1:
-            row_1 = line_1.rstrip("\n").split("\t")
-            id_1 = row_1[field_index_1]
-            if last_id_file1 is not None and id_1 < last_id_file1:
-                raise ValueError(f"File 1 is not sorted: encountered ID {id_1} after {last_id_file1} ({input_path_1}).")
-            last_id_file1 = id_1
+        while line_1_curr:
+            check_sorting(id_1_curr, id_1_next, "1", input_path_1)
+            if join_type == "strict":
+                msg = f"Strict join failed: ID {id_1_curr} missing from file 2."
+                raise ValueError(msg)
             if join_type in ("left", "outer"):
-                merged_row = fill_right(row_1, placeholder_file2)
+                merged_row = fill_right(row_1_curr, placeholder_file2)
                 write_line(merged_row, output)
-            line_1 = file_1.readline()
+            line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
+            line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
         # Read out file 2
-        while line_2:
-            row_2 = line_2.rstrip("\n").split("\t")
-            id_2 = row_2[field_index_2]
-            if last_id_file2 is not None and id_2 < last_id_file2:
-                raise ValueError(f"File 2 is not sorted: encountered ID {id_2} after {last_id_file2} ({input_path_2}).")
-            last_id_file2 = id_2
+        while line_2_curr:
+            check_sorting(id_2_curr, id_2_next, "2", input_path_2)
+            if join_type == "strict":
+                msg = f"Strict join failed: ID {id_2_curr} missing from file 1."
+                raise ValueError(msg)
             if join_type in ("right", "outer"):
-                merged_row = fill_left(placeholder_file1, row_2, id_2, field_index_1, field_index_2)
+                merged_row = fill_left(placeholder_file1, row_2_curr, id_2_curr, field_index_1, field_index_2)
                 write_line(merged_row, output)
-            line_2 = file_2.readline()
+            line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
+            line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
 
 def main():
     # Parse arguments
@@ -131,7 +173,7 @@ def main():
     parser.add_argument("tsv1", help="Path to first TSV file.")
     parser.add_argument("tsv2", help="Path to second TSV file.")
     parser.add_argument("field", type=str, help="Field to join on.")
-    parser.add_argument("join_type", type=str, help="Type of join to perform (inner, left, right, outer).")
+    parser.add_argument("join_type", type=str, help="Type of join to perform (inner, left, right, outer, strict).")
     parser.add_argument("output_file", type=str, help="Path to output TSV file.")
     args = parser.parse_args()
     # Assign variables
@@ -143,6 +185,9 @@ def main():
     # Start time tracking
     print_log("Starting process.")
     start_time = time.time()
+    # Verify that join type is valid
+    if join_type not in ("inner", "left", "right", "outer", "strict"):
+        raise ValueError("Invalid join type. Must be one of 'inner', 'left', 'right', 'outer', or 'strict'.")
     # Print parameters
     print_log("Input TSV file 1: {}".format(input_path_1))
     print_log("Input TSV file 2: {}".format(input_path_2))

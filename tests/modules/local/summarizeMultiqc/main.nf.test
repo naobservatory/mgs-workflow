@@ -9,7 +9,7 @@ nextflow_process {
     test("Should run without failures on paired (non-interleaved) data") {
         tag "paired_end"
         tag "expect_success"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
@@ -93,7 +93,7 @@ nextflow_process {
     test("Should run without failures on paired (interleaved) data") {
         tag "expect_success"
         tag "interleaved"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
@@ -187,7 +187,7 @@ nextflow_process {
     test("Should run without failures on single-end data") {
         tag "expect_success"
         tag "single_end"
-        config "tests/run_dev_se.config"
+        config "tests/configs/run_dev_se.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
@@ -273,7 +273,7 @@ nextflow_process {
     test("Should generate appropriate output for uniform read lengths") {
         tag "expect_success"
         tag "interleaved"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         setup {
             run("FASTQC_LABELED") {
                 script "modules/local/fastqc/main.nf"

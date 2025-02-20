@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process SUBSET_FASTQ"
     script "modules/local/subsetFastq/main.nf"
     process "SUBSET_FASTQ"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "subset_fastq"
 
@@ -21,7 +21,7 @@ nextflow_process {
 
     test("Should fail when read fraction is greater than 1"){
         tag "expect_failed"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         when {
             params {}
             process {
@@ -41,7 +41,7 @@ nextflow_process {
 
     test("Should fail when read fraction is less than 0"){
         tag "expect_failed"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         when {
             params {}
             process {
@@ -61,7 +61,7 @@ nextflow_process {
 
     test("Should exactly copy input if fraction equals 1"){
         tag "expect_success"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         when {
             params {}
             process {
@@ -82,7 +82,7 @@ nextflow_process {
 
     test("Should return empty output if fraction equals 0") {
         tag "expect_success"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         when {
             params {}
             process {
@@ -104,7 +104,7 @@ nextflow_process {
     test("Should run correctly on interleaved input") {
         tag "expect_success"
         tag "real_data"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
@@ -166,7 +166,7 @@ nextflow_process {
     test("Should run correctly on single-end input") {
         tag "expect_success"
         tag "real_data"
-        config "tests/run_dev_se.config"
+        config "tests/configs/run_dev_se.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
