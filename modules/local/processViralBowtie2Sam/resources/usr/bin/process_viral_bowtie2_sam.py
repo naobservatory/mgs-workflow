@@ -199,8 +199,8 @@ def line_from_pair(dict_1, dict_2):
     rev_dict = dict_1 if not dict_1["is_mate_1"] else dict_2
     # Calculate length-adjusted alignment scores
     try:
-        adj_score_fwd = float(fwd_dict["alignment_score"]) / math.log(float(fwd_dict["query_len"]))
-        adj_score_rev = float(rev_dict["alignment_score"]) / math.log(float(rev_dict["query_len"]))
+        adj_score_fwd = float(fwd_dict["alignment_score"]) / (float(fwd_dict["query_len"]))
+        adj_score_rev = float(rev_dict["alignment_score"]) / (float(rev_dict["query_len"]))
         adj_score_max = max(adj_score_fwd, adj_score_rev)
         score_fwd_max = adj_score_fwd >= adj_score_rev
     except Exception as e:
