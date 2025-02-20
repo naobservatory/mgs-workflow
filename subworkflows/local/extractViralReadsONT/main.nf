@@ -7,6 +7,7 @@ include { MINIMAP2 as MINIMAP2_VIRUS } from "../../../modules/local/minimap2"
 include { MINIMAP2 as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
 include { MINIMAP2 as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
 include { MERGE_SAM } from "../../../modules/local/samtools"
+include { FILTLONG } from "../../../modules/local/filtlong"
 include { PROCESS_VIRAL_MINIMAP2_SAM } from "../../../modules/local/processViralMinimap2Sam"
 /***********
 | WORKFLOW |
@@ -25,11 +26,14 @@ workflow EXTRACT_VIRAL_READS_ONT {
         genome_meta_path = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
 
+        // Filter reads by length and quality scores
+        filtered_ch = FILTLONG(reads_ch, 100, 10000, 90)
+
         // Drop non-complex reads
-        masked_ch = DUSTMASKER_FASTQ_GZIPPED(reads_ch)
+        masked_ch = DUSTMASKER_FASTQ_GZIPPED(filtered_ch)
 
         // Drop human reads before pathogen identification
-        human_minimap2_ch = MINIMAP2_HUMAN(reads_ch, minimap2_human_index, "human", false)
+        human_minimap2_ch = MINIMAP2_HUMAN(masked_ch.masked, minimap2_human_index, "human", false)
         no_human_ch = human_minimap2_ch.reads_unmapped
 
         // Identify other contaminants
