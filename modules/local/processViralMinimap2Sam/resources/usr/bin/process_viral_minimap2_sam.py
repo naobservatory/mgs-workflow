@@ -13,8 +13,6 @@ import argparse
 import pandas as pd
 import time
 import datetime
-import gzip
-import bz2
 import pysam
 
 # Utility functions
@@ -36,6 +34,7 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict)
     reference_genome_name = read.reference_name
     reference_taxid, reference_name = extract_viral_taxid_and_name(reference_genome_name, genbank_metadata, viral_taxids)
 
+    # Filtering out non-host-taxon reads
     if virus_status_dict[reference_taxid] == "0":
         return None
 

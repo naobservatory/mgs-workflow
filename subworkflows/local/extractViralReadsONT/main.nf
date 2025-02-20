@@ -40,14 +40,10 @@ workflow EXTRACT_VIRAL_READS_ONT {
         // Identify virus reads
         virus_minimap2_ch = MINIMAP2_VIRUS(no_contam_ch, minimap2_hv_index, "virus", false)
 
-        virus_sam_ch = virus_minimap2_ch.sam
-        // Print contents of virus_sam_ch for debugging
-        virus_sam_ch.view { "SAM file: $it" }
+        virus_sam_ch = virus_minimap2_ch.sam.map { it[1] }
 
-        virus_sam_files = virus_sam_ch.map { it[1] }
-        virus_sam_files.view { "SAM file: $it" }
         // Merge SAM files
-        merged_sam_ch = MERGE_SAM(virus_sam_files, "hv")
+        merged_sam_ch = MERGE_SAM(virus_sam_ch, "hv")
 
         // Generate HV TSV
         hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(merged_sam_ch, genome_meta_path, virus_db_path, host_taxon)
