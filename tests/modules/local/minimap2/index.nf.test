@@ -1,0 +1,56 @@
+nextflow_process {
+    name "Test process MINIMAP2_INDEX"
+    script "modules/local/minimap2/main.nf"
+    process "MINIMAP2"
+    config "tests/configs/index.config"
+    tag "module"
+    tag "minimap2_index"
+
+    test("Should run without failures and properly create a reference") {
+        tag "expect_success"
+        setup {
+            run("MINIMAP2_INDEX") {
+                script "modules/local/minimap2/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/toy-data/norovirus_GI.fasta"
+                    input[1] = "mm2-norovirus-index"
+                    '''
+                }
+            }
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = tuple("norovirus_GI", "${projectDir}/test-data/toy-data/norovirus_GI.fasta")
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = GZIP_FILE.out
+                input[1] = MINIMAP2_INDEX.out.output
+                input[2] = "test"
+                input[3] = false
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+
+            // Assess if mapped genome sequence matches input reference genome
+            def fastq_mapped = path(process.out.reads_mapped[0][1]).fastq
+            def fastq_sequence = fastq_mapped.sequences.toSet()
+
+            def index_input = path(process.out.input[0][1]).fasta
+            def index_sequence = index_input.values().toSet()
+
+            assert fastq_sequence == index_sequence
+        }
+    }
+}
