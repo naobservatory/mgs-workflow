@@ -145,7 +145,7 @@ def mark_direct_infections(virus_taxids: pd.Series,
     def check_direct_infection(virus_taxid):
         if virus_taxid in virus_host_mapping:
             return int(bool(virus_host_mapping[virus_taxid] & host_taxids))
-        return 0
+        return -1 # Indicates not in mapping; needs special handling downstream
     statuses = virus_taxids.apply(check_direct_infection)
     return pd.Series(statuses.values, index=virus_taxids)
 
@@ -196,14 +196,23 @@ def mark_descendant_infections(virus_tree: Dict[str, Set[str]],
             marked 1 in the input statuses, or (ii) it is descended
             from a taxid that was so marked.
     """
-    # Get the set of initially marked taxids
-    marked_taxids = set(statuses.index[statuses == 1])
-    # Expand to include all their descendants
-    marked_taxids_expanded = add_descendants(virus_tree, marked_taxids)
-    # Mark those as 1
-    final_status = pd.Series(index=statuses.index, data=0)
-    final_status[final_status.index.isin(marked_taxids_expanded)] = 1
-    return final_status
+    # All descendents of a taxid marked 1 should be marked 1
+    taxids_1 = set(statuses.index[statuses == 1])
+    taxids_1_expanded = add_descendants(virus_tree, taxids_1)
+    statuses[statuses.index.isin(taxids_1_expanded)] = 1
+    # All descendents of a taxid marked 0 should be marked 0
+    taxids_0 = set(statuses.index[statuses == 0])
+    taxids_0_expanded = add_descendants(virus_tree, taxids_0)
+    statuses[statuses.index.isin(taxids_0_expanded)] = 0
+    # Descendents of a taxid marked 2 should be marked 2 iff they are not already
+    # marked 1 or 0
+    taxids_2 = set(statuses.index[statuses == 2])
+    taxids_2_expanded = add_descendants(virus_tree, taxids_2)
+    taxids_2_expanded_filtered = taxids_2_expanded - taxids_1_expanded - taxids_0_expanded
+    statuses[statuses.index.isin(taxids_2_expanded_filtered)] = 2
+    # After this, there should be no taxids marked -1
+    assert statuses.isin([-1]).sum() == 0, "Some taxids are still unresolved (marked -1)."
+    return statuses
 
 def exclude_infections(virus_tree: Dict[str, Set[str]],
                        statuses: pd.Series,
@@ -279,12 +288,18 @@ def mark_ancestor_infections_single(virus_taxid: str,
     # of child statuses
     if children["checked"].all():
         child_statuses = children["status"]
+        # If all children are marked 1, mark this taxid as 1
         if (child_statuses == 1).all():
             return set_status(virus_taxid, virus_df, 1)
+        # If all children are marked 0, mark this taxid as 0
+        elif (child_statuses == 0).all():
+            return set_status(virus_taxid, virus_df, 0)
+        # If any child is marked 1 or 2, mark this taxid as 2
         elif child_statuses.isin([1,2]).any():
             return set_status(virus_taxid, virus_df, 2)
+        # Otherwise, mark as -1 (unresolved)
         else:
-            return set_status(virus_taxid, virus_df, 0)
+            return set_status(virus_taxid, virus_df, -1)
     # Otherwise, run this function for each unchecked child, then repeat
     children_unchecked = children.loc[~children["checked"]]
     for child in children_unchecked.index:
@@ -319,7 +334,8 @@ def mark_ancestor_infections(virus_taxids: pd.Series,
     """
     # Create a dataframe of taxids and current statuses
     df = pd.DataFrame({"status": statuses})
-    df["checked"] = df["status"] != 0
+    # Mark taxids with defined status (0 or 1) as checked
+    df["checked"] = df["status"].isin([0, 1])
     # Get number of children and mark childless nodes as checked
     df["n_children"] = df.index.map(lambda x: len(virus_tree[x]))
     df["checked"] = df["checked"] | (df["n_children"] == 0)
@@ -374,15 +390,15 @@ def check_infection(virus_taxids: pd.Series,
     # Start by marking direct infections
     logger.info("\tMarking direct infection status from Virus-Host-DB.")
     statuses = mark_direct_infections(virus_taxids, host_taxids, virus_host_mapping)
-    # Expand to descendants
-    logger.info("\tPropagating infection status to descendant taxids.")
-    statuses = mark_descendant_infections(virus_tree, statuses)
     # Exclude hard-excluded taxa
     logger.info("\tExclude hardcoded non-infecting taxids.")
     statuses = exclude_infections(virus_tree, statuses, exclude_taxids)
-    # Expand to ancestors and return
+    # Expand to ancestors
     logger.info("\tPropagating infection status to ancestor taxids.")
     statuses = mark_ancestor_infections(virus_taxids, virus_tree, statuses)
+    # Expand to descendants
+    logger.info("\tPropagating infection status to descendant taxids.")
+    statuses = mark_descendant_infections(virus_tree, statuses)
     logger.info("\tInfection status inference complete.")
     return statuses
 
