@@ -31,16 +31,19 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict)
     """Parse a Minimap2 SAM alignment."""
     out = {}
     out["query_name"] = read.query_name
+
     reference_genome_name = read.reference_name
     reference_taxid, reference_name = extract_viral_taxid_and_name(reference_genome_name, genbank_metadata, viral_taxids)
 
     # Filtering out non-host-taxon reads
     if virus_status_dict[reference_taxid] == "0":
         return None
-
+    out["minimap2_name_primary"] = reference_name
+    out["query_sequence"] = read.query_sequence
+    out["sample_name"] = read.get_tag("RG")
     out["minimap2_genome_id_primary"] = reference_genome_name
     out["minimap2_taxid_primary"] = reference_taxid
-    out["minimap2_name_primary"] = reference_name
+
     out["minimap2_read_length"] = read.query_length
     out["minimap2_primary_alignment_score"] = read.mapping_quality
     out["minimap2_ref_start"] = read.reference_start
@@ -48,8 +51,8 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict)
     out["minimap2_alignment_start"] = read.query_alignment_start
     out["minimap2_alignment_end"] = read.query_alignment_end
     out["minimap2_cigar"] = read.cigarstring
-    out["sample_name"] = read.get_tag("RG")
-    out["query_sequence"] = read.query_sequence
+
+
 
     return out
 
