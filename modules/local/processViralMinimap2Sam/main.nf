@@ -8,12 +8,12 @@ process PROCESS_VIRAL_MINIMAP2_SAM {
         path viral_db_path
         val host_taxon
     output:
-        path("minimap2_sam_filtered.tsv.gz"), emit: output
+        path("minimap2_sam_filtered.tsv"), emit: output
         path("minimap2_sam_filtered.sam"), emit: input
     shell:
         '''
         in=!{sam}
-        out=minimap2_sam_filtered.tsv.gz
+        out=minimap2_sam_filtered.tsv
         metadata=!{genbank_metadata_path}
         virus_db=!{viral_db_path}
         host=!{host_taxon}

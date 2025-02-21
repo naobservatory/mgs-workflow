@@ -13,6 +13,6 @@ process FILTLONG {
         '''
         o=!{sample}_filtlong.fastq.gz
         i=!{reads[0]}
-        filtlong --min_length ${min_length} --max_length ${max_length} --min_mean_q ${min_mean_q} --verbose ${i} | gzip > ${o}
+        filtlong --min_length !{min_length} --max_length !{max_length} --min_mean_q !{min_mean_q} --verbose ${i} | gzip > ${o}
         '''
 }
