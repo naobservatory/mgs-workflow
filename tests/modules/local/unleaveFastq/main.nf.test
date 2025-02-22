@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process UNLEAVE_FASTQ"
     script "modules/local/unleaveFastq/main.nf"
     process "UNLEAVE_FASTQ"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "unleave_fastq"
 

@@ -16,5 +16,3 @@ pipeline_report.txt
 .nf-test*
 **/Cargo.lock
 **/target
-zephyr-subset-test/
-test-index/

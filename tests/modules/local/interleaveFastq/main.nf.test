@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process INTERLEAVE_FASTQ"
     script "modules/local/interleaveFastq/main.nf"
     process "INTERLEAVE_FASTQ"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "interleave_fastq"
 

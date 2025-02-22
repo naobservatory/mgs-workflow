@@ -1,0 +1,62 @@
+nextflow_process {
+
+    name "Test process JOIN_RIBO_REF"
+    script "modules/local/joinRiboRef/main.nf"
+    process "JOIN_RIBO_REF"
+    config "configs/index-for-run-test.config"
+    tag "module"
+    tag "join_ribo_ref"
+
+    test("Should run without failures and properly concatenate two references, adding SSU and LSU suffixes") {
+        tag "expect_success"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = params.ssu_url
+                input[1] = params.lsu_url
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+
+            // Output file should exist and be gzipped
+            assert path(process.out.ribo_ref[0]).exists()
+            def output_file = path(process.out.ribo_ref[0])
+            assert output_file.contains(path("ribo-ref-concat.fasta.gz"))
+
+            // Output should have the same number of records as the sum of the input records
+            def combined_fasta_out = output_file.fasta
+            def ssu_fasta_in = path(process.out.input[0][0]).fasta
+            def lsu_fasta_in = path(process.out.input[0][1]).fasta
+
+            def reads_ids_ssu = ssu_fasta_in.keySet()
+            def reads_ids_lsu = lsu_fasta_in.keySet()
+            def reads_ids_combined = combined_fasta_out.keySet()
+
+            def n_reads_ssu = reads_ids_ssu.size()
+            def n_reads_lsu = reads_ids_lsu.size()
+            def n_reads_combined = reads_ids_combined.size()
+
+            assert n_reads_combined == n_reads_ssu + n_reads_lsu
+
+            // Validate LSU occurrences in combined reads
+            def lsu_count = reads_ids_combined.count { it.contains("::LSU") }
+            assert lsu_count == n_reads_lsu
+
+            // Validate SSU occurrences in combined reads
+            def ssu_count = reads_ids_combined.count { it.contains("::SSU") }
+            assert ssu_count == n_reads_ssu
+
+            // Validate that removal of SSU and LSU suffixes from combined reads matches the input reads
+            def reads_ids_combined_no_suffix = reads_ids_combined.collect { it.replace("::SSU", "").replace("::LSU", "") }.toSet()
+
+            def read_ids_in = reads_ids_ssu + reads_ids_lsu
+
+            assert reads_ids_combined_no_suffix == read_ids_in
+        }
+    }
+}
