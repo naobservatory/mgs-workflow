@@ -29,3 +29,6 @@ taxid	parent_taxid	expected_status_jabberwocks	notes
 999027	999025	0	Test hard-exclusion (excluded child)
 999028	999000	0	Test hard-exclusion (excluded parent)
 999029	999028	0	Test hard-exclusion (excluded child)
+999030	999000	2	Test that upstream zeros don't override downstream ones (zero-marked parent)
+999031	999030	1	Test that upstream zeros don't override downstream ones (one-marked child)
+999032	999030	0	Test that upstream zeros don't override downstream ones (zero-marked child)
