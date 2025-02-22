@@ -15,7 +15,8 @@ nextflow_process {
                 host_db = "${projectDir}/test-data/toy-data/virus-taxonomy/test-host-db.tsv"
                 infection_db = "${projectDir}/test-data/toy-data/virus-taxonomy/test-infection-db.tsv"
                 nodes = "${projectDir}/test-data/toy-data/virus-taxonomy/test-nodes.tsv"
-                exclude_taxids = file("${projectDir}/test-data/toy-data/virus-taxonomy/text-excluded-taxids.txt").readLines().first()
+                hard_exclude_taxids = file("${projectDir}/test-data/toy-data/virus-taxonomy/test-hard-excluded-taxids.txt").readLines().first()
+                soft_exclude_taxids = file("${projectDir}/test-data/toy-data/virus-taxonomy/test-soft-excluded-taxids.txt").readLines().first()
             }
             process {
                 '''
@@ -23,8 +24,8 @@ nextflow_process {
                 input[1] = Channel.of(params.host_db)
                 input[2] = Channel.of(params.infection_db)
                 input[3] = Channel.of(params.nodes)
-                input[4] = Channel.of(params.exclude_taxids)
-                input[5] = ""
+                input[4] = Channel.of(params.hard_exclude_taxids)
+                input[5] = Channel.of(params.soft_exclude_taxids)
                 '''
             }
         }
