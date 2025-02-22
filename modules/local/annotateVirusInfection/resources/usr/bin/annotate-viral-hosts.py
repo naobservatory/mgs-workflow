@@ -196,24 +196,20 @@ def mark_descendant_infections(virus_tree: Dict[str, Set[str]],
     Returns:
         pd.Series: Integer series of updated infection statuses.
     """
-    # Define set of taxids not to overwrite
-    taxids_exclude = add_descendants(virus_tree, set(soft_exclude_taxids))
     # All descendents of a taxid marked 1 should be marked 1
-    taxids_1 = set(statuses.index[statuses == 1])
+    taxids_1 = set(statuses.index[statuses == 1]) - set(soft_exclude_taxids)
     taxids_1_expanded = add_descendants(virus_tree, taxids_1)
-    statuses[statuses.index.isin(taxids_1_expanded-taxids_exclude)] = 1
+    statuses[statuses.index.isin(taxids_1_expanded)] = 1
     # All descendents of a taxid marked 0 should be marked 0
     taxids_0 = set(statuses.index[statuses == 0]) - set(soft_exclude_taxids)
-    taxids_0_exclude = add_descendants(virus_tree, set(soft_exclude_taxids))
-    taxids_0_expanded = add_descendants(virus_tree, taxids_0) - taxids_0_exclude
-    statuses[statuses.index.isin(taxids_0_expanded-taxids_exclude)] = 0
+    taxids_0_expanded = add_descendants(virus_tree, taxids_0)
+    statuses[statuses.index.isin(taxids_0_expanded)] = 0
     # Descendents of a taxid marked 2 should be marked 2 iff they are not already
     # marked 1 or 0
     taxids_2 = set(statuses.index[statuses == 2]) - set(soft_exclude_taxids)
-    taxids_2_exclude = add_descendants(virus_tree, set(soft_exclude_taxids))
-    taxids_2_expanded = add_descendants(virus_tree, taxids_2) - taxids_2_exclude
+    taxids_2_expanded = add_descendants(virus_tree, taxids_2)
     taxids_2_expanded_filtered = taxids_2_expanded - taxids_1_expanded - taxids_0_expanded
-    statuses[statuses.index.isin(taxids_2_expanded_filtered-taxids_exclude)] = 2
+    statuses[statuses.index.isin(taxids_2_expanded_filtered)] = 2
     # Finally, mark any remaining -1 taxids as 0
     statuses[statuses == -1] = 0
     # After this, there should be no taxids marked -1
