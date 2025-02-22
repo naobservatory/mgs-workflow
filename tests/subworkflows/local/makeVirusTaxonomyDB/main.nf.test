@@ -1,0 +1,31 @@
+nextflow_workflow {
+
+    name "Test workflow MAKE_VIRUS_TAXONOMY_DB"
+    script "subworkflows/local/makeVirusTaxonomyDB/main.nf"
+    workflow "MAKE_VIRUS_TAXONOMY_DB"
+    config "tests/configs/index.config"
+    tag "subworkflow"
+    tag "make_virus_taxonomy_db"
+
+    test("Should run without failures") {
+        tag "expect_success"
+        when {
+            params {
+            }
+            workflow {
+                '''
+                input[0] = params.taxonomy_url
+                input[1] = params.virus_host_db_url
+                input[2] = params.host_taxon_db
+                input[3] = params.virus_taxid
+                input[4] = params.viral_taxids_exclude_hard
+                input[5] = params.viral_taxids_exclude_soft
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+        }
+    }
+}
