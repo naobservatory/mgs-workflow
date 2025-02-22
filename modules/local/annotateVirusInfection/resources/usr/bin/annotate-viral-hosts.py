@@ -291,12 +291,12 @@ def mark_ancestor_infections_single(virus_taxid: str,
         # If all children are marked 1, mark this taxid as 1
         if (child_statuses == 1).all():
             return set_status(virus_taxid, virus_df, 1)
-        # If all children are marked 0, mark this taxid as 0
-        elif (child_statuses == 0).all():
-            return set_status(virus_taxid, virus_df, 0)
         # If any child is marked 1 or 2, mark this taxid as 2
         elif child_statuses.isin([1,2]).any():
             return set_status(virus_taxid, virus_df, 2)
+        # If all children are marked 0, mark this taxid as 0
+        elif (child_statuses == 0).any():
+            return set_status(virus_taxid, virus_df, 0)
         # Otherwise, mark as -1 (unresolved)
         else:
             return set_status(virus_taxid, virus_df, -1)
