@@ -20,12 +20,12 @@ nextflow_process {
             }
             process {
                 '''
-                input[0] = Channel.of(params.virus_db)
-                input[1] = Channel.of(params.host_db)
-                input[2] = Channel.of(params.infection_db)
-                input[3] = Channel.of(params.nodes)
-                input[4] = Channel.of(params.hard_exclude_taxids)
-                input[5] = Channel.of(params.soft_exclude_taxids)
+                input[0] = params.virus_db
+                input[1] = params.host_db
+                input[2] = params.infection_db
+                input[3] = params.nodes
+                input[4] = params.hard_exclude_taxids
+                input[5] = params.soft_exclude_taxids
                 '''
             }
         }
