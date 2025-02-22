@@ -29,7 +29,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
 
         // Filter reads by length and quality scores
-        filtered_ch = FILTLONG(reads_ch, 100, 10000, 90)
+        filtered_ch = FILTLONG(reads_ch, 100, 20000, 90)
 
         // Mark non-complex read sections
         masked_ch = DUSTMASKER_FASTQ_GZIPPED(filtered_ch)
