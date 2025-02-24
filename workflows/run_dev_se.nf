@@ -46,13 +46,13 @@ workflow RUN_DEV_SE {
         EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", params.bracken_threshold)
     }
 
-    // Subset reads to target number, and trim adapters
-    SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
-        params.adapters, params.single_end,
-        params.ont, params.random_seed)
+    // // Subset reads to target number, and trim adapters
+    // SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
+    //     params.adapters, params.single_end,
+    //     params.ont, params.random_seed)
 
-    // Run QC on subset reads before and after adapter trimming
-    RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, params.single_end)
+    // // Run QC on subset reads before and after adapter trimming
+    // RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, params.single_end)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
     if ( params.ont ) {
@@ -85,16 +85,16 @@ workflow RUN_DEV_SE {
         version_ch >> "logging"
         // QC
         COUNT_TOTAL_READS.out.read_counts >> "results"
-        RUN_QC.out.qc_basic >> "results"
-        RUN_QC.out.qc_adapt >> "results"
-        RUN_QC.out.qc_qbase >> "results"
-        RUN_QC.out.qc_qseqs >> "results"
-        RUN_QC.out.qc_lengths >> "results"
+        // RUN_QC.out.qc_basic >> "results"
+        // RUN_QC.out.qc_adapt >> "results"
+        // RUN_QC.out.qc_qbase >> "results"
+        // RUN_QC.out.qc_qseqs >> "results"
+        // RUN_QC.out.qc_lengths >> "results"
         // Final results
         EXTRACT_VIRAL_READS.out.hv_tsv >> "results"
         bracken_ch >> "results"
         kraken_ch >> "results"
-// Viral BLAST results
-        EXTRACT_VIRAL_READS.out.blast_subset >> "results"
-        EXTRACT_VIRAL_READS.out.blast_reads >> "results"
+        // Viral BLAST results
+        // EXTRACT_VIRAL_READS.out.blast_subset >> "results"
+        // EXTRACT_VIRAL_READS.out.blast_reads >> "results"
 }
