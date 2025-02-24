@@ -94,4 +94,7 @@ workflow RUN_DEV_SE {
         EXTRACT_VIRAL_READS.out.hv_tsv >> "results"
         bracken_ch >> "results"
         kraken_ch >> "results"
+// Viral BLAST results
+        EXTRACT_VIRAL_READS.out.blast_subset >> "results"
+        EXTRACT_VIRAL_READS.out.blast_reads >> "results"
 }
