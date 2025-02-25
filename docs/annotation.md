@@ -37,7 +37,11 @@ L -->|Yes| M{{Any descendants marked 0?}}
 I -->|Yes| M
 M -->|Yes| N((2))
 M -->|No| O((3))
-L -->|No| P{{...}}
+L -->|No| P{{Any descendants marked 0?}}
+P -->|Yes| N
+P -->|No| Q{{Descended from a 3-marked taxon?}}
+Q -->|Yes| O
+Q -->|No| N
 ```
 
 This somewhat complex system allows downstream analysis to distinguish between different degrees of confidence in the host infection status associated with a viral taxon, which can be important in e.g. evaluating the performance of the pipeline on a given dataset. 
