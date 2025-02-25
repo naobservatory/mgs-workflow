@@ -144,6 +144,8 @@ def mark_direct_infections(virus_taxids: pd.Series,
     """
     def check_direct_infection(virus_taxid):
         if virus_taxid in virus_host_mapping:
+            # Return 1 if the virus's hosts overlap with the specified host taxids
+            # otherwise return 0
             return int(bool(virus_host_mapping[virus_taxid] & host_taxids))
         return -1 # Indicates not in mapping; needs special handling downstream
     statuses = virus_taxids.apply(check_direct_infection)
@@ -211,8 +213,6 @@ def mark_descendant_infections(virus_tree: Dict[str, Set[str]],
     taxids_2 = set(statuses.index[statuses == 2])
     taxids_2_expanded = add_descendants(virus_tree, taxids_2)
     statuses[statuses.index.isin(taxids_2_expanded) & statuses.isin([-1])] = 2
-    # Finally, mark any remaining -1 taxids as 0
-    statuses[statuses == -1] = 0
     # After this, there should be no taxids marked -1
     assert statuses.isin([-1]).sum() == 0, "Some taxids are still unresolved (marked -1)."
     return statuses
@@ -293,9 +293,13 @@ def mark_ancestor_infections_single(virus_taxid: str,
         elif (child_statuses.isin([0]).any() and
               child_statuses.isin([1,3]).any()):
             return set_status(virus_taxid, virus_df, 2)
-        # If any child is marked 0, keep current status
+        # If any child is marked 0, retain any existing mark of 0 on the parent node, otherwise mark 2
         elif (child_statuses == 0).any():
-            return set_checked(virus_taxid, virus_df)
+            # If parent is marked 0, keep current status
+            if virus_df.loc[virus_taxid]["status"] == 0:
+                return set_checked(virus_taxid, virus_df)
+            # Otherwise, mark as 2
+            return set_status(virus_taxid, virus_df, 2)
         # Otherwise, mark as 3
         # This covers all mixtures of 1, -1 and 3
         else:
@@ -390,6 +394,10 @@ def check_infection(virus_taxids: pd.Series,
     # Start by marking direct infections
     logger.info("\tMarking direct infection status from Virus-Host-DB.")
     statuses = mark_direct_infections(virus_taxids, host_taxids, virus_host_mapping)
+    # If no direct infections, mark all as 0
+    if statuses.isin([1]).sum() == 0:
+        logger.info("\tNo direct infections found, marking all as 0.")
+        return pd.Series(0, index=statuses.index)
     # Exclude hard-excluded taxa
     logger.info("\tExclude hardcoded non-infecting taxids.")
     statuses = exclude_infections(virus_tree, statuses, hard_exclude_taxids)

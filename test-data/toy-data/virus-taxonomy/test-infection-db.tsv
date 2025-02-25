@@ -37,3 +37,5 @@ virus tax id	host tax id	notes
 999070	888006	Testing multiple non-hosts
 999071	888002	Testing multiple hosts and non-hosts
 999071	888006	Testing multiple hosts and non-hosts
+999075	888005	Testing a pattern that previously gave rise to an error (3-marked node with 0-marked descendant)
+999076	888002	Testing a pattern that previously gave rise to an error (3-marked node with 0-marked descendant)
