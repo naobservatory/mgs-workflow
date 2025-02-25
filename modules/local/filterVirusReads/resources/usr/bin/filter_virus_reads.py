@@ -57,7 +57,7 @@ def filter_virus_reads(input_path, score_threshold, out_path):
                 msg = msg+"\tKEEP"
                 print_log(msg)
                 outf.write("\t".join(fields) + "\n")
-            elif adj_score >= score_threshold and kraken_assigned_host_virus == 2:
+            elif adj_score >= score_threshold and kraken_assigned_host_virus > 1:
                 msg = msg+"\tKEEP"
                 print_log(msg)
                 outf.write("\t".join(fields) + "\n")
