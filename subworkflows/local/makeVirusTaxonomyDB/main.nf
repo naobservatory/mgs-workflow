@@ -19,7 +19,6 @@ workflow MAKE_VIRUS_TAXONOMY_DB {
         host_taxon_db // TSV giving host taxa to annotate infection status
         virus_taxid // Top-level taxid for viruses as a whole
         hard_exclude_taxids // Virus taxids to hard-exclude from host annotation
-        soft_exclude_taxids // Virus taxids to soft-exclude from host annotation
     main:
         // Get NCBI taxonomy
         dl_ch = DOWNLOAD_NCBI_TAXONOMY(taxonomy_url)
@@ -29,8 +28,8 @@ workflow MAKE_VIRUS_TAXONOMY_DB {
         // Build virus taxid DB from NCBI taxonomy files
         virus_ch = BUILD_VIRUS_TAXID_DB(ext_ch.nodes, ext_ch.names, virus_taxid)
         // Annotate virus taxid DB with infection status for host taxa
-        annot_ch = ANNOTATE_VIRUS_INFECTION(virus_ch, host_taxon_db, vh_ch, ext_ch.nodes,
-            hard_exclude_taxids, soft_exclude_taxids)
+        annot_ch = ANNOTATE_VIRUS_INFECTION(virus_ch, host_taxon_db, vh_ch,
+            ext_ch.nodes, hard_exclude_taxids)
     emit:
         db = annot_ch
         nodes = ext_ch.nodes

@@ -178,8 +178,7 @@ def add_descendants(virus_tree: Dict[str, Set[str]],
     return taxids_new
 
 def mark_descendant_infections(virus_tree: Dict[str, Set[str]],
-                               statuses: pd.Series,
-                               soft_exclude_taxids: List[str]) -> pd.Series:
+                               statuses: pd.Series) -> pd.Series:
     """
     Given a series of infection statuses, propagate statuses
     from each taxid to its descendants and return a new status series.
@@ -189,27 +188,29 @@ def mark_descendant_infections(virus_tree: Dict[str, Set[str]],
             generated from a viral DB using build_virus_tree().
         statuses (pd.Series): Integer series of infection statuses
             for virus_taxids.
-        soft_exclude_taxids (List[str]): List of virus taxids to soft-exclude
-            from host annotation (i.e. to not propagate infection status
-            to descendants).
 
     Returns:
         pd.Series: Integer series of updated infection statuses.
     """
     # All descendents of a taxid marked 1 should be marked 1
-    taxids_1 = set(statuses.index[statuses == 1]) - set(soft_exclude_taxids)
+    taxids_1 = set(statuses.index[statuses == 1])
     taxids_1_expanded = add_descendants(virus_tree, taxids_1)
     statuses[statuses.index.isin(taxids_1_expanded)] = 1
     # All descendents of a taxid marked 0 should be marked 0
-    taxids_0 = set(statuses.index[statuses == 0]) - set(soft_exclude_taxids)
+    taxids_0 = set(statuses.index[statuses == 0])
     taxids_0_expanded = add_descendants(virus_tree, taxids_0)
     statuses[statuses.index.isin(taxids_0_expanded)] = 0
-    # Descendents of a taxid marked 2 should be marked 2 iff they are not already
-    # marked 1 or 0
-    taxids_2 = set(statuses.index[statuses == 2]) - set(soft_exclude_taxids)
+    # Descendants of a taxid marked 3 should be marked 3 iff they are not
+    # already marked 1
+    taxids_3 = set(statuses.index[statuses == 3])
+    taxids_3_expanded = add_descendants(virus_tree, taxids_3)
+    assert statuses[statuses.index.isin(taxids_3_expanded)].isin([0, 2]).sum() == 0, \
+            "Some taxids marked 3 have descendants marked 0 or 2."
+    statuses[statuses.index.isin(taxids_3_expanded) & ~statuses.isin([1])] = 3
+    # Descendants of a taxid marked 2 should be marked 2 iff they are marked -1
+    taxids_2 = set(statuses.index[statuses == 2])
     taxids_2_expanded = add_descendants(virus_tree, taxids_2)
-    taxids_2_expanded_filtered = taxids_2_expanded - taxids_1_expanded - taxids_0_expanded
-    statuses[statuses.index.isin(taxids_2_expanded_filtered)] = 2
+    statuses[statuses.index.isin(taxids_2_expanded) & statuses.isin([-1])] = 2
     # Finally, mark any remaining -1 taxids as 0
     statuses[statuses == -1] = 0
     # After this, there should be no taxids marked -1
@@ -279,18 +280,26 @@ def mark_ancestor_infections_single(virus_taxid: str,
     # of child statuses
     if children["checked"].all():
         child_statuses = children["status"]
-        # If all children are marked 1, mark this taxid as 1
-        if (child_statuses == 1).all():
-            return set_status(virus_taxid, virus_df, 1)
-        # If any child is marked 1 or 2, mark this taxid as 2
-        elif child_statuses.isin([1,2]).any():
-            return set_status(virus_taxid, virus_df, 2)
-        # If all children are marked 0, mark this taxid as 0
-        elif (child_statuses == 0).any():
-            return set_status(virus_taxid, virus_df, 0)
-        # Otherwise, mark as -1 (unresolved)
-        else:
+        # If all children are marked -1, keep current status
+        if (child_statuses == -1).all():
             return set_checked(virus_taxid, virus_df)
+        # Otherwise, if all children have the same status, inherit that status
+        elif (child_statuses == child_statuses.iloc[0]).all():
+            return set_status(virus_taxid, virus_df, child_statuses.iloc[0])
+        # If any child is marked 2, mark this taxid as 2
+        elif child_statuses.isin([2]).any():
+            return set_status(virus_taxid, virus_df, 2)
+        # If there are both children marked 0 and marked [1 or 3], mark this taxid as 2
+        elif (child_statuses.isin([0]).any() and
+              child_statuses.isin([1,3]).any()):
+            return set_status(virus_taxid, virus_df, 2)
+        # If any child is marked 0, keep current status
+        elif (child_statuses == 0).any():
+            return set_checked(virus_taxid, virus_df)
+        # Otherwise, mark as 3
+        # This covers all mixtures of 1, -1 and 3
+        else:
+            return set_status(virus_taxid, virus_df, 3)
     # Otherwise, run this function for each unchecked child, then repeat
     children_unchecked = children.loc[~children["checked"]]
     for child in children_unchecked.index:
@@ -335,32 +344,31 @@ def check_infection(virus_taxids: pd.Series,
                     host_taxids: Set[str],
                     virus_tree: Dict[str, Set[str]],
                     virus_host_mapping: Dict[str, Set[str]],
-                    hard_exclude_taxids: List[str],
-                    soft_exclude_taxids: List[str]) -> pd.Series:
+                    hard_exclude_taxids: List[str]) -> pd.Series:
     """
-    For a single set of host taxids, check whether each virus taxid in a
-    series infects that group of hosts. Classifies each virus taxon as
-    follows:
-        - If the taxon is directly marked in Virus-Host-DB as infecting
-          that host group, it is marked 1.
-        - If the taxon is descended from a taxon marked 1, it is also
-          marked 1.
-        - If all of the taxon's descendant taxa are marked 1, it is also
-          marked 1.
-        - If some but not all of the taxon's descendants are marked 1,
-          or if any are marked 2, it is marked 2.
-        - Otherwise, if the taxon in included in Virus-Host-DB, but
-          not marked as infecting the host group, it is marked 0.
-        - Finally, if the taxon is not included in Virus-Host-DB and has
-          not been marked by any of the above criteria, it is marked 2
-          if its nearest marked ancestor is marked 2, or 0 otherwise.
+    For a single set of host taxids, checks whether each virus taxid in a
+    series infects that group of hosts and classifies that taxid according
+    to its infection status:
+        - 1 designates taxa that are affirmatively marked as infecting that
+          host group. It includes taxa that are directly marked in Virus-Host
+          DB as infecting that host group; taxa that are descended from such
+          taxa; and taxa whose descendants are all marked 1.
+        - 0 designates taxa that are marked as not infecting that host group.
+          It includes taxa that: are included in Virus-Host DB; are not marked
+          in Virus-Host DB as infecting that host group; and have no 1-marked
+          descendants. It also includes taxa that are descended from such taxa,
+          and taxa whose descendants are all marked 0.
+        - 3 designates taxa that are likely to infect that host group, but cannot
+          be affirmatively marked as such. It includes taxa that are not included
+          in Virus-Host DB, and have no 0-marked descendants, but cannot be marked
+          1 according to the rules above.
+        - 2 designates taxa of uncertain infection status. It includes all other taxa:
+          those that are not included in Virus-Host DB and have both 0- and 1-marked
+          descendants, and those descended from a 2-marked taxon that are not given
+          another status by the rules above.
     If a taxon is included in hard_exclude_taxids, it and all descendants
     are marked 0 regardless of Virus-Host-DB; this is intended to account
-    for misannotated taxa. If a taxon is included in soft_exclude_taxids,
-    infection status does not propagate downward from that taxid to
-    descendants, but does propagate upward to ancestors; this is intended
-    to avoid misassignments resulting from applying the final rule in the
-    above list to polyphyletic taxa (e.g. "Unclassified viruses").
+    for misannotated taxa.
 
     Args:
         virus_taxids (pd.Series): Series of virus taxids to check.
@@ -374,13 +382,10 @@ def check_infection(virus_taxids: pd.Series,
             get_virus_host_mapping().
         hard_exclude_taxids (List[str]): List of virus taxids to hard-exclude
             from host annotation (i.e. to force to mark as non-infecting).
-        soft_exclude_taxids (List[str]): List of virus taxids to soft-exclude
-            from host annotation (i.e. to not propagate infection status
-            to descendants).
 
     Returns:
-        pd.Series: Three-state series of infection statuses for each viral taxid in
-            virus_taxids.
+        pd.Series: Four-state integer series of infection statuses for each viral 
+            taxid in virus_taxids.
     """
     # Start by marking direct infections
     logger.info("\tMarking direct infection status from Virus-Host-DB.")
@@ -393,7 +398,7 @@ def check_infection(virus_taxids: pd.Series,
     statuses = mark_ancestor_infections(virus_taxids, virus_tree, statuses)
     # Expand to descendants
     logger.info("\tPropagating infection status to descendant taxids.")
-    statuses = mark_descendant_infections(virus_tree, statuses, soft_exclude_taxids)
+    statuses = mark_descendant_infections(virus_tree, statuses)
     logger.info("\tInfection status inference complete.")
     return statuses
 
@@ -402,8 +407,7 @@ def annotate_virus_db_single(virus_db: pd.DataFrame,
                              host_taxids: Set[str],
                              virus_tree: Dict[str, Set[str]],
                              virus_host_mapping: Dict[str, Set[str]],
-                             hard_exclude_taxids: List[str],
-                             soft_exclude_taxids: List[str]) -> pd.DataFrame:
+                             hard_exclude_taxids: List[str]) -> pd.DataFrame:
     """
     Annotate a DataFrame of virus taxa with infection status information
     for a specified host taxon.
@@ -422,9 +426,6 @@ def annotate_virus_db_single(virus_db: pd.DataFrame,
             get_virus_host_mapping().
         hard_exclude_taxids (List[str]): List of virus taxids to hard-exclude
             from host annotation (i.e. to force to mark as non-infecting).
-        soft_exclude_taxids (List[str]): List of virus taxids to soft-exclude
-            from host annotation (i.e. to not propagate infection status
-            to descendants).
 
     Returns:
         pd.DataFrame: Copy of virus_db with an additional column giving
@@ -433,9 +434,8 @@ def annotate_virus_db_single(virus_db: pd.DataFrame,
 
     # Get infection statuses
     logger.info(f"Inferring infection statuses for {host_name}-infecting viruses.")
-    statuses = check_infection(virus_db["taxid"], host_taxids, virus_tree, 
-                               virus_host_mapping, hard_exclude_taxids,
-                               soft_exclude_taxids)
+    statuses = check_infection(virus_db["taxid"], host_taxids, virus_tree,
+                               virus_host_mapping, hard_exclude_taxids)
     logger.info(f"Infection statuses for {host_name}-infecting viruses inferred.")
     # Annotate DB with infection statuses and return
     virus_db.set_index("taxid", inplace=True, drop=False)
@@ -447,8 +447,7 @@ def annotate_virus_db_single(virus_db: pd.DataFrame,
 def annotate_virus_db(virus_db: pd.DataFrame,
                       host_mapping: Dict[str, Set[str]],
                       virus_host_mapping: Dict[str, Set[str]],
-                      hard_exclude_taxids: List[str],
-                      soft_exclude_taxids: List[str]) -> pd.DataFrame:
+                      hard_exclude_taxids: List[str]) -> pd.DataFrame:
     """
     Given a DataFrame of virus taxa (including taxids and parent taxids)
     and another of host taxa (including names and taxids) add a column
@@ -465,9 +464,6 @@ def annotate_virus_db(virus_db: pd.DataFrame,
             get_virus_host_mapping().
         hard_exclude_taxids (List[str]): List of virus taxids to hard-exclude
             from host annotation (i.e. to force to mark as non-infecting).
-        soft_exclude_taxids (List[str]): List of virus taxids to soft-exclude
-            from host annotation (i.e. to not propagate infection status
-            to descendants).
 
     Returns:
         pd.DataFrame: Copy of virus_db with additional columns giving
@@ -479,8 +475,7 @@ def annotate_virus_db(virus_db: pd.DataFrame,
     for k in host_mapping.keys():
         virus_db = annotate_virus_db_single(virus_db, k, host_mapping[k],
                                             virus_tree, virus_host_mapping,
-                                            hard_exclude_taxids,
-                                            soft_exclude_taxids)
+                                            hard_exclude_taxids)
     return virus_db
 
 #=======================================================================
@@ -496,7 +491,6 @@ def main():
     parser.add_argument("infection_db", help="Path to TSV from Virus-Host DB giving host information.")
     parser.add_argument("nodes_db", help="Path to NCBI taxonomy nodes file.")
     parser.add_argument("hard_exclude_taxids", help="Space-delimited list of viral taxids to hard-exclude from host annotation.")
-    parser.add_argument("soft_exclude_taxids", help="Space-delimited list of viral taxids to soft-exclude from host annotation.")
     parser.add_argument("output_db", help="Output path for host-annotated TSV.")
     args = parser.parse_args()
     # Import inputs
@@ -507,14 +501,13 @@ def main():
                            ).iloc[:,[0,2]].rename(columns={0:"taxid",2:"parent_taxid"})
     virus_host_mapping = get_virus_host_mapping(args.infection_db)
     hard_exclude_taxids = args.hard_exclude_taxids.split(" ")
-    soft_exclude_taxids = args.soft_exclude_taxids.split(" ")
     # Prepare dictionary of host taxids
     host_dict_single = host_db.set_index("name")["taxid"].to_dict()
     host_dict_full = get_host_taxids(host_dict_single, nodes_db)
     # Add annotations
     logger.info("Initializing infection-state annotation.")
     output_db = annotate_virus_db(virus_db, host_dict_full, virus_host_mapping, 
-                                  hard_exclude_taxids, soft_exclude_taxids)
+                                  hard_exclude_taxids)
     # Write output
     logger.info("Writing output.")
     output_db.to_csv(args.output_db, sep="\t", index=False)
