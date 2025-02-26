@@ -29,3 +29,5 @@ The pipeline currently consists of three workflows:
     - [Pipeline outputs](docs/output.md)
 - **Other:**
     - [Versioning](docs/versioning.md)
+    - [Viral infection status annotation](docs/annotation.md)
+    - [Reproducibility](docs/reproducibility.md)

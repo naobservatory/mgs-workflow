@@ -6,6 +6,8 @@
 - Added generation of minimap2 indices to INDEX workflow (human, viral, contaminant, and ribosomal).
 - Added LSU and SSU tags to respective small and large ribosomal subunit genomes in the composite ribosomal reference fasta.
 - Added MINIMAP2_INDEX and MINIMAP2 processes for indexing reference genomes and aligning reads to them.
+- Updated ANNOTATE_VIRUS_INFECTION to better handle taxa that are missing from Virus-Host DB, and added corresponding tests and documentation.
+- Added documentation on running the pipeline reproducibly
 
 # v2.8.0.0
 - Major changes to many parts of the pipeline as part of a general performance overhaul
