@@ -3,6 +3,9 @@
 - Fixed JOIN_TSVS to correctly handle many-to-one joins
 - Added strict join mode to JOIN_TSVS
 - Altered PROCESS_VIRAL_BOWTIE2_SAM to make ordering of genome IDs for split alignments predictable (necessary for downstream duplicate marking)
+- Added generation of minimap2 indices to INDEX workflow (human, viral, contaminant, and ribosomal).
+- Added LSU and SSU tags to respective small and large ribosomal subunit genomes in the composite ribosomal reference fasta.
+- Added MINIMAP2_INDEX and MINIMAP2 processes for indexing reference genomes and aligning reads to them.
 - Updated ANNOTATE_VIRUS_INFECTION to better handle taxa that are missing from Virus-Host DB, and added corresponding tests and documentation.
 - Added documentation on running the pipeline reproducibly
 
