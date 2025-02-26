@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process CONCATENATE_FILES on gzipped FASTQ files"
     script "modules/local/concatenateFiles/main.nf"
     process "CONCATENATE_FILES"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "concatenate_files"
 

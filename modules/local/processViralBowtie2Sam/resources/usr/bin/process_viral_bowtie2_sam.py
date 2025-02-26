@@ -217,7 +217,7 @@ def line_from_pair(dict_1, dict_2):
     else:
         genome_id_best = fwd_dict["genome_id"] if score_fwd_max else rev_dict["genome_id"]
         genome_id_list = [fwd_dict["genome_id"], rev_dict["genome_id"]]
-        genome_id_all = "/".join(genome_id_list) if score_fwd_max else "/".join(genome_id_list[::-1])
+        genome_id_all = "/".join(genome_id_list)
         fragment_length = "NA"
         if fwd_dict["taxid"] == rev_dict["taxid"]:
             taxid_best = fwd_dict["taxid"]
@@ -225,7 +225,7 @@ def line_from_pair(dict_1, dict_2):
         else:
             taxid_best = fwd_dict["taxid"] if score_fwd_max else rev_dict["taxid"]
             taxid_list = [str(fwd_dict["taxid"]), str(rev_dict["taxid"])]
-            taxid_all = "/".join(taxid_list) if score_fwd_max else "/".join(taxid_list[::-1])
+            taxid_all = "/".join(taxid_list)
     # Prepare dictionary for output
     out_dict = {
         "query_name": fwd_dict["query_name"],

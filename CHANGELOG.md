@@ -1,4 +1,9 @@
 # v2.8.1.0-dev
+- Added downstream duplicate marking functionality via new DOWNSTREAM workflow
+- Fixed JOIN_TSVS to correctly handle many-to-one joins
+- Added strict join mode to JOIN_TSVS
+- Altered PROCESS_VIRAL_BOWTIE2_SAM to make ordering of genome IDs for split alignments predictable (necessary for downstream duplicate marking)
+- Updated ANNOTATE_VIRUS_INFECTION to better handle taxa that are missing from Virus-Host DB, and added corresponding tests and documentation.
 - Changed Bowtie2 to use global alignment for viral read identification.
 
 # v2.8.0.0

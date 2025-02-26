@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process CONVERT_FASTQ_FASTA"
     script "modules/local/convertFastqFasta/main.nf"
     process "CONVERT_FASTQ_FASTA"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "convert_fastq_fasta"
 

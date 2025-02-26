@@ -7,7 +7,7 @@ nextflow_process {
     name "Test process REHEAD_TSV"
     script "modules/local/reheadTsv/main.nf"
     process "REHEAD_TSV"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "rehead_tsv"
 

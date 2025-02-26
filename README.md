@@ -4,12 +4,14 @@ This Nextflow pipeline is designed to process metagenomic sequencing data, chara
 
 The pipeline currently consists of three workflows:
 
-- [`index`](./docs/index.md): Creates indices and reference files used by the `run` and `run_validation` workflows[^1].
-- [`run`](./docs/run.md): Performs the main analysis, including QC, viral identification, taxonomic profiling, and optional BLAST validation.
-- `run_validation`: Performs part of the `run` workflow dedicated to validation of taxonomic classification with BLAST[^2].
+- [`INDEX`](./docs/index.md): Creates indices and reference files used by the `RUN` and `RUN_VALIDATION` workflows[^1].
+- [`RUN`](./docs/run.md): Performs the main analysis, including QC, viral identification, taxonomic profiling, and optional BLAST validation.
+- `RUN_VALIDATION`: Performs part of the `run` workflow dedicated to validation of taxonomic classification with BLAST[^2].
+- [`DOWNSTREAM`](./docs/downstream.md): Performs downstream analysis of the results from the `run` workflow, currently limited to marking duplicate reads[^3].
 
-[^1]: The `index` workflow is intended to be run first, after which many instantiations of the `run` workflow can use the same index output files. 
-[^2]: The `run_validation` workflow is intended to be run after the `run` workflow if the optional BLAST validation was not selected during the `run` workflow. Typically, this workflow is run on a subset of the host viral reads identified in the `run` workflow, to evaluate the sensitivity and specificity of the viral identification process.
+[^1]: The `INDEX` workflow is intended to be run first, after which many instantiations of the `RUN` workflow can use the same index output files. 
+[^2]: The `RUN_VALIDATION` workflow is intended to be run after the `RUN` workflow if the optional BLAST validation was not selected during the `RUN` workflow. Typically, this workflow is run on a subset of the host viral reads identified in the `RUN` workflow, to evaluate the sensitivity and specificity of the viral identification process.
+[^3]: The `DOWNSTREAM` workflow is designed to handle tasks that require cross-read comparisons, including potentially across multiple runs.
 
 ## Documentation
 
@@ -19,10 +21,12 @@ The pipeline currently consists of three workflows:
     - [Usage instructions](docs/usage.md)
     - [Troubleshooting](docs/troubleshooting.md)
 - **Workflow details:**
-    - [Index workflow](docs/index.md)
-    - [Run workflow](docs/run.md)
+    - [INDEX workflow](docs/index.md)
+    - [RUN workflow](docs/run.md)
+    - [DOWNSTREAM workflow](docs/downstream.md)
 - **Configuration and output:**
     - [Configuration files](docs/config.md)
     - [Pipeline outputs](docs/output.md)
 - **Other:**
     - [Versioning](docs/versioning.md)
+    - [Viral infection status annotation](docs/annotation.md)

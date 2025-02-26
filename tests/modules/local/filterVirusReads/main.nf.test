@@ -10,7 +10,7 @@ nextflow_process {
     name "Test process FILTER_VIRUS_READS"
     script "modules/local/filterVirusReads/main.nf"
     process "FILTER_VIRUS_READS"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "filter_virus_reads"
 
