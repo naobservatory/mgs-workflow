@@ -14,6 +14,8 @@ import pandas as pd
 import time
 import datetime
 import pysam
+from collections import defaultdict
+from Bio import SeqIO
 
 # Utility functions
 
@@ -27,7 +29,7 @@ def join_line(fields):
 
 # Alignment-level functions
 
-def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict):
+def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict, clean_sequence):
     """Parse a Minimap2 SAM alignment."""
     out = {}
     out["query_name"] = read.query_name
@@ -39,7 +41,12 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict)
     if virus_status_dict[reference_taxid] == "0":
         return None
     out["minimap2_name_primary"] = reference_name
-    out["query_sequence"] = read.query_sequence
+    if read.is_reverse:
+        # When minimap2 maps to the RC version of a strand, if returns the RC version of the read
+        out["query_sequence_clean"] = clean_sequence.reverse_complement()
+    else:
+        out["query_sequence_clean"] = clean_sequence
+
     out["sample_name"] = read.get_tag("RG")
     out["minimap2_genome_id_primary"] = reference_genome_name
     out["minimap2_taxid_primary"] = reference_taxid
@@ -51,8 +58,6 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict)
     out["minimap2_alignment_start"] = read.query_alignment_start
     out["minimap2_alignment_end"] = read.query_alignment_end
     out["minimap2_cigar"] = read.cigarstring
-
-
 
     return out
 
@@ -72,7 +77,7 @@ def extract_viral_taxid_and_name(genome_id, gid_taxid_name_dict, viral_taxids):
 
 # File-level functions
 
-def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dict):
+def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dict, clean_read_dict):
     """Process a Minimap2 SAM file."""
     with open(out_file, "w") as out_fh:
         header = None
@@ -81,7 +86,9 @@ def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dic
                 for read in sam_file:
                     if read.is_unmapped or read.is_secondary or read.is_supplementary:
                         continue
-                    line = parse_sam_alignment(read, gid_taxid_dict, virus_taxa, virus_status_dict)
+                    read_id = read.query_name
+                    read_seq = clean_read_dict[read_id]
+                    line = parse_sam_alignment(read, gid_taxid_dict, virus_taxa, virus_status_dict, read_seq)
                     if line is None:
                         continue
                     if header is None:
@@ -105,6 +112,11 @@ def parse_arguments():
         "-s", "--sam",
         required=True,
         help="Path to Minimap2 SAM file."
+    )
+    parser.add_argument(
+        "-r", "--reads",
+        required=True,
+        help="Path to clean reads."
     )
     parser.add_argument(
         "-m", "--metadata",
@@ -134,6 +146,7 @@ def main():
 
     try:
         sam_file = args.sam
+        clean_reads = args.reads
         out_file = args.output
         meta_path = args.metadata
         vdb_path = args.viral_db
@@ -172,9 +185,17 @@ def main():
         }
         print_log(f"Imported {len(virus_taxa)} virus taxa.")
 
+        # Import clean reads
+        clean_read_dict = defaultdict(str)
+        for record in SeqIO.parse(clean_reads, "fastq"):
+            read_id = record.id
+            read_seq = record.seq
+            print(read_id, read_seq)
+            clean_read_dict[read_id] = read_seq
+
         # Process SAM
         print_log("Processing SAM file...")
-        process_sam(args.sam, args.output, gid_taxid_name_dict, virus_taxa, virus_status_dict)
+        process_sam(args.sam, args.output, gid_taxid_name_dict, virus_taxa, virus_status_dict, clean_read_dict)
         print_log("File processed.")
 
         # Finish time tracking

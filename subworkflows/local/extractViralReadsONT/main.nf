@@ -46,38 +46,17 @@ workflow EXTRACT_VIRAL_READS_ONT {
             // no_contam_ch = contam_minimap2_ch.reads_unmapped
 
         // Identify virus reads
-        virus_minimap2_ch = MINIMAP2_VIRUS(no_human_ch, minimap2_virus_index, "virus_1", false)
+        virus_minimap2_ch = MINIMAP2_VIRUS(no_human_ch, minimap2_virus_index, "hv", false)
+        virus_sam_ch = virus_minimap2_ch.sam.map { it[1] }.collect()
+        virus_fastq_ch = virus_minimap2_ch.reads_mapped
 
         // Pull out clean reads from mapped reads
-        clean_matched_ch = virus_minimap2_ch.reads_mapped.join(filtered_ch.cleaned)
-
-        clean_matched_subset_ch = PULLOUT_FASTQ(clean_matched_ch).output.map { it[1] }.flatten()
-
-        clean_matched_subset_merged_ch = CONCATENATE_FASTQ_GZIPPED("clean_matched_reads",clean_matched_subset_ch)
-
-        // Pull out SAM files only
-        virus_sam_ch = virus_minimap2_ch.sam.map { it[1] }
-
-        // Pull out FASTQ files only
-        // virus_fastq_ch = virus_minimap2_ch.reads_mapped.map { it[1] }
-
-        // BLAST virus reads
-        // blast_ch = BLAST_VIRAL(virus_fastq_ch, blast_db_path, params.blast_db_prefix, params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed)
-
-        // blast_subset_ch = BLAST_VIRAL.out.blast_subset
-        // blast_reads_ch = BLAST_VIRAL.out.subset_reads
-
-        // Merge SAM files
-        merged_virus_sam_ch = MERGE_SAM_VIRUS(virus_sam_ch.collect(), "hv")
-
-        // Get original non-masked reads
-        // original_reads_ch = masked_ch.input.map { it[1] }
-        // original_reads_ch = EXTRACT_FASTQ(original_reads_ch, blast_subset_ch)
+        clean_matched_subset_ch = PULLOUT_FASTQ(virus_fastq_ch.join(filtered_ch.reads)).output.map { it[1] }.collect()
+        clean_matched_subset_merged_ch = CONCATENATE_FASTQ_GZIPPED(clean_matched_subset_ch, "clean_matched_reads")
 
         // Generate HV TSV
+        merged_virus_sam_ch = MERGE_SAM_VIRUS(virus_sam_ch, "hv")
         hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(merged_virus_sam_ch, clean_matched_subset_merged_ch, genome_meta_path, virus_db_path, host_taxon)
-
-
 
     emit:
         hv_tsv = hv_tsv_ch.output
