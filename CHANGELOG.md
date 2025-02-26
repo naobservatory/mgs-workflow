@@ -1,3 +1,8 @@
+# v2.8.2.0-dev
+- Added generation of minimap2 indices to INDEX workflow (human, viral, contaminant, and ribosomal).
+- Added LSU and SSU tags to respective small and large ribosomal subunit genomes in the composite ribosomal reference fasta.
+- Added MINIMAP2_INDEX and MINIMAP2 processes for indexing reference genomes and aligning reads to them.
+
 # v2.8.1.0-dev
 - Added downstream duplicate marking functionality via new DOWNSTREAM workflow
 - Fixed JOIN_TSVS to correctly handle many-to-one joins
