@@ -44,7 +44,7 @@ def filter_virus_reads(input_path, score_threshold, out_path):
         for line in inf:
             fields = line.strip().split("\t")
             kraken_classified = fields[idx["kraken_classified"]].lower() == "true"
-            kraken_assigned_host_virus = int(fields[idx["kraken_assigned_host_virus"]]) # 3-state: 0, 1, or 2
+            kraken_assigned_host_virus = int(fields[idx["kraken_assigned_host_virus"]]) # 4-state: 0, 1, 2, 3
             if (not kraken_classified) and kraken_assigned_host_virus > 0:
                 raise ValueError("Inconsistent Kraken fields: 'kraken_classified' is False, but 'kraken_assigned_host_virus' is not 0: {}".format(fields[idx["seq_id"]]))
             adj_score = float(fields[idx["bowtie2_length_normalized_score_max"]])
