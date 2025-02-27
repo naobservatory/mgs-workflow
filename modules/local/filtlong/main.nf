@@ -4,7 +4,6 @@ process FILTLONG {
     input:
         tuple val(sample), path(reads)
         val(min_length)
-
         val(min_mean_q)
     output:
         tuple val(sample), path("${sample}_filtlong.fastq.gz"), emit: reads
