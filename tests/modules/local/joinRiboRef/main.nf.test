@@ -14,8 +14,8 @@ nextflow_process {
             }
             process {
                 '''
-                input[0] = params.influenza_url
-                input[1] = params.influenza_url
+                input[0] = params.ssu_url
+                input[1] = params.lsu_url
                 '''
             }
         }

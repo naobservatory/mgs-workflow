@@ -1,6 +1,6 @@
 // Create a minimap2 index
 process MINIMAP2_INDEX {
-    label "large"
+    label "max"
     label "minimap2"
     input:
         path(reference_fasta)
