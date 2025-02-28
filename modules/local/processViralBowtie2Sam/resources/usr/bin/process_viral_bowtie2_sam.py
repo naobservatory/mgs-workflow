@@ -149,7 +149,7 @@ def get_line(fields_dict):
 
 def line_from_single(read_dict):
     """Generate an output line from a single SAM alignment dictionary."""
-    adj_score = float(read_dict["alignment_score"]) / math.log(float(read_dict["query_len"]))
+    adj_score = float(read_dict["alignment_score"]) / float(read_dict["query_len"])
     out_dict = {"query_name": read_dict["query_name"],
                 "pair_status": read_dict["pair_status"],
                 "genome_id_best": read_dict["genome_id"],
