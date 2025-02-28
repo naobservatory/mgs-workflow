@@ -75,7 +75,7 @@ def filter_blast(input_path, output_path, max_rank, min_frac, query_index, bitsc
                 if bitscore_frac_new < min_frac:
                     line = inf.readline()
                     continue
-                if bitscore_frac_new > bitscore_frac:
+                if bitscore_frac_new < bitscore_frac:
                     bitscore_rank += 1
                     bitscore_frac = bitscore_frac_new
                 if bitscore_rank > max_rank:
