@@ -70,14 +70,20 @@ def filter_blast(input_path, output_path, max_rank, min_frac, query_index, bitsc
                 bitscore_max = bitscore_new
                 query_last = query_new
             else:
-                # Existing query: compare bitscore
-                bitscore_frac = bitscore_new / bitscore_max
-                if bitscore_frac > min_frac:
+                # Existing query: compare bitscore and filter on rank & frac
+                bitscore_frac_new = bitscore_new / bitscore_max
+                if bitscore_frac_new < min_frac:
+                    line = inf.readline()
+                    continue
+                if bitscore_frac_new > bitscore_frac:
                     bitscore_rank += 1
-            # Write line if it meets bitscore criteria
-            if bitscore_rank <= max_rank or bitscore_frac >= min_frac:
-                out_fields = fields + [str(bitscore_rank), str(bitscore_frac)]
-                write_line(out_fields, outf)
+                    bitscore_frac = bitscore_frac_new
+                if bitscore_rank > max_rank:
+                    line = inf.readline()
+                    continue
+            # Write line & continue to next
+            out_fields = fields + [str(bitscore_rank), str(bitscore_frac)]
+            write_line(out_fields, outf)
             line = inf.readline()
 
 def main():
