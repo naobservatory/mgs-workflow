@@ -29,7 +29,7 @@ workflow SUBSET_TRIM {
             inter_ch  = INTERLEAVE_FASTQ(subset_ch).output
         }
         if (ont) {
-            cleaned_ch = FILTLONG(inter_ch, 100, 10000, 90)
+            cleaned_ch = FILTLONG(inter_ch, 100, 90)
         } else {
             cleaned_ch = FASTP(inter_ch, adapter_path, !single_end)
         }
