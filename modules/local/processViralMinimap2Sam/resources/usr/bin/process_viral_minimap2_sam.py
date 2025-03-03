@@ -39,36 +39,36 @@ def join_line(fields):
 
 def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict, clean_sequence, sample):
     """Parse a Minimap2 SAM alignment."""
-    line = {}
-    line["query_name"] = read.query_name
+    out = {}
+    out["query_name"] = read.query_name
 
     reference_genome_name = read.reference_name
+    out["minimap2_genome_id_primary"] = reference_genome_name
     reference_taxid, reference_name = extract_viral_taxid_and_name(reference_genome_name, genbank_metadata, viral_taxids)
 
     # Filtering out non-host-taxon reads
     if virus_status_dict[reference_taxid] == "0":
         return None
 
-    line["minimap2_name_primary"] = reference_name
+    out["minimap2_name_primary"] = reference_name
     if read.is_reverse:
         # When minimap2 maps to the RC version of a strand, if returns the RC version of the read
-        line["query_sequence_clean"] = clean_sequence.reverse_complement()
+        out["query_sequence_clean"] = clean_sequence.reverse_complement()
     else:
-        line["query_sequence_clean"] = clean_sequence
+        out["query_sequence_clean"] = clean_sequence
 
-    line["sample_name"] = sample
-    line["minimap2_genome_id_primary"] = reference_genome_name
-    line["minimap2_taxid_primary"] = reference_taxid
-    line["minimap2_read_length"] = read.query_length
-    line["minimap2_map_qual"] = read.mapping_quality
-    line["minimap2_ref_start"] = read.reference_start
-    line["minimap2_ref_end"] = read.reference_end
-    line["minimap2_alignment_start"] = read.query_alignment_start
-    line["minimap2_alignment_end"] = read.query_alignment_end
-    line["minimap2_cigar"] = read.cigarstring
-    line["minimap2_edit_distance"] = read.get_tag("NM")
+    out["sample_name"] = sample
+    out["minimap2_taxid_primary"] = reference_taxid
+    out["minimap2_read_length"] = read.query_length
+    out["minimap2_map_qual"] = read.mapping_quality
+    out["minimap2_ref_start"] = read.reference_start
+    out["minimap2_ref_end"] = read.reference_end
+    out["minimap2_alignment_start"] = read.query_alignment_start
+    out["minimap2_alignment_end"] = read.query_alignment_end
+    out["minimap2_cigar"] = read.cigarstring
+    out["minimap2_edit_distance"] = read.get_tag("NM")
 
-    return line
+    return out
 
 
 def extract_viral_taxid_and_name(genome_id, gid_taxid_name_dict, viral_taxids):
