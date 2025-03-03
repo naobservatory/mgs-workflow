@@ -14,6 +14,7 @@ import pandas as pd
 import time
 import datetime
 import pysam
+import gzip
 from collections import defaultdict
 from Bio import SeqIO
 
@@ -22,6 +23,13 @@ from Bio import SeqIO
 def print_log(message):
     print("[", datetime.datetime.now(), "]\t", message, sep="", file=sys.stderr)
 
+def open_by_suffix(filename, mode="r"):
+    if filename.endswith('.gz'):
+        return gzip.open(filename, mode + 't')
+    elif filename.endswith('.bz2'):
+        return bz2.BZ2file(filename, mode)
+    else:
+        return open(filename, mode)
 
 def join_line(fields):
     "Convert a list of arguments into a TSV string for output."
@@ -31,8 +39,8 @@ def join_line(fields):
 
 def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict, clean_sequence):
     """Parse a Minimap2 SAM alignment."""
-    out = {}
-    out["query_name"] = read.query_name
+    line = {}
+    line["query_name"] = read.query_name
 
     reference_genome_name = read.reference_name
     reference_taxid, reference_name = extract_viral_taxid_and_name(reference_genome_name, genbank_metadata, viral_taxids)
@@ -40,26 +48,27 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict,
     # Filtering out non-host-taxon reads
     if virus_status_dict[reference_taxid] == "0":
         return None
-    out["minimap2_name_primary"] = reference_name
+    line["minimap2_name_primary"] = reference_name
     if read.is_reverse:
         # When minimap2 maps to the RC version of a strand, if returns the RC version of the read
-        out["query_sequence_clean"] = clean_sequence.reverse_complement()
+        line["query_sequence_clean"] = clean_sequence.reverse_complement()
     else:
-        out["query_sequence_clean"] = clean_sequence
+        line["query_sequence_clean"] = clean_sequence
 
-    out["sample_name"] = read.get_tag("RG")
-    out["minimap2_genome_id_primary"] = reference_genome_name
-    out["minimap2_taxid_primary"] = reference_taxid
+    line["sample_name"] = read.get_tag("RG")
+    line["minimap2_genome_id_primary"] = reference_genome_name
+    line["minimap2_taxid_primary"] = reference_taxid
+    line["minimap2_read_length"] = read.query_length
+    line["minimap2_map_qual"] = read.mapping_quality
+    line["minimap2_ref_start"] = read.reference_start
+    line["minimap2_ref_end"] = read.reference_end
+    line["minimap2_alignment_start"] = read.query_alignment_start
+    line["minimap2_alignment_end"] = read.query_alignment_end
+    line["minimap2_cigar"] = read.cigarstring
+    line["minimap2_edit_distance"] = read.get_tag("NM")
 
-    out["minimap2_read_length"] = read.query_length
-    out["minimap2_primary_alignment_score"] = read.mapping_quality
-    out["minimap2_ref_start"] = read.reference_start
-    out["minimap2_ref_end"] = read.reference_end
-    out["minimap2_alignment_start"] = read.query_alignment_start
-    out["minimap2_alignment_end"] = read.query_alignment_end
-    out["minimap2_cigar"] = read.cigarstring
 
-    return out
+    return line
 
 
 def extract_viral_taxid_and_name(genome_id, gid_taxid_name_dict, viral_taxids):
@@ -110,13 +119,15 @@ def parse_arguments():
     )
     parser.add_argument(
         "-s", "--sam",
-        required=True,
-        help="Path to Minimap2 SAM file."
+        type=lambda f: open_by_suffix(f, "r"),
+        default=sys.stdin,
+        help="Path to Minimap2 SAM file (default: stdin)."
     )
     parser.add_argument(
         "-r", "--reads",
-        required=True,
-        help="Path to clean reads."
+        type=lambda f: open_by_suffix(f, "r"),
+        default=sys.stdin,
+        help="Path to clean reads (default: stdin)."
     )
     parser.add_argument(
         "-m", "--metadata",
