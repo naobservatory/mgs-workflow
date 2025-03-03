@@ -7,6 +7,7 @@ include { MINIMAP2 as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
 include { MINIMAP2 as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
 include { MERGE_SAM as MERGE_SAM_VIRUS } from "../../../modules/local/samtools"
 include { MERGE_SAM as MERGE_SAM_HUMAN } from "../../../modules/local/samtools"
+include { CONCATENATE_TSVS as CONCATENATE_HV_TSVS } from "../../../modules/local/concatenateTsvs"
 include { FILTLONG } from "../../../modules/local/filtlong"
 include { MASK_FASTQ_READS } from "../../../modules/local/maskRead"
 include { PROCESS_VIRAL_MINIMAP2_SAM } from "../../../modules/local/processViralMinimap2Sam"
@@ -47,19 +48,24 @@ main:
 
         // Identify virus reads
         virus_minimap2_ch = MINIMAP2_VIRUS(no_human_ch, minimap2_virus_index, "hv", false)
-        virus_sam_ch = virus_minimap2_ch.sam.map { it[1] }.collect()
+
+        virus_sam_ch = virus_minimap2_ch.sam
         virus_fastq_ch = virus_minimap2_ch.reads_mapped
 
         // Pull out clean reads from mapped reads
-        clean_matched_subset_ch = PULLOUT_FASTQ(virus_fastq_ch.join(filtered_ch.reads)).output.map { it[1] }.collect()
-        clean_matched_subset_merged_ch = CONCATENATE_FASTQ_GZIPPED(clean_matched_subset_ch, "clean_matched_reads")
+        clean_matched_subset_ch = PULLOUT_FASTQ(virus_fastq_ch.join(filtered_ch.reads))
+
+        sam_and_reads_ch = virus_sam_ch.join(clean_matched_subset_ch.output)
+
+        // clean_matched_subset_merged_ch = CONCATENATE_FASTQ_GZIPPED(clean_matched_subset_ch, "clean_matched_reads")
 
         // Generate HV TSV
-        merged_virus_sam_ch = MERGE_SAM_VIRUS(virus_sam_ch, "hv")
-        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(merged_virus_sam_ch, clean_matched_subset_merged_ch, genome_meta_path, virus_db_path, host_taxon)
+        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_and_reads_ch, genome_meta_path, virus_db_path, host_taxon)
+        hv_tsvs = hv_tsv_ch.output.map { it[1] }.collect()
+        merged_tsv_ch = CONCATENATE_HV_TSVS(hv_tsvs, "hv")
 
     emit:
-        hv_tsv = hv_tsv_ch.output
+        hv_tsv = merged_tsv_ch.output
         // blast_subset = blast_subset_ch
         // blast_reads = blast_reads_ch
 }
