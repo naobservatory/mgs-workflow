@@ -7,7 +7,7 @@ include { FILTER_VIRAL_GENBANK_METADATA } from "../../../modules/local/filterVir
 include { ADD_GENBANK_GENOME_IDS } from "../../../modules/local/addGenbankGenomeIDs"
 include { CONCATENATE_GENOME_FASTA } from "../../../modules/local/concatenateGenomeFasta"
 include { FILTER_GENOME_FASTA } from "../../../modules/local/filterGenomeFasta"
-include { MASK_GENOME_FASTA } from "../../../modules/local/maskGenomeFasta"
+include { MASK_GENOME_FASTA } from "../../../modules/local/maskRead"
 
 /***********
 | WORKFLOW |
