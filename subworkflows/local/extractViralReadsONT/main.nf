@@ -55,12 +55,13 @@ main:
         // Pull out clean reads from mapped reads
         clean_matched_subset_ch = PULLOUT_FASTQ(virus_fastq_ch.join(filtered_ch.reads))
 
+        // Create common channel for HV SAM and clean HV reads
         sam_and_reads_ch = virus_sam_ch.join(clean_matched_subset_ch.output)
-
-        // clean_matched_subset_merged_ch = CONCATENATE_FASTQ_GZIPPED(clean_matched_subset_ch, "clean_matched_reads")
 
         // Generate HV TSV
         hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_and_reads_ch, genome_meta_path, virus_db_path, host_taxon)
+
+        // Concatenate HV TSVs
         hv_tsvs = hv_tsv_ch.output.map { it[1] }.collect()
         merged_tsv_ch = CONCATENATE_HV_TSVS(hv_tsvs, "hv")
 
