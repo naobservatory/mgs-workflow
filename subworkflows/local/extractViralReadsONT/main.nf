@@ -22,7 +22,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
         reads_ch
         ref_dir
         host_taxon
-    main:
+main:
         // Get reference_paths
         minimap2_virus_index = "${ref_dir}/results/mm2-virus-index"
         minimap2_human_index = "${ref_dir}/results/mm2-human-index"
@@ -38,15 +38,15 @@ workflow EXTRACT_VIRAL_READS_ONT {
         masked_ch = MASK_FASTQ_READS(filtered_ch, 25, 0.55)
 
         // Drop human reads before pathogen identification
-        human_minimap2_ch = MINIMAP2_HUMAN(masked_ch.masked, minimap2_human_index, "", "human", false)
+        human_minimap2_ch = MINIMAP2_HUMAN(masked_ch.masked, minimap2_human_index, "human", false)
         no_human_ch = human_minimap2_ch.reads_unmapped
 
         // Identify other contaminants
-        // contam_minimap2_ch = MINIMAP2_CONTAM(no_human_ch, minimap2_contam_index, "--split-prefix=test", "other", false)
+        // contam_minimap2_ch = MINIMAP2_CONTAM(no_human_ch, minimap2_contam_index, "other", false)
         // no_contam_ch = contam_minimap2_ch.reads_unmapped
 
         // Identify virus reads
-        virus_minimap2_ch = MINIMAP2_VIRUS(human_minimap2_ch, minimap2_virus_index, "", "hv", false)
+        virus_minimap2_ch = MINIMAP2_VIRUS(human_minimap2_ch, minimap2_virus_index, "hv", false)
         virus_sam_ch = virus_minimap2_ch.sam.map { it[1] }.collect()
         virus_fastq_ch = virus_minimap2_ch.reads_mapped
 
