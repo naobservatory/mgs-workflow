@@ -1,4 +1,4 @@
-// Version of EXTRACT_VIRAL_READS that uses streaming and interleaved files to minimize memory requirements and loading times
+// Short-read version of EXTRACT_VIRAL_READS that uses streaming and interleaved files to minimize memory requirements and loading times
 
 /***************************
 | MODULES AND SUBWORKFLOWS |
