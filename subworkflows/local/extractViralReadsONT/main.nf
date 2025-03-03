@@ -46,7 +46,7 @@ main:
         // no_contam_ch = contam_minimap2_ch.reads_unmapped
 
         // Identify virus reads
-        virus_minimap2_ch = MINIMAP2_VIRUS(human_minimap2_ch, minimap2_virus_index, "hv", false)
+        virus_minimap2_ch = MINIMAP2_VIRUS(no_human_ch, minimap2_virus_index, "hv", false)
         virus_sam_ch = virus_minimap2_ch.sam.map { it[1] }.collect()
         virus_fastq_ch = virus_minimap2_ch.reads_mapped
 
