@@ -22,16 +22,59 @@ nextflow_workflow {
             process {
                 '''
                 input[0] = LOAD_DOWNSTREAM_DATA.out.input.map{ label, hits, groups -> tuple(label, hits) }
-                input[1] = "test_hits.tsv.gz"
+                input[1] = "test_hits_1.tsv.gz"
                 '''
             }
         }
+        run("REPLACE_STRING_IN_COMPRESSED_FILE", alias: "ADD_MORE_SAMPLES"){
+            script "modules/local/replaceString/main.nf"
+            process {
+                '''
+                input[0] = COPY_HITS.out
+                input[1] = "test_hits_2.tsv.gz"
+                input[2] = "gold_standard"
+                input[3] = "gold_standard2"
+                '''
+            }
+        }
+
+        run("CONCATENATE_TSVS_LABELED", alias: "CONCAT_HITS"){
+            script "modules/local/concatenateTsvs/main.nf"
+            process {
+                '''
+                input[0] = COPY_HITS.out.concat(ADD_MORE_SAMPLES.out).groupTuple()
+                input[1] = "test_hits"
+                '''
+            }
+        }
+        
         run("COPY_FILE", alias: "COPY_GROUPS") {
             script "modules/local/copyFile/main.nf"
             process {
                 '''
                 input[0] = LOAD_DOWNSTREAM_DATA.out.input.map{ label, hits, groups -> tuple(label, groups) }
-                input[1] = "test_groups.tsv"
+                input[1] = "test_groups_1.tsv"
+                '''
+            }
+        }
+        run("REPLACE_STRING", alias: "ADD_MORE_GROUPS"){
+            script "modules/local/replaceString/main.nf"
+            process {
+                '''
+                input[0] = COPY_GROUPS.out
+                input[1] = "test_groups_2.tsv"
+                // Did not put the last number on purpose as one sample will be gs1 and the other gs2; not including the last number guaruenttes that a unique last group is made.
+                input[2] = "gold_standard\tgs" 
+                input[3] = "gold_standard2\tgs4"
+                '''
+            }
+        }
+        run("CONCATENATE_TSVS_LABELED", alias: "CONCAT_GROUPS"){
+            script "modules/local/concatenateTsvs/main.nf"
+            process {
+                '''
+                input[0] = ADD_MORE_GROUPS.out.concat(COPY_GROUPS.out).groupTuple()
+                input[1] = "test_groups"
                 '''
             }
         }
@@ -44,7 +87,7 @@ nextflow_workflow {
             }
             workflow {
                 '''
-                input[0] = COPY_HITS.out.combine(COPY_GROUPS.out, by: 0)
+                input[0] = CONCAT_HITS.out.output.combine(CONCAT_GROUPS.out.output, by: 0)
                 '''
             }
         }

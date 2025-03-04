@@ -1,0 +1,45 @@
+nextflow_process {
+
+    name "Test Process REPLACE_STRING_IN_COMPRESSED_FILE"
+    script "modules/local/replaceString/main.nf"
+    config "tests/configs/run.config"
+    process "REPLACE_STRING_IN_COMPRESSED_FILE"
+    tag "module"
+    tag "replace_string_compressed"
+
+    test("Should run without failures") {
+        setup {
+            run("GZIP_FILE_BARE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/downstream/input_file.csv"
+                    '''
+                }
+            }
+        }
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+            }
+            process {
+                """
+                // define inputs of the process here. Example:
+                // input[0] = file("test-file.txt")
+                input[0] = GZIP_FILE_BARE.out
+                input[1] = "bruh.csv"
+                input[2] = "gs3"
+                input[3] = "gs4"
+                """
+            }
+        }
+
+        then {
+            assert process.success
+        }
+
+    }
+
+}
