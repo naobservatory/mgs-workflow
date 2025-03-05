@@ -29,14 +29,12 @@ workflow PREPARE_GROUP_TSVS {
         // 3. Partition each TSV by group ID
         partitioned_ch = PARTITION_TSV(joined_sorted_ch, "group").output
         // 4. Restructure channel so all files with the same group ID are together
-        partitioned_ch.view()
         // First rearrange each element from [sample, [paths]] to [[group1, path1], [group2, path2], ...]
         partitioned_tuple_ch = partitioned_ch.map{
             sample, filepaths ->
                 def pathlist = (filepaths instanceof List) ? filepaths : [filepaths]
                 pathlist.collect { path ->
-                    println(path)
-                    def matcher = (path.last() =~ /^partition_(.*?)_${sample}_input_strict_joined_sample\.tsv\.gz$/)
+                    def matcher = (path.last() =~ /^partition_(.*?)_sorted_group_${sample}_input_strict_joined_sample\.tsv\.gz$/)
                     if (!matcher) {
                         def msg = "Filename doesn't match required pattern: ${sample}, ${path}, ${path.last()}"
                         throw new IllegalArgumentException(msg)
@@ -45,7 +43,8 @@ workflow PREPARE_GROUP_TSVS {
                 }
             }
         // Then rearrange channel to [[group1, [paths]], [group2, [paths]], ...]
-        partitioned_grouped_ch = partitioned_tuple_ch.map{it[0]}.groupTuple()
+        partitioned_flattened_ch = partitioned_tuple_ch.flatMap{it -> it}
+        partitioned_grouped_ch = partitioned_flattened_ch.groupTuple()
         // 5. Concatenate TSVs for each group
         concat_ch = CONCATENATE_TSVS_LABELED(partitioned_grouped_ch, "grouped").output
     emit:

@@ -47,7 +47,6 @@ nextflow_workflow {
                 '''
             }
         }
-        
         run("COPY_FILE", alias: "COPY_GROUPS") {
             script "modules/local/copyFile/main.nf"
             process {
@@ -96,7 +95,7 @@ nextflow_workflow {
             assert workflow.success
             // Output of join should have expected dimensions
             def input_tabs = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t", decompress: true)}
-            def group_tabs = workflow.out.test_in.collect{path(it[2]).csv(sep: "\t")}
+            def group_tabs = workflow.out.test_in.collect{path(it[2]).csv(sep: "\t", decompress: true)}
             def join_tabs = workflow.out.test_join.collect{path(it[1]).csv(sep: "\t", decompress: true)}
             assert input_tabs.size() == group_tabs.size()
             assert input_tabs.size() == join_tabs.size()
@@ -104,10 +103,17 @@ nextflow_workflow {
                 assert input_tabs[i].rowCount == join_tabs[i].rowCount
                 assert input_tabs[i].columnCount + group_tabs[i].columnCount - 1 == join_tabs[i].columnCount
             }
-            // Partitioning should have no effect (only one sample per dataset)
-            def part_tabs = workflow.out.test_part.collect{path(it[1]).csv(sep: "\t", decompress: true)}
+            // Partitioning should split rows but not columns
+            def part_tabs = workflow.out.test_part.collect{ outer_element ->
+                outer_element[1].collect{path(it).csv(sep: "\t", decompress: true)}
+            }
             for (int i=0; i < input_tabs.size(); i++){
-                assertTableEquals join_tabs[i], part_tabs[i]
+                def part_row_counts = part_tabs[i].collect{it.rowCount}
+                def part_column_counts = part_tabs[i].collect{it.columnCount}
+                assert join_tabs[i].rowCount == part_row_counts.sum()
+                for (count in part_column_counts) {
+                    assert count == join_tabs[i].columnCount
+                }
             }
             // Restructured data should preserve paths
             def paths_pre = []
