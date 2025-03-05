@@ -1,4 +1,4 @@
-// Version of EXTRACT_VIRAL_READS that uses streaming and interleaved files to minimize memory requirements and loading times
+// Short-read version of EXTRACT_VIRAL_READS that uses streaming and interleaved files to minimize memory requirements and loading times
 
 /***************************
 | MODULES AND SUBWORKFLOWS |
@@ -29,7 +29,7 @@ include { EXTRACT_VIRAL_HITS_TO_FASTQ } from "../../../modules/local/extractVira
 | WORKFLOW |
 ***********/
 
-workflow EXTRACT_VIRAL_READS {
+workflow EXTRACT_VIRAL_READS_SHORT {
     take:
         reads_ch
         ref_dir

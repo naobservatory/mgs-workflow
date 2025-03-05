@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
-include { EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReads"
+include { EXTRACT_VIRAL_READS_SHORT as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsShort"
 include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE} from "../subworkflows/local/profile"
