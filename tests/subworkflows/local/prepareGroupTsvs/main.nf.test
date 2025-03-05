@@ -42,7 +42,7 @@ nextflow_workflow {
             script "modules/local/concatenateTsvs/main.nf"
             process {
                 '''
-                input[0] = COPY_HITS.out.concat(ADD_MORE_SAMPLES.out).groupTuple()
+                input[0] = COPY_HITS.out.concat(ADD_MORE_SAMPLES.out.output).groupTuple()
                 input[1] = "test_hits"
                 '''
             }
@@ -72,7 +72,7 @@ nextflow_workflow {
             script "modules/local/concatenateTsvs/main.nf"
             process {
                 '''
-                input[0] = ADD_MORE_GROUPS.out.concat(COPY_GROUPS.out).groupTuple()
+                input[0] = ADD_MORE_GROUPS.out.output.concat(COPY_GROUPS.out).groupTuple()
                 input[1] = "test_groups"
                 '''
             }

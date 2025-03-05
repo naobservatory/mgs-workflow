@@ -9,13 +9,17 @@ process REPLACE_STRING {
         val(old_string)
         val(new_string)
     output:
-        tuple val(label), path("${label}_${outname}")
+        tuple val(label), path("${label}_${outname}"), emit: output
+        tuple val(label), path("${label}_input_${file}"), emit: input
     shell:
         '''
         sed 's/!{old_string}/!{new_string}/g' !{file} > !{label}_!{outname}
+        ln -s !{file} !{label}_input_!{file}
         '''
 }
 
+// Replace a string in a compressed file while retaining channel structure
+// Currently only used for testing
 process REPLACE_STRING_IN_COMPRESSED_FILE {
     label "single"
     label "coreutils"
@@ -25,9 +29,11 @@ process REPLACE_STRING_IN_COMPRESSED_FILE {
         val(old_string)
         val(new_string)
     output:
-        tuple val(label), path("${label}_${outname}")
+        tuple val(label), path("${label}_${outname}"), emit: output
+        tuple val(label), path("${label}_input_${file}"), emit: input
     shell:
         '''
         zcat !{file} | sed 's/!{old_string}/!{new_string}/g' | gzip > !{label}_!{outname}
+        ln -s !{file} !{label}_input_!{file}
         '''
 }
