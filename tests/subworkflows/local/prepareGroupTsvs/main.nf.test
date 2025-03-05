@@ -22,7 +22,28 @@ nextflow_workflow {
             process {
                 '''
                 input[0] = LOAD_DOWNSTREAM_DATA.out.input.map{ label, hits, groups -> tuple(label, hits) }
-                input[1] = "test_hits.tsv.gz"
+                input[1] = "test_hits_1.tsv.gz"
+                '''
+            }
+        }
+        run("REPLACE_STRING_IN_COMPRESSED_FILE", alias: "ADD_MORE_SAMPLES"){
+            script "modules/local/replaceString/main.nf"
+            process {
+                '''
+                input[0] = COPY_HITS.out
+                input[1] = "test_hits_2.tsv.gz"
+                input[2] = "gold_standard"
+                input[3] = "gold_standard2"
+                '''
+            }
+        }
+
+        run("CONCATENATE_TSVS_LABELED", alias: "CONCAT_HITS"){
+            script "modules/local/concatenateTsvs/main.nf"
+            process {
+                '''
+                input[0] = COPY_HITS.out.concat(ADD_MORE_SAMPLES.out.output).groupTuple()
+                input[1] = "test_hits"
                 '''
             }
         }
@@ -31,7 +52,28 @@ nextflow_workflow {
             process {
                 '''
                 input[0] = LOAD_DOWNSTREAM_DATA.out.input.map{ label, hits, groups -> tuple(label, groups) }
-                input[1] = "test_groups.tsv"
+                input[1] = "test_groups_1.tsv"
+                '''
+            }
+        }
+        run("REPLACE_STRING", alias: "ADD_MORE_GROUPS"){
+            script "modules/local/replaceString/main.nf"
+            process {
+                '''
+                input[0] = COPY_GROUPS.out
+                input[1] = "test_groups_2.tsv"
+                // Did not put the last number on purpose as one sample will be gs1 and the other gs2; not including the last number guaruenttes that a unique last group is made.
+                input[2] = "gold_standard\tgs" 
+                input[3] = "gold_standard2\tgs4"
+                '''
+            }
+        }
+        run("CONCATENATE_TSVS_LABELED", alias: "CONCAT_GROUPS"){
+            script "modules/local/concatenateTsvs/main.nf"
+            process {
+                '''
+                input[0] = ADD_MORE_GROUPS.out.output.concat(COPY_GROUPS.out).groupTuple()
+                input[1] = "test_groups"
                 '''
             }
         }
@@ -44,7 +86,7 @@ nextflow_workflow {
             }
             workflow {
                 '''
-                input[0] = COPY_HITS.out.combine(COPY_GROUPS.out, by: 0)
+                input[0] = CONCAT_HITS.out.output.combine(CONCAT_GROUPS.out.output, by: 0)
                 '''
             }
         }
@@ -53,7 +95,7 @@ nextflow_workflow {
             assert workflow.success
             // Output of join should have expected dimensions
             def input_tabs = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t", decompress: true)}
-            def group_tabs = workflow.out.test_in.collect{path(it[2]).csv(sep: "\t")}
+            def group_tabs = workflow.out.test_in.collect{path(it[2]).csv(sep: "\t", decompress: true)}
             def join_tabs = workflow.out.test_join.collect{path(it[1]).csv(sep: "\t", decompress: true)}
             assert input_tabs.size() == group_tabs.size()
             assert input_tabs.size() == join_tabs.size()
@@ -61,10 +103,17 @@ nextflow_workflow {
                 assert input_tabs[i].rowCount == join_tabs[i].rowCount
                 assert input_tabs[i].columnCount + group_tabs[i].columnCount - 1 == join_tabs[i].columnCount
             }
-            // Partitioning should have no effect (only one sample per dataset)
-            def part_tabs = workflow.out.test_part.collect{path(it[1]).csv(sep: "\t", decompress: true)}
+            // Partitioning should split rows but not columns
+            def part_tabs = workflow.out.test_part.collect{ outer_element ->
+                outer_element[1].collect{path(it).csv(sep: "\t", decompress: true)}
+            }
             for (int i=0; i < input_tabs.size(); i++){
-                assertTableEquals join_tabs[i], part_tabs[i]
+                def part_row_counts = part_tabs[i].collect{it.rowCount}
+                def part_column_counts = part_tabs[i].collect{it.columnCount}
+                assert join_tabs[i].rowCount == part_row_counts.sum()
+                for (count in part_column_counts) {
+                    assert count == join_tabs[i].columnCount
+                }
             }
             // Restructured data should preserve paths
             def paths_pre = []
@@ -95,8 +144,16 @@ nextflow_workflow {
             }
             // Final output should correctly concatenate restructured groups while preserving row count
             def output_tabs = workflow.out.groups.collect{path(it[1]).csv(sep: "\t", decompress: true)}
-            assert output_tabs.size() < input_tabs.size()
+            assert output_tabs.size() == workflow.out.test_grps.size()
             assert output_tabs.collect{it.rowCount}.sum() == input_tabs.collect{it.rowCount}.sum()
+            for (int i=0; i < output_tabs.size(); i++) {
+                def part_grp_tabs = workflow.out.test_grps[i][1].collect{ path(it).csv(sep: "\t", decompress: true) }
+                def part_grp_rows = part_grp_tabs.collect{it.rowCount}
+                assert output_tabs[i].rowCount == part_grp_rows.sum()
+                for (tab in part_grp_tabs) {
+                    assert output_tabs[i].columnNames == tab.columnNames
+                }
+            }
         }
     }
 }
