@@ -144,8 +144,16 @@ nextflow_workflow {
             }
             // Final output should correctly concatenate restructured groups while preserving row count
             def output_tabs = workflow.out.groups.collect{path(it[1]).csv(sep: "\t", decompress: true)}
-            assert output_tabs.size() < input_tabs.size()
+            assert output_tabs.size() == workflow.out.test_grps.size()
             assert output_tabs.collect{it.rowCount}.sum() == input_tabs.collect{it.rowCount}.sum()
+            for (int i=0; i < output_tabs.size(); i++) {
+                def part_grp_tabs = workflow.out.test_grps[i][1].collect{ path(it).csv(sep: "\t", decompress: true) }
+                def part_grp_rows = part_grp_tabs.collect{it.rowCount}
+                assert output_tabs[i].rowCount == part_grp_rows.sum()
+                for (tab in part_grp_tabs) {
+                    assert output_tabs[i].columnNames == tab.columnNames
+                }
+            }
         }
     }
 }
