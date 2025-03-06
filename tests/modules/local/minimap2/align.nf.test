@@ -12,7 +12,6 @@ nextflow_process {
             process {
                 """
                 input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
-                input[1] = true
                 """
             }
         }
