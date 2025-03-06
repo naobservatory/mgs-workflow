@@ -33,7 +33,7 @@ workflow PROFILE {
     main:
         // Separate ribosomal reads
         ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
-        ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix, !single_end)
+        ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix, single_end.map{!it})
         // Run taxonomic profiling separately on ribo and non-ribo reads
         tax_ribo_ch = TAXONOMY_RIBO(ribo_ch.match, kraken_db_ch, "D", bracken_threshold, single_end)
         tax_noribo_ch = TAXONOMY_NORIBO(ribo_ch.nomatch, kraken_db_ch, "D", bracken_threshold, single_end)
