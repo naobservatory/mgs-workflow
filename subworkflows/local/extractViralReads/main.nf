@@ -37,6 +37,7 @@ workflow EXTRACT_VIRAL_READS {
         aln_score_threshold
         adapter_path
         host_taxon
+        cutadapt_error_rate
         min_kmer_hits
         k
         bbduk_suffix
@@ -53,7 +54,7 @@ workflow EXTRACT_VIRAL_READS {
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // 2. Carry out stringent adapter removal with FASTP and Cutadapt
         fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
-        adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path)
+        adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
         // 3. Run Bowtie2 against a viral database and process output
         bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, "--score-min G,1,1", "virus", true, false)
         // 4. Filter contaminants

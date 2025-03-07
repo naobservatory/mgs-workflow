@@ -37,6 +37,7 @@ nextflow_process {
                 '''
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.adapters}"
+                input[2] = params.cutadapt_error_rate
                 '''
             }
         }
