@@ -21,17 +21,18 @@ workflow SUBSET_TRIM {
       ont
       random_seed
     main:
-        // Process single end logic
+        // Split single-end value channel into two branches, one of which will be empty
         single_end_check = single_end.branch{
             single: it
             paired: !it
         }
+        // Forward reads into one of two channels based on endedness (the other will be empty)
         reads_ch_single = single_end_check.single.combine(reads_ch).map{it -> [it[1], it[2]] }
         reads_ch_paired = single_end_check.paired.combine(reads_ch).map{it -> [it[1], it[2]] }
-        // Subset reads
+        // Subset reads according to endedness (other channel will be empty)
         subset_ch_single = SUBSET_SINGLE(reads_ch_single, n_reads, "fastq", random_seed)
         subset_ch_paired = SUBSET_PAIRED(reads_ch_paired, n_reads, "fastq", random_seed)
-        // Interleave reads
+        // Interleave reads based on endedness (other channel will be empty)
         inter_ch_single = subset_ch_single
         inter_ch_paired = INTERLEAVE_FASTQ(subset_ch_paired).output
         inter_ch = inter_ch_single.mix(inter_ch_paired)

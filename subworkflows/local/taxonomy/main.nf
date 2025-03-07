@@ -30,11 +30,12 @@ workflow TAXONOMY {
         bracken_threshold
         single_end
     main:
-        // Process single end logic
+        // Split single-end value channel into two branches, one of which will be empty
         single_end_check = single_end.branch{
             single: it
             paired: !it
         }
+        // Forward reads into one of two channels based on endedness (the other will be empty)
         reads_ch_single = single_end_check.single.combine(reads_ch).map{it -> [it[1], it[2]] }
         reads_ch_paired = single_end_check.paired.combine(reads_ch).map{it -> [it[1], it[2]] }
         // In paired-end case, merge and join
