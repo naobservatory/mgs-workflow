@@ -30,18 +30,23 @@ workflow TAXONOMY {
         bracken_threshold
         single_end
     main:
-        if (single_end) {
-            // No merging in single read version
-            summarize_bbmerge_ch = Channel.empty()
-            single_read_ch = reads_ch
-        } else {
-            // NB: No deduplication in streamed version
-            // Merge and concatenate input reads
-            merged_ch = BBMERGE(reads_ch)
-            single_read_ch = JOIN_FASTQ(merged_ch.reads, false).reads
-            // Summarize the merged elements
-            summarize_bbmerge_ch = SUMMARIZE_BBMERGE(merged_ch.reads).summary
+        // Split single-end value channel into two branches, one of which will be empty
+        single_end_check = single_end.branch{
+            single: it
+            paired: !it
         }
+        // Forward reads into one of two channels based on endedness (the other will be empty)
+        reads_ch_single = single_end_check.single.combine(reads_ch).map{it -> [it[1], it[2]] }
+        reads_ch_paired = single_end_check.paired.combine(reads_ch).map{it -> [it[1], it[2]] }
+        // In paired-end case, merge and join
+        merged_ch = BBMERGE(reads_ch_paired)
+        single_read_ch_paired = JOIN_FASTQ(merged_ch.reads, false).reads
+        summarize_bbmerge_ch_paired = SUMMARIZE_BBMERGE(merged_ch.reads).summary
+        // In single-end case, take unmodified reads
+        single_read_ch_single = reads_ch_single
+        summarize_bbmerge_ch_single = Channel.empty()
+        single_read_ch = single_read_ch_paired.mix(single_read_ch_single)
+        summarize_bbmerge_ch = summarize_bbmerge_ch_paired.mix(summarize_bbmerge_ch_single)
         // Run Kraken and munge reports
         kraken_ch = KRAKEN(single_read_ch, kraken_db_ch)
         kraken_headers = "pc_reads_total,n_reads_clade,n_reads_direct,n_minimizers_total,n_minimizers_distinct,rank,taxid,name"

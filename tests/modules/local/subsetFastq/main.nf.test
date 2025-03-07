@@ -111,7 +111,6 @@ nextflow_process {
                 process {
                     '''
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
-                    input[1] = false
                     '''
                 }
             }
@@ -173,7 +172,6 @@ nextflow_process {
                 process {
                     '''
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
-                    input[1] = true
                     '''
                 }
             }
