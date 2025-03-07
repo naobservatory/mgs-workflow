@@ -47,11 +47,13 @@ workflow INDEX {
     params_ch = Channel.of(params_str).collectFile(name: "index-params.json")
     time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
+    compatibility_ch = Channel.fromPath("${projectDir}/pipeline-index-compatibility.txt")
     publish:
         // Saved inputs
         params_ch >> "input"
         time_ch >> "logging"
         version_ch >> "logging"
+        compatibility_ch >> "logging"
         // Taxonomy and virus databases
         MAKE_VIRUS_TAXONOMY_DB.out.db >> "results"
         MAKE_VIRUS_TAXONOMY_DB.out.nodes >> "results"
