@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
 
-"""
-Process Minimap2 SAM alignments to extract viral read information.
-
-This script processes SAM files from Minimap2 alignments against viral genomes,
-extracting relevant information and outputting it in a TSV format.
-"""
-
 # Import modules
 import sys
 import argparse
