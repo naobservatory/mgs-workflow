@@ -1,4 +1,4 @@
-# v2.8.1.0-dev
+# v2.8.1.0
 - Added downstream duplicate marking functionality via new DOWNSTREAM workflow
 - Fixed JOIN_TSVS to correctly handle many-to-one joins
 - Added strict join mode to JOIN_TSVS
@@ -8,6 +8,7 @@
 - Added MINIMAP2_INDEX and MINIMAP2 processes for indexing reference genomes and aligning reads to them.
 - Updated ANNOTATE_VIRUS_INFECTION to better handle taxa that are missing from Virus-Host DB, and added corresponding tests and documentation.
 - Added documentation on running the pipeline reproducibly
+- Fixed some broken tests (does not affect the tests run on Github Actions)
 
 # v2.8.0.0
 - Major changes to many parts of the pipeline as part of a general performance overhaul
