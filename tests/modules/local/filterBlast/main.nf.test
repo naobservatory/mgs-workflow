@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process FILTER_BLAST"
     script "modules/local/filterBlast/main.nf"
     process "FILTER_BLAST"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "filter_blast"
 
@@ -13,7 +13,6 @@ nextflow_process {
             process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
-                input[1] = false
                 """
             }
         }

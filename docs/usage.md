@@ -1,9 +1,9 @@
 # Pipeline Usage
 
-This page describes the process of running the pipeline's [core workflow](./docs/run.md) on available data.
+This page describes the process of running the pipeline's [core workflow](./run.md) on available data.
 
 > [!IMPORTANT]
-> Before following the instructions on this page, make sure you have followed the [installation and setup instructions](./docs/installation.md), including running the [index workflow](./docs/index.md) or otherwise having a complete and up-to-date index directory in an accessible location.
+> Before following the instructions on this page, make sure you have followed the [installation and setup instructions](./installation.md), including running the [index workflow](./index.md) or otherwise having a complete and up-to-date index directory in an accessible location.
 
 > [!IMPORTANT]
 > Currently, the pipeline only accepts paired short-read data; single-end and Oxford Nanopore versions are under development but are not ready for general use.

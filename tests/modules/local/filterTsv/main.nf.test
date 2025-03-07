@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process FILTER_TSV"
     script "modules/local/filterTsv/main.nf"
     process "FILTER_TSV"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "filter_tsv"
 

@@ -4,7 +4,7 @@ nextflow_process {
     name "Test process EXTRACT_VIRAL_HITS_TO_FASTQ"
     script "modules/local/extractViralHitsToFastq/main.nf"
     process "EXTRACT_VIRAL_HITS_TO_FASTQ"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "extract_viral_hits_to_fastq"
 

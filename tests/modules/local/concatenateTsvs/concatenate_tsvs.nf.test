@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process CONCATENATE_TSVS"
     script "modules/local/concatenateTsvs/main.nf"
     process "CONCATENATE_TSVS"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "concatenate_tsvs"
 

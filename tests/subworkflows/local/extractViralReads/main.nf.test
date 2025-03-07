@@ -10,7 +10,7 @@ nextflow_workflow {
     name "Test subworkflow EXTRACT_VIRAL_READS"
     script "subworkflows/local/extractViralReads/main.nf"
     workflow "EXTRACT_VIRAL_READS"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "subworkflow"
     tag "extract_viral_reads"
 
@@ -20,7 +20,6 @@ nextflow_workflow {
             process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
-                input[1] = false
                 """
             }
         }

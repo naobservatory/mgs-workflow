@@ -9,14 +9,13 @@ nextflow_process {
     test("Should run without failures and conserve reads on interleaved input") {
         tag "expect_success"
         tag "interleaved"
-        config "tests/run.config"
+        config "tests/configs/run.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
-                    input[1] = false
                     """
                 }
             }
@@ -71,14 +70,13 @@ nextflow_process {
     test("Should run without failures and conserve reads on single-end input") {
         tag "expect_success"
         tag "single_end"
-        config "tests/run_dev_se.config"
+        config "tests/configs/run_dev_se.config"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
-                    input[1] = true
                     """
                 }
             }

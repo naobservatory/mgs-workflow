@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process BOWTIE2"
     script "modules/local/bowtie2/main.nf"
     process "BOWTIE2"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "bowtie2"
 
@@ -13,7 +13,6 @@ nextflow_process {
             process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
-                input[1] = false
                 """
             }
         }

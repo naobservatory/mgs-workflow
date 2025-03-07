@@ -1,15 +1,18 @@
 # Pipeline documentation
 
 - **Installation and usage:**
-    - [Installation instructions](docs/installation.md)
-    - [AWS Batch setup](docs/batch.md)
-    - [Usage instructions](docs/usage.md)
-    - [Troubleshooting](docs/troubleshooting.md)
+    - [Installation instructions](./installation.md)
+    - [AWS Batch setup](./batch.md)
+    - [Usage instructions](./usage.md)
+    - [Troubleshooting](./troubleshooting.md)
 - **Workflow details:**
-    - [Index workflow](docs/index.md)
-    - [Run workflow](docs/run.md)
+    - [INDEX workflow](./index.md)
+    - [RUN workflow](./run.md)
+    - [DOWNSTREAM workflow](./downstream.md)
 - **Configuration and output:**
-    - [Configuration files](docs/config.md)
-    - [Pipeline outputs](docs/output.md)
+    - [Configuration files](./config.md)
+    - [Pipeline outputs](./output.md)
 - **Other:**
-    - [Versioning](docs/versioning.md)
+    - [Versioning](./versioning.md)
+    - [Viral infection status annotation](./annotation.md)
+    - [Reproducibility](./reproducibility.md)

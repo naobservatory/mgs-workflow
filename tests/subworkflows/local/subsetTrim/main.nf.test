@@ -14,7 +14,7 @@ nextflow_workflow {
     tag "subset_trim"
 
     test("Should run without failures on paired data") {
-        config "tests/run.config"
+        config "tests/configs/run.config"
         tag "paired_end"
         tag "expect_success"
         setup {
@@ -23,7 +23,6 @@ nextflow_workflow {
                 process {
                     """
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
-                    input[1] = false
                     """
                 }
             }
@@ -37,7 +36,7 @@ nextflow_workflow {
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = params.n_reads
                 input[2] = params.adapters
-                input[3] = false
+                input[3] = LOAD_SAMPLESHEET.out.single_end
                 input[4] = false
                 input[5] = ""
                 '''
@@ -79,7 +78,7 @@ nextflow_workflow {
     }
 
     test("Should run without failures on single-end data") {
-        config "tests/run_dev_se.config"
+        config "tests/configs/run_dev_se.config"
         tag "single_end"
         tag "expect_success"
         setup {
@@ -88,7 +87,6 @@ nextflow_workflow {
                 process {
                     """
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
-                    input[1] = true
                     """
                 }
             }
@@ -102,7 +100,7 @@ nextflow_workflow {
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = params.n_reads
                 input[2] = params.adapters
-                input[3] = true
+                input[3] = LOAD_SAMPLESHEET.out.single_end
                 input[4] = false
                 input[5] = ""
                 '''

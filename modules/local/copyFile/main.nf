@@ -1,5 +1,4 @@
 // Copy a file while retaining channel structure
-// Currently only used for testing
 process COPY_FILE {
     label "single"
     label "coreutils"
@@ -20,7 +19,7 @@ process COPY_FILE_BARE {
     label "single"
     label "coreutils"
     input:
-        tuple path(file)
+        path(file)
         val(outname)
     output:
         path("${outname}")

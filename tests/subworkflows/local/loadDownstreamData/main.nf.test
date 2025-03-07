@@ -1,0 +1,54 @@
+nextflow_workflow {
+
+    name "Test Workflow LOAD_DOWNSTREAM_DATA"
+    script "subworkflows/local/loadDownstreamData/main.nf"
+    workflow "LOAD_DOWNSTREAM_DATA"
+    config "tests/configs/downstream.config"
+    tag "load_downstream_data"
+    tag "subworkflow"
+    tag "downstream"
+
+    test("Should run without failures on valid input") {
+        tag "expect_success"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/downstream/input_file.csv")
+                """
+            }
+        }
+        then {
+            // Should run without errors
+            assert workflow.success
+            // Should produce correctly-structured output
+            def tab_in = path(workflow.out.test_input[0]).csv
+            assert workflow.out.input.size() == tab_in.rowCount
+            def currentDir = new File(".").getAbsolutePath()
+            for (int i=1; i < tab_in.rowCount; i++){
+                assert workflow.out.input[i][0] == tab_in.columns["label"][i]
+                assert tab_in.columns["hits_tsv"][i].contains(workflow.out.input[i][1])
+                assert tab_in.columns["groups_tsv"][i].contains(workflow.out.input[i][2])
+            }
+        }
+    }
+
+    test("Should fail on invalid input file") {
+        tag "expect_failed"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/downstream/input_file_invalid.csv")
+                """
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.exitStatus == 1
+            assert workflow.stdout.any { it.contains("Invalid input header") }
+        }
+    }
+
+}

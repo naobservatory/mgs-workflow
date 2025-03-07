@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process BBDUK_HITS_INTERLEAVE"
     script "modules/local/bbduk/main.nf"
     process "BBDUK_HITS_INTERLEAVE"
-    config "tests/run.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "bbduk"
 
@@ -13,7 +13,6 @@ nextflow_process {
             process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
-                input[1] = false
                 """
             }
         }
