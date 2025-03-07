@@ -15,9 +15,9 @@ include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE } from "../subworkflows/local/profile"
 if ( params.ont ) {
-    include { EXTRACT_VIRAL_READS_ONT as EXTRACT_VIRAL_READS} from "../subworkflows/local/extractViralReadsONT"
+    include { EXTRACT_VIRAL_READS_ONT } from "../subworkflows/local/extractViralReadsONT"
 } else {
-    include { EXTRACT_VIRAL_READS_SHORT as EXTRACT_VIRAL_READS} from "../subworkflows/local/extractViralReadsShort"
+    include { EXTRACT_VIRAL_READS_SHORT } from "../subworkflows/local/extractViralReadsShort"
 }
 
 nextflow.preview.output = true
@@ -42,9 +42,11 @@ workflow RUN_DEV_SE {
 
     // Extract viral reads
     if ( params.ont ) {
-        EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, params.host_taxon)
+        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.host_taxon)
+        hv_tsv_ch = EXTRACT_VIRAL_READS_ONT.out.hv_tsv
     } else {
-        EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", params.bracken_threshold)
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", params.bracken_threshold)
+        hv_tsv_ch = EXTRACT_VIRAL_READS_SHORT.out.hv_tsv
     }
 
     // Subset reads to target number, and trim adapters
@@ -92,7 +94,7 @@ workflow RUN_DEV_SE {
         RUN_QC.out.qc_qseqs >> "results"
         RUN_QC.out.qc_lengths >> "results"
         // Final results
-        EXTRACT_VIRAL_READS.out.hv_tsv >> "results"
+        hv_tsv_ch >> "results"
         bracken_ch >> "results"
         kraken_ch >> "results"
         // Viral BLAST results

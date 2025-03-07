@@ -14,13 +14,12 @@ process PROCESS_VIRAL_MINIMAP2_SAM {
     shell:
         '''
         out=!{sample}_minimap2_sam_processed.tsv.gz
-        sample=!{sample}
         metadata=!{genbank_metadata_path}
         virus_db=!{viral_db_path}
         hv_sam=!{hv_sam}
         clean_reads=!{clean_reads}
-        host=!{host_taxon}
-        process_viral_minimap2_sam.py -sa ${hv_sam} -r ${clean_reads} -sl ${sample} -m ${metadata} -v ${virus_db} -ht ${host} -o ${out}
+        host_taxon=!{host_taxon}
+        process_viral_minimap2_sam.py -a ${hv_sam} -r ${clean_reads} -m ${metadata} -v ${virus_db} -t ${host_taxon} -o ${out}
         # Link input to output for testing
         ln -s !{hv_sam} input_!{hv_sam}
         '''
