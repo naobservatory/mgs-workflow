@@ -8,6 +8,7 @@ import time
 import datetime
 import pysam
 import gzip
+import bz2
 from collections import defaultdict
 from Bio import SeqIO
 
@@ -37,13 +38,16 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict,
 
     reference_genome_name = read.reference_name
     out["minimap2_genome_id_primary"] = reference_genome_name
-    reference_taxid, reference_name = extract_viral_taxid_and_name(reference_genome_name, genbank_metadata, viral_taxids)
+    reference_taxid = extract_viral_taxid(reference_genome_name, genbank_metadata, viral_taxids)
+    out["minimap2_taxid_primary"] = reference_taxid
 
-    # Filtering out non-host-taxon reads
-    if virus_status_dict[reference_taxid] == "0":
-        return None
+    # Marking host-virus status
+    try:
+        assigned_host_virus = virus_status_dict[reference_taxid]
+    except KeyError:
+        assigned_host_virus = "0"
 
-    out["minimap2_name_primary"] = reference_name
+    # Adding original read sequence and quality
     if read.is_reverse:
         # When minimap2 maps to the RC version of a strand, if returns the RC version of the read
         clean_query_record = clean_query_record.reverse_complement()
@@ -52,7 +56,6 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict,
     query_qual_clean = clean_query_record.letter_annotations["phred_quality"]
     query_len_clean = len(query_seq_clean)
 
-    out["minimap2_taxid_primary"] = reference_taxid
     out["minimap2_read_length"] = read.query_length
     out["minimap2_map_qual"] = read.mapping_quality
     out["minimap2_ref_start"] = read.reference_start
@@ -63,6 +66,7 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict,
     out["minimap2_edit_distance"] = read.get_tag("NM")
     out["minimap2_alignment_score"] = read.get_tag("AS")
     out["minimap2_query_sequence"] = read.query_sequence
+    out["minimap2_assigned_host_virus"] = assigned_host_virus
     out["query_sequence_clean"] = query_seq_clean
     out["query_quality_clean"] = query_qual_clean
     out["query_length_clean"] = query_len_clean
@@ -70,15 +74,15 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict,
     return out
 
 
-def extract_viral_taxid_and_name(genome_id, gid_taxid_name_dict, viral_taxids):
-    """Extract taxid and name from the appropriate field of Genbank metadata."""
+def extract_viral_taxid(genome_id, gid_taxid_dict, viral_taxids):
+    """Extract taxid from the appropriate field of Genbank metadata."""
     try:
-        taxid, species_taxid, name = gid_taxid_name_dict[genome_id]
+        taxid, species_taxid = gid_taxid_dict[genome_id]
         if taxid in viral_taxids:
-            return taxid, name
+            return taxid
         if species_taxid in viral_taxids:
-            return species_taxid, name
-        return taxid, name
+            return species_taxid
+        return taxid
     except KeyError:
         raise ValueError(f"No matching genome ID found: {genome_id}")
 
@@ -197,14 +201,9 @@ def main():
         # Import metadata and viral DB
         print_log("Importing Genbank metadata file...")
         meta_db = pd.read_csv(meta_path, sep="\t", dtype=str)
-        gid_taxid_name_dict = {
-            genome_id: [taxid, species_taxid, name]
-            for genome_id, taxid, species_taxid, name in zip(
-                meta_db["genome_id"],
-                meta_db["taxid"],
-                meta_db["species_taxid"],
-                meta_db["organism_name"]
-            )
+        gid_taxid_dict = {
+            genome_id: taxid
+            for genome_id, taxid in zip(meta_db["genome_id"], meta_db["taxid"])
         }
 
         print_log("Importing viral DB file...")
@@ -226,7 +225,7 @@ def main():
 
         # Process SAM
         print_log("Processing SAM file...")
-        process_sam(sam_file, out_file, gid_taxid_name_dict, virus_taxa, virus_status_dict, clean_read_dict)
+        process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dict, clean_read_dict)
         print_log("File processed.")
 
         # Finish time tracking

@@ -14,11 +14,9 @@ include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE } from "../subworkflows/local/profile"
-if ( params.ont ) {
-    include { EXTRACT_VIRAL_READS_ONT } from "../subworkflows/local/extractViralReadsONT"
-} else {
-    include { EXTRACT_VIRAL_READS_SHORT } from "../subworkflows/local/extractViralReadsShort"
-}
+include { EXTRACT_VIRAL_READS_ONT } from "../subworkflows/local/extractViralReadsONT"
+include { EXTRACT_VIRAL_READS_SHORT } from "../subworkflows/local/extractViralReadsShort"
+
 
 nextflow.preview.output = true
 
