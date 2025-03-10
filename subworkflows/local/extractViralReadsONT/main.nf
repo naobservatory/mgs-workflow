@@ -29,7 +29,7 @@ main:
         minimap2_contam_index = "${ref_dir}/results/mm2-other-index"
         genome_meta_path = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
-        // blast_db_path = "${ref_dir}/results/${blast_db_prefix}"
+
 
         // Filter reads by length and quality scores
         filtered_ch = FILTLONG(reads_ch, 50, 90)
@@ -57,6 +57,8 @@ main:
         // Create common channel for HV SAM and clean HV reads
         sam_and_reads_ch = virus_sam_ch.join(clean_matched_subset_ch.output)
 
+        // Make clean reads ready for BLAST
+        clean_reads_ch = clean_matched_subset_ch.output.map { it[1] }
         // Generate HV TSV
         hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_and_reads_ch, genome_meta_path, virus_db_path, host_taxon)
         hv_tsv_labeled_ch = LABEL_HV_TSVS(hv_tsv_ch.output, "sample", "hv_tsv")
@@ -67,6 +69,5 @@ main:
 
     emit:
         hv_tsv = merged_tsv_ch.output
-        // blast_subset = blast_subset_ch
-        // blast_reads = blast_reads_ch
+        clean_hv_reads = clean_reads_ch
 }

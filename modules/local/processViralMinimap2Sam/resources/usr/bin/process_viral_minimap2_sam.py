@@ -95,7 +95,6 @@ def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dic
         header = (
             "query_name\t"
             "minimap2_genome_id_primary\t"
-            "minimap2_name_primary\t"
             "minimap2_taxid_primary\t"
             "minimap2_read_length\t"
             "minimap2_map_qual\t"
@@ -107,6 +106,7 @@ def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dic
             "minimap2_edit_distance\t"
             "minimap2_alignment_score\t"
             "minimap2_query_sequence\t"
+            "minimap2_assigned_host_virus\t"
             "query_sequence_clean\t"
             "query_quality_clean\t"
             "query_length_clean\n"
@@ -130,7 +130,10 @@ def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dic
                     out_fh.write(join_line(line.values()))
 
         except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
             print_log(f"Error processing SAM file: {str(e)}")
+            print_log(f"Error details: {error_detail}")
             raise
 
 def parse_arguments():
@@ -202,10 +205,9 @@ def main():
         print_log("Importing Genbank metadata file...")
         meta_db = pd.read_csv(meta_path, sep="\t", dtype=str)
         gid_taxid_dict = {
-            genome_id: taxid
-            for genome_id, taxid in zip(meta_db["genome_id"], meta_db["taxid"])
+            genome_id: [taxid, species_taxid]
+            for genome_id, taxid, species_taxid in zip(meta_db["genome_id"], meta_db["taxid"], meta_db["species_taxid"])
         }
-
         print_log("Importing viral DB file...")
         virus_db = pd.read_csv(vdb_path, sep="\t", dtype=str)
         virus_taxa = set(virus_db["taxid"].values)
@@ -215,6 +217,7 @@ def main():
             taxid: status
             for taxid, status in zip(virus_db["taxid"], virus_db[host_column])
         }
+
         print_log(f"Imported {len(virus_taxa)} virus taxa.")
 
         # Import clean reads

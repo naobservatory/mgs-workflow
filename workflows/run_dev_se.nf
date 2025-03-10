@@ -16,7 +16,7 @@ include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE } from "../subworkflows/local/profile"
 include { EXTRACT_VIRAL_READS_ONT } from "../subworkflows/local/extractViralReadsONT"
 include { EXTRACT_VIRAL_READS_SHORT } from "../subworkflows/local/extractViralReadsShort"
-
+include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 
 nextflow.preview.output = true
 
@@ -42,9 +42,13 @@ workflow RUN_DEV_SE {
     if ( params.ont ) {
         EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.host_taxon)
         hv_tsv_ch = EXTRACT_VIRAL_READS_ONT.out.hv_tsv
+        clean_hv_reads = EXTRACT_VIRAL_READS_ONT.out.clean_hv_reads
+        blast_ch = BLAST_VIRAL(clean_hv_reads, blast_db_path, params.blast_db_prefix, params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed)
+        blast_subset = blast_ch.blast_subset
     } else {
         EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", params.bracken_threshold)
         hv_tsv_ch = EXTRACT_VIRAL_READS_SHORT.out.hv_tsv
+        blast_subset = Channel.empty()
     }
 
     // Subset reads to target number, and trim adapters
@@ -95,7 +99,6 @@ workflow RUN_DEV_SE {
         hv_tsv_ch >> "results"
         bracken_ch >> "results"
         kraken_ch >> "results"
-        // Viral BLAST results
-        // EXTRACT_VIRAL_READS.out.blast_subset >> "results"
-        // EXTRACT_VIRAL_READS.out.blast_reads >> "results"
+        blast_subset >> "results"
+
 }
