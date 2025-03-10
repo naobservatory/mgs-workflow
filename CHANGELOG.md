@@ -1,3 +1,6 @@
+# v2.8.1.1-dev
+- Made Cutadapt mismatch rate parameter configurable
+
 # v2.8.1.0
 - Added downstream duplicate marking functionality via new DOWNSTREAM workflow
     - Fixed JOIN_TSVS to correctly handle many-to-one joins
