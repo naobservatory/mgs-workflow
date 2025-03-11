@@ -1,3 +1,6 @@
+# v2.8.1.1
+- Modified Kraken2 DB handling in index workflow to avoid staging
+
 # v2.8.1.0
 - Added downstream duplicate marking functionality via new DOWNSTREAM workflow
     - Fixed JOIN_TSVS to correctly handle many-to-one joins
