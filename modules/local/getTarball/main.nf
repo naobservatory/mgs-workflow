@@ -14,9 +14,9 @@ process GET_TARBALL {
         wget "!{tarball_url}" -O ${dl_path}
         if [[ "!{makedir}" == "true" ]]; then
             mkdir !{outdir}
-            tar -xzf !{dl_path} -C !{outdir}
+            tar -xzf ${dl_path} -C !{outdir}
         else
-            tar -xzf !{dl_path}
+            tar -xzf ${dl_path}
         fi
         '''
 }
