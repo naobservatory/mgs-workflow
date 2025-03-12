@@ -16,7 +16,7 @@ nextflow_process {
                 '''
             }
         }
-        run("EXTRACT_VIRAL_READS") {
+        run("EXTRACT_VIRAL_READS_SHORT") {
             script "subworkflows/local/extractViralReadsShort/main.nf"
             process {
                 '''
@@ -43,7 +43,7 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = EXTRACT_VIRAL_READS.out.hits_filtered
+                input[0] = EXTRACT_VIRAL_READS_SHORT.out.hits_filtered
                 input[1] = false
                 '''
             }
