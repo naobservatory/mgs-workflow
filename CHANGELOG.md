@@ -1,5 +1,6 @@
 # v2.8.1.2-dev
 - Made Cutadapt mismatch rate parameter configurable
+- Fixed issues with BLAST bitscore filtering
 - Changed Bowtie2 to use global alignment for viral read identification.
 
 # v2.8.1.1
