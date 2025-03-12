@@ -17,7 +17,7 @@ nextflow_process {
             }
         }
         run("EXTRACT_VIRAL_READS") {
-            script "subworkflows/local/extractViralReads/main.nf"
+            script "subworkflows/local/extractViralReadsShort/main.nf"
             process {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
