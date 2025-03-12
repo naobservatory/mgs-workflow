@@ -38,9 +38,8 @@ workflow RUN {
     COUNT_TOTAL_READS(samplesheet_ch, single_end_ch)
 
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path,
-        params.bt2_score_threshold, params.adapters, params.host_taxon,
-        "1", "24", "viral", params.bracken_threshold)
+    EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, 
+        params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
 
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {

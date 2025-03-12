@@ -1,5 +1,9 @@
+# v2.8.1.2-dev
+- Made Cutadapt mismatch rate parameter configurable
+
 # v2.8.1.1
 - Modified Kraken2 DB handling in index workflow to avoid staging
+- Updated defaults in index configs
 
 # v2.8.1.0
 - Added downstream duplicate marking functionality via new DOWNSTREAM workflow
