@@ -47,7 +47,7 @@ nextflow_workflow {
         then {
             assert workflow.failed
             assert workflow.exitStatus == 1
-            assert workflow.stdout[0].contains("Invalid input header")
+            assert workflow.stdout.any { it.contains("Invalid input header") }
         }
     }
 

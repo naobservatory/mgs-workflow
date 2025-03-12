@@ -1,0 +1,41 @@
+def grepString = { file,key -> ["bash", "-c", "grep -c " + key + " " + file].execute().text.trim() as Integer }
+
+nextflow_process {
+
+    name "Test Process REPLACE_STRING"
+    script "modules/local/replaceString/main.nf"
+    config "tests/configs/run.config"
+    process "REPLACE_STRING"
+    tag "module"
+    tag "replace_string"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                old_string = "gs3"
+                new_string = "gs4"
+            }
+            process {
+                """
+                input[0] = tuple("test","${projectDir}/test-data/downstream/input_file.csv")
+                input[1] = "updated_input_file.csv"
+                input[2] = params.old_string
+                input[3] = params.new_string
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            // Check that the new file contains the string.
+            def output_new = grepString(process.out.output[0][1], params.new_string)
+            assert output_new == 1
+            // Check that the new file doesn't contain the old string
+            def output_old = grepString(process.out.output[0][1], params.old_string)
+            assert output_old == 0
+        }
+
+    }
+
+}
