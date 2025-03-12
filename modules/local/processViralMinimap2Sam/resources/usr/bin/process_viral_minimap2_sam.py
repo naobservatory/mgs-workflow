@@ -53,7 +53,9 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict,
         clean_query_record = clean_query_record.reverse_complement()
 
     query_seq_clean = clean_query_record.seq
-    query_qual_clean = clean_query_record.letter_annotations["phred_quality"]
+    query_qual_clean_numeric = clean_query_record.letter_annotations["phred_quality"]
+    # Turn numeric quality scores back into Phred+33 scores.
+    query_qual_clean = "".join([chr(x+33) for x in query_qual_clean_numeric])
     query_len_clean = len(query_seq_clean)
 
     out["minimap2_read_length"] = read.query_length
