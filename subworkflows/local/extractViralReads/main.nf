@@ -37,6 +37,7 @@ workflow EXTRACT_VIRAL_READS {
         aln_score_threshold
         adapter_path
         host_taxon
+        cutadapt_error_rate
         min_kmer_hits
         k
         bbduk_suffix
@@ -53,14 +54,14 @@ workflow EXTRACT_VIRAL_READS {
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // 2. Carry out stringent adapter removal with FASTP and Cutadapt
         fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
-        adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path)
+        adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
         // 3. Run Bowtie2 against a viral database and process output
         bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, "--score-min G,0.1,19", "virus", true, false)
         // 4. Filter contaminants
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, "", "human", false, false)
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, "", "other", false, false)
         // 5. Run Kraken on filtered viral candidates (via taxonomy subworkflow)
-        tax_ch = TAXONOMY(other_bt2_ch.reads_unmapped, kraken_db_ch, "F", bracken_threshold, false)
+        tax_ch = TAXONOMY(other_bt2_ch.reads_unmapped, kraken_db_ch, "F", bracken_threshold, channel.value(false))
         // 6. Process and combine Kraken and Bowtie2 output
         bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path)
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)

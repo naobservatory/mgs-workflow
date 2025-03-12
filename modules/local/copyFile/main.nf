@@ -19,7 +19,7 @@ process COPY_FILE_BARE {
     label "single"
     label "coreutils"
     input:
-        tuple path(file)
+        path(file)
         val(outname)
     output:
         path("${outname}")

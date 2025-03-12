@@ -16,7 +16,6 @@ nextflow_workflow {
                 process {
                     """
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
-                    input[1] = false
                     """
                 }
             }
@@ -38,7 +37,7 @@ nextflow_workflow {
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "D"
                 input[3] = "5"
-                input[4] = false
+                input[4] = LOAD_SAMPLESHEET.out.single_end
                 '''
             }
         }
@@ -84,7 +83,6 @@ nextflow_workflow {
                 process {
                     """
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
-                    input[1] = true
                     """
                 }
             }
@@ -93,7 +91,7 @@ nextflow_workflow {
                 process {
                     """
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                    input[1] = "input.fastq.gz"
+                    input[1] = "reads.fastq.gz"
                     """
                 }
             }
@@ -106,7 +104,7 @@ nextflow_workflow {
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "D"
                 input[3] = "5"
-                input[4] = true
+                input[4] = LOAD_SAMPLESHEET.out.single_end
                 '''
             }
         }
