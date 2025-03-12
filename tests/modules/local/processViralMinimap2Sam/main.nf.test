@@ -45,10 +45,11 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = MINIMAP2.out.sam.join(MASK_FASTQ_READS.out.input)
-                input[1] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
-                input[2] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
-                input[3] = params.host_taxon
+                input[0] = MINIMAP2.out.sam
+                input[1] = MASK_FASTQ_READS.out.input
+                input[2] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
+                input[3] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                input[4] = params.host_taxon
                 '''
             }
         }
@@ -62,14 +63,12 @@ nextflow_process {
                 .toSet()
             def tsv_read_ids = path(process.out.output[0][1]).csv(sep: "\t", decompress: true).columns["query_name"].toSet()
             assert sam_read_ids == tsv_read_ids
-            println sam_read_ids
-            println tsv_read_ids
 
             // Output should be a valid TSV that can be parsed and read
             def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_out.columnCount > 0
             assert tab_out.rowCount > 0
-            // TODO: Add more detailed tests of file content (requires parsing gzipped SAM file)
+
         }
     }
 }

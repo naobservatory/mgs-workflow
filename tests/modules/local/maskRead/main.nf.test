@@ -49,8 +49,9 @@ nextflow_process {
             assert masked_seqs.take(5).every { it.contains("N") }
 
             // The remaining sequences should not be masked
-            def non_masked_seqs = fastq_out.sequences.drop(5)
-            assert non_masked_seqs.every { !it.contains("N") }
+            def non_masked_seqs = fastq_out.sequences.drop(5).toSet()
+            def in_seqs = fastq_in.sequences.drop(5).toSet()
+            assert non_masked_seqs == in_seqs
         }
     }
 }
