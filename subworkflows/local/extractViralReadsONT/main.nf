@@ -4,7 +4,7 @@
 
 include { MINIMAP2 as MINIMAP2_VIRUS } from "../../../modules/local/minimap2"
 include { MINIMAP2 as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
-include { MINIMAP2 as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
+include { MINIMAP2_NON_STREAMED as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
 include { CONCATENATE_TSVS as CONCATENATE_HV_TSVS } from "../../../modules/local/concatenateTsvs"
 include { ADD_SAMPLE_COLUMN as LABEL_HV_TSVS } from "../../../modules/local/addSampleColumn"
 include { FILTLONG } from "../../../modules/local/filtlong"
@@ -22,7 +22,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
         reads_ch
         ref_dir
         host_taxon
-main:
+    main:
         // Get reference_paths
         minimap2_virus_index = "${ref_dir}/results/mm2-virus-index"
         minimap2_human_index = "${ref_dir}/results/mm2-human-index"
@@ -42,8 +42,8 @@ main:
         no_human_ch = human_minimap2_ch.reads_unmapped
 
         // Identify other contaminants
-        // contam_minimap2_ch = MINIMAP2_CONTAM(no_human_ch, minimap2_contam_index, "other", false)
-        // no_contam_ch = contam_minimap2_ch.reads_unmapped
+        contam_minimap2_ch = MINIMAP2_CONTAM(no_human_ch, minimap2_contam_index, "other", false)
+        no_contam_ch = contam_minimap2_ch.reads_unmapped
 
         // Identify virus reads
         virus_minimap2_ch = MINIMAP2_VIRUS(no_human_ch, minimap2_virus_index, "hv", false)
@@ -69,5 +69,8 @@ main:
 
     emit:
         hv_tsv = merged_tsv_ch.output
-        clean_hv_reads = clean_reads_ch
+        hits_fastq = clean_matched_subset_ch.output
+        test_minimap2_virus = virus_sam_ch
+        test_fastq_filtered_human = human_minimap2_ch.reads_unmapped
+        test_fastq_filtered_contam = contam_minimap2_ch.reads_unmapped
 }
