@@ -42,8 +42,8 @@ workflow RUN_DEV_SE {
     if ( params.ont ) {
         EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.host_taxon)
         hv_tsv_ch = EXTRACT_VIRAL_READS_ONT.out.hv_tsv
-        clean_hv_reads = EXTRACT_VIRAL_READS_ONT.out.clean_hv_reads
-        blast_ch = BLAST_VIRAL(clean_hv_reads, blast_db_path, params.blast_db_prefix, params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed)
+        hv_fastqs = EXTRACT_VIRAL_READS_ONT.out.hv_fastq.map { it[1] }.collect()
+        blast_ch = BLAST_VIRAL(hv_fastqs, blast_db_path, params.blast_db_prefix, params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed)
         blast_subset = blast_ch.blast_subset
     } else {
         EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", params.bracken_threshold)

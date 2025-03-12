@@ -69,7 +69,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
 
     emit:
         hv_tsv = merged_tsv_ch.output
-        hits_fastq = clean_matched_subset_ch.output
+        hv_fastq = clean_matched_subset_ch.output
         test_minimap2_virus = virus_sam_ch
         test_fastq_filtered_human = human_minimap2_ch.reads_unmapped
         test_fastq_filtered_contam = contam_minimap2_ch.reads_unmapped
