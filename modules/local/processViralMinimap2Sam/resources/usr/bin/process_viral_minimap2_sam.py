@@ -69,9 +69,9 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict,
     out["minimap2_alignment_score"] = read.get_tag("AS")
     out["minimap2_query_sequence"] = read.query_sequence
     out["minimap2_assigned_host_virus"] = assigned_host_virus
-    out["query_sequence_clean"] = query_seq_clean
-    out["query_quality_clean"] = query_qual_clean
-    out["query_length_clean"] = query_len_clean
+    out["query_seq_clean"] = query_seq_clean
+    out["query_qual_clean"] = query_qual_clean
+    out["query_len_clean"] = query_len_clean
 
     return out
 
@@ -109,9 +109,9 @@ def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dic
             "minimap2_alignment_score\t"
             "minimap2_query_sequence\t"
             "minimap2_assigned_host_virus\t"
-            "query_sequence_clean\t"
-            "query_quality_clean\t"
-            "query_length_clean\n"
+            "query_seq_clean\t"
+            "query_qual_clean\t"
+            "query_len_clean\n"
         )
         out_fh.write(header)
         try:

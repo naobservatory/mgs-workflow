@@ -51,14 +51,11 @@ workflow EXTRACT_VIRAL_READS_ONT {
         virus_sam_ch = virus_minimap2_ch.sam
         virus_fastq_ch = virus_minimap2_ch.reads_mapped
 
-        // Pull out clean reads from mapped reads
+        // Pull out clean reads from mapped reads to feed into BLAST
         clean_matched_subset_ch = EXTRACT_SHARED_FASTQ_READS(virus_fastq_ch.join(filtered_ch.reads))
 
-        // Create common channel for HV SAM and clean HV reads
-        sam_and_reads_ch = virus_sam_ch.join(clean_matched_subset_ch.output)
-
         // Generate HV TSV
-        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_and_reads_ch, genome_meta_path, virus_db_path, host_taxon)
+        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(virus_sam_ch, filtered_ch.reads, genome_meta_path, virus_db_path, host_taxon)
         hv_tsv_labeled_ch = LABEL_HV_TSVS(hv_tsv_ch.output, "sample", "hv_tsv")
 
         // Concatenate HV TSVs
@@ -66,8 +63,8 @@ workflow EXTRACT_VIRAL_READS_ONT {
         merged_tsv_ch = CONCATENATE_HV_TSVS(hv_tsvs, "hv")
 
     emit:
-        hv_tsv = merged_tsv_ch.output
-        hv_fastq = clean_matched_subset_ch.output
+        hits_hv = merged_tsv_ch.output
+        hits_fastq = clean_matched_subset_ch.output
         test_minimap2_virus = virus_sam_ch
         test_fastq_filtered_human = human_minimap2_ch.reads_unmapped
         test_fastq_filtered_contam = contam_minimap2_ch.reads_unmapped

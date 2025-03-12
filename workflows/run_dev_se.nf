@@ -41,14 +41,24 @@ workflow RUN_DEV_SE {
     // Extract viral reads
     if ( params.ont ) {
         EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.host_taxon)
-        hv_tsv_ch = EXTRACT_VIRAL_READS_ONT.out.hv_tsv
-        hv_fastqs = EXTRACT_VIRAL_READS_ONT.out.hv_fastq.map { it[1] }.collect()
-        blast_ch = BLAST_VIRAL(hv_fastqs, blast_db_path, params.blast_db_prefix, params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed)
-        blast_subset = blast_ch.blast_subset
+        hv_tsv_ch = EXTRACT_VIRAL_READS_ONT.out.hits_hv
+        hv_fastqs = EXTRACT_VIRAL_READS_ONT.out.hits_fastq.map { it[1] }.collect()
     } else {
         EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", params.bracken_threshold)
         hv_tsv_ch = EXTRACT_VIRAL_READS_SHORT.out.hits_filtered
-        blast_subset = Channel.empty()
+        hv_fastqs = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
+    }
+
+    // BLAST viral reads
+    if ( params.blast_viral_fraction > 0 ) {
+        BLAST_VIRAL(hv_fastqs, blast_db_path, params.blast_db_prefix,
+            params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
+            params.random_seed)
+        blast_subset_ch = BLAST_VIRAL.out.blast_subset
+        blast_reads_ch = BLAST_VIRAL.out.subset_reads
+    } else {
+        blast_subset_ch = Channel.empty()
+        blast_reads_ch = Channel.empty()
     }
 
     // Subset reads to target number, and trim adapters
@@ -99,6 +109,7 @@ workflow RUN_DEV_SE {
         hv_tsv_ch >> "results"
         bracken_ch >> "results"
         kraken_ch >> "results"
-        blast_subset >> "results"
+        blast_subset_ch >> "results"
+        blast_reads_ch >> "results"
 
 }

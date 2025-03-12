@@ -1,4 +1,4 @@
-// Mask low complexity FASTQ read regions
+// Mask low complexity FASTQ read regions. Only works on gzipped FASTQ files.
 process MASK_FASTQ_READS {
     label "large"
     label "BBTools"
