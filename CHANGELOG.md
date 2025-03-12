@@ -1,5 +1,6 @@
 # v2.8.1.2-dev
 - Made Cutadapt mismatch rate parameter configurable
+- Fixed issues with BLAST bitscore filtering
 
 # v2.8.1.1
 - Modified Kraken2 DB handling in index workflow to avoid staging
