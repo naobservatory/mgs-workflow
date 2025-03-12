@@ -38,7 +38,7 @@ workflow SUBSET_TRIM {
         inter_ch = inter_ch_single.mix(inter_ch_paired)
         // Read cleaning
         if (ont) {
-            cleaned_ch = FILTLONG(inter_ch, 100, 90)
+            cleaned_ch = FILTLONG(inter_ch, 100, 15000, 90)
         } else {
             cleaned_ch = FASTP(inter_ch, adapter_path, single_end.map{!it})
         }

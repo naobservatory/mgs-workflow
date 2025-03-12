@@ -32,7 +32,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
 
 
         // Filter reads by length and quality scores
-        filtered_ch = FILTLONG(reads_ch, 50, 90)
+        filtered_ch = FILTLONG(reads_ch, 50, 15000, 90)
 
         // Mask non-complex read sections
         masked_ch = MASK_FASTQ_READS(filtered_ch, 25, 0.55)
