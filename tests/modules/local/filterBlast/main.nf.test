@@ -13,7 +13,6 @@ nextflow_process {
             process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
-                input[1] = false
                 """
             }
         }
@@ -80,7 +79,7 @@ nextflow_process {
         tag "interleaved"
         when {
             params {
-                max_rank = 5
+                max_rank = 10
                 min_frac = 0.9
             }
             process {
@@ -111,7 +110,7 @@ nextflow_process {
             for (r in tab_out.rows){
                 meets_rank = r["bitscore_rank_dense"] <= params.max_rank
                 meets_frac = r["bitscore_fraction"] >= params.min_frac
-                assert meets_rank || meets_frac
+                assert meets_rank && meets_frac
             }
             // TODO: Add object-level test of correct filtering
         }
