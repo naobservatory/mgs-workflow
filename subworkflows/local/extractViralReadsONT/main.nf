@@ -57,8 +57,6 @@ workflow EXTRACT_VIRAL_READS_ONT {
         // Create common channel for HV SAM and clean HV reads
         sam_and_reads_ch = virus_sam_ch.join(clean_matched_subset_ch.output)
 
-        // Make clean reads ready for BLAST
-        clean_reads_ch = clean_matched_subset_ch.output.map { it[1] }
         // Generate HV TSV
         hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_and_reads_ch, genome_meta_path, virus_db_path, host_taxon)
         hv_tsv_labeled_ch = LABEL_HV_TSVS(hv_tsv_ch.output, "sample", "hv_tsv")

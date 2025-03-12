@@ -106,7 +106,12 @@ process MINIMAP2_NON_STREAMED {
         # Filter SAM to aligned reads and save SAM
         samtools view -h -F 4 complete_sam.sam \
             !{ remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
+
+        # Remove temporary files
+        rm complete_sam.sam
+
         # Link input to output for testing
         ln -s ${reads} !{sample}_!{suffix}_minimap2_in.fastq.gz
+
         '''
 }
