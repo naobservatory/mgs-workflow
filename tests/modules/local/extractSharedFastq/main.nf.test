@@ -1,0 +1,57 @@
+nextflow_process {
+
+    name "Test process EXTRACT_SHARED_FASTQ_READS"
+    script "modules/local/extractSharedFastq/main.nf"
+    process "EXTRACT_SHARED_FASTQ_READS"
+    config "tests/configs/run_dev_ont.config"
+    tag "module"
+    tag "extract_shared_fastq_reads"
+
+    setup {
+        run("GZIP_FILE") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random-single-end.fastq"))
+                '''
+            }
+        }
+
+        run("SUBSET_FASTQ") {
+            script "modules/local/subsetFastq/main.nf"
+            process {
+                """
+                input[0] = GZIP_FILE.out
+                input[1] = 0.5
+                input[2] = params.random_seed
+                """
+            }
+        }
+    }
+
+    test("Should run without failures") {
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = SUBSET_FASTQ.out.output.join(GZIP_FILE.out)
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Smaller input FASTQ should have the same read_ids and sequences as the output
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def fastq_out = path(process.out.output[0][1]).fastq
+            def names_in = fastq_in.readNames
+            def names_out = fastq_out.readNames
+            def seqs_in = fastq_in.sequences
+            def seqs_out = fastq_out.sequences
+            assert names_in.toSet() == names_out.toSet()
+            assert seqs_in.toSet() == seqs_out.toSet()
+        }
+    }
+}

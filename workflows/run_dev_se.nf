@@ -47,7 +47,7 @@ workflow RUN_DEV_SE {
         blast_subset = blast_ch.blast_subset
     } else {
         EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", params.bracken_threshold)
-        hv_tsv_ch = EXTRACT_VIRAL_READS_SHORT.out.hv_tsv
+        hv_tsv_ch = EXTRACT_VIRAL_READS_SHORT.out.hits_filtered
         blast_subset = Channel.empty()
     }
 

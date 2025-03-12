@@ -1,0 +1,56 @@
+nextflow_process {
+
+    name "Test process MASK_FASTQ_READS"
+    script "modules/local/maskRead/main.nf"
+    process "MASK_FASTQ_READS"
+    tag "module"
+    tag "maskRead"
+
+    test("Should run correctly on FASTQ data") {
+        tag "expect_success"
+        tag "paired_end"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/test-random-low-complexity.fastq"))
+                    '''
+                }
+            }
+        }
+
+
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = GZIP_FILE.out
+                input[1] = 25
+                input[2] = 0.55
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Input and output should have the same number of records
+            def fastq_in = path(process.out.input[0][1]).fastq
+            def fastq_out = path(process.out.masked[0][1]).fastq
+            def read_ids_in = fastq_in.readNames
+            def read_ids_out = fastq_out.readNames
+            assert read_ids_in.toSet() == read_ids_out.toSet()
+
+            // The first five sequences should be masked
+            def masked_seqs = fastq_out.sequences
+            assert masked_seqs.take(5).every { it.contains("N") }
+
+            // The remaining sequences should not be masked
+            def non_masked_seqs = fastq_out.sequences.drop(5)
+            assert non_masked_seqs.every { !it.contains("N") }
+        }
+    }
+}
