@@ -13,7 +13,7 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random-single-end.fastq"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq"))
                 '''
             }
         }
