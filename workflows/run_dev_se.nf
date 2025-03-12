@@ -41,7 +41,7 @@ workflow RUN_DEV_SE {
 
     // Extract viral reads
     if ( params.ont ) {
-        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.host_taxon)
+        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir)
         hv_tsv_ch = EXTRACT_VIRAL_READS_ONT.out.hits_hv
         hv_fastqs = EXTRACT_VIRAL_READS_ONT.out.hits_fastq.map { it[1] }.collect()
     } else {

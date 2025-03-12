@@ -15,7 +15,6 @@ nextflow_process {
                 process {
                     '''
                     input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
-                    input[1] = true
                     '''
                 }
             }
@@ -49,7 +48,6 @@ nextflow_process {
                 input[1] = MASK_FASTQ_READS.out.input
                 input[2] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
                 input[3] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
-                input[4] = params.host_taxon
                 '''
             }
         }
@@ -68,7 +66,6 @@ nextflow_process {
             def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_out.columnCount > 0
             assert tab_out.rowCount > 0
-
         }
     }
 }

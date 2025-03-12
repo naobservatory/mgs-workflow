@@ -21,7 +21,6 @@ workflow EXTRACT_VIRAL_READS_ONT {
     take:
         reads_ch
         ref_dir
-        host_taxon
     main:
         // Get reference_paths
         minimap2_virus_index = "${ref_dir}/results/mm2-virus-index"
@@ -55,7 +54,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
         clean_matched_subset_ch = EXTRACT_SHARED_FASTQ_READS(virus_fastq_ch.join(filtered_ch.reads))
 
         // Generate HV TSV
-        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(virus_sam_ch, filtered_ch.reads, genome_meta_path, virus_db_path, host_taxon)
+        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(virus_sam_ch, filtered_ch.reads, genome_meta_path, virus_db_path)
         hv_tsv_labeled_ch = LABEL_HV_TSVS(hv_tsv_ch.output, "sample", "hv_tsv")
 
         // Concatenate HV TSVs
