@@ -31,7 +31,7 @@ def join_line(fields):
 
 # Alignment-level functions
 
-def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict, clean_query_record):
+def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record):
     """Parse a Minimap2 SAM alignment."""
     out = {}
     out["query_name"] = read.query_name
@@ -41,11 +41,6 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict,
     reference_taxid = extract_viral_taxid(reference_genome_name, genbank_metadata, viral_taxids)
     out["minimap2_taxid_primary"] = reference_taxid
 
-    # Marking host-virus status
-    try:
-        assigned_host_virus = virus_status_dict[reference_taxid]
-    except KeyError:
-        assigned_host_virus = "0"
 
     # Adding original read sequence and quality
     if read.is_reverse:
@@ -68,7 +63,6 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict,
     out["minimap2_edit_distance"] = read.get_tag("NM")
     out["minimap2_alignment_score"] = read.get_tag("AS")
     out["minimap2_query_sequence"] = read.query_sequence
-    out["minimap2_assigned_host_virus"] = assigned_host_virus
     out["query_seq_clean"] = query_seq_clean
     out["query_qual_clean"] = query_qual_clean
     out["query_len_clean"] = query_len_clean
@@ -76,10 +70,10 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, virus_status_dict,
     return out
 
 
-def extract_viral_taxid(genome_id, gid_taxid_dict, viral_taxids):
+def extract_viral_taxid(genome_id, genbank_metadata, viral_taxids):
     """Extract taxid from the appropriate field of Genbank metadata."""
     try:
-        taxid, species_taxid = gid_taxid_dict[genome_id]
+        taxid, species_taxid = genbank_metadata[genome_id]
         if taxid in viral_taxids:
             return taxid
         if species_taxid in viral_taxids:
@@ -91,7 +85,7 @@ def extract_viral_taxid(genome_id, gid_taxid_dict, viral_taxids):
 
 # File-level functions
 
-def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dict, clean_read_dict):
+def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_dict):
     """Process a Minimap2 SAM file."""
     with open_by_suffix(out_file, "w") as out_fh:
         header = (
@@ -108,7 +102,6 @@ def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dic
             "minimap2_edit_distance\t"
             "minimap2_alignment_score\t"
             "minimap2_query_sequence\t"
-            "minimap2_assigned_host_virus\t"
             "query_seq_clean\t"
             "query_qual_clean\t"
             "query_len_clean\n"
@@ -123,7 +116,7 @@ def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dic
                     read_id = read.query_name
 
                     clean_query_record = clean_read_dict[read_id]
-                    line = parse_sam_alignment(read, gid_taxid_dict, virus_taxa, virus_status_dict, clean_query_record)
+                    line = parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record)
                     if line is None:
                         continue
                     line_keys = line.keys()
@@ -171,11 +164,6 @@ def parse_arguments():
         help="Path to TSV containing viral taxonomic information."
     )
     parser.add_argument(
-        "-t", "--host_taxon",
-        required=True,
-        help="Host taxon to screen against (e.g. human, vertebrate)."
-    )
-    parser.add_argument(
         "-o", "--output",
         type=str,
         required=True,
@@ -192,7 +180,7 @@ def main():
         clean_reads = args.reads
         meta_path = args.metadata
         vdb_path = args.viral_db
-        host_taxon = args.host_taxon
+
         out_file = args.output
         # Start time tracking
         print_log("Starting process.")
@@ -202,26 +190,21 @@ def main():
         print_log("Genbank metadata file path: {}".format(meta_path))
         print_log("Viral DB file path: {}".format(vdb_path))
         print_log("Output path: {}".format(out_file))
-        host_column = "infection_status_" + host_taxon
 
         # Import metadata and viral DB
         print_log("Importing Genbank metadata file...")
         meta_db = pd.read_csv(meta_path, sep="\t", dtype=str)
-        gid_taxid_dict = {
+        genbank_metadata = {
             genome_id: [taxid, species_taxid]
             for genome_id, taxid, species_taxid in zip(meta_db["genome_id"], meta_db["taxid"], meta_db["species_taxid"])
         }
         print_log("Importing viral DB file...")
         virus_db = pd.read_csv(vdb_path, sep="\t", dtype=str)
-        virus_taxa = set(virus_db["taxid"].values)
+        viral_taxids = set(virus_db["taxid"].values)
         print_log(f"Virus DB imported. {len(virus_db)} total viral taxids.")
 
-        virus_status_dict = {
-            taxid: status
-            for taxid, status in zip(virus_db["taxid"], virus_db[host_column])
-        }
 
-        print_log(f"Imported {len(virus_taxa)} virus taxa.")
+        print_log(f"Imported {len(viral_taxids)} virus taxa.")
 
         # Import clean reads
         clean_read_dict = {}
@@ -231,7 +214,7 @@ def main():
 
         # Process SAM
         print_log("Processing SAM file...")
-        process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dict, clean_read_dict)
+        process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_dict)
         print_log("File processed.")
 
         # Finish time tracking
