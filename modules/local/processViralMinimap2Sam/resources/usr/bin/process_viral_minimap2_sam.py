@@ -121,6 +121,7 @@ def process_sam(sam_file, out_file, gid_taxid_dict, virus_taxa, virus_status_dic
                     if read.is_unmapped or read.is_secondary or read.is_supplementary:
                         continue
                     read_id = read.query_name
+
                     clean_query_record = clean_read_dict[read_id]
                     line = parse_sam_alignment(read, gid_taxid_dict, virus_taxa, virus_status_dict, clean_query_record)
                     if line is None:
@@ -223,7 +224,7 @@ def main():
         print_log(f"Imported {len(virus_taxa)} virus taxa.")
 
         # Import clean reads
-        clean_read_dict = defaultdict(str)
+        clean_read_dict = {}
         for record in SeqIO.parse(clean_reads, "fastq"):
             read_id = record.id
             clean_read_dict[read_id] = record

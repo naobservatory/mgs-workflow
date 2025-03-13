@@ -43,7 +43,7 @@ workflow RUN_DEV_SE {
     if ( params.ont ) {
         EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.host_taxon)
         hv_tsv_ch = EXTRACT_VIRAL_READS_ONT.out.hits_hv
-        hv_fastqs = EXTRACT_VIRAL_READS_ONT.out.hits_fastq.map { it[1] }.collect()
+        hv_fastqs = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
     } else {
         EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "1", "24", "viral", params.bracken_threshold)
         hv_tsv_ch = EXTRACT_VIRAL_READS_SHORT.out.hits_filtered
