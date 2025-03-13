@@ -41,6 +41,11 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record
     reference_taxid = extract_viral_taxid(reference_genome_name, genbank_metadata, viral_taxids)
     out["minimap2_taxid_primary"] = reference_taxid
 
+    # Marking host-virus status
+    try:
+        assigned_host_virus = virus_status_dict[reference_taxid]
+    except KeyError:
+        assigned_host_virus = "0"
 
     # Adding original read sequence and quality
     if read.is_reverse:
