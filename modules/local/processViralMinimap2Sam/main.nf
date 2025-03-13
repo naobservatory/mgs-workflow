@@ -3,8 +3,7 @@ process PROCESS_VIRAL_MINIMAP2_SAM {
     label "pysam_biopython"
     label "single"
     input:
-        tuple val(sample), path(hv_sam)
-        tuple val(sample), path(clean_reads)
+        tuple val(sample), path(hv_sam), path(clean_reads)
         path genbank_metadata_path
         path viral_db_path
 

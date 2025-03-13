@@ -47,21 +47,23 @@ workflow EXTRACT_VIRAL_READS_ONT {
 
         // Identify virus reads
         virus_minimap2_ch = MINIMAP2_VIRUS(no_human_ch, minimap2_virus_index, "hv", false)
-
         virus_sam_ch = virus_minimap2_ch.sam
-        virus_fastq_ch = virus_minimap2_ch.reads_mapped
 
-        // Pull out clean reads from mapped reads to feed into BLAST
-        clean_matched_subset_ch = EXTRACT_SHARED_FASTQ_READS(virus_fastq_ch.join(filtered_ch.reads))
-        fastq_ch = CONCATENATE_FILES(clean_matched_subset_ch.output.map{ it[1] }.collect(), "clean_virus_reads", "fastq.gz")
+        // Group cleaned reads and sam files by sample
+        sam_fastq_ch = virus_sam_ch.join(filtered_ch)
 
         // Generate HV TSV
-        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(virus_sam_ch, filtered_ch.reads, genome_meta_path, virus_db_path)
+        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_fastq_ch, genome_meta_path, virus_db_path)
         hv_tsv_labeled_ch = LABEL_HV_TSVS(hv_tsv_ch.output, "sample", "hv_tsv")
 
         // Concatenate HV TSVs
         hv_tsvs = hv_tsv_labeled_ch.output.map { it[1] }.collect()
         merged_tsv_ch = CONCATENATE_HV_TSVS(hv_tsvs, "hv")
+
+        // Pull out clean reads from mapped reads to feed into BLAST
+        virus_fastq_ch = virus_minimap2_ch.reads_mapped
+        clean_virus_fastq_ch = EXTRACT_SHARED_FASTQ_READS(virus_fastq_ch.join(filtered_ch.reads))
+        fastq_ch = CONCATENATE_FILES(clean_virus_fastq_ch.output.map{ it[1] }.collect(), "clean_virus_reads", "fastq.gz")
 
     emit:
         hits_hv = merged_tsv_ch.output
