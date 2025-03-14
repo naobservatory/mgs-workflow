@@ -2,6 +2,7 @@
 - Made Cutadapt mismatch rate parameter configurable
 - Fixed issues with BLAST bitscore filtering
 - Increased memory allocation for EXTRACT_VIRAL_HITS_TO_FASTQ
+- Implemented version compatibility checking between pipeline and index
 - Added ONT virus identification support:
  - Created new EXTRACT_VIRAL_READS_ONT subworkflow for processing ONT reads
  - Renamed original EXTRACT_VIRAL_READS workflow to EXTRACT_VIRAL_READS_SHORT to differentiate from ONT processing
