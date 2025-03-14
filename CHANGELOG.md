@@ -1,6 +1,7 @@
 # v2.8.1.2-dev
 - Made Cutadapt mismatch rate parameter configurable
 - Fixed issues with BLAST bitscore filtering
+- Increased memory allocation for EXTRACT_VIRAL_HITS_TO_FASTQ
 
 # v2.8.1.1
 - Modified Kraken2 DB handling in index workflow to avoid staging
