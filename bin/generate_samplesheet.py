@@ -28,18 +28,18 @@ def main():
                         help="Optional CSV with columns 'sample,group' to merge grouping info")
     parser.add_argument("--group_across_illumina_lanes", action="store_true",
                         help="Group samples across Illumina lanes by removing '_Lnnn' from sample name")
-    parser.add_argument("--ont_barcodes", default="",
+    parser.add_argument("--barcode_file", default="",
                    help=".txt file containing list of expected ONT barcodes (one per line)")
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
     # Validate arguments
     if not args.single_end:
         # Paired-end requires forward_suffix and reverse_suffix
         if not args.forward_suffix or not args.reverse_suffix:
             parser.error("--forward_suffix and --reverse_suffix are required for paired-end data.")
-        if args.ont_barcodes:
-            parser.error("--ont_barcodes are not applicable to paired-end data.")
+        if args.barcode_file:
+            parser.error("--barcode_file is not applicable to paired-end data.")
 
     if args.single_end:
         if args.forward_suffix or args.reverse_suffix:
@@ -59,7 +59,7 @@ args = parser.parse_args()
     print(f"  output_path: {args.output_path}")
     print(f"  group_file: {args.group_file}")
     print(f"  group_across_illumina_lanes: {args.group_across_illumina_lanes}")
-    print(f"  ont_barcodes: {args.ont_barcodes}")
+    print(f"  barcode_file: {args.barcode_file}")
     if not args.single_end:
         print(f"  forward_suffix: {args.forward_suffix}")
         print(f"  reverse_suffix: {args.reverse_suffix}")
@@ -95,8 +95,8 @@ args = parser.parse_args()
             groups_dict[sample_name] = re.sub(r"_L\d{3}$", "", sample_name)
 
     # 4. Incorporate ONT barcodes
-    if args.ont_barcodes:
-        barcode_file_path = args.ont_barcodes
+    if args.barcode_file:
+        barcode_file_path = args.barcode_file
         valid_barcodes = read_barcode_file(barcode_file_path)
 
         samples_to_drop = []
