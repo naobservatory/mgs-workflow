@@ -1,3 +1,19 @@
+# v2.8.2.0-dev
+Added ONT virus identification support:
+ - Created new EXTRACT_VIRAL_READS_ONT subworkflow for processing ONT reads
+ - Renamed original EXTRACT_VIRAL_READS workflow to EXTRACT_VIRAL_READS_SHORT to differentiate from ONT processing
+ - Added non-streaming version of MINIMAP2 alignment process
+ - Added new modules for ONT-specific processing:
+   - MASK_FASTQ_READS for masking low complexity regions in reads
+   - EXTRACT_SHARED_FASTQ_READS for extracting reads shared between FASTQ files
+   - PROCESS_VIRAL_MINIMAP2_SAM for adding reference taxids and clean read information
+   - FILTLONG for filtering reads by length and quality
+ - Enhanced FILTLONG to accept customizable parameters (min_length, max_length, min_mean_q)
+ - Updated resource requirements and container configurations for ONT processing
+ - Infrastructure improvements:
+   - Added new container dependencies: minimap2_samtools and pysam_biopython
+ - Added tests for all new processes and subworkflows
+
 # v2.8.1.2-dev
 - Made Cutadapt mismatch rate parameter configurable
 - Fixed issues with BLAST bitscore filtering
