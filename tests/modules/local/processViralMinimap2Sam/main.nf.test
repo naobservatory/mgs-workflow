@@ -44,8 +44,7 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = MINIMAP2.out.sam
-                input[1] = MASK_FASTQ_READS.out.input
+                input[0] = MINIMAP2.out.sam.join(MASK_FASTQ_READS.out.input)
                 input[2] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
                 input[3] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
                 '''
