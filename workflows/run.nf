@@ -80,11 +80,11 @@ workflow RUN {
     index_version_path_new = "${params.base_dir}/work/pipeline-version-index.txt"
     index_min_pipeline_version_path_new = "${params.base_dir}/work/index-min-pipeline-version.txt"
     index_params_ch = Channel.fromPath(index_params_path)
-        | map { file -> file.copyTo(index_params_path_new)
+        | map { file -> file.copyTo(index_params_path_new) }
     index_pipeline_version_ch = Channel.fromPath(index_version_path)
-        | map { file -> file.copyTo(index_version_path_new)
+        | map { file -> file.copyTo(index_version_path_new) }
     index_compatibility_ch = Channel.fromPath(index_min_pipeline_version_path)
-        | map { file -> file.copyTo(index_min_pipeline_version_path_new)
+        | map { file -> file.copyTo(index_min_pipeline_version_path_new) }
 
     // Prepare other publishing variables
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
