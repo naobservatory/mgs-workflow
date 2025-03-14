@@ -47,7 +47,7 @@ workflow INDEX {
     params_ch = Channel.of(params_str).collectFile(name: "index-params.json")
     time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
-    compatibility_ch = Channel.fromPath("${projectDir}/pipeline-index-compatibility.txt")
+    compatibility_ch = Channel.fromPath("${projectDir}/index-min-pipeline-version.txt")
     publish:
         // Saved inputs
         params_ch >> "input"
