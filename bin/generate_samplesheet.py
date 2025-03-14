@@ -28,14 +28,18 @@ def main():
                         help="Optional CSV with columns 'sample,group' to merge grouping info")
     parser.add_argument("--group_across_illumina_lanes", action="store_true",
                         help="Group samples across Illumina lanes by removing '_Lnnn' from sample name")
-    
-    args = parser.parse_args()
+    parser.add_argument("--ont_barcodes", default="",
+                   help=".txt file containing list of expected ONT barcodes (one per line)")
+
+args = parser.parse_args()
 
     # Validate arguments
     if not args.single_end:
         # Paired-end requires forward_suffix and reverse_suffix
         if not args.forward_suffix or not args.reverse_suffix:
             parser.error("--forward_suffix and --reverse_suffix are required for paired-end data.")
+        if args.ont_barcodes:
+            parser.error("--ont_barcodes are not applicable to paired-end data.")
 
     if args.single_end:
         if args.forward_suffix or args.reverse_suffix:
@@ -55,6 +59,7 @@ def main():
     print(f"  output_path: {args.output_path}")
     print(f"  group_file: {args.group_file}")
     print(f"  group_across_illumina_lanes: {args.group_across_illumina_lanes}")
+    print(f"  ont_barcodes: {args.ont_barcodes}")
     if not args.single_end:
         print(f"  forward_suffix: {args.forward_suffix}")
         print(f"  reverse_suffix: {args.reverse_suffix}")
@@ -88,6 +93,24 @@ def main():
         # We'll generate group info by removing _Lnnn from sample name
         for sample_name in samples_dict:
             groups_dict[sample_name] = re.sub(r"_L\d{3}$", "", sample_name)
+
+    # 4. Incorporate ONT barcodes
+    if args.ont_barcodes:
+        barcode_file_path = args.ont_barcodes
+        valid_barcodes = read_barcode_file(barcode_file_path)
+
+        samples_to_drop = []
+        for sample_name in samples_dict:
+            sample_barcode = sample_name.split("-div")[0].split("-")[-1]
+            if sample_barcode not in valid_barcodes:
+                samples_to_drop.append(sample_name)
+                continue
+            assert len(sample_barcode) == 2 and sample_barcode.isdigit(), f"Faulty barcode selection, '{sample_barcode}' must be two digits (e.g. '01', '10')"
+
+        for sample_name in samples_to_drop:
+            del samples_dict[sample_name]
+
+        assert len(samples_dict) > 0, "No valid samples found after filtering by barcode."
 
     # 4. Write to CSV
     write_samplesheet(
@@ -133,7 +156,7 @@ def build_samples_dict(listing, dir_path, single_end, forward_suffix, reverse_su
     # Pre-compile regex for performance if suffix is used
     # We expect the files to end with ".fastq.gz" (the script assumes that)
     fastq_pattern = re.compile(r"\.fastq\.gz$")
-    
+
     if not single_end:
         # Paired-end
         fwd_regex = re.compile(forward_suffix + r"\.fastq\.gz$")
@@ -191,6 +214,10 @@ def build_samples_dict(listing, dir_path, single_end, forward_suffix, reverse_su
         return samples_dict
 
 
+def read_barcode_file(barcode_file_path):
+    with open(barcode_file_path, "r") as f:
+        return {line.strip() for line in f if line.strip()}
+
 def read_group_file(group_file_path):
     """
     Reads a CSV group file that must have exactly two columns with header: sample,group
@@ -203,12 +230,11 @@ def read_group_file(group_file_path):
         if not header:
             print("Group file is empty or missing a header.", file=sys.stderr)
             sys.exit(1)
-        
+
         # Enforce exact header format
         if header != ["sample", "group"]:
             print("Group file header must be exactly 'sample,group'.", file=sys.stderr)
             sys.exit(1)
-            
         for row in reader:
             if len(row) != 2:
                 print(f"Each row must have exactly 2 columns. Found {len(row)} columns in row: {','.join(row)}", file=sys.stderr)
