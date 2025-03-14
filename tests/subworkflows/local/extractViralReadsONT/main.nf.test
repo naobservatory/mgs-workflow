@@ -1,0 +1,55 @@
+nextflow_workflow {
+
+    name "Test subworkflow EXTRACT_VIRAL_READS_ONT"
+    script "subworkflows/local/extractViralReadsONT/main.nf"
+    workflow "EXTRACT_VIRAL_READS_ONT"
+    config "tests/configs/run_dev_ont.config"
+    tag "subworkflow"
+    tag "extract_viral_reads_ont"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                """
+            }
+        }
+    }
+
+    test("Should run without failures") {
+        tag "expect_success"
+        tag "ont"
+        when {
+            workflow {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = params.ref_dir
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+
+            // Viral minimap2 output should have the same read IDS as the final HV TSV
+            def samlines = sam(workflow.out.test_minimap2_virus[0][1]).getSamLines()
+            def sam_ids = samlines
+                .collect { line -> line.split('\t')[0] }  // Get read IDs
+                .toSet()
+            def hits_hv = path(workflow.out.hits_hv[0]).csv(sep: "\t", decompress: true)
+            def hits_hv_read_ids = hits_hv.columns["query_name"].toSet()
+            assert sam_ids.size() > 0
+            assert sam_ids == hits_hv_read_ids
+
+            // Check the the human and contam filtering work and produce FASTQ files that are subsets of the prior FASTQ file.
+            def fastq_filtered_human = path(workflow.out.test_fastq_filtered_human[0][1]).fastq
+            def fastq_filtered_contam = path(workflow.out.test_fastq_filtered_contam[0][1]).fastq
+            def fastq_viral_hits = path(workflow.out.hits_fastq[0]).fastq
+            def human_filter_num = fastq_filtered_human.readNames.size()
+            def contam_filter_num = fastq_filtered_contam.readNames.size()
+            def virus_filter_num = fastq_viral_hits.readNames.size()
+        }
+    }
+}
