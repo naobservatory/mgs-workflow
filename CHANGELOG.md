@@ -1,3 +1,6 @@
+# v2.8.2.1-dev
+ - Added script test_component_dependencies.pythat identifies and runs tests for modules and subworkflows that depend on a specified process or subworkflow. You can also use it to run all process/subworkflow tests with a single command.
+
 # v2.8.2.0-dev
 Added ONT virus identification support:
  - Created new EXTRACT_VIRAL_READS_ONT subworkflow for processing ONT reads
