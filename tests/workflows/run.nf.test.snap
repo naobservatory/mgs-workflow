@@ -3,7 +3,7 @@
         "content": [
             "bracken_reports_merged.tsv.gz:md5,6c504fa837ef97ef2096f2569d8c6902",
             "kraken_reports_merged.tsv.gz:md5,84f070b42b948d36ae38eaee4a61982e",
-            "merged_blast_filtered.tsv.gz:md5,2b28491c54ab4a2558ce8dffb1d09676",
+            "merged_blast_filtered.tsv.gz:md5,ab378b2665e31cd61fbde81d38689940",
             "merged_blast_input_subset.fasta.gz:md5,f98c09b1e4f7dc891f53af81c14476d3",
             "read_counts.tsv.gz:md5,8dc2e3ad82f42202262a5e67a9d91e1b",
             "subset_qc_adapter_stats.tsv.gz:md5,43a90fc81f11a57e191f10176d3b7caf",
@@ -15,8 +15,8 @@
         ],
         "meta": {
             "nf-test": "0.9.2",
-            "nextflow": "24.10.4"
+            "nextflow": "24.10.5"
         },
-        "timestamp": "2025-03-12T14:18:58.113442725"
+        "timestamp": "2025-03-14T15:18:33.053249751"
     }
 }
