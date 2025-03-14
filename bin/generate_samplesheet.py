@@ -156,7 +156,6 @@ def build_samples_dict(listing, dir_path, single_end, forward_suffix, reverse_su
     # Pre-compile regex for performance if suffix is used
     # We expect the files to end with ".fastq.gz" (the script assumes that)
     fastq_pattern = re.compile(r"\.fastq\.gz$")
-
     if not single_end:
         # Paired-end
         fwd_regex = re.compile(forward_suffix + r"\.fastq\.gz$")
