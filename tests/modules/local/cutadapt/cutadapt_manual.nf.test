@@ -1,0 +1,58 @@
+nextflow_process {
+
+    name "Test process CUTADAPT_MANUAL_ADAPTER"
+    script "modules/local/cutadapt/main.nf"
+    process "CUTADAPT_MANUAL_ADAPTER"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "cutadapt"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                """
+            }
+        }
+        run("FILTLONG") {
+            script "modules/local/filtlong/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = 100
+                input[2] = 1000
+                input[3] = 20
+                """
+            }
+        }
+    }
+
+    test("Should run without failures and conserve reads") {
+        tag "interleaved"
+        tag "expect_success"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = FILTLONG.out.reads
+                input[1] = "A{50}"
+                '''
+            }
+        }
+        then {
+            // Should run without failures and conserve >97% of reads
+            assert process.success
+            // Should not lose more than 3% of reads between input and output (some ONT reads are short and entirely junk, so fine to drop some)
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def total_output_lines = countGzipLines(process.out.reads[0][1])
+            def total_input_lines  = countGzipLines(process.out.input[0][1])
+            assert total_output_lines >= total_input_lines * 0.97
+            // Output should have a number of lines divisible by two
+            // (for a single-end FASTQ file)
+            assert total_output_lines % 2 == 0
+        }
+    }
+}
