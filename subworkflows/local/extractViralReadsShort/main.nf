@@ -56,7 +56,7 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
         adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
         // 3. Run Bowtie2 against a viral database and process output
-        par_virus = "--local --very-sensitive-local --score-min G,1,1"
+        par_virus = "--local --very-sensitive-local --score-min G,0.1,19"
         bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path,
             par_virus, "virus", true, false)
         // 4. Filter contaminants
