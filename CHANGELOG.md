@@ -10,10 +10,11 @@
    - MASK_FASTQ_READS for masking low complexity regions in reads
    - EXTRACT_SHARED_FASTQ_READS for extracting reads shared between FASTQ files
    - PROCESS_VIRAL_MINIMAP2_SAM for adding reference taxids and clean read information
-   - FILTLONG for filtering reads by length and quality
-- Enhanced FILTLONG to accept customizable parameters (min_length, max_length, min_mean_q)
-- Added new containers: minimap2_samtools and pysam_biopython
-- Added tests for all new ONT-related processes and subworkflows
+ - Edited FILTLONG to accept customizable parameters (min_length, max_length, min_mean_q)
+ - Updated resource requirements and container configurations for ONT processing
+ - Added new container dependencies: minimap2_samtools and pysam_biopython
+ - Added tests for all new processes and subworkflows. Added new low-complexity fastq test file.
+ - Updated run_dev_ont.config file.
 
 # v2.8.1.1
 - Modified Kraken2 DB handling in index workflow to avoid staging
