@@ -3,6 +3,18 @@
 - Fixed issues with BLAST bitscore filtering
 - Increased memory allocation for EXTRACT_VIRAL_HITS_TO_FASTQ
 - Implemented version compatibility checking between pipeline and index
+- Added ONT virus identification support:
+ - Created new EXTRACT_VIRAL_READS_ONT subworkflow for processing ONT reads
+ - Renamed original EXTRACT_VIRAL_READS workflow to EXTRACT_VIRAL_READS_SHORT to differentiate from ONT processing
+ - Added non-streaming version of MINIMAP2 alignment process
+ - Added new modules for ONT-specific processing:
+   - MASK_FASTQ_READS for masking low complexity regions in reads
+   - EXTRACT_SHARED_FASTQ_READS for extracting reads shared between FASTQ files
+   - PROCESS_VIRAL_MINIMAP2_SAM for adding reference taxids and clean read information
+ - Edited FILTLONG to accept customizable parameters (min_length, max_length, min_mean_q)
+ - Added new container dependencies: minimap2_samtools and pysam_biopython
+ - Added tests for all new processes and subworkflows. Added new low-complexity fastq test file.
+ - Updated run_dev_ont.config file.
 
 # v2.8.1.1
 - Modified Kraken2 DB handling in index workflow to avoid staging
