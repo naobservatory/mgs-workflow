@@ -108,6 +108,7 @@ workflow RUN_DEV_SE {
         RUN_QC.out.qc_lengths >> "results"
         // Final results
         hv_tsv_ch >> "results"
+        hv_fastqs >> "intermediates"
         bracken_ch >> "results"
         kraken_ch >> "results"
         blast_subset_ch >> "results"

@@ -1,4 +1,4 @@
-# v2.8.2.0-dev
+# v2.8.1.3-dev
 Added ONT virus identification support:
  - Created new EXTRACT_VIRAL_READS_ONT subworkflow for processing ONT reads
  - Renamed original EXTRACT_VIRAL_READS workflow to EXTRACT_VIRAL_READS_SHORT to differentiate from ONT processing
