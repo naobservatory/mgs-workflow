@@ -1,4 +1,4 @@
-// Process SAM file(add reference taxid, add clean read information, turn into TSV)
+// Process SAM file (add reference taxid, add clean read information, turn into TSV)
 process PROCESS_VIRAL_MINIMAP2_SAM {
     label "pysam_biopython"
     label "single"
