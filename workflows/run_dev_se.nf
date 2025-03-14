@@ -10,11 +10,14 @@ import java.time.LocalDateTime
 ***************************/
 
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
-
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE } from "../subworkflows/local/profile"
+include { EXTRACT_VIRAL_READS_ONT } from "../subworkflows/local/extractViralReadsONT"
+include { EXTRACT_VIRAL_READS_SHORT } from "../subworkflows/local/extractViralReadsShort"
+include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
+
 nextflow.preview.output = true
 
 /*****************
@@ -23,6 +26,9 @@ nextflow.preview.output = true
 
 // Complete primary workflow
 workflow RUN_DEV_SE {
+    // Setting reference paths
+    kraken_db_path = "${params.ref_dir}/results/kraken_db"
+    blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet
     LOAD_SAMPLESHEET(params.sample_sheet)
@@ -30,23 +36,50 @@ workflow RUN_DEV_SE {
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
     single_end = LOAD_SAMPLESHEET.out.single_end
 
-    // Load kraken db path
-    kraken_db_path = "${params.ref_dir}/results/kraken_db"
-
     // Count reads in files
     COUNT_TOTAL_READS(samplesheet_ch, single_end)
+
+    // Extract viral reads
+    if ( params.ont ) {
+        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir)
+        hv_tsv_ch = EXTRACT_VIRAL_READS_ONT.out.hits_hv
+        hv_fastqs = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
+    } else {
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
+        hv_tsv_ch = EXTRACT_VIRAL_READS_SHORT.out.hits_filtered
+        hv_fastqs = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
+    }
+
+    // BLAST viral reads
+    if ( params.blast_viral_fraction > 0 ) {
+        BLAST_VIRAL(hv_fastqs, blast_db_path, params.blast_db_prefix,
+            params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
+            params.random_seed)
+        blast_subset_ch = BLAST_VIRAL.out.blast_subset
+        blast_reads_ch = BLAST_VIRAL.out.subset_reads
+    } else {
+        blast_subset_ch = Channel.empty()
+        blast_reads_ch = Channel.empty()
+    }
 
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
         params.adapters, single_end,
-        params.random_seed, params.ont)
+        params.ont, params.random_seed)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
-    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-        params.bracken_threshold, single_end)
+    if ( params.ont ) {
+        bracken_ch = Channel.empty()
+        kraken_ch = Channel.empty()
+    } else {
+        PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
+            params.bracken_threshold, params.single_end)
+        bracken_ch = PROFILE.out.bracken
+        kraken_ch = PROFILE.out.kraken
+    }
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
@@ -74,6 +107,11 @@ workflow RUN_DEV_SE {
         RUN_QC.out.qc_qseqs >> "results"
         RUN_QC.out.qc_lengths >> "results"
         // Final results
-        PROFILE.out.bracken >> "results"
-        PROFILE.out.kraken >> "results"
+        hv_tsv_ch >> "results"
+        hv_fastqs >> "intermediates"
+        bracken_ch >> "results"
+        kraken_ch >> "results"
+        blast_subset_ch >> "results"
+        blast_reads_ch >> "results"
+
 }
