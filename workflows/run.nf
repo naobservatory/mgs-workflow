@@ -74,8 +74,8 @@ workflow RUN {
         | map { file -> file.copyTo("${params.base_dir}/work/params-index.json") }
     index_pipeline_version_ch = Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt")
         | map { file -> file.copyTo("${params.base_dir}/work/pipeline-version-index.txt") }
-    index_compatibility_ch = Channel.fromPath("${params.ref_dir}/logging/index-pipeline-version-min.txt")
-        | map { file -> file.copyTo("${params.base_dir}/work/index-pipeline-version-min.txt") }
+    index_compatibility_ch = Channel.fromPath("${params.ref_dir}/logging/index-min-pipeline-version.txt")
+        | map { file -> file.copyTo("${params.base_dir}/work/index-min-pipeline-version.txt") }
     publish:
         // Saved inputs
         index_params_ch >> "input"
