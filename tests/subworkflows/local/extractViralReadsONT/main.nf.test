@@ -26,7 +26,6 @@ nextflow_workflow {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = params.ref_dir
-                input[2] = params.host_taxon
                 '''
             }
         }
@@ -39,16 +38,15 @@ nextflow_workflow {
             def sam_ids = samlines
                 .collect { line -> line.split('\t')[0] }  // Get read IDs
                 .toSet()
-            def hv_tsv = path(workflow.out.hv_tsv[0]).csv(sep: "\t", decompress: true)
-            def hv_tsv_read_ids = hv_tsv.columns["query_name"].toSet()
+            def hits_hv = path(workflow.out.hits_hv[0]).csv(sep: "\t", decompress: true)
+            def hits_hv_read_ids = hits_hv.columns["query_name"].toSet()
             assert sam_ids.size() > 0
-            assert sam_ids == hv_tsv_read_ids
+            assert sam_ids == hits_hv_read_ids
 
             // Check the the human and contam filtering work and produce FASTQ files that are subsets of the prior FASTQ file.
             def fastq_filtered_human = path(workflow.out.test_fastq_filtered_human[0][1]).fastq
             def fastq_filtered_contam = path(workflow.out.test_fastq_filtered_contam[0][1]).fastq
-            def fastq_viral_hits = path(workflow.out.hits_fastq[0][1]).fastq
-
+            def fastq_viral_hits = path(workflow.out.hits_fastq[0]).fastq
             def human_filter_num = fastq_filtered_human.readNames.size()
             def contam_filter_num = fastq_filtered_contam.readNames.size()
             def virus_filter_num = fastq_viral_hits.readNames.size()
