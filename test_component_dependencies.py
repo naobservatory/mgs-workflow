@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument(
         "-c",
         "--component",
+        required=True,
         help="Name of component (process or subworkflow) to test",
     )
 
@@ -84,7 +85,6 @@ def main():
     print("=" * 80)
     indirect_tests = set()
     for dependent_component in dependent_components:
-        print(dependent_component)
         found_tests = find_files("tests/", dependent_component)
         indirect_tests.update(found_tests)
 
