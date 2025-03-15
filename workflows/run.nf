@@ -109,6 +109,7 @@ workflow RUN {
         EXTRACT_VIRAL_READS.out.bbduk_match >> "reads_raw_viral"
         EXTRACT_VIRAL_READS.out.hits_all    >> "intermediates"
         EXTRACT_VIRAL_READS.out.hits_fastq  >> "intermediates"
+        EXTRACT_VIRAL_READS.out.bbduk_trimmed >> "reads_trimmed_viral"
         // QC
         COUNT_TOTAL_READS.out.read_counts >> "results"
         RUN_QC.out.qc_basic >> "results"

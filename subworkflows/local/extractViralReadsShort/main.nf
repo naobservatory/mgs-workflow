@@ -56,10 +56,15 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
         adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
         // 3. Run Bowtie2 against a viral database and process output
-        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, "--score-min G,1,1", "virus", true, false)
+        par_virus = "--local --very-sensitive-local --score-min G,0.1,19"
+        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path,
+            par_virus, "virus", true, false)
         // 4. Filter contaminants
-        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, "", "human", false, false)
-        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, "", "other", false, false)
+        par_contaminants = "--local --very-sensitive-local"
+        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path,
+            par_contaminants, "human", false, false)
+        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path,
+            par_contaminants, "other", false, false)
         // 5. Run Kraken on filtered viral candidates (via taxonomy subworkflow)
         tax_ch = TAXONOMY(other_bt2_ch.reads_unmapped, kraken_db_ch, "F", bracken_threshold, channel.value(false))
         // 6. Process and combine Kraken and Bowtie2 output
@@ -86,6 +91,7 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(filter_ch.output, fastq_unfiltered_concat.output)
     emit:
         bbduk_match = bbduk_ch.fail
+        bbduk_trimmed = adapt_ch.reads
         hits_all = concat_ch.output
         hits_filtered = filter_ch.output
         hits_fastq = fastq_ch.fastq

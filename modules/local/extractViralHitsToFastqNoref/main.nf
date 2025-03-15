@@ -2,7 +2,7 @@ process EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF {
     label "python"
     label "single"
     input:
-        tuple path(tsv) // Viral hits TSV
+        path(tsv) // Viral hits TSV
         val(drop_unpaired) // Boolean
     output:
         path("hits_out.fastq.gz"), emit: output

@@ -1,3 +1,6 @@
+# v2.8.1.3-dev
+- Increased runtime Bowtie2 score threshold for viral read identification
+
 # v2.8.1.2
 - Made Cutadapt mismatch rate parameter configurable
 - Fixed issues with BLAST bitscore filtering
