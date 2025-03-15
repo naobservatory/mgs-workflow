@@ -1,7 +1,7 @@
 // Given a gzipped TSV of viral hits, extract the seq_ids and use them to subseq an interleaved FASTQ file
 process EXTRACT_VIRAL_HITS_TO_FASTQ {
     label "seqtk"
-    label "single"
+    label "single_cpu_16GB_memory"
     input:
         path(hits_tsv)
         path(fastq)

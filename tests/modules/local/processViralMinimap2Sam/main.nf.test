@@ -1,0 +1,70 @@
+nextflow_process {
+
+    name "Test process PROCESS_VIRAL_MINIMAP2_SAM"
+    script "modules/local/processViralMinimap2Sam/main.nf"
+    process "PROCESS_VIRAL_MINIMAP2_SAM"
+    tag "module"
+    tag "process_viral_minimap2_sam"
+
+    test("On single-end data, should run without errors") {
+        tag "expect_success"
+        config "tests/configs/run_dev_ont.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                    '''
+                }
+            }
+            run("MASK_FASTQ_READS") {
+                script "modules/local/maskRead/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = 25
+                    input[2] = 0.55
+                    '''
+                }
+            }
+            run("MINIMAP2") {
+                script "modules/local/minimap2/main.nf"
+                process {
+                    '''
+                    input[0] = MASK_FASTQ_READS.out.masked
+                    input[1] = "${params.ref_dir}/results/mm2-virus-index"
+                    input[2] = "hv"
+                    input[3] = false
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = MINIMAP2.out.sam.join(MASK_FASTQ_READS.out.input)
+                input[1] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
+                input[2] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output read IDs in TSV should match input read IDs in SAM
+            def samlines = sam(process.out.input[0][1]).getSamLines()
+            def sam_read_ids = samlines
+                .collect { line -> line.split('\t')[0] }  // Get read IDs
+                .toSet()
+            def tsv_read_ids = path(process.out.output[0][1]).csv(sep: "\t", decompress: true).columns["query_name"].toSet()
+            assert sam_read_ids == tsv_read_ids
+
+            // Output should be a valid TSV that can be parsed and read
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount > 0
+            assert tab_out.rowCount > 0
+        }
+    }
+}
