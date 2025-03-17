@@ -1,6 +1,6 @@
 # v2.8.1.3-dev
 - Increased runtime Bowtie2 score threshold for viral read identification
-
+- Removed generate-samplesheet.py, as functionality has moved to internal mgs-metadata repo.
 # v2.8.1.2
 - Made Cutadapt mismatch rate parameter configurable
 - Fixed issues with BLAST bitscore filtering
