@@ -7,12 +7,12 @@ def filter_tab = { tab_in, threshold -> csv(tab_in.table.where(
 
 nextflow_workflow {
 
-    name "Test subworkflow EXTRACT_VIRAL_READS"
-    script "subworkflows/local/extractViralReads/main.nf"
-    workflow "EXTRACT_VIRAL_READS"
+    name "Test subworkflow EXTRACT_VIRAL_READS_SHORT"
+    script "subworkflows/local/extractViralReadsShort/main.nf"
+    workflow "EXTRACT_VIRAL_READS_SHORT"
     config "tests/configs/run.config"
     tag "subworkflow"
-    tag "extract_viral_reads"
+    tag "extract_viral_reads_short"
 
     setup {
         run("LOAD_SAMPLESHEET") {
@@ -40,10 +40,11 @@ nextflow_workflow {
                 input[3] = params.bt2_score_threshold
                 input[4] = params.adapters
                 input[5] = params.host_taxon
-                input[6] = "1"
-                input[7] = "24"
-                input[8] = "viral"
-                input[9] = "5"
+                input[6] = params.cutadapt_error_rate
+                input[7] = "1"
+                input[8] = "24"
+                input[9] = "viral"
+                input[10] = "5"
                 '''
             }
         }

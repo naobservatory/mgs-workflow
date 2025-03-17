@@ -1,0 +1,118 @@
+nextflow_workflow {
+
+    name "Test subworkflow CHECK_VERSION_COMPATIBILITY"
+    script "subworkflows/local/checkVersionCompatibility/main.nf"
+    workflow "CHECK_VERSION_COMPATIBILITY"
+    tag "check_version_compatibility"
+    tag "subworkflow"
+
+    test("Should pass when all versions are equal") {
+        tag "expect_success"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/toy-data/versions/version1001.txt")
+                input[1] = file("${projectDir}/test-data/toy-data/versions/version1001.txt")
+                input[2] = file("${projectDir}/test-data/toy-data/versions/version1001.txt")
+                input[3] = file("${projectDir}/test-data/toy-data/versions/version1001.txt")
+                """
+            }
+        }
+        then {
+            // Should run without errors
+            assert workflow.success
+        }
+    }
+
+    test("Should pass when all versions are compatible") {
+        tag "expect_success"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/toy-data/versions/version1001.txt")
+                input[1] = file("${projectDir}/test-data/toy-data/versions/version1001.txt")
+                input[2] = file("${projectDir}/test-data/toy-data/versions/version1000.txt")
+                input[3] = file("${projectDir}/test-data/toy-data/versions/version1000.txt")
+                """
+            }
+        }
+        then {
+            // Should run without errors
+            assert workflow.success
+        }
+    }
+
+    test("Should fail if index is too old for pipeline") {
+        tag "expect_failed"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/toy-data/versions/version1001.txt")
+                input[1] = file("${projectDir}/test-data/toy-data/versions/version1000.txt")
+                input[2] = file("${projectDir}/test-data/toy-data/versions/version1001.txt")
+                input[3] = file("${projectDir}/test-data/toy-data/versions/version1000.txt")
+                """
+            }
+        }
+        then {
+            // Should run without errors
+            assert workflow.failed
+            assert workflow.stdout.any{ it.contains("Index version is older than pipeline minimum") }
+            assert !workflow.stdout.any{ it.contains("Pipeline version is older than index minimum") }
+            assert !workflow.stdout.any{ it.contains("Invalid version format") }
+        }
+    }
+
+    test("Should fail if pipeline is too old for index") {
+        tag "expect_failed"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/toy-data/versions/version1000.txt")
+                input[1] = file("${projectDir}/test-data/toy-data/versions/version1001.txt")
+                input[2] = file("${projectDir}/test-data/toy-data/versions/version1000.txt")
+                input[3] = file("${projectDir}/test-data/toy-data/versions/version1001.txt")
+                """
+            }
+        }
+        then {
+            // Should run without errors
+            assert workflow.failed
+            assert !workflow.stdout.any{ it.contains("Index version is older than pipeline minimum") }
+            assert workflow.stdout.any{ it.contains("Pipeline version is older than index minimum") }
+            assert !workflow.stdout.any{ it.contains("Invalid version format") }
+        }
+    }
+
+    test("Should fail if index is invalid") {
+        tag "expect_failed"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/toy-data/versions/version1000.txt")
+                input[1] = file("${projectDir}/test-data/toy-data/versions/version1000.txt")
+                input[2] = file("${projectDir}/test-data/toy-data/versions/version1000.txt")
+                input[3] = file("${projectDir}/test-data/toy-data/versions/version-invalid.txt")
+                """
+            }
+        }
+        then {
+            // Should run without errors
+            assert workflow.failed
+            assert !workflow.stdout.any{ it.contains("Index version is older than pipeline minimum") }
+            assert !workflow.stdout.any{ it.contains("Pipeline version is older than index minimum") }
+            assert workflow.stdout.any{ it.contains("Invalid version format") }
+        }
+    }
+
+}
