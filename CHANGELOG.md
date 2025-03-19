@@ -1,8 +1,37 @@
-# v2.8.1.0-dev
+# v2.8.1.2-dev
+- Made Cutadapt mismatch rate parameter configurable
+- Fixed issues with BLAST bitscore filtering
+- Increased memory allocation for EXTRACT_VIRAL_HITS_TO_FASTQ
+- Implemented version compatibility checking between pipeline and index
+- Added ONT virus identification support:
+ - Created new EXTRACT_VIRAL_READS_ONT subworkflow for processing ONT reads
+ - Renamed original EXTRACT_VIRAL_READS workflow to EXTRACT_VIRAL_READS_SHORT to differentiate from ONT processing
+ - Added non-streaming version of MINIMAP2 alignment process
+ - Added new modules for ONT-specific processing:
+   - MASK_FASTQ_READS for masking low complexity regions in reads
+   - EXTRACT_SHARED_FASTQ_READS for extracting reads shared between FASTQ files
+   - PROCESS_VIRAL_MINIMAP2_SAM for adding reference taxids and clean read information
+ - Edited FILTLONG to accept customizable parameters (min_length, max_length, min_mean_q)
+ - Added new container dependencies: minimap2_samtools and pysam_biopython
+ - Added tests for all new processes and subworkflows. Added new low-complexity fastq test file.
+ - Updated run_dev_ont.config file.
+
+# v2.8.1.1
+- Modified Kraken2 DB handling in index workflow to avoid staging
+- Updated defaults in index configs
+
+# v2.8.1.0
 - Added downstream duplicate marking functionality via new DOWNSTREAM workflow
-- Fixed JOIN_TSVS to correctly handle many-to-one joins
-- Added strict join mode to JOIN_TSVS
-- Altered PROCESS_VIRAL_BOWTIE2_SAM to make ordering of genome IDs for split alignments predictable (necessary for downstream duplicate marking)
+    - Fixed JOIN_TSVS to correctly handle many-to-one joins
+    - Added strict join mode to JOIN_TSVS
+    - Altered PROCESS_VIRAL_BOWTIE2_SAM to make ordering of genome IDs for split alignments predictable (necessary for downstream duplicate marking)
+- Updated ANNOTATE_VIRUS_INFECTION to better handle taxa that are missing from Virus-Host DB, and added corresponding tests and documentation.
+- Began implementing pipeline components for analyzing ONT data:
+    - Added generation of minimap2 indices to INDEX workflow (human, viral, contaminant, and ribosomal).
+    - Added LSU and SSU tags to respective small and large ribosomal subunit genomes in the composite ribosomal reference fasta.
+    - Added MINIMAP2_INDEX and MINIMAP2 processes for indexing reference genomes and aligning reads to them.
+- Added documentation on running the pipeline reproducibly
+- Fixed some local unit tests
 
 # v2.8.0.0
 - Major changes to many parts of the pipeline as part of a general performance overhaul

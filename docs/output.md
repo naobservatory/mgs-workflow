@@ -93,6 +93,13 @@ Main heading represents the folder name, and subheadings describes the tool that
 - `bt2-other-index`: Directory containing Bowtie2 index for other contaminant sequences.
 - `virus-genome-metadata-gid.tsv.gz`: Genome metadata file generated during download of HV genomes from viral Genbank, annotated additionally with Genome IDs used by Bowtie2 (allowing mapping between genome ID and taxid).
 
+#### Minimap2
+
+- `mm2-virus-index`: Directory containing minimap2 index for host-infecting viral genomes.
+- `mm2-human-index`: Directory containing minimap2 index for the human genome.
+- `mm2-other-index`: Directory containing minimap2 index for other contaminant sequences.
+- `mm2-ribo-index`: Directory containing minimap2 index for ribosomal reference sequences.
+
 #### Kraken2
 
 - `kraken_db`: Directory containing Kraken2 reference database (default: Most recent version of Standard).

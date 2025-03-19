@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process JOIN_RIBO_REF"
     script "modules/local/joinRiboRef/main.nf"
     process "JOIN_RIBO_REF"
-    config "configs/index-for-run-test.config"
+    config "tests/configs/ont-index.config"
     tag "module"
     tag "join_ribo_ref"
 

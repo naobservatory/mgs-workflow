@@ -1,0 +1,51 @@
+def grepString = { file,key -> ["bash", "-c", "zcat " + file + " | grep -c " + key].execute().text.trim() as Integer }
+
+nextflow_process {
+
+    name "Test Process REPLACE_STRING_IN_COMPRESSED_FILE"
+    script "modules/local/replaceString/main.nf"
+    config "tests/configs/run.config"
+    process "REPLACE_STRING_IN_COMPRESSED_FILE"
+    tag "module"
+    tag "replace_string_compressed"
+
+    test("Should run without failures") {
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = tuple("test", "${projectDir}/test-data/downstream/input_file.csv")
+                    '''
+                }
+            }
+        }
+
+        when {
+            params {
+                old_string = "gs3"
+                new_string = "gs4"
+            }
+            process {
+                """
+                input[0] = GZIP_FILE.out
+                input[1] = "updated_input_file.csv"
+                input[2] = params.old_string
+                input[3] = params.new_string
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            // Check that the new file contains the string.
+            def output_new = grepString(process.out.output[0][1], params.new_string)
+            assert output_new == 1
+            // Check that the new file doesn't contain the old string
+            def output_old = grepString(process.out.output[0][1], params.old_string)
+            assert output_old == 0
+        }
+
+    }
+
+}

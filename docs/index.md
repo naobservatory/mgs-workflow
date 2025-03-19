@@ -13,8 +13,9 @@ Key [inputs](./config.md) to the index workflow include:
 
 Given these inputs, the index workflow:
 - Generates a TSV of viral taxa, incorporating taxonomic information from NCBI, and annotates each taxon with infection status for each host taxon of interest (using Virus-Host-DB).
-- Makes Bowtie2 indices from (1) all host-infecting viral genomes in Genbank[^genbank], (2) the human genome, (3) common non-human contaminants, plus BBMap indices for (2) and (3).
+- Makes Minimap2 and Bowtie2 indices from (1) all host-infecting viral genomes in Genbank[^genbank], (2) the human genome, (3) common non-human contaminants, plus BBMap indices for (2) and (3).
 - Downloads and extracts local copies of (1) the BLAST nt database, (2) the specified Kraken2 DB, (3) the SILVA rRNA reference files.
+- Makes a Minimap2 index from the joined SILVA rRNA reference files.
 
 [^genbank]: Excluding transgenic, contaminated, or erroneous sequences, which are excluded according to a list of sequence ID patterns specified in the config file.
 

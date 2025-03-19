@@ -5,24 +5,25 @@
 workflow LOAD_SAMPLESHEET {
     take:
         sample_sheet
-        single_end
     main:
         // Start time
         start_time = new Date()
         start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
 
-        // Validate headers
+        // Check pairing and validate headers
+        def headers = file(sample_sheet).readLines().first().tokenize(',')*.trim()
         def expected_headers_se = ['sample', 'fastq']
         def expected_headers_pe = ['sample', 'fastq_1', 'fastq_2']
-        def required_headers = single_end ? expected_headers_se : expected_headers_pe
-        def headers = file(sample_sheet).readLines().first().tokenize(',')*.trim()
-        if (headers != required_headers) {
+        if (headers.take(2) == expected_headers_se) {
+            single_end = true
+        } else if (headers.take(3) == expected_headers_pe) {
+            single_end = false
+        } else {
             throw new Exception("""Invalid samplesheet header. 
-                Expected: ${required_headers.join(', ')}
+                Expected ${expected_headers_se.join(', ')} or ${expected_headers_pe.join(', ')}
                 Found: ${headers.join(', ')}
                 Please ensure the samplesheet has the correct columns in the specified order.""".stripIndent())
         }
-
         // Construct samplesheet channel
         if (single_end) {
             samplesheet = Channel
@@ -39,6 +40,8 @@ workflow LOAD_SAMPLESHEET {
         }
 
     emit:
+        single_end = single_end
         samplesheet = samplesheet_ch
         start_time_str = start_time_str
+        test_input = sample_sheet
 }

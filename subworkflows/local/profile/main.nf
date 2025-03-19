@@ -15,8 +15,6 @@ include { ADD_FIXED_COLUMN as ADD_KRAKEN_NORIBO } from "../../../modules/local/a
 include { ADD_FIXED_COLUMN as ADD_BRACKEN_NORIBO } from "../../../modules/local/addFixedColumn"
 include { CONCATENATE_TSVS as CONCATENATE_KRAKEN } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_TSVS as CONCATENATE_BRACKEN } from "../../../modules/local/concatenateTsvs"
-include { MINIMAP2 as MINIMAP2_RIBO } from "../../../modules/local/minimap2"
-
 
 /****************
 | MAIN WORKFLOW |
@@ -29,10 +27,9 @@ workflow PROFILE {
         ref_dir
         min_kmer_fraction
         k
-        ribo_suffix
+        bbduk_suffix
         bracken_threshold
         single_end
-        ont
     main:
         // Separate ribosomal reads
         if (ont) {
@@ -42,7 +39,7 @@ workflow PROFILE {
             noribo_in = ribo_ch.reads_unmapped
         } else {
             ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
-            ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, ribo_suffix, !single_end)
+            ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix, single_end.map{!it})
             ribo_in = ribo_ch.match
             noribo_in = ribo_ch.nomatch
         }
