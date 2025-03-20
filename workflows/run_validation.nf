@@ -38,7 +38,7 @@ workflow RUN_VALIDATION {
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
     BLAST_VIRAL(fastq_ch, blast_db_path, params.blast_db_prefix,
         params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
-        params.random_seed)
+        params.blast_perc_id, params.blast_qcov_hsp_perc, params.random_seed)
 
     // Publish results (NB: BLAST workflow has its own publish directive)
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))

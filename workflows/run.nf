@@ -47,14 +47,14 @@ workflow RUN {
     COUNT_TOTAL_READS(samplesheet_ch, single_end_ch)
 
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, 
+    EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
         params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
 
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
         BLAST_VIRAL(EXTRACT_VIRAL_READS.out.hits_fastq, blast_db_path, params.blast_db_prefix,
             params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
-            params.random_seed)
+            params.blast_perc_id, params.blast_qcov_hsp_perc, params.random_seed)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
         blast_reads_ch = BLAST_VIRAL.out.subset_reads
     } else {

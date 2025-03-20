@@ -25,6 +25,8 @@ workflow BLAST_VIRAL {
         blast_max_rank
         blast_min_frac
         random_seed
+        perc_id
+        qcov_hsp_perc
     main:
         // 1. Subset viral reads for BLAST
         reads_in = Channel.of("merged")
@@ -36,7 +38,7 @@ workflow BLAST_VIRAL {
         // 2. Convert to FASTA
         fasta_ch = CONVERT_FASTQ_FASTA(subset_sorted_ch).output
         // 3. Run BLAST
-        blast_ch = BLAST(fasta_ch, blast_db_dir, blast_db_prefix)
+        blast_ch = BLAST(fasta_ch, blast_db_dir, blast_db_prefix, perc_id, qcov_hsp_perc)
         // 4. Sort and filter BLAST output
         // First sort by query, subject, bitscore and length
         sort_str_1 = "-t\$\'\\t\' -k1,1 -k2,2 -k7,7nr -k9,9nr"
