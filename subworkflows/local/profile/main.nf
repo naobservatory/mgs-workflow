@@ -7,6 +7,7 @@
 ***************************/
 
 include { BBDUK } from "../../../modules/local/bbduk"
+include { MINIMAP2 } from "../../../modules/local/minimap2"
 include { TAXONOMY as TAXONOMY_RIBO } from "../../../subworkflows/local/taxonomy"
 include { TAXONOMY as TAXONOMY_NORIBO } from "../../../subworkflows/local/taxonomy"
 include { ADD_FIXED_COLUMN as ADD_KRAKEN_RIBO } from "../../../modules/local/addFixedColumn"
@@ -27,19 +28,20 @@ workflow PROFILE {
         ref_dir
         min_kmer_fraction
         k
-        bbduk_suffix
+        ribo_suffix
         bracken_threshold
         single_end
+        ont
     main:
         // Separate ribosomal reads
         if (ont) {
-            ribo_ref = "${projectDir}/results/mm2-ribo-index"
-            ribo_ch = MINIMAP2_RIBO(reads_ch, ribo_ref, ribo_suffix, false)
+            ribo_ref = "${ref_dir}/results/mm2-ribo-index"
+            ribo_ch = MINIMAP2(reads_ch, ribo_ref, ribo_suffix, false)
             ribo_in = ribo_ch.reads_mapped
             noribo_in = ribo_ch.reads_unmapped
         } else {
             ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
-            ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, bbduk_suffix, single_end.map{!it})
+            ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, ribo_suffix, single_end.map{!it})
             ribo_in = ribo_ch.match
             noribo_in = ribo_ch.nomatch
         }

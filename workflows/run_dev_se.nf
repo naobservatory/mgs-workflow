@@ -34,10 +34,10 @@ workflow RUN_DEV_SE {
     LOAD_SAMPLESHEET(params.sample_sheet)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
-    single_end = LOAD_SAMPLESHEET.out.single_end
+    single_end_ch = LOAD_SAMPLESHEET.out.single_end
 
     // Count reads in files
-    COUNT_TOTAL_READS(samplesheet_ch, single_end)
+    COUNT_TOTAL_READS(samplesheet_ch, single_end_ch)
 
     // Extract viral reads
     if ( params.ont ) {
@@ -64,22 +64,16 @@ workflow RUN_DEV_SE {
 
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
-        params.adapters, single_end,
+        params.adapters, single_end_ch,
         params.ont, params.random_seed)
 
     // Run QC on subset reads before and after adapter trimming
-    RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end)
+    RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end_ch)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
-    if ( params.ont ) {
-        bracken_ch = Channel.empty()
-        kraken_ch = Channel.empty()
-    } else {
-        PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-            params.bracken_threshold, params.single_end)
-        bracken_ch = PROFILE.out.bracken
-        kraken_ch = PROFILE.out.kraken
-    }
+    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo", params.bracken_threshold, single_end_ch, params.ont)
+    bracken_ch = PROFILE.out.bracken
+    kraken_ch = PROFILE.out.kraken
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
