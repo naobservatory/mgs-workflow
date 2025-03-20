@@ -6,7 +6,7 @@ nextflow_process {
     tag "module"
     tag "process_viral_minimap2_sam"
 
-    test("On single-end data, should run without errors") {
+    test("On ONT data, should run without errors") {
         tag "expect_success"
         config "tests/configs/run_dev_ont.config"
         setup {

@@ -231,7 +231,7 @@ nextflow_workflow {
             params {
                 max_rank = 5
                 min_frac = 0.9
-                blast_frac = 0.004 // ONT test file is large (241k reads).
+                blast_frac = 0.9
                 perc_id = 0
                 qcov_hsp_perc = 0
             }
