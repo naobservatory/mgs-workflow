@@ -79,15 +79,9 @@ workflow RUN_DEV_SE {
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end_ch)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
-    if ( params.ont ) {
-        bracken_ch = Channel.empty()
-        kraken_ch = Channel.empty()
-    } else {
-        PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-            params.bracken_threshold, single_end_ch)
-        bracken_ch = PROFILE.out.bracken
-        kraken_ch = PROFILE.out.kraken
-    }
+    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo", params.bracken_threshold, single_end_ch, params.ont)
+    bracken_ch = PROFILE.out.bracken
+    kraken_ch = PROFILE.out.kraken
 
     // Get index files for publishing
     index_params_path = "${params.ref_dir}/input/index-params.json"
