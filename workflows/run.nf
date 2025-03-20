@@ -72,7 +72,7 @@ workflow RUN {
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
     PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-        params.bracken_threshold, single_end_ch)
+        params.bracken_threshold, single_end_ch, params.ont)
 
     // Get index files for publishing
     index_params_path = "${params.ref_dir}/input/index-params.json"
