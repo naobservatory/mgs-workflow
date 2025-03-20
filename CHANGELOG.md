@@ -3,7 +3,7 @@
 - Removed generate-samplesheet.py, as functionality has moved to internal mgs-metadata repo.
  - Added ONT taxonomic profiling support:
     - Added MINIMAP2 classification of ONT reads to PROFILE subworkflow.
-    - Added ont parameter to run.nf.
+    - Added ont parameter to PROFILE in run.nf.
 
 # v2.8.1.2
 - Made Cutadapt mismatch rate parameter configurable
