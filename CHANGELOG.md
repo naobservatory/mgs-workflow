@@ -18,7 +18,7 @@
     - Added new low-complexity fastq test file.
  - Added ONT taxonomic profiling support:
     - Added MINIMAP2 classification of ONT reads to PROFILE subworkflow.
-    - Added ont parameter to run.nf.
+    - Added ont parameter to PROFILE in run.nf.
 
 # v2.8.1.1
 - Modified Kraken2 DB handling in index workflow to avoid staging
