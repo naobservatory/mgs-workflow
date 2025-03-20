@@ -15,6 +15,10 @@
  - Added new container dependencies: minimap2_samtools and pysam_biopython
  - Added tests for all new processes and subworkflows. Added new low-complexity fastq test file.
  - Updated run_dev_ont.config file.
+- Added ONT support to PROFILE subworkflow.
+ - Added MINIMAP2 classification of ONT reads to PROFILE subworkflow.
+ - Added ONT parameter to run.nf's PROFILE execution.
+ - Added ONT testing for PROFILE subworkflow.
 
 # v2.8.1.1
 - Modified Kraken2 DB handling in index workflow to avoid staging
