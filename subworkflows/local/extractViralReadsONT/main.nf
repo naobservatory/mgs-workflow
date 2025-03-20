@@ -10,7 +10,6 @@ include { ADD_SAMPLE_COLUMN as LABEL_HV_TSVS } from "../../../modules/local/addS
 include { FILTLONG } from "../../../modules/local/filtlong"
 include { MASK_FASTQ_READS } from "../../../modules/local/maskRead"
 include { PROCESS_VIRAL_MINIMAP2_SAM } from "../../../modules/local/processViralMinimap2Sam"
-include { BLAST_VIRAL } from "../../../subworkflows/local/blastViral"
 include { EXTRACT_SHARED_FASTQ_READS } from "../../../modules/local/extractSharedFastq"
 include { CONCATENATE_FILES } from "../../../modules/local/concatenateFiles"
 
