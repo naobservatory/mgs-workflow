@@ -47,7 +47,7 @@ workflow RUN {
     COUNT_TOTAL_READS(samplesheet_ch, single_end_ch)
 
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, 
+    EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
         params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
 
     // BLAST validation on host-viral reads (optional)
@@ -72,7 +72,7 @@ workflow RUN {
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
     PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-        params.bracken_threshold, single_end_ch)
+        params.bracken_threshold, single_end_ch, params.ont)
 
     // Get index files for publishing
     index_params_path = "${params.ref_dir}/input/index-params.json"

@@ -46,7 +46,7 @@ workflow PROFILE {
             noribo_in = ribo_ch.nomatch
         }
         // Run taxonomic profiling separately on ribo and non-ribo reads
-        tax_ribo_ch = TAXONOMY_RIBO(ribo_in, kraken_db_ch,"D", bracken_threshold, single_end)
+        tax_ribo_ch = TAXONOMY_RIBO(ribo_in, kraken_db_ch, "D", bracken_threshold, single_end)
         tax_noribo_ch = TAXONOMY_NORIBO(noribo_in, kraken_db_ch, "D", bracken_threshold, single_end)
 
         // Add ribosomal status to output TSVs
