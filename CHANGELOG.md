@@ -1,6 +1,10 @@
 # v2.8.1.3-dev
 - Increased runtime Bowtie2 score threshold for viral read identification
 - Removed generate-samplesheet.py, as functionality has moved to internal mgs-metadata repo.
+ - Added ONT taxonomic profiling support:
+    - Added MINIMAP2 classification of ONT reads to PROFILE subworkflow.
+    - Added ont parameter to run.nf.
+
 # v2.8.1.2
 - Made Cutadapt mismatch rate parameter configurable
 - Fixed issues with BLAST bitscore filtering
@@ -16,9 +20,6 @@
         - PROCESS_VIRAL_MINIMAP2_SAM for adding reference taxids and clean read information
     - Edited FILTLONG to accept customizable parameters (min_length, max_length, min_mean_q)
     - Added new low-complexity fastq test file.
- - Added ONT taxonomic profiling support:
-    - Added MINIMAP2 classification of ONT reads to PROFILE subworkflow.
-    - Added ont parameter to run.nf.
 
 # v2.8.1.1
 - Modified Kraken2 DB handling in index workflow to avoid staging
