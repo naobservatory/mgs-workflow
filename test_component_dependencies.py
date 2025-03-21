@@ -3,51 +3,31 @@ import argparse
 import subprocess
 import os
 
-def find_component_dependencies(directory, component):
+def find_dependency(directory, component):
 
     directory = directory.rstrip("/")
+    component = component.replace("/main.nf", "")
 
-    result = subprocess.run(
-        ["grep", "-r", f"{component}", directory], capture_output=True, text=True
+    grep_results = subprocess.run(
+        ["grep", "-r", component, directory], capture_output=True, text=True
     )
 
-    file_paths = set()
-    for line in result.stdout.splitlines():
-        if ":" in line:
-            file_path = line.split(":", 1)[0]
-            file_paths.add(file_path)
+    file_paths = {line.split(":", 1)[0] for line in grep_results.stdout.splitlines() if ":" in line}
 
     return file_paths
 
-def check_workflow_dependencies(workflow, script):
+def workflow_uses_subworkflow(workflow, subworkflow_path):
 
     workflow_path = f"workflows/{workflow}"
-    script = script.replace("/main.nf", "")
+    subworkflow_dir = subworkflow_path.replace("/main.nf", "")
 
     with open(workflow_path, "r") as f:
         workflow_content = f.read()
 
-    if script in workflow_content:
+    if subworkflow_dir in workflow_content:
         return True
     else:
         return False
-
-
-def find_script_dependencies(directory, script):
-    directory = directory.rstrip("/")
-    script = script.replace("/main.nf", "")
-
-    result = subprocess.run(
-        ["grep", "-r", f"{script}", directory], capture_output=True, text=True
-    )
-
-    file_paths = set()
-    for line in result.stdout.splitlines():
-        if ":" in line:
-            file_path = line.split(":", 1)[0]
-            file_paths.add(file_path)
-
-    return file_paths
 
 
 def get_workflow_test(workflow):
@@ -89,49 +69,59 @@ def main():
 
     tests_to_execute = set()
 
-    direct_tests = find_component_dependencies("tests/", component)
+    direct_tests = find_dependency("tests/", component)
     tests_to_execute.update(direct_tests)
 
+    print("=" * 80)
+    print(f"Found {len(direct_tests)} direct tests:")
+    print("=" * 80)
+    for test in direct_tests:
+        print(f"   • {test}")
+    print()
+    # print("\n")
+
     dependent_subworkflows = set()
-    for directory in os.listdir("subworkflows/"):
-        dependent_subworkflows.update(find_component_dependencies(directory, component))
-
-
     subworkflow_tests = set()
+
+    dependent_subworkflows.update(find_dependency("subworkflows/", component))
     for dependent_subworkflow in dependent_subworkflows:
-        found_tests = find_script_dependencies("tests/", dependent_subworkflow)
-        subworkflow_tests.update(found_tests)
+        tests = find_dependency("tests/", dependent_subworkflow)
+        subworkflow_tests.update(tests)
+
+    print("=" * 80)
+    print(f"Found {len(subworkflow_tests)} dependent subworkflow tests:")
+    print("=" * 80)
+    for test in subworkflow_tests:
+        print(f"   • {test}")
+    print()
 
     workflow_tests = set()
     for workflow in os.listdir("workflows/"):
         for dependent_subworkflow in dependent_subworkflows:
-            if check_workflow_dependencies(workflow, dependent_subworkflow):
+            if workflow_uses_subworkflow(workflow, dependent_subworkflow):
                 workflow_tests.add(get_workflow_test(workflow))
 
+    print("=" * 80)
+    print(f"Found {len(workflow_tests)} dependent workflow tests:")
+    print("=" * 80)
+    for test in workflow_tests:
+        print(f"   • {test}")
+    print()
 
     tests_to_execute.update(subworkflow_tests)
     tests_to_execute.update(workflow_tests)
 
-    for test in tests_to_execute:
-        print(test)
-
-
-    print("\n" + "=" * 80)
-    print(f"Found {len(tests_to_execute)} total tests to run:")
     print("=" * 80)
-    for test in sorted(tests_to_execute):
-        print(f"   • {test}")
+    print(f"Identified {len(tests_to_execute)} tests to execute. Running...")
 
-    print("\n" + "=" * 80)
-    print("Running tests...")
-    print("=" * 80)
+
     test_results = {}
     for test in sorted(tests_to_execute):
-        print(f"\nRunning {test}")
-        print("-" * 80)
         args = ["nf-test", "test", test]
         if verbose:
             args.append("--verbose")
+        print(f"\nRunning \"{' '.join(args)}\"")
+        print("-" * 80)
         result = subprocess.run(args)
 
         test_results[test] = result.returncode == 0
@@ -159,9 +149,6 @@ def main():
         print(f"Failed: {failed} tests")
     print("-" * 40 + "\n")
 
-    print(
-        "Remember to run appropriate workflow tests (nf-test test tests/workflows/...)\n"
-    )
 
 
 if __name__ == "__main__":
