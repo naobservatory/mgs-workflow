@@ -1,17 +1,14 @@
 #! /usr/bin/env python3
 import argparse
 import subprocess
+import os
 
+def find_component_dependencies(directory, component):
 
-def find_files(directory, component):
-    """
-    Recursively grep files in a directory, and return file paths.
-    """
     directory = directory.rstrip("/")
-    component = component.replace("/main.nf", "")
 
     result = subprocess.run(
-        ["grep", "-r", f"\\b{component}\\b", directory], capture_output=True, text=True
+        ["grep", "-r", f"{component}", directory], capture_output=True, text=True
     )
 
     file_paths = set()
@@ -22,6 +19,44 @@ def find_files(directory, component):
 
     return file_paths
 
+def check_workflow_dependencies(workflow, script):
+
+    workflow_path = f"workflows/{workflow}"
+    script = script.replace("/main.nf", "")
+
+    with open(workflow_path, "r") as f:
+        workflow_content = f.read()
+
+    if script in workflow_content:
+        return True
+    else:
+        return False
+
+
+def find_script_dependencies(directory, script):
+    directory = directory.rstrip("/")
+    script = script.replace("/main.nf", "")
+
+    result = subprocess.run(
+        ["grep", "-r", f"{script}", directory], capture_output=True, text=True
+    )
+
+    file_paths = set()
+    for line in result.stdout.splitlines():
+        if ":" in line:
+            file_path = line.split(":", 1)[0]
+            file_paths.add(file_path)
+
+    return file_paths
+
+
+def get_workflow_test(workflow):
+    workflow_path = f"workflows/{workflow}"
+    if "run_dev_se" in workflow_path:
+        return "tests/workflows/run_dev.nf.test"
+    else:
+        base_name = os.path.basename(workflow_path)
+        return f"tests/workflows/{base_name}.nf.test"
 
 def parse_args():
     """Parse arguments and run the test finder."""
@@ -54,58 +89,39 @@ def main():
 
     tests_to_execute = set()
 
-    # Find tests that directly reference the component
-    print("\n" + "=" * 80)
-    print(f"Finding tests for component: {component}...")
-    print("=" * 80)
-    direct_tests = find_files("tests/", component)
+    direct_tests = find_component_dependencies("tests/", component)
     tests_to_execute.update(direct_tests)
 
-    if direct_tests:
-        print(f"\nFound {len(direct_tests)} tests that directly reference {component}:")
-        for test in sorted(direct_tests):
-            print(f"   • {test}")
+    dependent_subworkflows = set()
+    for directory in os.listdir("subworkflows/"):
+        dependent_subworkflows.update(find_component_dependencies(directory, component))
 
-    # Find subworkflows that use the component
-    print("\n" + "=" * 80)
-    print(f"Finding subworkflows that use {component}...")
-    print("=" * 80)
-    dependent_components = set()
-    for directory in ["subworkflows/"]:
-        dependent_components.update(find_files(directory, component))
 
-    if dependent_components:
-        print(f"\nFound {len(dependent_components)} subworkflows that use {component}:")
-        for dependent_component in sorted(dependent_components):
-            print(f"   • {dependent_component}")
+    subworkflow_tests = set()
+    for dependent_subworkflow in dependent_subworkflows:
+        found_tests = find_script_dependencies("tests/", dependent_subworkflow)
+        subworkflow_tests.update(found_tests)
 
-    # Find tests for those subworkflows
-    print("\n" + "=" * 80)
-    print(f"Finding tests for subworkflows that use {component}...")
-    print("=" * 80)
-    indirect_tests = set()
-    for dependent_component in dependent_components:
-        found_tests = find_files("tests/", dependent_component)
-        indirect_tests.update(found_tests)
+    workflow_tests = set()
+    for workflow in os.listdir("workflows/"):
+        for dependent_subworkflow in dependent_subworkflows:
+            if check_workflow_dependencies(workflow, dependent_subworkflow):
+                workflow_tests.add(get_workflow_test(workflow))
 
-    if indirect_tests:
-        print(
-            f"\nFound {len(indirect_tests)} tests for subworkflows that use {component}:"
-        )
-        for test in sorted(indirect_tests):
-            print(f"   • {test}")
 
-    # Combine all tests
-    tests_to_execute.update(indirect_tests)
+    tests_to_execute.update(subworkflow_tests)
+    tests_to_execute.update(workflow_tests)
 
-    # Display results
+    for test in tests_to_execute:
+        print(test)
+
+
     print("\n" + "=" * 80)
     print(f"Found {len(tests_to_execute)} total tests to run:")
     print("=" * 80)
     for test in sorted(tests_to_execute):
         print(f"   • {test}")
 
-    # Run the tests
     print("\n" + "=" * 80)
     print("Running tests...")
     print("=" * 80)
@@ -120,7 +136,6 @@ def main():
 
         test_results[test] = result.returncode == 0
 
-    # Print summary with colored checkmarks
     print("\n" + "=" * 80)
     print("Test Summary")
     print("=" * 80)
