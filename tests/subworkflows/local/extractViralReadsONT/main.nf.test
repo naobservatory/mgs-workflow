@@ -50,6 +50,10 @@ nextflow_workflow {
             def human_filter_num = fastq_filtered_human.readNames.size()
             def contam_filter_num = fastq_filtered_contam.readNames.size()
             def virus_filter_num = fastq_viral_hits.readNames.size()
+
+            assert human_filter_num > contam_filter_num
+            assert contam_filter_num > virus_filter_num
+            assert virus_filter_num > 0
         }
     }
 }

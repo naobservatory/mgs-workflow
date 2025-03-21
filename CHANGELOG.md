@@ -1,26 +1,27 @@
-# v2.8.1.4-dev
- - Added script test_component_dependencies.pythat identifies and runs tests for modules and subworkflows that depend on a specified process or subworkflow. You can also use it to run all process/subworkflow tests with a single command.
-
 # v2.8.1.3-dev
-Added ONT virus identification support:
- - Created new EXTRACT_VIRAL_READS_ONT subworkflow for processing ONT reads
- - Renamed original EXTRACT_VIRAL_READS workflow to EXTRACT_VIRAL_READS_SHORT to differentiate from ONT processing
- - Added non-streaming version of MINIMAP2 alignment process
- - Added new modules for ONT-specific processing:
-   - MASK_FASTQ_READS for masking low complexity regions in reads
-   - EXTRACT_SHARED_FASTQ_READS for extracting reads shared between FASTQ files
-   - PROCESS_VIRAL_MINIMAP2_SAM for adding reference taxids and clean read information
-   - FILTLONG for filtering reads by length and quality
- - Enhanced FILTLONG to accept customizable parameters (min_length, max_length, min_mean_q)
- - Updated resource requirements and container configurations for ONT processing
- - Infrastructure improvements:
-   - Added new container dependencies: minimap2_samtools and pysam_biopython
- - Added tests for all new processes and subworkflows
+- Increased runtime Bowtie2 score threshold for viral read identification
+- Removed generate-samplesheet.py, as functionality has moved to internal mgs-metadata repo.
+- Added ability to set BLAST parameters qcov_hsp_perc and perc_identity
+- Added ONT taxonomic profiling support:
+    - Added MINIMAP2 classification of ONT reads to PROFILE subworkflow.
+    - Added ont parameter to PROFILE in run.nf.
 
-# v2.8.1.2-dev
+
+# v2.8.1.2
 - Made Cutadapt mismatch rate parameter configurable
 - Fixed issues with BLAST bitscore filtering
 - Increased memory allocation for EXTRACT_VIRAL_HITS_TO_FASTQ
+- Implemented version compatibility checking between pipeline and index
+- Added ONT virus identification support:
+    - Created new EXTRACT_VIRAL_READS_ONT subworkflow for processing ONT reads
+    - Renamed original EXTRACT_VIRAL_READS workflow to EXTRACT_VIRAL_READS_SHORT to differentiate from ONT processing
+    - Added non-streaming version of MINIMAP2 alignment process
+    - Added new modules for ONT-specific processing:
+        - MASK_FASTQ_READS for masking low complexity regions in reads
+        - EXTRACT_SHARED_FASTQ_READS for extracting reads shared between FASTQ files
+        - PROCESS_VIRAL_MINIMAP2_SAM for adding reference taxids and clean read information
+    - Edited FILTLONG to accept customizable parameters (min_length, max_length, min_mean_q)
+    - Added new low-complexity fastq test file.
 
 # v2.8.1.1
 - Modified Kraken2 DB handling in index workflow to avoid staging
