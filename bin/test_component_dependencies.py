@@ -3,6 +3,7 @@ import argparse
 import subprocess
 import os
 
+
 def find_dependency(directory, component):
 
     directory = directory.rstrip("/")
@@ -12,9 +13,14 @@ def find_dependency(directory, component):
         ["grep", "-r", component, directory], capture_output=True, text=True
     )
 
-    file_paths = {line.split(":", 1)[0] for line in grep_results.stdout.splitlines() if ":" in line}
+    file_paths = {
+        line.split(":", 1)[0]
+        for line in grep_results.stdout.splitlines()
+        if ":" in line
+    }
 
     return file_paths
+
 
 def workflow_uses_subworkflow(workflow, subworkflow_path):
 
@@ -35,8 +41,9 @@ def get_workflow_test(workflow):
     if "run_dev_se" in workflow_path:
         return "tests/workflows/run_dev.nf.test"
     else:
-        base_name = os.path.basename(workflow_path)
+        base_name = os.path.basename(workflow_path).split(".")[0]
         return f"tests/workflows/{base_name}.nf.test"
+
 
 def parse_args():
     """Parse arguments and run the test finder."""
@@ -114,7 +121,6 @@ def main():
     print("=" * 80)
     print(f"Identified {len(tests_to_execute)} tests to execute. Running...")
 
-
     test_results = {}
     for test in sorted(tests_to_execute):
         args = ["nf-test", "test", test]
@@ -148,7 +154,6 @@ def main():
     else:
         print(f"Failed: {failed} tests")
     print("-" * 40 + "\n")
-
 
 
 if __name__ == "__main__":
