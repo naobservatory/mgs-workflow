@@ -16,6 +16,7 @@ nextflow_workflow {
                 workflow {
                     '''
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = "illumina"
                     '''
                 }
             }
@@ -67,11 +68,12 @@ nextflow_workflow {
         tag "expect_success"
         tag "single_end"
         setup {
-            run("LOAD_SAMPLESHEET") {
-                script "subworkflows/local/loadSampleSheet/main.nf"
+            run("LOAD_SAMPLESHEET_DEV") {
+                script "subworkflows/local/loadSampleSheetDev/main.nf"
                 workflow {
                     '''
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = "illumina"
                     '''
                 }
             }
@@ -79,10 +81,10 @@ nextflow_workflow {
                 script "subworkflows/local/subsetTrim/main.nf"
                 process {
                     '''
-                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[0] = LOAD_SAMPLESHEET_DEV.out.samplesheet
                     input[1] = 49
                     input[2] = params.adapters
-                    input[3] = LOAD_SAMPLESHEET.out.single_end
+                    input[3] = LOAD_SAMPLESHEET_DEV.out.single_end
                     input[4] = false
                     input[5] = ""
                     '''
@@ -95,7 +97,7 @@ nextflow_workflow {
                 """
                 input[0] = SUBSET_TRIM.out.subset_reads
                 input[1] = SUBSET_TRIM.out.trimmed_subset_reads
-                input[2] = LOAD_SAMPLESHEET.out.single_end
+                input[2] = LOAD_SAMPLESHEET_DEV.out.single_end
                 """
             }
         }
