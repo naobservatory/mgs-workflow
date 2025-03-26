@@ -7,6 +7,7 @@
     - Added MINIMAP2 classification of ONT reads to PROFILE subworkflow.
     - Added ont parameter to PROFILE in run.nf.
 - Replaced boolean `params.ont` with string `params.platform` and added platform checking to LOAD_SAMPLESHEET.
+- Fixed bug in running RUN_VALIDATION workflow with a fastq file
 
 # v2.8.1.2
 - Made Cutadapt mismatch rate parameter configurable
