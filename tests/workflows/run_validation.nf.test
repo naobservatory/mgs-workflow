@@ -10,8 +10,8 @@ nextflow_pipeline {
         tag "run_validation_viral_hits"
         when {
           params {
-    viral_tsv = "${projectDir}/test-data/gold-standard-results/virus_hits_filtered.tsv"
-    viral_fastq = ""
+            viral_tsv = "${projectDir}/test-data/gold-standard-results/virus_hits_filtered.tsv"
+            viral_fastq = ""
           }
         }
         then {
@@ -24,8 +24,8 @@ nextflow_pipeline {
         tag "run_validation_fastq"
         when {
           params {
-    viral_tsv = ""
-    viral_fastq = "s3://nao-testing/gold-standard-test/processed/gold_standard_interleave.fastq.gz"
+            viral_tsv = ""
+            viral_fastq = "s3://nao-testing/gold-standard-test/processed/gold_standard_interleave.fastq.gz"
           }
         }
         then {
