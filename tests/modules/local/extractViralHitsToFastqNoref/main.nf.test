@@ -12,6 +12,7 @@ nextflow_process {
             process {
                 '''
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = "illumina"
                 '''
             }
         }
@@ -60,13 +61,27 @@ nextflow_process {
             // Read IDs and sequences should match
             def quals_out = fastq_out.qualityScores
             def seqs_out = fastq_out.sequences
+            def seq_fwd
+            def seq_rev
             for (int i = 0; i < reads_in; i++) {
                 assert tab_in.columns["seq_id"][i]+" 1" == fastq_out.readNames[2*i]
                 assert tab_in.columns["seq_id"][i]+" 2" == fastq_out.readNames[2*i+1]
-                assert tab_in.columns["query_seq_fwd"][i] == seqs_out[2*i]
-                assert tab_in.columns["query_seq_rev"][i] == seqs_out[2*i+1]
-                assert tab_in.columns["query_qual_fwd"][i] == quals_out[2*i]
-                assert tab_in.columns["query_qual_rev"][i] == quals_out[2*i+1]
+                seq_fwd = tab_in.columns["query_seq_fwd"][i]
+                seq_rev = tab_in.columns["query_seq_rev"][i]
+                if (seq_fwd == "") {
+                    assert seqs_out[2*i] == "N"
+                    assert quals_out[2*i] == "!"
+                } else {
+                    assert seqs_out[2*i] == seq_fwd
+                    assert quals_out[2*i] == tab_in.columns["query_qual_fwd"][i]
+                }
+                if (seq_rev == "") {
+                    assert seqs_out[2*i+1] == "N"
+                    assert quals_out[2*i+1] == "!"
+                } else {
+                    assert seqs_out[2*i+1] == seq_rev
+                    assert quals_out[2*i+1] == tab_in.columns["query_qual_rev"][i]
+                }
             }
         }
     }

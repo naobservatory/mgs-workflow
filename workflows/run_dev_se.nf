@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
+include { LOAD_SAMPLESHEET_DEV as LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheetDev"
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
@@ -39,8 +39,8 @@ workflow RUN_DEV_SE {
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
-    // Load samplesheet
-    LOAD_SAMPLESHEET(params.sample_sheet)
+    // Load samplesheet and check platform
+    LOAD_SAMPLESHEET(params.sample_sheet, params.platform)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
     single_end_ch = LOAD_SAMPLESHEET.out.single_end
@@ -49,7 +49,7 @@ workflow RUN_DEV_SE {
     COUNT_TOTAL_READS(samplesheet_ch, single_end_ch)
 
     // Extract viral reads
-    if ( params.ont ) {
+    if ( params.platform == "ont" ) {
         EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir)
         hv_tsv_ch = EXTRACT_VIRAL_READS_ONT.out.hits_hv
         hv_fastqs = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
@@ -73,13 +73,14 @@ workflow RUN_DEV_SE {
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
         params.adapters, single_end_ch,
-        params.ont, params.random_seed)
+        params.platform, params.random_seed)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end_ch)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
-    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo", params.bracken_threshold, single_end_ch, params.ont)
+    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
+        params.bracken_threshold, single_end_ch, params.platform)
     bracken_ch = PROFILE.out.bracken
     kraken_ch = PROFILE.out.kraken
 

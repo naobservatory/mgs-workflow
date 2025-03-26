@@ -10,11 +10,12 @@ nextflow_process {
         tag "expect_success"
         config "tests/configs/run_dev_ont.config"
         setup {
-            run("LOAD_SAMPLESHEET") {
-                script "subworkflows/local/loadSampleSheet/main.nf"
+            run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheetDev/main.nf"
                 process {
                     '''
                     input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                    input[1] = "ont"
                     '''
                 }
             }

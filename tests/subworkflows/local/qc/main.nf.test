@@ -16,6 +16,7 @@ nextflow_workflow {
                 workflow {
                     '''
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = "illumina"
                     '''
                 }
             }
@@ -93,11 +94,12 @@ nextflow_workflow {
         tag "expect_success"
         tag "single_end"
         setup {
-            run("LOAD_SAMPLESHEET") {
-                script "subworkflows/local/loadSampleSheet/main.nf"
+            run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheetDev/main.nf"
                 workflow {
                     '''
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = "illumina"
                     '''
                 }
             }
