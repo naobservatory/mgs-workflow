@@ -104,7 +104,7 @@ jobs:
           sudo mv nf-test /usr/local/bin/
 
       - name: Run run_validation workflow
-        run: nf-test test --tag validation --verbose
+        run: nf-test test --tag run_validation_viral_hits --verbose
 
   test-downstream-output:
     runs-on: ubuntu-latest
