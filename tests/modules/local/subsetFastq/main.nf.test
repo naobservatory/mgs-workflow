@@ -111,6 +111,7 @@ nextflow_process {
                 process {
                     '''
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = "illumina"
                     '''
                 }
             }
@@ -167,11 +168,12 @@ nextflow_process {
         tag "real_data"
         config "tests/configs/run_dev_se.config"
         setup {
-            run("LOAD_SAMPLESHEET") {
-                script "subworkflows/local/loadSampleSheet/main.nf"
+            run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheetDev/main.nf"
                 process {
                     '''
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = "illumina"
                     '''
                 }
             }

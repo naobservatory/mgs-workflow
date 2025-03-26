@@ -23,6 +23,7 @@ nextflow_workflow {
                 process {
                     """
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = "illumina"
                     """
                 }
             }
@@ -37,7 +38,7 @@ nextflow_workflow {
                 input[1] = params.n_reads
                 input[2] = params.adapters
                 input[3] = LOAD_SAMPLESHEET.out.single_end
-                input[4] = false
+                input[4] = "illumina"
                 input[5] = ""
                 '''
             }
@@ -82,11 +83,12 @@ nextflow_workflow {
         tag "single_end"
         tag "expect_success"
         setup {
-            run("LOAD_SAMPLESHEET") {
-                script "subworkflows/local/loadSampleSheet/main.nf"
+            run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheetDev/main.nf"
                 process {
                     """
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = "illumina"
                     """
                 }
             }
@@ -101,7 +103,7 @@ nextflow_workflow {
                 input[1] = params.n_reads
                 input[2] = params.adapters
                 input[3] = LOAD_SAMPLESHEET.out.single_end
-                input[4] = false
+                input[4] = "illumina"
                 input[5] = ""
                 '''
             }

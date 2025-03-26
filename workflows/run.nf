@@ -37,8 +37,8 @@ workflow RUN {
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
-    // Load samplesheet
-    LOAD_SAMPLESHEET(params.sample_sheet)
+    // Load samplesheet and check platform
+    LOAD_SAMPLESHEET(params.sample_sheet, params.platform)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
     single_end_ch = LOAD_SAMPLESHEET.out.single_end
@@ -65,14 +65,14 @@ workflow RUN {
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
         params.adapters, single_end_ch,
-        params.ont, params.random_seed)
+        params.platform, params.random_seed)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end_ch)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
     PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-        params.bracken_threshold, single_end_ch, params.ont)
+        params.bracken_threshold, single_end_ch, params.platform)
 
     // Get index files for publishing
     index_params_path = "${params.ref_dir}/input/index-params.json"

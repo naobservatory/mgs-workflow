@@ -16,6 +16,7 @@ nextflow_workflow {
                 process {
                     """
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = "illumina"
                     """
                 }
             }
@@ -41,7 +42,7 @@ nextflow_workflow {
                 input[5] = "ribo"
                 input[6] = "1"
                 input[7] = LOAD_SAMPLESHEET.out.single_end
-                input[8] = false
+                input[8] = "illumina"
                 '''
             }
         }
@@ -66,11 +67,12 @@ nextflow_workflow {
         tag "expect_success"
         tag "single_end"
         setup {
-            run("LOAD_SAMPLESHEET") {
-                script "subworkflows/local/loadSampleSheet/main.nf"
+            run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheetDev/main.nf"
                 process {
                     """
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = "illumina"
                     """
                 }
             }
@@ -87,7 +89,7 @@ nextflow_workflow {
                 input[5] = "ribo"
                 input[6] = "1"
                 input[7] = LOAD_SAMPLESHEET.out.single_end
-                input[8] = false
+                input[8] = "illumina"
                 '''
             }
         }
@@ -112,11 +114,12 @@ nextflow_workflow {
         tag "expect_success"
         tag "ont"
         setup {
-            run("LOAD_SAMPLESHEET") {
-                script "subworkflows/local/loadSampleSheet/main.nf"
+            run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheetDev/main.nf"
                 process {
                     """
                     input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                    input[1] = "ont"
                     """
                 }
             }
@@ -133,7 +136,7 @@ nextflow_workflow {
                 input[5] = "ribo"
                 input[6] = "1"
                 input[7] = LOAD_SAMPLESHEET.out.single_end
-                input[8] = true
+                input[8] = "ont"
                 '''
             }
         }

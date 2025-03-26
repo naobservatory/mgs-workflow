@@ -31,10 +31,10 @@ workflow PROFILE {
         ribo_suffix
         bracken_threshold
         single_end
-        ont
+        platform
     main:
         // Separate ribosomal reads
-        if (ont) {
+        if (platform == "ont") {
             ribo_ref = "${ref_dir}/results/mm2-ribo-index"
             ribo_ch = MINIMAP2(reads_ch, ribo_ref, ribo_suffix, false)
             ribo_in = ribo_ch.reads_mapped
