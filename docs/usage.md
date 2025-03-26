@@ -13,7 +13,7 @@ This page describes the process of running the pipeline's [core workflow](./run.
 To run the workflow on new data, you need:
 
 1. Accessible **raw data** files in Gzipped FASTQ format, named appropriately.
-2. A **sample sheet** file specifying the samples to be analyzed, along with paths to the forward and reverse read files for each sample. `bin/generate_samplesheet.sh` (see below) can make this for you.
+2. A **sample sheet** file specifying the samples to be analyzed, along with paths to the forward and reverse read files for each sample.
 3. A **config file** in a clean launch directory, pointing to:
     - The base directory in which to put the working and output directories (`params.base_dir`).
     - The directory containing the outputs of the reference workflow (`params.ref_dir`).
@@ -31,16 +31,7 @@ The sample sheet must be an uncompressed CSV file with the following headers in 
 - `fastq_1` (2nd column): Path to FASTQ file 1 which should be the forward read for this sample
 - `fastq_2` (3rd column): Path to FASTQ file 2 which should be the reverse read for this sample
 
-The easiest way to generate this file is typically using `dev/generate_samplesheet.py`. This script takes in a path to a directory containing raw FASTQ files (`dir_path`) along with forward (`forward_suffix`) and reverse (`reverse_suffix`) read suffixes (both of which support regex) and an optional output path (`output_path`). The `--s3` flag indicates that the target directory is specified as an S3 path. As output, the script generates a CSV file (names `samplesheet.csv` by default) which can be used as input for the pipeline. 
-
-For example:
-```
-./bin/generate_samplesheet.py \
-   --s3
-   --dir_path s3://nao-testing/gold-standard-test/raw/ \
-   --forward_suffix _R1 \
-   --reverse_suffix _R2
-```
+If you're working with NAO data, [mgs-metadata](https://github.com/naobservatory/mgs-metadata) (private) generates these and puts them in S3 alongside the data.
 
 ### 1.2. The config file
 

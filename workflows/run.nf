@@ -37,8 +37,8 @@ workflow RUN {
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
-    // Load samplesheet
-    LOAD_SAMPLESHEET(params.sample_sheet)
+    // Load samplesheet and check platform
+    LOAD_SAMPLESHEET(params.sample_sheet, params.platform)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
     single_end_ch = LOAD_SAMPLESHEET.out.single_end
@@ -47,14 +47,14 @@ workflow RUN {
     COUNT_TOTAL_READS(samplesheet_ch, single_end_ch)
 
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold, 
+    EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
         params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
 
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
         BLAST_VIRAL(EXTRACT_VIRAL_READS.out.hits_fastq, blast_db_path, params.blast_db_prefix,
-            params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
-            params.random_seed)
+            params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed,
+            params.blast_perc_id, params.blast_qcov_hsp_perc)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
         blast_reads_ch = BLAST_VIRAL.out.subset_reads
     } else {
@@ -65,14 +65,14 @@ workflow RUN {
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
         params.adapters, single_end_ch,
-        params.ont, params.random_seed)
+        params.platform, params.random_seed)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end_ch)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
     PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-        params.bracken_threshold, single_end_ch)
+        params.bracken_threshold, single_end_ch, params.platform)
 
     // Get index files for publishing
     index_params_path = "${params.ref_dir}/input/index-params.json"
@@ -109,6 +109,7 @@ workflow RUN {
         EXTRACT_VIRAL_READS.out.bbduk_match >> "reads_raw_viral"
         EXTRACT_VIRAL_READS.out.hits_all    >> "intermediates"
         EXTRACT_VIRAL_READS.out.hits_fastq  >> "intermediates"
+        EXTRACT_VIRAL_READS.out.bbduk_trimmed >> "reads_trimmed_viral"
         // QC
         COUNT_TOTAL_READS.out.read_counts >> "results"
         RUN_QC.out.qc_basic >> "results"

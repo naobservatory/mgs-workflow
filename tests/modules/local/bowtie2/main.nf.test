@@ -13,6 +13,7 @@ nextflow_process {
             process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = "illumina"
                 """
             }
         }
@@ -29,6 +30,7 @@ nextflow_process {
     test("When run against viral index, should run without failures and read counts should match") {
         tag "expect_success"
         tag "interleaved"
+        tag "align_viral"
         when {
             params {
             }
@@ -36,7 +38,7 @@ nextflow_process {
                 '''
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/bt2-virus-index"
-                input[2] = "--score-min G,1,1"
+                input[2] = "--local --very-sensitive-local --score-min G,0.1,19"
                 input[3] = "virus"
                 input[4] = true
                 input[5] = true
@@ -100,7 +102,7 @@ nextflow_process {
                 '''
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/bt2-human-index"
-                input[2] = ""
+                input[2] = "--local --very-sensitive-local"
                 input[3] = "human"
                 input[4] = false
                 input[5] = true
@@ -164,7 +166,7 @@ nextflow_process {
                 '''
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/bt2-other-index"
-                input[2] = ""
+                input[2] = "--local --very-sensitive-local"
                 input[3] = "other"
                 input[4] = false
                 input[5] = true

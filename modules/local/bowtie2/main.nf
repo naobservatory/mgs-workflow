@@ -24,7 +24,7 @@ process BOWTIE2 {
         al="!{sample}_!{suffix}_bowtie2_mapped.fastq.gz"
         un="!{sample}_!{suffix}_bowtie2_unmapped.fastq.gz"
         io="-x ${idx} --interleaved -"
-        par="--threads !{task.cpus} --local --very-sensitive-local !{par_string}"
+        par="--threads !{task.cpus} !{par_string}"
         # Run pipeline
         # Outputs a SAM file for all reads, which is then partitioned based on alignment status
         #   - First branch (samtools view -u -f 12 -) filters SAM to read pairs for which neither mate mapped,

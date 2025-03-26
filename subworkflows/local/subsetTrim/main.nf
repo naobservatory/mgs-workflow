@@ -18,7 +18,7 @@ workflow SUBSET_TRIM {
       n_reads
       adapter_path
       single_end
-      ont
+      platform
       random_seed
     main:
         // Split single-end value channel into two branches, one of which will be empty
@@ -37,7 +37,7 @@ workflow SUBSET_TRIM {
         inter_ch_paired = INTERLEAVE_FASTQ(subset_ch_paired).output
         inter_ch = inter_ch_single.mix(inter_ch_paired)
         // Read cleaning
-        if (ont) {
+        if (platform == "ont") {
             cleaned_ch = FILTLONG(inter_ch, 100, 15000, 90)
         } else {
             cleaned_ch = FASTP(inter_ch, adapter_path, single_end.map{!it})
@@ -45,5 +45,5 @@ workflow SUBSET_TRIM {
     emit:
         subset_reads = inter_ch
         trimmed_subset_reads = cleaned_ch.reads
-        test_failed = ont ? Channel.empty() : cleaned_ch.failed // TODO: Capture rejected ONT reads somehow
+        test_failed = platform == "ont" ? Channel.empty() : cleaned_ch.failed // TODO: Capture rejected ONT reads somehow
 }

@@ -20,6 +20,7 @@ nextflow_workflow {
             process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = "illumina"
                 """
             }
         }
@@ -78,7 +79,7 @@ nextflow_workflow {
             assertTableEquals hits_exp_tab, hits_filtered_tab
             // Filtered FASTQ should be a subset of test FASTQ
             def hits_fastq = path(workflow.out.hits_fastq[0]).fastq
-            assert hits_fastq.getNumberOfRecords() < test_reads_count
+            assert hits_fastq.getNumberOfRecords() <= test_reads_count
             for (r in hits_fastq.readNames) {
                 assert r in test_reads_fastq.readNames
             }

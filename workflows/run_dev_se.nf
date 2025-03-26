@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
+include { LOAD_SAMPLESHEET_DEV as LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheetDev"
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
 include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
@@ -39,8 +39,8 @@ workflow RUN_DEV_SE {
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
-    // Load samplesheet
-    LOAD_SAMPLESHEET(params.sample_sheet)
+    // Load samplesheet and check platform
+    LOAD_SAMPLESHEET(params.sample_sheet, params.platform)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
     single_end_ch = LOAD_SAMPLESHEET.out.single_end
@@ -49,7 +49,7 @@ workflow RUN_DEV_SE {
     COUNT_TOTAL_READS(samplesheet_ch, single_end_ch)
 
     // Extract viral reads
-    if ( params.ont ) {
+    if ( params.platform == "ont" ) {
         EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir)
         hv_tsv_ch = EXTRACT_VIRAL_READS_ONT.out.hits_hv
         hv_fastqs = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
@@ -61,8 +61,8 @@ workflow RUN_DEV_SE {
     // BLAST viral reads
     if ( params.blast_viral_fraction > 0 ) {
         BLAST_VIRAL(hv_fastqs, blast_db_path, params.blast_db_prefix,
-            params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac,
-            params.random_seed)
+            params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed,
+            params.blast_perc_id, params.blast_qcov_hsp_perc)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
         blast_reads_ch = BLAST_VIRAL.out.subset_reads
     } else {
@@ -73,21 +73,16 @@ workflow RUN_DEV_SE {
     // Subset reads to target number, and trim adapters
     SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
         params.adapters, single_end_ch,
-        params.ont, params.random_seed)
+        params.platform, params.random_seed)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end_ch)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
-    if ( params.ont ) {
-        bracken_ch = Channel.empty()
-        kraken_ch = Channel.empty()
-    } else {
-        PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-            params.bracken_threshold, single_end_ch)
-        bracken_ch = PROFILE.out.bracken
-        kraken_ch = PROFILE.out.kraken
-    }
+    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
+        params.bracken_threshold, single_end_ch, params.platform)
+    bracken_ch = PROFILE.out.bracken
+    kraken_ch = PROFILE.out.kraken
 
     // Get index files for publishing
     index_params_path = "${params.ref_dir}/input/index-params.json"
