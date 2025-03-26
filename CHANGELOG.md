@@ -1,13 +1,11 @@
-# v2.8.2.0-dev
-- Increased runtime Bowtie2 score threshold for viral read identification
-- Updated Github Actions to use NAO secrets to access buckets with test data
-- Removed generate-samplesheet.py, as functionality has moved to internal mgs-metadata repo.
-- Added ability to set BLAST parameters qcov_hsp_perc and perc_identity
-- Added ONT taxonomic profiling support:
-    - Added MINIMAP2 classification of ONT reads to PROFILE subworkflow.
-    - Added ont parameter to PROFILE in run.nf.
-- Replaced boolean `params.ont` with string `params.platform` and added platform checking to LOAD_SAMPLESHEET.
-- Fixed bug in running RUN_VALIDATION workflow with a fastq file
+# v2.8.2.0
+- **Increased runtime Bowtie2 score threshold for viral read identification**
+- Updated Github Actions to use NAO secrets to access buckets containing test data
+- Removed generate-samplesheet.py, as functionality has moved to internal mgs-metadata repo
+- Added ability to set BLAST parameters `qcov_hsp_perc` and `perc_id`
+- Added MINIMAP2 classification of ONT reads to PROFILE subworkflow
+- Replaced boolean `params.ont` with string `params.platform` and added platform checking to LOAD_SAMPLESHEET
+- Fixed bug in running RUN_VALIDATION workflow with a FASTQ file
 
 # v2.8.1.2
 - Made Cutadapt mismatch rate parameter configurable
