@@ -11,7 +11,7 @@ The rest of this page describes the specific options present in each config file
 This configuration file controls the pipeline's main RUN workflow. Its options are as follows:
 
 - `params.mode = "run"` [str]: This instructs the pipeline to execute the [core run workflow](./workflows/run.nf).
-- `params.ont = false` [bool]: Run the pipeline with Illumina data (ONT data is under development but not yet fully supported)
+- `params.platform` [str] = The sequencing platform that generated the data. Currently only `illumina` and `aviti` are fully implemented.
 - `params.base_dir` [str]: Path to the parent directory for the pipeline working and output directories.
 - `params.ref_dir` [str]: Path to the directory containing the outputs of the [`index` workflow](./index.md).
 - `params.sample_sheet` [str]: Path to the [sample sheet](./usage.md#11-the-sample-sheet) used for the pipeline run.
@@ -25,6 +25,8 @@ This configuration file controls the pipeline's main RUN workflow. Its options a
 - `params.blast_viral_fraction` [float]: The fraction of putative host-infecting virus reads to validate with BLASTN (0 = don't run BLAST).
 - `params.blast_min_frac` [float]: Keep BLAST hits whose bitscore is at least this fraction of the best bitscore for that query. (default 0.9)
 - `params.blast_max_rank` [int]: Keep BLAST hits whose dense bitscore rank for that query is at most this value.
+- `params.blast_perc_id` [int]: Percentage identity threshold for BLAST validation. (default 60)
+- `params.blast_qcov_hsp_perc` [int]: Query coverage threshold for BLAST validation. (default 30)
 - `process.queue` [str]: The [AWS Batch job queue](./batch.md) to use for this pipeline run.
 
 ## Index workflow (`configs/index.config`)
