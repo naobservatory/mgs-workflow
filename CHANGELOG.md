@@ -1,3 +1,6 @@
+# v2.8.3.0
+- **Lowered Bracken read threshold for taxon classification**
+
 # v2.8.2.0
 - **Increased runtime Bowtie2 score threshold for viral read identification**
 - Updated Github Actions to use NAO secrets to access buckets containing test data

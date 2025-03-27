@@ -18,7 +18,7 @@ This configuration file controls the pipeline's main RUN workflow. Its options a
 - `params.adapters` [str]: Path to the adapter file for adapter trimming (default [`ref/adapters.fasta`](./ref/adapters.fasta).
 - `params.n_reads_profile` [int]: The number of reads per sample to run through taxonomic profiling (default 1 million).
 - `params.bt2_score_threshold` [float]: The length-normalized Bowtie2 score threshold above which a read is considered a valid hit for a host-infecting virus (typically 15 or 20).
-- `params.bracken_threshold` [int]: Minimum number of reads that must be assigned to a taxon for Bracken to include it. (Default 10, can be lowered for testing on very small datasets)
+- `params.bracken_threshold` [int]: Minimum number of reads that must be assigned to a taxon for Bracken to include it. (default 1)
 - `params.host_taxon` [str]: Host taxon to use for host-infecting virus identification with Kraken2. (default "vertebrate")
 - `random_seed` [str]: Random seem for non-deterministic processes. Should generally be blank  ("") in non-test settings.
 - `params.blast_db_prefix` [str]: The prefix for the BLAST database to use for host-infecting virus identification (should match the index workflow's `params.blast_db_name`).
