@@ -55,7 +55,7 @@ To perform these functions, the workflow runs a series of subworkflows responsib
 ## Setup subworkflows
 
 ### Load data into channels (LOAD_SAMPLESHEET)
-This subworkflow loads the samplesheet and creates a channel containing the samplesheet data, in the structure expected by the pipeline. If provided, it also creates a channel containing the grouping information used to combine samples for downstream analysis. (No diagram is provided for this subworkflow.)
+This subworkflow loads the samplesheet and creates a channel containing the samplesheet data, in the structure expected by the pipeline. It also derives the endedness for the pipeline run (single- vs paired-end) from the structure of the samplesheet, and checks that the specified sequencing platform is (a) valid and (b) compatible with the specified endedness. (No diagram is provided for this subworkflow.)
 
 ### Subset and trim reads (SUBSET_TRIM)
 This subworkflow uses [Seqtk](https://github.com/lh3/seqtk) to randomly subsample the input reads to a target number[^target] (default 1 million read pairs per sample) to save time and and compute on downstream steps while still providing a reliable statistical picture of the overall sample. Following downsampling, read pairs are combined into a single interleaved file, which then undergoes adapter trimming and quality screening with [FASTP](https://github.com/OpenGene/fastp).
