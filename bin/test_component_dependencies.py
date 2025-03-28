@@ -2,15 +2,16 @@
 import argparse
 import subprocess
 import os
-
-
+import re
+import sys
 def find_dependency(directory, component):
 
     directory = directory.rstrip("/")
     component = component.replace("/main.nf", "")
 
+    # Use grep with word boundaries to preempt substring matches.
     grep_results = subprocess.run(
-        ["grep", "-r", component, directory], capture_output=True, text=True
+        ["grep", "-r", f"\\b{component}\\b", directory], capture_output=True, text=True
     )
 
     file_paths = {
@@ -23,14 +24,14 @@ def find_dependency(directory, component):
 
 
 def workflow_uses_subworkflow(workflow, subworkflow_path):
-
     workflow_path = f"workflows/{workflow}"
     subworkflow_dir = subworkflow_path.replace("/main.nf", "")
 
     with open(workflow_path, "r") as f:
         workflow_content = f.read()
 
-    if subworkflow_dir in workflow_content:
+    # Use word boundaries to preempt substring matches
+    if re.search(r'\b' + re.escape(subworkflow_dir) + r'\b', workflow_content):
         return True
     else:
         return False
@@ -38,7 +39,8 @@ def workflow_uses_subworkflow(workflow, subworkflow_path):
 
 def get_workflow_test(workflow):
     workflow_path = f"workflows/{workflow}"
-    if "run_dev_se" in workflow_path:
+    if re.search(r'\b' + re.escape("run_dev_se") + r'\b', workflow_path):
+        # This could match workflows that happen to contain "run_dev_se" as a substring
         return "tests/workflows/run_dev.nf.test"
     else:
         base_name = os.path.basename(workflow_path).split(".")[0]
@@ -74,43 +76,58 @@ def parse_args():
 def main():
     component, verbose = parse_args()
 
-    tests_to_execute = set()
+    # Validate component name - only allow alphanumerics and underscores
+    if not re.match(r'^[a-zA-Z0-9_]+$', component):
+        print(f"Error: Input component '{component}' must be a process or subworkflow name, not the file path that contains said process/subworkflow. E.g., 'FASTP' not 'modules/local/fastp/main.nf'")
+        sys.exit(1)
 
+    tests_to_execute = set()
+    # Identifying tests that directly use the component
     direct_tests = find_dependency("tests/", component)
     tests_to_execute.update(direct_tests)
 
-    print("=" * 80)
+    print("=" * 72)
     print(f"Found {len(direct_tests)} direct tests:")
-    print("=" * 80)
+    print("=" * 72)
     for test in direct_tests:
         print(f"   • {test}")
     print()
-    # print("\n")
 
+    # Identifying subworkflows that depend on the component
     dependent_subworkflows = set()
-    subworkflow_tests = set()
-
     dependent_subworkflows.update(find_dependency("subworkflows/", component))
+
+    # Identifying tests that use the affected subworkflows
+    subworkflow_tests = set()
     for dependent_subworkflow in dependent_subworkflows:
         tests = find_dependency("tests/", dependent_subworkflow)
         subworkflow_tests.update(tests)
 
-    print("=" * 80)
+    print("=" * 72)
     print(f"Found {len(subworkflow_tests)} dependent subworkflow tests:")
-    print("=" * 80)
+    print("=" * 72)
     for test in subworkflow_tests:
         print(f"   • {test}")
     print()
 
-    workflow_tests = set()
+    # Identifying workflows that use the component
+    dependent_workflows = set()
+    dependent_workflows.update(find_dependency("workflows/", component))
+
+    # Identifying workflows that use affected subworkflows
     for workflow in os.listdir("workflows/"):
         for dependent_subworkflow in dependent_subworkflows:
             if workflow_uses_subworkflow(workflow, dependent_subworkflow):
-                workflow_tests.add(get_workflow_test(workflow))
+                dependent_workflows.add(workflow)
 
-    print("=" * 80)
+    # Identifying tests that use the affected workflows
+    workflow_tests = set()
+    for workflow in dependent_workflows:
+        workflow_tests.add(get_workflow_test(workflow))
+
+    print("=" * 72)
     print(f"Found {len(workflow_tests)} dependent workflow tests:")
-    print("=" * 80)
+    print("=" * 72)
     for test in workflow_tests:
         print(f"   • {test}")
     print()
@@ -118,7 +135,7 @@ def main():
     tests_to_execute.update(subworkflow_tests)
     tests_to_execute.update(workflow_tests)
 
-    print("=" * 80)
+    print("=" * 72)
     print(f"Identified {len(tests_to_execute)} tests to execute. Running...")
 
     test_results = {}
@@ -127,14 +144,14 @@ def main():
         if verbose:
             args.append("--verbose")
         print(f"\nRunning \"{' '.join(args)}\"")
-        print("-" * 80)
+        print("-" * 72)
         result = subprocess.run(args)
 
         test_results[test] = result.returncode == 0
 
-    print("\n" + "=" * 80)
+    print("\n" + "=" * 72)
     print("Test Summary")
-    print("=" * 80)
+    print("=" * 72)
     for test, passed in test_results.items():
         if passed:
             status = "\033[92m✓\033[0m"  # Green checkmark
