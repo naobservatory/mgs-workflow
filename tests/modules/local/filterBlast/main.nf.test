@@ -13,6 +13,7 @@ nextflow_process {
             process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = "illumina"
                 """
             }
         }
@@ -39,6 +40,8 @@ nextflow_process {
                 input[0] = CONVERT_FASTQ_FASTA.out.output
                 input[1] = "${params.ref_dir}/results/${params.blast_db_prefix}"
                 input[2] = params.blast_db_prefix
+                input[3] = params.blast_perc_id
+                input[4] = params.blast_qcov_hsp_perc
                 '''
             }
         }

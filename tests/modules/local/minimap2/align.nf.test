@@ -8,11 +8,12 @@ nextflow_process {
     tag "minimap2"
 
     setup {
-        run("LOAD_SAMPLESHEET") {
-            script "subworkflows/local/loadSampleSheet/main.nf"
+        run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheetDev/main.nf"
             process {
                 """
                 input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                input[1] = "ont"
                 """
             }
         }

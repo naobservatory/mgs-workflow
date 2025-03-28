@@ -26,7 +26,7 @@ workflow RUN_VALIDATION {
     // Get input FASTQ
     if ( params.viral_tsv == "" ) {
     // Option 1: Directly specify FASTQ path in config (interleaved/single-end)
-        fastq_ch = params.viral_fastq
+        fastq_ch = Channel.fromPath(params.viral_fastq)
     } else {
     // Option 2: Extract read sequences from output DB from RUN workflow (default)
         // Define input
