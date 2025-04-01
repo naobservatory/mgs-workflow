@@ -1,3 +1,6 @@
+# v2.8.3.1
+- Added `expected-outputs-run.txt` file containing list of expected output files for the `RUN` workflow (excluding BLAST validation).
+
 # v2.8.3.0
 - **Lowered Bracken read threshold for taxon classification**
 
