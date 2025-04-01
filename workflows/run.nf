@@ -88,7 +88,7 @@ workflow RUN {
 
     // Prepare other publishing variables
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
-    params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
+    params_ch = Channel.of(params_str).collectFile(name: "params-run.json")
     time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
     version_ch = Channel.fromPath(pipeline_version_path)
     pipeline_compatibility_ch = Channel.fromPath(pipeline_min_index_version_path)
