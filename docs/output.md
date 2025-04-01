@@ -30,7 +30,7 @@ Main heading represents the folder name, and subheadings represent a description
 ### `intermediates/`
 
 - `virus_hits_all.tsv.gz`: Complete list of putative viral reads identified by the EXTRACT_VIRAL_READS subworkflow, prior to filtering with FILTER_VIRUS_READS.
-- `virus_hits_filtered.tsv.gz`: Filtered viral hits in FASTQ format.
+- `virus_hits_filtered.fastq.gz`: Filtered viral hits in FASTQ format.
 - `reads/raw_viral/*`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk.
 
 ### `results/`
