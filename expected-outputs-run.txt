@@ -1,6 +1,6 @@
 input/adapters.fasta
 input/params-index.json
-input/run-params.json
+input/params-run.json
 input/samplesheet.csv
 logging/index-min-pipeline-version.txt
 logging/pipeline-min-index-version.txt
