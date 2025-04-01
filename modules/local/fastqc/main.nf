@@ -11,7 +11,7 @@ process FASTQC {
         path("*.zip"), emit: zip
     shell:
         '''
-        fastqc -t !{cpus} !{reads}
+        fastqc -t !{cpus} --memory !{task.memory.toMega()} !{reads}
         '''
 }
 
@@ -28,6 +28,6 @@ process FASTQC_LABELED {
         tuple val(sample), path("*.zip"), emit: zip
     shell:
         '''
-        fastqc -t !{cpus} !{reads}
+        fastqc -t !{task.cpus} --memory !{task.memory.toMega()} !{reads}
         '''
 }
