@@ -42,7 +42,7 @@ workflow RUN_VALIDATION {
 
     // Publish results (NB: BLAST workflow has its own publish directive)
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
-    params_ch = Channel.of(params_str).collectFile(name: "run-params.json")
+    params_ch = Channel.of(params_str).collectFile(name: "params-run.json")
     time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
     index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
