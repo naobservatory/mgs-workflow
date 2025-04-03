@@ -1,0 +1,86 @@
+nextflow_process {
+
+    name "Test process FASTQC"
+    script "modules/local/fastqc/main.nf"
+    process "FASTQC_LABELED"
+    tag "module"
+    tag "fastqc"
+
+    test("Should run correctly on interleaved data") {
+        tag "expect_success"
+        tag "interleaved"
+        config "tests/configs/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = "illumina"
+                    """
+                }
+            }
+            run("INTERLEAVE_FASTQ") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    """
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    """
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = INTERLEAVE_FASTQ.out.output
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+        }
+    }
+
+    test("Should run correctly on single-end data") {
+        tag "expect_success"
+        tag "single_end"
+        config "tests/configs/run_dev_se.config"
+        setup {
+            run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheetDev/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = "illumina"
+                    """
+                }
+            }
+            run("COPY_FILE") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    """
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = "input.fastq.gz"
+                    """
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = COPY_FILE.out
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+        }
+    }
+
+}

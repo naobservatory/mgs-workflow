@@ -34,10 +34,8 @@ nextflow_workflow {
             workflow {
                 """
                 input[0] = INTERLEAVE_FASTQ.out.output
-                input[1] = "1"
-                input[2] = "1 GB"
-                input[3] = "test"
-                input[4] = LOAD_SAMPLESHEET.out.single_end
+                input[1] = "test"
+                input[2] = LOAD_SAMPLESHEET.out.single_end
                 """
             }
         }

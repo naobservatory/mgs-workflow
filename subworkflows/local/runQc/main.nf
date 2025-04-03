@@ -21,8 +21,8 @@ workflow RUN_QC {
       single_end
     main:
       // 1. Run FASTQC before and after adapter trimming
-      pre_qc_ch = PRE_ADAPTER_TRIM_QC(subset_reads, "1", "4 GB", "raw", single_end)
-      post_qc_ch = POST_ADAPTER_TRIM_QC(trimmed_subset_reads, "1", "4 GB", "cleaned", single_end)
+      pre_qc_ch = PRE_ADAPTER_TRIM_QC(subset_reads, "raw", single_end)
+      post_qc_ch = POST_ADAPTER_TRIM_QC(trimmed_subset_reads, "cleaned", single_end)
       // 2. Combine outputs
       qc_ch = pre_qc_ch.qc.concat(post_qc_ch.qc)
       // 3. Collate MultiQC outputs
