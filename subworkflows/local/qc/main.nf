@@ -18,13 +18,11 @@ include { CONCATENATE_TSVS as CONCATENATE_MULTIQC_LENGTHS } from "../../../modul
 workflow QC {
     take:
         reads
-        fastqc_cpus
-        fastqc_mem
         stage_label
         single_end
     main:
         // 1. Run FASTQC on each read file (single-end or interleaved)
-        fastqc_ch = FASTQC(reads, fastqc_cpus, fastqc_mem)
+        fastqc_ch = FASTQC(reads)
         // 2. Extract data with MultiQC
         multiqc_ch = MULTIQC(stage_label, fastqc_ch.zip)
         // 3. Summarize MultiQC information for each read file / pair of read files
