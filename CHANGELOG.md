@@ -1,4 +1,4 @@
-# v2.8.3.2
+# v2.8.3.2-dev
 - Made sure FASTQC could take advantage of its full memory allocation (to avoid OOM errors on long ONT reads)
 - Removed configurable resources for FASTQC_LABELED, and removed a couple of unused QC processes. Added test for FASTQC. 
 
