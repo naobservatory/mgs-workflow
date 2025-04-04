@@ -535,7 +535,8 @@ def main():
                                   hard_exclude_taxids)
     # Write output
     logger.info("Writing output.")
-    output_db.to_csv(args.output_db, sep="\t", index=False)
+    output_db.to_csv(args.output_db, sep="\t", index=False,
+                     na_rep="NA", header=True)
     logger.info("Script complete.")
 
 if __name__ == "__main__":

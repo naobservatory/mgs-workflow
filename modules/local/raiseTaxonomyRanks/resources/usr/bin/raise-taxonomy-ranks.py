@@ -161,7 +161,8 @@ def main():
     logger.info(f"Columns: {taxonomy_db.columns.tolist()}")
     # Write output
     logger.info("Writing output.")
-    taxonomy_db.to_csv(args.output_db, sep="\t", index=False)
+    taxonomy_db.to_csv(args.output_db, sep="\t", index=False,
+                       na_rep="NA", header=True)
     logger.info("Script complete.")
 
 if __name__ == "__main__":
