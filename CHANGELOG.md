@@ -1,6 +1,7 @@
-# v2.8.3.2-dev
-- Made sure FASTQC could take advantage of its full memory allocation (to avoid OOM errors on long ONT reads)
-- Removed configurable resources for FASTQC_LABELED, and removed a couple of unused QC processes. Added test for FASTQC.
+# v2.8.3.2
+- Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.
+- Added pass/fail test for FASTQC_LABELED.
+- Removed unused QC processes.
 - Added rank-raised taxids to viral taxonomy DB output by INDEX workflow.
 
 # v2.8.3.1
