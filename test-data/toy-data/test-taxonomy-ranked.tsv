@@ -1,0 +1,11 @@
+taxid	parent_taxid	rank	exp_species	exp_genus	exp_family
+1	0	kingdom	NA	NA	NA
+2	1	phylum	NA	NA	NA
+3	2	class	NA	NA	NA
+4	3	order	NA	NA	NA
+5	4	family	NA	NA	5
+6	5	genus	NA	6	5
+7	6	species	7	6	5
+8	7	subspecies	7	6	5
+9	5	none	NA	NA	5
+10	5	species	10	NA	5
