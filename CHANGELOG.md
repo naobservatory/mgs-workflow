@@ -1,6 +1,7 @@
 # v2.8.3.2-dev
 - Made sure FASTQC could take advantage of its full memory allocation (to avoid OOM errors on long ONT reads)
-- Removed configurable resources for FASTQC_LABELED, and removed a couple of unused QC processes. Added test for FASTQC. 
+- Removed configurable resources for FASTQC_LABELED, and removed a couple of unused QC processes. Added test for FASTQC.
+- Added rank-raised taxids to viral taxonomy DB output by INDEX workflow.
 
 # v2.8.3.1
 - Added `expected-outputs-run.txt` file containing list of expected output files for the `RUN` workflow (excluding BLAST validation).
