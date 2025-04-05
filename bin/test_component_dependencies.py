@@ -14,11 +14,20 @@ def find_dependency(directory, component):
         ["grep", "-r", f"\\b{component}\\b", directory], capture_output=True, text=True
     )
 
+    # Relevant line triggers
+    relevant_triggers = ["process", "include", "workflow"]
+
+    # Extract file paths from relevant lines
     file_paths = {
         line.split(":", 1)[0]
         for line in grep_results.stdout.splitlines()
         if ":" in line
     }
+    file_paths = set()
+    for line in grep_results.stdout.splitlines():
+        if any(trigger in line for trigger in relevant_triggers):
+                file = line.split(":", 1)[0]
+                file_paths.add(file)
 
     return file_paths
 
@@ -78,8 +87,7 @@ def main():
 
     # Validate component name - only allow alphanumerics and underscores
     if not re.match(r'^[a-zA-Z0-9_]+$', component):
-        print(f"Error: Input component '{component}' must be a process or subworkflow name, not the file path that contains said process/subworkflow. E.g., 'FASTP' not 'modules/local/fastp/main.nf'")
-        sys.exit(1)
+        raise ValueError(f"Error: Invalid component name '{component}'. Component names must contain only alphanumeric characters and underscores.")
 
     tests_to_execute = set()
     # Identifying tests that directly use the component
