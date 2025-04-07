@@ -1,3 +1,8 @@
+# v2.8.3.3-dev
+- Combined run_dev_se.nf workflow with run.nf: ONT is now an implemented platform!
+- Added end-to-end tests for ONT to github actions
+- Added a deveopment_mode parameter to LOAD_SAMPLESHEET to allow testing on non-implemented platform/endedness
+
 # v2.8.3.2-dev
 - Made sure FASTQC could take advantage of its full memory allocation (to avoid OOM errors on long ONT reads)
 - Removed configurable resources for FASTQC_LABELED, and removed a couple of unused QC processes. Added test for FASTQC.
