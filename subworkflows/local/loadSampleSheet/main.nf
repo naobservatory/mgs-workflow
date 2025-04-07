@@ -46,8 +46,8 @@ workflow LOAD_SAMPLESHEET {
         }
 
         // Check if pipeline is implemented for specified platform and endedness
-        def implemented_platforms = ['illumina', 'aviti']
-        def implemented_endedness = ['paired', 'paired']
+        def implemented_platforms = ['illumina', 'aviti', 'ont']
+        def implemented_endedness = ['both', 'both', 'single']
         def platform_index_2 = implemented_platforms.indexOf(platform)
         if (platform_index_2 < 0) {
             throw new Exception("""Pipeline not yet implemented for platform '${platform}'.

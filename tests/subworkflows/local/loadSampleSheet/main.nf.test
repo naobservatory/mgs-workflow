@@ -72,6 +72,37 @@ nextflow_workflow {
         }
     }
 
+    test("Should run without errors for single-end ONT samplesheet") {
+        tag "expect_success"
+        tag "single_end"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/ont-samplesheet.csv")
+                input[1] = "ont"
+                """
+            }
+        }
+        then {
+            // Should run without errors
+            assert workflow.success
+            // Should produce correctly structured output
+            def tab_in = path(workflow.out.test_input[0]).csv
+            assert workflow.out.samplesheet.size() == tab_in.rowCount
+            for (int i=1; i < tab_in.rowCount; i++){
+                def entry = workflow.out.samplesheet[i]
+                assert entry.size() == 2
+                assert entry[0] == tab_in.columns["sample"][i]
+                assert entry[1] == tab_in.columns["fastq"][i]
+            }
+            // Should correctly infer pairing status
+            assert workflow.out.single_end.size() == 1
+            assert workflow.out.single_end[0] == true
+        }
+    }
+
     test("Should fail on invalid samplesheet") {
         tag "expect_failed"
         tag "paired_end"
@@ -149,27 +180,6 @@ nextflow_workflow {
             assert workflow.failed
             assert workflow.exitStatus == 1
             assert workflow.stdout.any { it.contains("Pipeline is only implemented for platform 'aviti' for paired-end data.") }
-        }
-    }
-
-    test("Should reject ONT samplesheet") {
-        tag "expect_success"
-        tag "single_end"
-        config "tests/configs/run.config"
-        when {
-            params {}
-            workflow {
-                """
-                input[0] = file("${projectDir}/test-data/ont-samplesheet.csv")
-                input[1] = "ont"
-                """
-            }
-        }
-        then {
-            assert workflow.failed
-            assert workflow.exitStatus == 1
-            def msg = "Pipeline not yet implemented for platform 'ont'."
-            assert workflow.stdout.any { it.contains(msg) }
         }
     }
 
