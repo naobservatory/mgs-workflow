@@ -66,7 +66,7 @@ workflow RUN {
     }
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
-        BLAST_VIRAL(hv_output.hits_fastq, blast_db_path, params.blast_db_prefix,
+        BLAST_VIRAL(hits_fastq, blast_db_path, params.blast_db_prefix,
             params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed,
             params.blast_perc_id, params.blast_qcov_hsp_perc)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
@@ -121,7 +121,7 @@ workflow RUN {
         pipeline_compatibility_ch >> "logging"
         // Intermediate files
         bbduk_match >> "reads_raw_viral"
-        hits_unfiltered    >> "intermediates"
+        hits_unfiltered >> "intermediates"
         hits_fastq  >> "intermediates"
         bbduk_trimmed >> "reads_trimmed_viral"
         // QC

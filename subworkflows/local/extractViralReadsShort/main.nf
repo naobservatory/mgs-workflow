@@ -92,7 +92,7 @@ workflow EXTRACT_VIRAL_READS_SHORT {
     emit:
         bbduk_match = bbduk_ch.fail
         bbduk_trimmed = adapt_ch.reads
-        hits_all = concat_ch.output
+        hits_unfiltered = concat_ch.output
         hits_final = filter_ch.output
         hits_fastq = fastq_ch.fastq
         test_reads  = other_bt2_ch.reads_unmapped
