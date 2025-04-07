@@ -16,6 +16,7 @@ nextflow_workflow {
                 """
                 input[0] = file("${projectDir}/test-data/samplesheet.csv")
                 input[1] = "illumina"
+                input[2] = false
                 """
             }
         }
@@ -49,6 +50,7 @@ nextflow_workflow {
                 """
                 input[0] = file("${projectDir}/test-data/samplesheet.csv")
                 input[1] = "aviti"
+                input[2] = false
                 """
             }
         }
@@ -82,6 +84,7 @@ nextflow_workflow {
                 """
                 input[0] = file("${projectDir}/test-data/ont-samplesheet.csv")
                 input[1] = "ont"
+                input[2] = false
                 """
             }
         }
@@ -143,7 +146,7 @@ nextflow_workflow {
         }
     }
 
-    test("Should reject single-end Illumina samplesheet") {
+    test("Should reject single-end Illumina samplesheet in production mode") {
         tag "expect_success"
         tag "single_end"
         config "tests/configs/run.config"
@@ -153,17 +156,18 @@ nextflow_workflow {
                 """
                 input[0] = file("${projectDir}/test-data/single-end-samplesheet.csv")
                 input[1] = "illumina"
+                input[2] = false
                 """
             }
         }
         then {
             assert workflow.failed
             assert workflow.exitStatus == 1
-            assert workflow.stdout.any { it.contains("Pipeline is only implemented for platform 'illumina' for paired-end data.") }
+            assert workflow.stdout.any { it.contains("Pipeline is only implemented in production for platform 'illumina' for paired-end data.") }
         }
     }
 
-    test("Should reject single-end AVITI samplesheet") {
+    test("Should reject single-end AVITI samplesheet in production mode") {
         tag "expect_success"
         tag "single_end"
         config "tests/configs/run.config"
@@ -173,17 +177,18 @@ nextflow_workflow {
                 """
                 input[0] = file("${projectDir}/test-data/single-end-samplesheet.csv")
                 input[1] = "aviti"
+                input[2] = false
                 """
             }
         }
         then {
             assert workflow.failed
             assert workflow.exitStatus == 1
-            assert workflow.stdout.any { it.contains("Pipeline is only implemented for platform 'aviti' for paired-end data.") }
+            assert workflow.stdout.any { it.contains("Pipeline is only implemented in production for platform 'aviti' for paired-end data.") }
         }
     }
 
-    test("Should reject PacBio samplesheet") {
+    test("Should reject PacBio samplesheet in production mode") {
         tag "expect_success"
         tag "single_end"
         config "tests/configs/run.config"
@@ -193,6 +198,7 @@ nextflow_workflow {
                 """
                 input[0] = file("${projectDir}/test-data/ont-samplesheet.csv")
                 input[1] = "pacbio"
+                input[2] = false
                 """
             }
         }
@@ -201,6 +207,38 @@ nextflow_workflow {
             assert workflow.exitStatus == 1
             def msg = "Pipeline not yet implemented for platform 'pacbio'."
             assert workflow.stdout.any { it.contains(msg) }
+        }
+    }
+
+    test("Should run without errors for single-end Illumina samplesheet in development mode") {
+        tag "expect_success"
+        tag "single_end"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = file("${projectDir}/test-data/single-end-samplesheet.csv")
+                input[1] = "illumina"
+                input[2] = true
+                """
+            }
+        }
+        then {
+            // Should run without errors
+            assert workflow.success
+            // Should produce correctly structured output
+            def tab_in = path(workflow.out.test_input[0]).csv
+            assert workflow.out.samplesheet.size() == tab_in.rowCount
+            for (int i=1; i < tab_in.rowCount; i++){
+                def entry = workflow.out.samplesheet[i]
+                assert entry.size() == 2
+                assert entry[0] == tab_in.columns["sample"][i]
+                assert entry[1] == tab_in.columns["fastq"][i]
+            }
+            // Should correctly infer pairing status
+            assert workflow.out.single_end.size() == 1
+            assert workflow.out.single_end[0] == true
         }
     }
 

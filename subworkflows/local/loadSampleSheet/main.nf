@@ -6,6 +6,7 @@ workflow LOAD_SAMPLESHEET {
     take:
         sample_sheet
         platform
+        development_mode // less strict validation for platform/endedness
     main:
         // Start time
         start_time = new Date()
@@ -45,22 +46,23 @@ workflow LOAD_SAMPLESHEET {
             throw new Exception("Platform '${plat}' requires paired-end data.")
         }
 
-        // Check if pipeline is implemented for specified platform and endedness
-        def implemented_platforms = ['illumina', 'aviti', 'ont']
-        def implemented_endedness = ['both', 'both', 'single']
-        def platform_index_2 = implemented_platforms.indexOf(platform)
-        if (platform_index_2 < 0) {
-            throw new Exception("""Pipeline not yet implemented for platform '${platform}'.
-                Permitted platforms: ${implemented_platforms.join(", ")}""")
+        // If not in development mode, check if pipeline is implemented for specified platform and endedness
+        if (!development_mode) {
+            def implemented_platforms = ['illumina', 'aviti', 'ont']
+            def implemented_endedness = ['both', 'both', 'single']
+            def platform_index_2 = implemented_platforms.indexOf(platform)
+            if (platform_index_2 < 0) {
+                throw new Exception("""Pipeline not yet implemented in production for platform '${platform}'.
+                    Permitted platforms: ${implemented_platforms.join(", ")}""")
+            }
+            def endedness_2 = implemented_endedness[platform_index_2]
+            if (endedness_2 == "single" && !single_end) {
+                throw new Exception("Pipeline is only implemented in production for platform '${platform}' for single-end data.")
+            }
+            if (endedness_2 == "paired" && single_end) {
+                throw new Exception("Pipeline is only implemented in production for platform '${platform}' for paired-end data.")
+            }
         }
-        def endedness_2 = implemented_endedness[platform_index_2]
-        if (endedness_2 == "single" && !single_end) {
-            throw new Exception("Pipeline is only implemented for platform '${platform}' for single-end data.")
-        }
-        if (endedness_2 == "paired" && single_end) {
-            throw new Exception("Pipeline is only implemented for platform '${platform}' for paired-end data.")
-        }
-
         // Construct samplesheet channel
         if (single_end) {
             samplesheet = Channel
