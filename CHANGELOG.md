@@ -1,3 +1,9 @@
+# v2.8.3.2
+- Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.
+- Added pass/fail test for FASTQC_LABELED.
+- Removed unused QC processes.
+- Added rank-raised taxids to viral taxonomy DB output by INDEX workflow.
+
 # v2.8.3.1
 - Added `expected-outputs-run.txt` file containing list of expected output files for the `RUN` workflow (excluding BLAST validation).
 - Minor updates to logging filenames.
