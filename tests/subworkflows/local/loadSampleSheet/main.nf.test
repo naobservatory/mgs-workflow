@@ -205,7 +205,7 @@ nextflow_workflow {
         then {
             assert workflow.failed
             assert workflow.exitStatus == 1
-            def msg = "Pipeline not yet implemented for platform 'pacbio'."
+            def msg = "Pipeline not yet implemented in production for platform 'pacbio'."
             assert workflow.stdout.any { it.contains(msg) }
         }
     }
