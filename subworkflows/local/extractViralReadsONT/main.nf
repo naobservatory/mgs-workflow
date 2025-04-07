@@ -65,7 +65,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
         fastq_ch = CONCATENATE_FILES(clean_virus_fastq_ch.output.map{ it[1] }.collect(), "clean_virus_reads", "fastq.gz")
 
     emit:
-        hits_hv = merged_tsv_ch.output
+        hits_final = merged_tsv_ch.output
         hits_fastq = fastq_ch.output
         test_minimap2_virus = virus_sam_ch
         test_fastq_filtered_human = human_minimap2_ch.reads_unmapped

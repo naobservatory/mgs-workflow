@@ -39,7 +39,7 @@ workflow RUN {
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet and check platform
-    LOAD_SAMPLESHEET(params.sample_sheet, params.platform)
+    LOAD_SAMPLESHEET(params.sample_sheet, params.platform, false)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
     single_end_ch = LOAD_SAMPLESHEET.out.single_end
@@ -50,11 +50,19 @@ workflow RUN {
     // Extract and count human-viral reads
     if ( params.platform == "ont" ) {
         EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir)
-        hv_output = EXTRACT_VIRAL_READS_ONT.out
-    } else {
+        hits_fastq = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
+        hits_final = EXTRACT_VIRAL_READS_ONT.out.hits_final
+        hits_unfiltered = Channel.empty()
+        bbduk_match = Channel.empty()
+        bbduk_trimmed = Channel.empty()
+     } else {
         EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
             params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
-        hv_output = EXTRACT_VIRAL_READS_SHORT.out
+        hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
+        hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
+        hits_unfiltered = EXTRACT_VIRAL_READS_SHORT.out.hits_unfiltered
+        bbduk_match = EXTRACT_VIRAL_READS_SHORT.out.bbduk_match
+        bbduk_trimmed = EXTRACT_VIRAL_READS_SHORT.out.bbduk_trimmed
     }
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
@@ -112,10 +120,10 @@ workflow RUN {
         version_ch >> "logging"
         pipeline_compatibility_ch >> "logging"
         // Intermediate files
-        hv_output.bbduk_match >> "reads_raw_viral"
-        hv_output.hits_all    >> "intermediates"
-        hv_output.hits_fastq  >> "intermediates"
-        hv_output.bbduk_trimmed >> "reads_trimmed_viral"
+        bbduk_match >> "reads_raw_viral"
+        hits_unfiltered    >> "intermediates"
+        hits_fastq  >> "intermediates"
+        bbduk_trimmed >> "reads_trimmed_viral"
         // QC
         COUNT_TOTAL_READS.out.read_counts >> "results"
         RUN_QC.out.qc_basic >> "results"
@@ -124,7 +132,7 @@ workflow RUN {
         RUN_QC.out.qc_qseqs >> "results"
         RUN_QC.out.qc_lengths >> "results"
         // Final results
-        hv_output.hits_filtered >> "results"
+        hits_final >> "results"
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
         // Validation output (if any)

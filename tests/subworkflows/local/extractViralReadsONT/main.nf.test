@@ -35,15 +35,15 @@ nextflow_workflow {
             // Should run without failures
             assert workflow.success
 
-            // Viral minimap2 output should have the same read IDS as the final HV TSV
+            // Viral minimap2 output should have the same read IDS as the final vertebrate viral TSV
             def samlines = sam(workflow.out.test_minimap2_virus[0][1]).getSamLines()
             def sam_ids = samlines
                 .collect { line -> line.split('\t')[0] }  // Get read IDs
                 .toSet()
-            def hits_hv = path(workflow.out.hits_hv[0]).csv(sep: "\t", decompress: true)
-            def hits_hv_read_ids = hits_hv.columns["query_name"].toSet()
+            def hits_final = path(workflow.out.hits_final[0]).csv(sep: "\t", decompress: true)
+            def hits_final_read_ids = hits_final.columns["query_name"].toSet()
             assert sam_ids.size() > 0
-            assert sam_ids == hits_hv_read_ids
+            assert sam_ids == hits_final_read_ids
 
             // Check the the human and contam filtering work and produce FASTQ files that are subsets of the prior FASTQ file.
             def fastq_filtered_human = path(workflow.out.test_fastq_filtered_human[0][1]).fastq

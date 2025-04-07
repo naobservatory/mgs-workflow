@@ -70,7 +70,7 @@ nextflow_workflow {
             assert test_joined_tab.columnCount == test_bowtie_tab.columnCount + test_kraken_tab.columnCount - 1 + 2
             // Test filtering produced expected results
             def hits_all_tab = path(workflow.out.hits_all[0]).csv(sep: "\t", decompress: true)
-            def hits_filtered_tab = path(workflow.out.hits_filtered[0]).csv(sep: "\t", decompress: true)
+            def hits_filtered_tab = path(workflow.out.hits_final[0]).csv(sep: "\t", decompress: true)
             assertTableEquals hits_all_tab, test_joined_tab
             assert hits_all_tab.columnNames == hits_filtered_tab.columnNames
             assert hits_all_tab.rowCount >= hits_filtered_tab.rowCount

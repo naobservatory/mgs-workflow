@@ -220,7 +220,7 @@ nextflow_workflow {
                     """
                     input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
                     input[1] = "ont"
-                    input[2] = fasle
+                    input[2] = false
                     """
                 }
             }
