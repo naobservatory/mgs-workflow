@@ -1,5 +1,5 @@
 {
-    "run_output": {
+    "run_output_illumina": {
         "content": [
             "bracken_reports_merged.tsv.gz:md5,6c504fa837ef97ef2096f2569d8c6902",
             "kraken_reports_merged.tsv.gz:md5,84f070b42b948d36ae38eaee4a61982e",
