@@ -16,7 +16,7 @@ nextflow_pipeline {
 
     test("ONT RUN workflow should run without errors") {
         config "tests/configs/run_ont.config"
-        tag "run"
+        tag "run_ont"
         tag "main_run_ont"
         then {
             // Should run without failures
@@ -24,7 +24,8 @@ nextflow_pipeline {
         }
     }
 
-    test("RUN workflow output should match snapshot") {
+    test("Illumina RUN workflow output should match snapshot") {
+        config "tests/configs/run_illumina.config"
         tag "run_output"
         tag "main_run_output_illumina"
         then {
