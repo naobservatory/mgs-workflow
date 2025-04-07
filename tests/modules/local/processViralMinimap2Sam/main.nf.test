@@ -8,14 +8,15 @@ nextflow_process {
 
     test("On ONT data, should run without errors") {
         tag "expect_success"
-        config "tests/configs/run_dev_ont.config"
+        config "tests/configs/run_ont.config"
         setup {
-            run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
-                script "subworkflows/local/loadSampleSheetDev/main.nf"
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     '''
                     input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
                     input[1] = "ont"
+                    input[2] = false
                     '''
                 }
             }
