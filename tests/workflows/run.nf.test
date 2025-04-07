@@ -47,7 +47,7 @@ nextflow_pipeline {
     }
 
     test("ONT RUN workflow output should match snapshot") {
-        config "tests/configs/run.config"
+        config "tests/configs/run_ont.config"
         tag "run_output_ont"
         tag "main_run_output_ont"
         then {
@@ -63,7 +63,7 @@ nextflow_pipeline {
                 path("${launchDir}/output/results/subset_qc_length_stats.tsv.gz"),
                 path("${launchDir}/output/results/subset_qc_quality_base_stats.tsv.gz"),
                 path("${launchDir}/output/results/subset_qc_quality_sequence_stats.tsv.gz"),
-                path("${launchDir}/output/results/virus_hits_filtered.tsv.gz"),
+                path("${launchDir}/output/results/hv.tsv.gz"),
             ).match("run_output_ont")
         }
     }    
