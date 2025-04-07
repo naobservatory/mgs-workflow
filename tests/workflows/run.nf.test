@@ -5,7 +5,7 @@ nextflow_pipeline {
     tag "workflow"
 
     test("RUN workflow should run without errors") {
-        config "tests/configs/run_illumina.config"
+        config "tests/configs/run.config"
         tag "run"
         tag "main_run_illumina"
         then {
@@ -25,7 +25,7 @@ nextflow_pipeline {
     }
 
     test("Illumina RUN workflow output should match snapshot") {
-        config "tests/configs/run_illumina.config"
+        config "tests/configs/run.config"
         tag "run_output"
         tag "main_run_output_illumina"
         then {
