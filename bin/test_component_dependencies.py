@@ -147,38 +147,19 @@ def main():
     print(f"Identified {len(tests_to_execute)} tests to execute. Running...")
 
     test_results = {}
-    for test in sorted(tests_to_execute):
-        args = ["nf-test", "test", test]
-        if verbose:
-            args.append("--verbose")
-        print(f"\nRunning \"{' '.join(args)}\"")
-        print("-" * 72)
-        result = subprocess.run(args)
-
-        test_results[test] = result.returncode == 0
-
-    print("\n" + "=" * 72)
-    print("Test Summary")
-    print("=" * 72)
-    for test, passed in test_results.items():
-        if passed:
-            status = "\033[92m✓\033[0m"  # Green checkmark
-        else:
-            status = "\033[91m✗\033[0m"  # Red X
-        print(f"   {status} {test}")
-
-    total = len(test_results)
-    passed = sum(test_results.values())
-    failed = total - passed
-
-    print("\n" + "-" * 40)
-    print(f"Total:  {total} tests")
-    print(f"Passed: {passed} tests")
-    if failed > 0:
-        print(f"\033[91mFailed: {failed} tests\033[0m")
+    # Run all tests in a single nf-test command
+    cmd = ["nf-test", "test"] + sorted(tests_to_execute)
+    if verbose:
+        cmd.append("--verbose")
+        print(f"\nRunning tests with verbose output:")
     else:
-        print(f"Failed: {failed} tests")
-    print("-" * 40 + "\n")
+        print(f"\nRunning tests:")
+
+    for test in sorted(tests_to_execute):
+        print(f"   • {test}")
+    print("-" * 72)
+
+    result = subprocess.run(cmd)
 
 
 if __name__ == "__main__":
