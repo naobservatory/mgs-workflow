@@ -35,7 +35,7 @@ workflow DOWNSTREAM {
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
-    params_ch = Channel.of(params_str).collectFile(name: "downstream-params.json")
+    params_ch = Channel.of(params_str).collectFile(name: "params-downstream.json")
     time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
     version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
     publish:
