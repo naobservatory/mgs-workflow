@@ -151,9 +151,9 @@ def main():
     cmd = ["nf-test", "test"] + sorted(tests_to_execute)
     if verbose:
         cmd.append("--verbose")
-        print(f"\nRunning tests with verbose output:")
+        print(f"\nRunning test files with verbose output:")
     else:
-        print(f"\nRunning tests:")
+        print(f"\nRunning test files:")
 
     for test in sorted(tests_to_execute):
         print(f"   • {test}")
