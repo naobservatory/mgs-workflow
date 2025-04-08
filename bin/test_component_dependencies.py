@@ -49,7 +49,6 @@ def workflow_uses_subworkflow(workflow, subworkflow_path):
 def get_workflow_test(workflow):
     workflow_path = f"workflows/{workflow}"
     if re.search(r'\b' + re.escape("run_dev_se") + r'\b', workflow_path):
-        # This could match workflows that happen to contain "run_dev_se" as a substring
         return "tests/workflows/run_dev.nf.test"
     else:
         base_name = os.path.basename(workflow_path).split(".")[0]
@@ -90,6 +89,7 @@ def main():
         raise ValueError(f"Error: Invalid component name '{component}'. Component names must contain only alphanumeric characters and underscores.")
 
     tests_to_execute = set()
+
     # Identifying tests that directly use the component
     direct_tests = find_dependency("tests/", component)
     tests_to_execute.update(direct_tests)
