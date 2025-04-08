@@ -96,7 +96,20 @@ nextflow_workflow {
                 assert tabs_part_2[i].rowCount == fastqs_interleaved[i].sequences.size() / 2
                 assert tabs_part_2[i].rowCount == fastqs_merged[i].sequences.size()
             }
-            
+            // Clustering should work as expected
+            def fastas_clustered = workflow.out.test_cluster_reps.collect{path(it[1]).fasta}
+            def tabs_clustered = workflow.out.test_cluster_summ.collect{path(it[1]).csv(sep: "\t",decompress: true, header: false)}
+            assert fastas_clustered.size() == fastqs_merged.size()
+            assert tabs_clustered.size() == fastas_clustered.size()
+            for (int i=0; i < fastas_clustered.size(); i++) {
+                def n_clusters = tabs_clustered[i].columns["C0"].count("C")
+                def n_reps = tabs_clustered[i].columns["C0"].count("S")
+                def n_hits = tabs_clustered[i].columns["C0"].count("H")
+                def n_seqs = n_reps + n_hits
+                assert fastqs_merged[i].sequences.size() == n_seqs
+                assert fastas_clustered[i].size() == n_reps
+                assert n_reps == n_clusters
+            }
         }
     }
 

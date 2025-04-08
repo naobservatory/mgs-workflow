@@ -75,4 +75,6 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_part_2 = partitioned_flattened_ch
         test_fastq = fastq_ch
         test_concat = concat_ch
+        test_cluster_reps = cluster_ch.reps
+        test_cluster_summ = cluster_ch.summary
 }
