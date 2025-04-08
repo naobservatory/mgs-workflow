@@ -6,7 +6,7 @@ include { MINIMAP2 as MINIMAP2_VIRUS } from "../../../modules/local/minimap2"
 include { MINIMAP2 as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
 include { MINIMAP2_NON_STREAMED as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
 include { CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
-include { ADD_SAMPLE_COLUMN as LABEL_HV_TSVS } from "../../../modules/local/addSampleColumn"
+include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
 include { FILTLONG } from "../../../modules/local/filtlong"
 include { MASK_FASTQ_READS } from "../../../modules/local/maskRead"
 include { PROCESS_VIRAL_MINIMAP2_SAM } from "../../../modules/local/processViralMinimap2Sam"
@@ -45,7 +45,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
         no_contam_ch = contam_minimap2_ch.reads_unmapped
 
         // Identify virus reads
-        virus_minimap2_ch = MINIMAP2_VIRUS(no_human_ch, minimap2_virus_index, "hv", false)
+        virus_minimap2_ch = MINIMAP2_VIRUS(no_human_ch, minimap2_virus_index, "virus", false)
         virus_sam_ch = virus_minimap2_ch.sam
 
         // Group cleaned reads and sam files by sample
@@ -53,9 +53,9 @@ workflow EXTRACT_VIRAL_READS_ONT {
 
         // Generate TSV of viral hits
         tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_fastq_ch, genome_meta_path, virus_db_path)
-        tsv_labeled_ch = LABEL_HV_TSVS(tsv_ch.output, "sample", "hv_tsv") // TODO fix this so it doesn't say HV
+        tsv_labeled_ch = ADD_SAMPLE_COLUMN(tsv_ch.output, "sample", "viral_minimap2") 
 
-        // Concatenate HV TSVs
+        // Concatenate TSVs of viral hits
         viral_tsvs = tsv_labeled_ch.output.map { it[1] }.collect()
         merged_tsv_ch = CONCATENATE_TSVS(viral_tsvs, "virus_hits_final") 
 

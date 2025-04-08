@@ -59,7 +59,7 @@ Main heading represents the folder name, and subheadings represent a description
 - `kraken_reports_merged.tsv.gz`: Kraken output reports in TSV format, labeled by sample and ribosomal status, for subset samples produced by SUBSET_TRIM.
 
 #### BLAST
-- `merged_blast_filtered.tsv.gz`: Filtered tabular BLASTN output for putative HV reads.
+- `merged_blast_filtered.tsv.gz`: Filtered tabular BLASTN output for putative vertebrate viral reads.
 - `merged_blast_input_subset.fasta.gz`: Subset interleaved FASTA used as input to BLASTN (useful for identifying which reads were included in the subset for downstream analysis).
 
 ## Index workflow
@@ -93,7 +93,7 @@ Main heading represents the folder name, and subheadings describes the tool that
 - `bt2-virus-index`: Directory containing Bowtie2 index for host-infecting viral genomes.
 - `bt2-human-index`: Directory containing Bowtie2 index for the human genome.
 - `bt2-other-index`: Directory containing Bowtie2 index for other contaminant sequences.
-- `virus-genome-metadata-gid.tsv.gz`: Genome metadata file generated during download of HV genomes from viral Genbank, annotated additionally with Genome IDs used by Bowtie2 (allowing mapping between genome ID and taxid).
+- `virus-genome-metadata-gid.tsv.gz`: Genome metadata file generated during download of vertebrate viral genomes from viral Genbank, annotated additionally with Genome IDs used by Bowtie2 (allowing mapping between genome ID and taxid).
 
 #### Minimap2
 

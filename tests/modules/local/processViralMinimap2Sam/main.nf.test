@@ -36,7 +36,7 @@ nextflow_process {
                     '''
                     input[0] = MASK_FASTQ_READS.out.masked
                     input[1] = "${params.ref_dir}/results/mm2-virus-index"
-                    input[2] = "hv"
+                    input[2] = "virus"
                     input[3] = false
                     '''
                 }
