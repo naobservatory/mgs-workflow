@@ -1,0 +1,61 @@
+nextflow_process {
+
+    name "Test process VSEARCH_CLUSTER"
+    script "modules/local/vsearch/main.nf"
+    process "VSEARCH_CLUSTER"
+    config "tests/configs/run_dev_se.config"
+    tag "module"
+    tag "vsearch"
+
+    setup {
+        run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheetDev/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                input[1] = "illumina"
+                """
+            }
+        }
+        run("COPY_FILE") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                """
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = "input.fastq.gz"
+                """
+            }
+        }
+    }
+
+    test("Should run without failures on valid inputs"){
+        tag "expect_success"
+        tag "single_end"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = COPY_FILE.out
+                input[1] = 0.95
+                input[2] = 0
+                input[3] = 15
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Outputs should be compatible and match input
+            def seq_in = path(process.out.input[0][1]).fastq
+            def tab_out = path(process.out.summary[0][1]).csv(sep: "\t", decompress: true, header: false)
+            def seq_out = path(process.out.reps[0][1]).fasta
+            def n_clusters = tab_out.columns["C0"].count("C")
+            def n_reps = tab_out.columns["C0"].count("S")
+            def n_hits = tab_out.columns["C0"].count("H")
+            def n_seqs = n_reps + n_hits
+            assert seq_in.sequences.size() == n_seqs
+            assert seq_out.size() == n_reps
+            assert n_reps == n_clusters
+        }
+    }
+}
