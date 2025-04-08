@@ -70,14 +70,14 @@ nextflow_workflow {
             assert test_joined_tab.columnCount == test_bowtie_tab.columnCount + test_kraken_tab.columnCount - 1 + 2
             // Test filtering produced expected results
             def hits_all_tab = path(workflow.out.hits_unfiltered[0]).csv(sep: "\t", decompress: true)
-            def hits_filtered_tab = path(workflow.out.hits_final[0]).csv(sep: "\t", decompress: true)
+            def hits_final_tab = path(workflow.out.hits_final[0]).csv(sep: "\t", decompress: true)
             assertTableEquals hits_all_tab, test_joined_tab
-            assert hits_all_tab.columnNames == hits_filtered_tab.columnNames
-            assert hits_all_tab.rowCount >= hits_filtered_tab.rowCount
+            assert hits_all_tab.columnNames == hits_final_tab.columnNames
+            assert hits_all_tab.rowCount >= hits_final_tab.rowCount
             def hits_exp_tab = filter_tab(hits_all_tab, params.bt2_score_threshold)
-            assert hits_exp_tab.columnNames == hits_filtered_tab.columnNames
-            assert hits_exp_tab.rowCount == hits_filtered_tab.rowCount
-            assertTableEquals hits_exp_tab, hits_filtered_tab
+            assert hits_exp_tab.columnNames == hits_final_tab.columnNames
+            assert hits_exp_tab.rowCount == hits_final_tab.rowCount
+            assertTableEquals hits_exp_tab, hits_final_tab
             // Filtered FASTQ should be a subset of test FASTQ
             def hits_fastq = path(workflow.out.hits_fastq[0]).fastq
             assert hits_fastq.getNumberOfRecords() <= test_reads_count
@@ -85,7 +85,7 @@ nextflow_workflow {
                 assert r in test_reads_fastq.readNames
             }
             // Elements from test FASTQ should be in filtered FASTQ iff they're in filtered TSV
-            def ids_filtered = hits_filtered_tab.columns["seq_id"]
+            def ids_filtered = hits_final_tab.columns["seq_id"]
             def ids_fastq_in = test_reads_fastq.readNames.collect{ it.tokenize(" ")[0] }
             def ids_fastq_out = hits_fastq.readNames.collect{ it.tokenize(" ")[0] }
             for (id in ids_fastq_in) {

@@ -41,7 +41,7 @@ nextflow_pipeline {
                 path("${launchDir}/output/results/subset_qc_length_stats.tsv.gz"),
                 path("${launchDir}/output/results/subset_qc_quality_base_stats.tsv.gz"),
                 path("${launchDir}/output/results/subset_qc_quality_sequence_stats.tsv.gz"),
-                path("${launchDir}/output/results/virus_hits_filtered.tsv.gz"),
+                path("${launchDir}/output/results/virus_hits_final.tsv.gz"),
             ).match("run_output_illumina")
         }
     }
@@ -63,7 +63,7 @@ nextflow_pipeline {
                 path("${launchDir}/output/results/subset_qc_length_stats.tsv.gz"),
                 path("${launchDir}/output/results/subset_qc_quality_base_stats.tsv.gz"),
                 path("${launchDir}/output/results/subset_qc_quality_sequence_stats.tsv.gz"),
-                path("${launchDir}/output/results/hv.tsv.gz"),
+                path("${launchDir}/output/results/virus_hits_final.tsv.gz"),
             ).match("run_output_ont")
         }
     }    

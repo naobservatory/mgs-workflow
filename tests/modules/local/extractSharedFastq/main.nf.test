@@ -3,7 +3,7 @@ nextflow_process {
     name "Test process EXTRACT_SHARED_FASTQ_READS"
     script "modules/local/extractSharedFastq/main.nf"
     process "EXTRACT_SHARED_FASTQ_READS"
-    config "tests/configs/run_dev_ont.config"
+    config "tests/configs/run_ont.config"
     tag "module"
     tag "extract_shared_fastq_reads"
 

@@ -11,7 +11,7 @@
             "subset_qc_length_stats.tsv.gz:md5,deb6f5182ed916986640d4668459ddae",
             "subset_qc_quality_base_stats.tsv.gz:md5,a5492c9c3b986d99848b95328b32ea7b",
             "subset_qc_quality_sequence_stats.tsv.gz:md5,94c11e0dbcf2b58d685ab8701c04cf9b",
-            "virus_hits_filtered.tsv.gz:md5,7b8ab89a1b552b56d378f5f04c27c023"
+            "virus_hits_final.tsv.gz:md5,7b8ab89a1b552b56d378f5f04c27c023"
         ],
         "meta": {
             "nf-test": "0.9.2",
@@ -31,7 +31,7 @@
             "subset_qc_length_stats.tsv.gz:md5,a8bf085fd6baddac8583f424f72ce94e",
             "subset_qc_quality_base_stats.tsv.gz:md5,b5d5c45af7fedbf52dee84bdc25fb9b0",
             "subset_qc_quality_sequence_stats.tsv.gz:md5,f07808095a7926593aa2400e88a61fad",
-            "hv.tsv.gz:md5,ee352cb0786204c1d889e77600ca3a6e"
+            "virus_hits_final.tsv.gz:md5,ee352cb0786204c1d889e77600ca3a6e"
         ],
         "meta": {
             "nf-test": "0.9.2",

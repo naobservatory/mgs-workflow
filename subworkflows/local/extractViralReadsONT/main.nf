@@ -5,7 +5,7 @@
 include { MINIMAP2 as MINIMAP2_VIRUS } from "../../../modules/local/minimap2"
 include { MINIMAP2 as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
 include { MINIMAP2_NON_STREAMED as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
-include { CONCATENATE_TSVS as CONCATENATE_HV_TSVS } from "../../../modules/local/concatenateTsvs"
+include { CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
 include { ADD_SAMPLE_COLUMN as LABEL_HV_TSVS } from "../../../modules/local/addSampleColumn"
 include { FILTLONG } from "../../../modules/local/filtlong"
 include { MASK_FASTQ_READS } from "../../../modules/local/maskRead"
@@ -51,18 +51,18 @@ workflow EXTRACT_VIRAL_READS_ONT {
         // Group cleaned reads and sam files by sample
         sam_fastq_ch = virus_sam_ch.join(filtered_ch)
 
-        // Generate HV TSV
-        hv_tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_fastq_ch, genome_meta_path, virus_db_path)
-        hv_tsv_labeled_ch = LABEL_HV_TSVS(hv_tsv_ch.output, "sample", "hv_tsv")
+        // Generate TSV of viral hits
+        tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_fastq_ch, genome_meta_path, virus_db_path)
+        tsv_labeled_ch = LABEL_HV_TSVS(tsv_ch.output, "sample", "hv_tsv") // TODO fix this so it doesn't say HV
 
         // Concatenate HV TSVs
-        hv_tsvs = hv_tsv_labeled_ch.output.map { it[1] }.collect()
-        merged_tsv_ch = CONCATENATE_HV_TSVS(hv_tsvs, "hv")
+        viral_tsvs = tsv_labeled_ch.output.map { it[1] }.collect()
+        merged_tsv_ch = CONCATENATE_TSVS(viral_tsvs, "virus_hits_final") 
 
         // Pull out clean reads from mapped reads to feed into BLAST
         virus_fastq_ch = virus_minimap2_ch.reads_mapped
         clean_virus_fastq_ch = EXTRACT_SHARED_FASTQ_READS(virus_fastq_ch.join(filtered_ch.reads))
-        fastq_ch = CONCATENATE_FILES(clean_virus_fastq_ch.output.map{ it[1] }.collect(), "clean_virus_reads", "fastq.gz")
+        fastq_ch = CONCATENATE_FILES(clean_virus_fastq_ch.output.map{ it[1] }.collect(), "virus_hits_final", "fastq.gz")
 
     emit:
         hits_final = merged_tsv_ch.output

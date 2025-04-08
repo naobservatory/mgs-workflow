@@ -45,7 +45,7 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = EXTRACT_VIRAL_READS_SHORT.out.hits_filtered
+                input[0] = EXTRACT_VIRAL_READS_SHORT.out.hits_final
                 input[1] = false
                 '''
             }
