@@ -14,6 +14,7 @@ include { SORT_TSV as SORT_JOINED_SPECIES } from "../../../modules/local/sortTsv
 include { EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED as EXTRACT_FASTQ } from "../../../modules/local/extractViralHitsToFastqNoref"
 include { BBMERGE } from "../../../modules/local/bbmerge"
 include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
+include { VSEARCH_CLUSTER } from "../../../modules/local/vsearch"
 
 /***********
 | WORKFLOW |
@@ -23,6 +24,8 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
     take:
         groups // Labeled viral hit TSVs partitioned by group
         db // Viral taxonomy DB
+        cluster_identity // Identity threshold for VSEARCH clustering
+        cluster_min_len // Minimum sequence length for VSEARCH clustering
     main:
         // 1. Join to viral taxonomy DB
         rehead_ch = REHEAD_TSV(groups, "bowtie2_taxid_best", "taxid").output
@@ -61,7 +64,8 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         bbmerge_ch = BBMERGE(fastq_ch).reads
         concat_ch = JOIN_FASTQ(bbmerge_ch, false).reads
         // 6. Cluster merged reads
-        // TODO
+        cluster_ch = VSEARCH_CLUSTER(concat_ch, cluster_identity, 0, cluster_min_len)
+        // ...
     emit:
         test_in   = groups
         test_db   = db

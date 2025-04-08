@@ -45,6 +45,8 @@ nextflow_workflow {
                 '''
                 input[0] = PREPARE_GROUP_TSVS.out.groups
                 input[1] = COPY_FILE_BARE.out
+                input[2] = params.validation_cluster_identity
+                input[3] = 15
                 '''
             }
         }

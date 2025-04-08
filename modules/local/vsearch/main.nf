@@ -6,7 +6,7 @@ process VSEARCH_CLUSTER {
         tuple val(sample), path(reads) // Single-end or merged reads
         val(identity_threshold) // Minimum required identity (0.0-1.0) required for two sequences to cluster together
         val(identity_method) // Method for calculating identity (see VSEARCH documentation)
-        val(min_seq_length) // Minimum sequencing length required by VSEARCH
+        val(min_seq_length) // Minimum sequence length required by VSEARCH
     output:
         tuple val(sample), path("${sample}_vsearch_reps.fasta.gz"), emit: reps
         tuple val(sample), path("${sample}_vsearch_summary.tsv.gz"), emit: summary
