@@ -6,11 +6,11 @@
     - Also rename `hits_all` output of short read pipeline to `hits_unfiltered`
 - Rename `hits_hv` output of ONT pipeline to `hits_final` for consistency with short read pipeline
      - and get rid of lingering references to human viruses/HV in comments, variable names, etc. 
-- 
 
-# v2.8.3.2-dev
-- Made sure FASTQC could take advantage of its full memory allocation (to avoid OOM errors on long ONT reads)
-- Removed configurable resources for FASTQC_LABELED, and removed a couple of unused QC processes. Added test for FASTQC.
+# v2.8.3.2
+- Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.
+- Added pass/fail test for FASTQC_LABELED.
+- Removed unused QC processes.
 - Added rank-raised taxids to viral taxonomy DB output by INDEX workflow.
 
 # v2.8.3.1
