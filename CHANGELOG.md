@@ -1,3 +1,6 @@
+# v2.8.3.3-dev
+- Began development of post-doc validation of putative viral hits in the DOWNSTREAM workflow
+
 # v2.8.3.2
 - Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.
 - Added pass/fail test for FASTQC_LABELED.
