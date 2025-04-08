@@ -70,7 +70,7 @@ jobs:
           wget -qO- https://get.nf-test.com | bash
           sudo mv nf-test /usr/local/bin/
 
-      - name: Run run workflow (Illumina)
+      - name: Run run workflow (short read)
         run: nf-test test --tag run_output --verbose --ci
 
   test-run-output-ont:

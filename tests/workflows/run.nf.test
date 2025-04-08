@@ -4,10 +4,10 @@ nextflow_pipeline {
     script "main.nf" // Running from main so we have access to published files
     tag "workflow"
 
-    test("Illumina RUN workflow should run without errors") {
+    test("Short read RUN workflow should run without errors") {
         config "tests/configs/run.config"
         tag "run"
-        tag "main_run_illumina"
+        tag "main_run_shortread"
         then {
             // Should run without failures
             assert workflow.success
@@ -24,10 +24,10 @@ nextflow_pipeline {
         }
     }
 
-    test("Illumina RUN workflow output should match snapshot") {
+    test("Short read RUN workflow output should match snapshot") {
         config "tests/configs/run.config"
         tag "run_output"
-        tag "main_run_output_illumina"
+        tag "main_run_output_shortread"
         then {
             assert workflow.success
             assert snapshot(
@@ -42,7 +42,7 @@ nextflow_pipeline {
                 path("${launchDir}/output/results/subset_qc_quality_base_stats.tsv.gz"),
                 path("${launchDir}/output/results/subset_qc_quality_sequence_stats.tsv.gz"),
                 path("${launchDir}/output/results/virus_hits_final.tsv.gz"),
-            ).match("run_output_illumina")
+            ).match("run_output_shortread")
         }
     }
 
@@ -66,5 +66,5 @@ nextflow_pipeline {
                 path("${launchDir}/output/results/virus_hits_final.tsv.gz"),
             ).match("run_output_ont")
         }
-    }    
+    }   
 }
