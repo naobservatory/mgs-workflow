@@ -1,4 +1,11 @@
 /*
+Perform efficient post-hoc validation of putative viral reads identified by the RUN workflow.
+
+A. Partition putative hits by assigned species
+B. Extract into FASTQ and merge read pairs into single sequences
+C. [TODO] Cluster sequences from each species and identify representative sequences
+D. [TODO] Align representative sequences against a large reference DB
+E. [TODO] Compare taxids assigned in (4) to those assigned by RUN workflow
 */
 
 /***************************
@@ -32,7 +39,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             "taxid"
         ).sorted.map{ sample, db -> db }
         join_prep_ch = rehead_sorted_ch.combine(db_sorted_ch)
-        join_ch = JOIN_TSVS(join_prep_ch, "taxid", "inner", "taxonomy").output
+        join_ch = JOIN_TSVS(join_prep_ch, "taxid", "left", "taxonomy").output
         // 2. Partition on species taxid
         join_sorted_ch = SORT_JOINED_SPECIES(join_ch, "taxid_species").sorted
         part_ch = PARTITION_TSV(join_sorted_ch, "taxid_species").output
@@ -61,7 +68,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         bbmerge_ch = BBMERGE(fastq_ch).reads
         concat_ch = JOIN_FASTQ(bbmerge_ch, false).reads
         // 6. Cluster merged reads
-        // TODO
+        // TODO: Implement C,D,E from docstring
     emit:
         test_in   = groups
         test_db   = db
