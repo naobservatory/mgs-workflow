@@ -45,13 +45,15 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         part_ch = PARTITION_TSV(join_sorted_ch, "taxid_species").output
         // 3. Restructure channel to separate species
         // First rearrange each element from [sample, [paths]] to [[sample_species1, path1], [sample_species2, path2], ...]
-        partitioned_tuple_ch = part_ch.map{
+        partitioned_flattened_ch = part_ch.flatMap{
             sample, filepaths ->
                 // Make sure paths are a list even if there's just one
                 def pathlist = (filepaths instanceof List) ? filepaths : [filepaths]
                 pathlist.collect { path ->
                     // Define regex pattern for extracting species taxid
-                    def matcher = (path.last() =~ /^partition_(.*?)_sorted_taxid_species_${sample}_taxonomy_inner_joined_taxid\.tsv\.gz$/)
+                    def filename = path.last()
+                    def pattern = /^partition_(.*?)_sorted_taxid_species_${sample}_taxonomy_left_joined_taxid\.tsv\.gz$/
+                    def matcher = (filename =~ pattern)
                     if (!matcher) {
                         def msg = "Filename doesn't match required pattern: ${sample}, ${path}, ${path.last()}"
                         throw new IllegalArgumentException(msg)
@@ -60,8 +62,6 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
                     ["${sample}_${matcher[0][1]}", path]
                 }
             }
-        // Then flatten
-        partitioned_flattened_ch = partitioned_tuple_ch.flatMap{it -> it}
         // 4. Extract into interleaved FASTQ format
         fastq_ch = EXTRACT_FASTQ(partitioned_flattened_ch, false).output
         // 5. Merge and concatenate pairs into single sequences for clustering
