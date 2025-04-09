@@ -9,7 +9,7 @@ import logging
 import argparse
 import pandas as pd
 import time
-import datetime
+from datetime import datetime, timezone
 
 # Configure logging
 class UTCFormatter(logging.Formatter):
@@ -49,39 +49,45 @@ def parse_vsearch_db(vsearch_path):
                              names=col_names, dtype=str)
     record_counts = vsearch_db["record_type"].value_counts()
     logger.info(
-        f"Imported [{record_counts['C']} clusters, "
-        f"{record_counts['S']} representative sequences, "
-        f" and {record_counts['H']} non-representative hit sequences]."
+        f"Imported {record_counts.get('C', 0)} clusters, "
+        f"{record_counts.get('S', 0)} representative sequences, "
+        f" and {record_counts.get('H', 0)} non-representative hit sequences."
         )
     assert record_counts['C'] == record_counts['S'], \
             "Cluster and representative counts should match."
     return vsearch_db
 
-def process_vsearch_db(vsearch_db):
-    """Process VSEARCH tabular output into a structured format."""
-    # First split DataFrame by record type
-    logger.info("Processing VSEARCH DB records.")
-    dbs_split = {label: db for label, db in vsearch_db.groupby("record_type")}
-    # Process cluster records
-    cluster_db = dbs_split["C"].copy()
+def process_cluster_records(cluster_db):
+    """Process cluster records into a structured format."""
+    logger.info("Processing cluster records.")
     cluster_db = cluster_db.assign(
         cluster_size = cluster_db["size"].astype(int),
         cluster_rep_id = cluster_db["id"]
     )[["cluster_id", "cluster_size", "cluster_rep_id"]]
-    # Process centroid records
-    centroid_db = dbs_split["S"].copy()
-    centroid_db = centroid_db.assign(
-        seq_length = centroid_db["size"].astype(int),
+    logger.info(f"Processed {len(cluster_db)} cluster records.")
+    logger.info(f"Output DB columns: {cluster_db.columns.tolist()}.")
+    return cluster_db
+
+def process_representative_records(rep_db):
+    """Process cluster representative records into a structured format."""
+    logger.info("Processing representative records.")
+    rep_db = rep_db.assign(
+        seq_length = rep_db["size"].astype(int),
         percent_identity = 100.0,
         orientation = "+",
-        cigar = centroid_db["size"].astype(str) + "M",
-        seq_id = centroid_db["id"],
-        cluster_rep_id = centroid_db["id"],
+        cigar = rep_db["size"].astype(str) + "M",
+        seq_id = rep_db["id"],
+        cluster_rep_id = rep_db["id"],
         is_cluster_rep = True
         )[["seq_id", "cluster_id", "cluster_rep_id", "seq_length",
             "is_cluster_rep", "percent_identity", "orientation", "cigar"]]
-    # Process hit records
-    hit_db = dbs_split["H"].copy()
+    logger.info(f"Processed {len(rep_db)} representative records.")
+    logger.info(f"Output DB columns: {rep_db.columns.tolist()}.")
+    return rep_db
+
+def process_hit_records(hit_db):
+    """Process hit records into a structured format."""
+    logger.info("Processing hit records.")
     hit_db = hit_db.assign(
         seq_length = hit_db["size"].astype(int),
         percent_identity = hit_db["percent_identity"].astype(float),
@@ -89,10 +95,30 @@ def process_vsearch_db(vsearch_db):
         is_cluster_rep = False
         )[["seq_id", "cluster_id", "cluster_rep_id", "seq_length",
             "is_cluster_rep", "percent_identity", "orientation", "cigar"]]
-    # Concatenate centroid and hit records
-    logger.info("Combining records into output format.")
-    sequence_db = pd.concat([centroid_db, hit_db], ignore_index=True)
+    logger.info(f"Processed {len(hit_db)} hit records.")
+    logger.info(f"Output DB columns: {hit_db.columns.tolist()}.")
+    return hit_db
+
+def process_vsearch_db(vsearch_db):
+    """Process VSEARCH tabular output into a structured format."""
+    # First split DataFrame by record type
+    logger.info("Processing VSEARCH DB records.")
+    dbs_split = {label: db for label, db in vsearch_db.groupby("record_type")}
+    assert "C" in dbs_split, "Cluster records should be present."
+    assert "S" in dbs_split, "Representative records should be present."
+    # Process cluster records
+    cluster_db = process_cluster_records(dbs_split["C"].copy())
+    rep_db = process_representative_records(dbs_split["S"].copy())
+    if "H" in dbs_split:
+        hit_db = process_hit_records(dbs_split["H"].copy())
+    # Combine cluster and hit records
+    if "H" in dbs_split:
+        logger.info("Combining representative and hit records.")
+        sequence_db = pd.concat([rep_db, hit_db], ignore_index=True)
+    else:
+        sequence_db = rep_db
     # Merge cluster information into sequence records
+    logger.info("Merging cluster information into sequence records.")
     output_db = pd.merge(sequence_db, cluster_db,
                          on=["cluster_id", "cluster_rep_id"],
                          how="inner")
