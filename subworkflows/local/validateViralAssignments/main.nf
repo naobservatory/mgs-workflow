@@ -3,7 +3,7 @@ Perform efficient post-hoc validation of putative viral reads identified by the 
 
 A. Partition putative hits by assigned species
 B. Extract into FASTQ and merge read pairs into single sequences
-C. [TODO] Cluster sequences from each species and identify representative sequences
+C. Cluster sequences from each species and identify representative sequences
 D. [TODO] Align representative sequences against a large reference DB
 E. [TODO] Compare taxids assigned in (4) to those assigned by RUN workflow
 */
@@ -22,6 +22,7 @@ include { EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED as EXTRACT_FASTQ } from "../
 include { BBMERGE } from "../../../modules/local/bbmerge"
 include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
 include { VSEARCH_CLUSTER } from "../../../modules/local/vsearch"
+include { PROCESS_VSEARCH_CLUSTER_OUTPUT } from "../../../modules/local/processVsearchClusterOutput"
 
 /***********
 | WORKFLOW |
@@ -72,7 +73,8 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         concat_ch = JOIN_FASTQ(bbmerge_ch, false).reads
         // 6. Cluster merged reads
         cluster_ch = VSEARCH_CLUSTER(concat_ch, cluster_identity, 0, cluster_min_len)
-        // TODO: Implement C,D,E from docstring
+        cluster_tab_ch = PROCESS_VSEARCH_CLUSTER_OUTPUT(cluster_ch.summary).output
+        // TODO: Implement D,E from docstring
     emit:
         test_in   = groups
         test_db   = db
@@ -84,4 +86,5 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_concat = concat_ch
         test_cluster_reps = cluster_ch.reps
         test_cluster_summ = cluster_ch.summary
+        test_cluster_tab = cluster_tab_ch
 }
