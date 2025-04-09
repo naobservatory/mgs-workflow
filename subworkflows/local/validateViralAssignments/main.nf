@@ -94,7 +94,6 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
                 }
                 [matcher[0][1], path]
         }
-        println(split_label_ch)
         // Then group elements by group label and concatenate
         regrouped_label_ch = split_label_ch.groupTuple()
         regrouped_concat_ch = CONCATENATE_TSVS_LABELED(regrouped_label_ch, "clusters").output
