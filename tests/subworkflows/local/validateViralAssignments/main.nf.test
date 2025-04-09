@@ -114,6 +114,13 @@ nextflow_workflow {
                 assert tabs_clustered_out[i].rowCount == n_seqs
                 assert tabs_clustered_out[i].columns["cluster_id"].unique().size() == n_clusters
             }
+            // Regrouping should work as expected
+            def tabs_regrouped = workflow.out.test_regrouped.collect{path(it[1]).csv(sep: "\t",decompress: true)}
+            assert tabs_regrouped.size() == tabs_join.size()
+            for (int i=0; i < tabs_regrouped.size(); i++) {
+                assert tabs_regrouped[i].rowCount == tabs_join[i].rowCount
+                assert tabs_regrouped[i].columns["seq_id"].unique().toSorted() == tabs_join[i].columns["seq_id"].unique().toSorted()
+            }
         }
     }
 
