@@ -1,0 +1,125 @@
+nextflow_process {
+
+    name "Test process SUBSEQ_FASTN"
+    script "modules/local/subseqFastn/main.nf"
+    process "SUBSEQ_FASTN"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "subseq_fastn"
+
+    test("Should correctly handle valid FASTQ input"){
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq"))
+                    '''
+                }
+            }
+            run("SUBSET_FASTN") {
+                script "modules/local/subsetFastn/main.nf"
+                process {
+                    '''
+                    input[0] = GZIP_FILE.out
+                    input[1] = 0.5
+                    input[2] = "98765"
+                    '''
+                }
+            }
+            run("EXTRACT_FASTN_IDS") {
+                script "modules/local/extractFastnIds/main.nf"
+                process {
+                    '''
+                    input[0] = SUBSET_FASTN.out.output
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = GZIP_FILE.out.combine(EXTRACT_FASTN_IDS.out.output, by: 0)
+                '''
+            }
+        }
+        then {
+            // Process should run without errors
+            assert process.success
+            // FASTQ headers should match IDs
+            def ids_in = path(process.out.input[0][2]).csv(header: false).columns["C0"]
+            def fastq_out = path(process.out.output[0][1]).fastq
+            assert ids_in == fastq_out.readNames.collect{it.tokenize(" ")[0]}.unique().toSorted()
+            // FASTQ sequences should match corresponding sequences from input
+            def fastq_in = path(process.out.input[0][1]).fastq
+            for (name in fastq_out.readNames) {
+                assert name in fastq_in.readNames
+                def record_in = fastq_in.getRecordByName(name)
+                def record_out = fastq_out.getRecordByName(name)
+                assert record_in.getReadString() == record_out.getReadString()
+                assert record_in.getBaseQualityString() == record_out.getBaseQualityString()
+            }
+        }
+    }
+
+    test("Should correctly handle valid FASTA input"){
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fasta"))
+                    '''
+                }
+            }
+            run("SUBSET_FASTN") {
+                script "modules/local/subsetFastn/main.nf"
+                process {
+                    '''
+                    input[0] = GZIP_FILE.out
+                    input[1] = 0.5
+                    input[2] = "98765"
+                    '''
+                }
+            }
+            run("EXTRACT_FASTN_IDS") {
+                script "modules/local/extractFastnIds/main.nf"
+                process {
+                    '''
+                    input[0] = SUBSET_FASTN.out.output
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = GZIP_FILE.out.combine(EXTRACT_FASTN_IDS.out.output, by: 0)
+                '''
+            }
+        }
+        then {
+            // Process should run without errors
+            assert process.success
+            // FASTA headers should match IDs
+            def ids_in = path(process.out.input[0][2]).csv(header: false).columns["C0"]
+            def fasta_out = path(process.out.output[0][1]).fasta
+            assert ids_in == fasta_out.keySet().collect{it.tokenize(" ")[0]}.unique().toSorted()
+            // FASTA sequences should match corresponding sequences from input
+            def fasta_in = path(process.out.input[0][1]).fasta
+            for (name in fasta_out.keySet()) {
+                assert name in fasta_in.keySet()
+                assert fasta_in[name] == fasta_out[name]
+            }
+        }
+    }
+
+}
