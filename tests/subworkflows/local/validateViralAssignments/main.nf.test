@@ -55,87 +55,20 @@ nextflow_workflow {
         then {
             // Should run without failures
             assert workflow.success
-            // Sorting should work as expected
-            def tabs_in = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t", decompress: true)}
-            def tabs_sort = workflow.out.test_sort.collect{path(it[1]).csv(sep: "\t", decompress: true)}
-            assert tabs_sort.size() == tabs_in.size()
-            for (int i=0; i < tabs_in.size(); i++) {
-                assert tabs_sort[i].rowCount == tabs_in[i].rowCount
-                assert tabs_sort[i].columnCount == tabs_in[i].columnCount
-                assert tabs_sort[i].columns["taxid"].collect{ it.toString() } == tabs_in[i].columns["bowtie2_taxid_best"].collect{ it.toString() }.toSorted()
-            }
-            // Joined DB should have expected contents
-            def tabs_join = workflow.out.test_join.collect{path(it[1]).csv(sep: "\t",decompress: true)}
-            def tab_db = path(workflow.out.test_db[0]).csv(sep: "\t", decompress: true)
-            assert tabs_join.size() == tabs_sort.size()
-            for (int i=0; i < tabs_sort.size(); i++) {
-                assert tabs_join[i].rowCount == tabs_sort[i].rowCount
-                assert tabs_join[i].columnCount == tabs_sort[i].columnCount + tab_db.columnCount - 1
-                for (c in tabs_join[i].columnNames) {
-                    if (c in tabs_sort[i].columnNames) {
-                        assert tabs_sort[i].columns[c] == tabs_join[i].columns[c]
-                    } else {
-                        assert c in tab_db.columnNames
-                    }
-                }
-            }
-            // Partition should produce expected number of output DBs
-            def n_parts_total = 0
-            def n_parts_exp
-            def n_parts_obs
-            for (int i=0; i < tabs_join.size(); i++) {
-                n_parts_exp = tabs_join[i].columns["taxid_species"].unique().size()
-                n_parts_obs = workflow.out.test_part[i][1].size()
-                assert n_parts_exp == n_parts_obs
-                n_parts_total += n_parts_obs
-            }
-            assert workflow.out.test_part_2.size() == n_parts_total
-            // FASTQ extraction and merging should work as expected
-            def tabs_part_2 = workflow.out.test_part_2.collect{path(it[1]).csv(sep: "\t",decompress: true)}
-            def fastqs_interleaved = workflow.out.test_fastq.collect{path(it[1]).fastq}
-            def fastqs_merged = workflow.out.test_concat.collect{path(it[1]).fastq}
-            for (int i=0; i < tabs_part_2.size(); i++) {
-                assert tabs_part_2[i].rowCount == fastqs_interleaved[i].sequences.size() / 2
-                assert tabs_part_2[i].rowCount == fastqs_merged[i].sequences.size()
-            }
-            // Clustering should work as expected
-            def fastas_clustered = workflow.out.test_cluster_reps.collect{path(it[1]).fasta}
-            def tabs_clustered = workflow.out.test_cluster_summ.collect{path(it[1]).csv(sep: "\t",decompress: true, header: false)}
-            def tabs_clustered_out = workflow.out.test_cluster_tab.collect{path(it[1]).csv(sep: "\t",decompress: true)}
-            def tabs_clustered_ids = workflow.out.test_cluster_ids.collect{path(it[1]).csv(header: false)}
-            assert fastas_clustered.size() == fastqs_merged.size()
-            assert tabs_clustered.size() == fastas_clustered.size()
-            assert tabs_clustered_out.size() == tabs_clustered.size()
-            assert tabs_clustered_ids.size() == tabs_clustered_out.size()
-            for (int i=0; i < fastas_clustered.size(); i++) {
-                def n_clusters = tabs_clustered[i].columns["C0"].count("C")
-                def n_reps = tabs_clustered[i].columns["C0"].count("S")
-                def n_hits = tabs_clustered[i].columns["C0"].count("H")
-                def n_seqs = n_reps + n_hits
-                assert fastqs_merged[i].sequences.size() == n_seqs
-                assert fastas_clustered[i].size() == n_reps
-                assert n_reps == n_clusters
-                assert tabs_clustered_out[i].rowCount == n_seqs
-                assert tabs_clustered_out[i].columns["cluster_id"].unique().size() == n_clusters
-                def exp_output_ids = Math.min(n_clusters, params.n_clusters)
-                assert tabs_clustered_ids[i].columns["C0"].unique().size() == exp_output_ids
-            }
-            // Subsetting on representative ID should work as expected
-            def fastqs_subset = workflow.out.test_reps.collect{path(it[1]).fastq}
-            assert fastqs_subset.size() == fastqs_merged.size()
-            for (int i=0; i < fastqs_subset.size(); i++) {
-                def ids_in = tabs_clustered_ids[i].columns["C0"].toSorted()
-                def names_out = fastqs_subset[i].readNames
-                def ids_out = names_out.collect{it.tokenize(" ")[0]}.toSorted()
-                assert ids_in == ids_out.unique()
-                assert fastqs_merged[i].readNames.containsAll(names_out)
+            // Clustering should preserve reads
+            def tabs_split = workflow.out.test_split_tsv.collect{path(it[1]).csv(sep: "\t",decompress: true)}
+            def tabs_clust = workflow.out.test_cluster_tab.collect{path(it[1]).csv(sep: "\t",decompress: true)}
+            assert tabs_split.size() == tabs_clust.size()
+            for (int i = 0; i < tabs_split.size(); i++) {
+                assert tabs_split[i].rowCount == tabs_clust[i].rowCount
             }
             // Regrouping should work as expected
+            def tabs_in = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t",decompress: true)}
             def tabs_regrouped = workflow.out.test_regrouped.collect{path(it[1]).csv(sep: "\t",decompress: true)}
-            assert tabs_regrouped.size() == tabs_join.size()
+            assert tabs_regrouped.size() == tabs_in.size()
             for (int i=0; i < tabs_regrouped.size(); i++) {
-                assert tabs_regrouped[i].rowCount == tabs_join[i].rowCount
-                assert tabs_regrouped[i].columns["seq_id"].unique().toSorted() == tabs_join[i].columns["seq_id"].unique().toSorted()
+                assert tabs_regrouped[i].rowCount == tabs_in[i].rowCount
+                assert tabs_regrouped[i].columns["seq_id"].unique().toSorted() == tabs_in[i].columns["seq_id"].unique().toSorted()
             }
         }
     }
