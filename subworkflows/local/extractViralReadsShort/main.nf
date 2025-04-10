@@ -82,9 +82,9 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         out_labeled_ch = ADD_SAMPLE_COLUMN(out_joined_ch_2.output, "sample", "viral_bbmerge")
         // 8. Concatenate across reads
         label_combined_ch = out_labeled_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
-        concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_all")
+        concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_unfiltered")
         // 9. Filter by length-normalized alignment score
-        filter_ch = FILTER_VIRUS_READS(concat_ch.output, aln_score_threshold, "virus_hits_filtered")
+        filter_ch = FILTER_VIRUS_READS(concat_ch.output, aln_score_threshold, "virus_hits_final")
         // 10. Extract filtered virus hits in FASTQ format
         fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ sample, file -> file }.collect().ifEmpty([])
         fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
@@ -92,8 +92,8 @@ workflow EXTRACT_VIRAL_READS_SHORT {
     emit:
         bbduk_match = bbduk_ch.fail
         bbduk_trimmed = adapt_ch.reads
-        hits_all = concat_ch.output
-        hits_filtered = filter_ch.output
+        hits_unfiltered = concat_ch.output
+        hits_final = filter_ch.output
         hits_fastq = fastq_ch.fastq
         test_reads  = other_bt2_ch.reads_unmapped
         test_kraken = kraken_output_ch.output
