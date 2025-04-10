@@ -2,7 +2,7 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { SUBSET_FASTQ } from "../../../modules/local/subsetFastq"
+include { SUBSET_FASTN } from "../../../modules/local/subsetFastn"
 include { CONVERT_FASTQ_FASTA } from "../../../modules/local/convertFastqFasta"
 include { BLASTN as BLAST } from "../../../modules/local/blast"
 include { SORT_FILE as SORT_BLAST_1 } from "../../../modules/local/sortFile"
@@ -32,7 +32,7 @@ workflow BLAST_VIRAL {
         reads_in = Channel.of("merged")
             | combine(viral_fastq)
         subset_ch = (read_fraction < 1)
-            ? SUBSET_FASTQ(reads_in, read_fraction, random_seed).output
+            ? SUBSET_FASTN(reads_in, read_fraction, random_seed).output
             : reads_in
         subset_sorted_ch = SORT_FASTQ(subset_ch).output
         // 2. Convert to FASTA

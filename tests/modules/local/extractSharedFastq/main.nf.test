@@ -18,8 +18,8 @@ nextflow_process {
             }
         }
 
-        run("SUBSET_FASTQ") {
-            script "modules/local/subsetFastq/main.nf"
+        run("SUBSET_FASTN") {
+            script "modules/local/subsetFastn/main.nf"
             process {
                 """
                 input[0] = GZIP_FILE.out
@@ -36,7 +36,7 @@ nextflow_process {
             params {}
             process {
                 '''
-                input[0] = SUBSET_FASTQ.out.output.join(GZIP_FILE.out)
+                input[0] = SUBSET_FASTN.out.output.join(GZIP_FILE.out)
                 '''
             }
         }
