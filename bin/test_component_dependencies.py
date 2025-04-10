@@ -46,6 +46,20 @@ def workflow_uses_subworkflow(workflow, subworkflow_path):
         return False
 
 
+def subworkflow_uses_subworkflow(subworkflow, dependent_subworkflow):
+    subworkflow_path = f"subworkflows/local/{subworkflow}/main.nf"
+    dependent_subworkflow_dir = dependent_subworkflow.replace("/main.nf", "")
+
+    with open(subworkflow_path, "r") as f:
+        subworkflow_content = f.read()
+
+    # Use word boundaries to preempt substring matches
+    if re.search(r'\b' + re.escape(dependent_subworkflow_dir) + r'\b', subworkflow_content):
+        return True
+    else:
+        return False
+
+
 def get_workflow_test(workflow):
     workflow_path = f"workflows/{workflow}"
     if re.search(r'\b' + re.escape("run_dev_se") + r'\b', workflow_path):
@@ -101,18 +115,27 @@ def main():
         print(f"   • {test}")
     print()
 
-    # Identifying subworkflows that depend on the component
-    dependent_subworkflows = set()
-    dependent_subworkflows.update(find_dependency("subworkflows/", component))
+    # Find subworkflows that directly use the component
+    dependent_subworkflows = set(find_dependency("subworkflows/", component))
+
+    # Find transitive dependencies - subworkflows that use other dependent subworkflows
+    transitive_dependencies = set()
+    for subworkflow in os.listdir("subworkflows/local/"):
+        for dependent_subworkflow in dependent_subworkflows:
+            if subworkflow_uses_subworkflow(subworkflow, dependent_subworkflow):
+                transitive_dependencies.add(subworkflow)
+
+    # Combine all dependent subworkflows
+    dependent_subworkflows.update(transitive_dependencies)
 
     # Identifying tests that use the affected subworkflows
     subworkflow_tests = set()
     for dependent_subworkflow in dependent_subworkflows:
-        tests = find_dependency("tests/", dependent_subworkflow)
+        tests = find_dependency("tests/subworkflows/", dependent_subworkflow)
         subworkflow_tests.update(tests)
 
     print("=" * 72)
-    print(f"Found {len(subworkflow_tests)} dependent subworkflow tests:")
+    print(f"Found {len(subworkflow_tests)} tests that depend on the subworkflow:")
     print("=" * 72)
     for test in subworkflow_tests:
         print(f"   • {test}")
