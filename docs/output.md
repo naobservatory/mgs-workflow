@@ -31,9 +31,9 @@ Main heading represents the folder name, and subheadings represent a description
 
 ### `intermediates/`
 
-- `virus_hits_all.tsv.gz`: Complete list of putative viral reads identified by the EXTRACT_VIRAL_READS subworkflow, prior to filtering with FILTER_VIRUS_READS.
-- `virus_hits_filtered.fastq.gz`: Filtered viral hits in FASTQ format.
-- `reads/raw_viral/*`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk.
+- `virus_hits_all.tsv.gz`: Complete list of putative viral reads identified by the EXTRACT_VIRAL_READS subworkflow, prior to filtering with FILTER_VIRUS_READS. (Note: this is not currently produced for ONT data.)
+- `virus_hits_final.fastq.gz`: Filtered viral hits in FASTQ format.
+- `reads/raw_viral/*`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk. (Note: this is not currently produced for ONT data.)
 
 ### `results/`
 
@@ -52,14 +52,14 @@ Main heading represents the folder name, and subheadings represent a description
 - `subset_qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
 
 #### Viral identification
-- `virus_hits_filtered.tsv.gz`: TSV output from EXTRACT_VIRAL_READS, giving information about each read pair assigned to a host-infecting virus.
+- `virus_hits_final.tsv.gz`: TSV output from EXTRACT_VIRAL_READS, giving information about each read pair assigned to a host-infecting virus.
 
 #### Taxonomic identification
 - `bracken_reports_merged.tsv.gz`: Bracken output reports in TSV format, labeled by sample and ribosomal status, for subset samples produced by SUBSET_TRIM.
 - `kraken_reports_merged.tsv.gz`: Kraken output reports in TSV format, labeled by sample and ribosomal status, for subset samples produced by SUBSET_TRIM.
 
 #### BLAST
-- `merged_blast_filtered.tsv.gz`: Filtered tabular BLASTN output for putative HV reads.
+- `merged_blast_filtered.tsv.gz`: Filtered tabular BLASTN output for putative vertebrate viral reads.
 - `merged_blast_input_subset.fasta.gz`: Subset interleaved FASTA used as input to BLASTN (useful for identifying which reads were included in the subset for downstream analysis).
 
 ## Index workflow
@@ -93,7 +93,9 @@ Main heading represents the folder name, and subheadings describes the tool that
 - `bt2-virus-index`: Directory containing Bowtie2 index for host-infecting viral genomes.
 - `bt2-human-index`: Directory containing Bowtie2 index for the human genome.
 - `bt2-other-index`: Directory containing Bowtie2 index for other contaminant sequences.
-- `virus-genome-metadata-gid.tsv.gz`: Genome metadata file generated during download of HV genomes from viral Genbank, annotated additionally with Genome IDs used by Bowtie2 (allowing mapping between genome ID and taxid).
+- `virus-genome-metadata-gid.tsv.gz`: Genome metadata file generated during download of vertebrate viral genomes[^vertebrate] from viral Genbank, annotated additionally with Genome IDs used by Bowtie2 (allowing mapping between genome ID and taxid).
+
+[^vertebrate]: We say "vertebrate-infecting viruses" here and throughout the documentation for convenience, as the pipeline currently looks for vertebrate-infecting viruses by default. However, which viruses the pipeline looks for is configurable based on how you set up the index workflow.
 
 #### Minimap2
 

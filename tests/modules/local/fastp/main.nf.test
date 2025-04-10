@@ -17,6 +17,7 @@ nextflow_process {
                     """
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = "illumina"
+                    input[2] = false
                     """
                 }
             }
@@ -62,14 +63,15 @@ nextflow_process {
     test("Should run correctly on single-end data") {
         tag "expect_success"
         tag "single_end"
-        config "tests/configs/run_dev_se.config"
+        config "tests/configs/run.config"
         setup {
-            run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
-                script "subworkflows/local/loadSampleSheetDev/main.nf"
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
                     input[1] = "illumina"
+                    input[2] = true
                     """
                 }
             }

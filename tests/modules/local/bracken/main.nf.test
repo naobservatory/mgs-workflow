@@ -3,17 +3,18 @@ nextflow_process {
     name "Test process BRACKEN"
     script "modules/local/bracken/main.nf"
     process "BRACKEN"
-    config "tests/configs/run_dev_se.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "bracken"
 
     setup {
-        run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
-            script "subworkflows/local/loadSampleSheetDev/main.nf"
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
             process {
                 """
                 input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
                 input[1] = "illumina"
+                input[2] = true
                 """
             }
         }

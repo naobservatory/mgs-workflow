@@ -6,7 +6,7 @@ process EXTRACT_VIRAL_HITS_TO_FASTQ {
         path(hits_tsv)
         path(fastq)
     output:
-        path("virus_hits_filtered.fastq.gz"), emit: fastq
+        path("virus_hits_final.fastq.gz"), emit: fastq
         path("virus_hits_ids.txt.gz"), emit: ids
         path("virus_hits_in.tsv.gz"), emit: input_tsv
         path("virus_reads_in.fastq.gz"), emit: input_fastq
@@ -30,7 +30,7 @@ process EXTRACT_VIRAL_HITS_TO_FASTQ {
             ' \\
             | tee >(gzip -c > virus_hits_ids.txt.gz) \\
             | seqtk subseq !{fastq} - \\
-            | gzip -c > virus_hits_filtered.fastq.gz
+            | gzip -c > virus_hits_final.fastq.gz
         # Link input to output for testing
         ln -s !{hits_tsv} virus_hits_in.tsv.gz
         ln -s !{fastq} virus_reads_in.fastq.gz
