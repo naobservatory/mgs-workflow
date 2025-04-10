@@ -39,7 +39,7 @@ workflow DOWNSTREAM {
     viral_db = Channel.of(viral_db_path)
     dup_ch = MARK_VIRAL_DUPLICATES.out.dup.map{ label, tab, stats -> [label, tab] }
     VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db,
-        params.validation_cluster_identity, 15)
+        params.validation_cluster_identity, 15, params.validation_n_clusters)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
