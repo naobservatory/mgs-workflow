@@ -5,7 +5,8 @@
 - Rename `hits_filtered` output of short read pipeline to `hits_final` (so pipeline produces `virus_hits_final.fastq.gz`/`virus_hits_final.tsv.gz`)
     - Also rename `hits_all` output of short read pipeline to `hits_unfiltered`
 - Rename `hits_hv` output of ONT pipeline to `hits_final` for consistency with short read pipeline
-     - and get rid of lingering references to human viruses/HV in comments, variable names, etc. 
+- Get rid of lingering references to human viruses/HV in comments, variable names, etc. 
+- Began development of post-hoc validation of putative viral hits in the DOWNSTREAM workflow
 
 # v2.8.3.2
 - Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.
