@@ -23,6 +23,7 @@ include { BBMERGE } from "../../../modules/local/bbmerge"
 include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
 include { VSEARCH_CLUSTER } from "../../../modules/local/vsearch"
 include { PROCESS_VSEARCH_CLUSTER_OUTPUT } from "../../../modules/local/processVsearchClusterOutput"
+include { SUBSEQ_FASTN } from "../../../modules/local/subseqFastn"
 include { ADD_SAMPLE_COLUMN as LABEL_GROUP_SPECIES } from "../../../modules/local/addSampleColumn"
 include { CONCATENATE_TSVS_LABELED } from "../../../modules/local/concatenateTsvs"
 include { ADD_SAMPLE_COLUMN as LABEL_GROUP } from "../../../modules/local/addSampleColumn"
@@ -78,7 +79,10 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         // 6. Cluster merged reads and extract clustering information
         cluster_ch = VSEARCH_CLUSTER(concat_ch, cluster_identity, 0, cluster_min_len)
         cluster_tab_ch = PROCESS_VSEARCH_CLUSTER_OUTPUT(cluster_ch.summary, n_clusters)
-        // 7. Concatenate clustering information across species to regenerate per-group information
+        // 7. Extract representative sequences for the N largest clusters for each species
+        id_prep_ch = concat_ch.combine(cluster_tab_ch.ids, by: 0)
+        rep_ch = SUBSEQ_FASTN(id_prep_ch).output
+        // 8. Concatenate clustering information across species to regenerate per-group information
         // NB: This concatenation stage will move down as more steps are added, but will need to happen eventually
         // and is useful for testing, so I'm implementing it now
         // First label each element with species tag
@@ -113,5 +117,6 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_cluster_summ = cluster_ch.summary
         test_cluster_tab = cluster_tab_ch.output
         test_cluster_ids = cluster_tab_ch.ids
+        test_reps = rep_ch
         test_regrouped = regrouped_ch
 }

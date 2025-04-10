@@ -120,6 +120,16 @@ nextflow_workflow {
                 def exp_output_ids = Math.min(n_clusters, params.n_clusters)
                 assert tabs_clustered_ids[i].columns["C0"].unique().size() == exp_output_ids
             }
+            // Subsetting on representative ID should work as expected
+            def fastqs_subset = workflow.out.test_reps.collect{path(it[1]).fastq}
+            assert fastqs_subset.size() == fastqs_merged.size()
+            for (int i=0; i < fastqs_subset.size(); i++) {
+                def ids_in = tabs_clustered_ids[i].columns["C0"].toSorted()
+                def names_out = fastqs_subset[i].readNames
+                def ids_out = names_out.collect{it.tokenize(" ")[0]}.toSorted()
+                assert ids_in == ids_out.unique()
+                assert fastqs_merged[i].readNames.containsAll(names_out)
+            }
             // Regrouping should work as expected
             def tabs_regrouped = workflow.out.test_regrouped.collect{path(it[1]).csv(sep: "\t",decompress: true)}
             assert tabs_regrouped.size() == tabs_join.size()
