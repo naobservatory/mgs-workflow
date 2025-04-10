@@ -9,6 +9,7 @@
 - Began development of post-hoc validation of putative viral hits in the DOWNSTREAM workflow
     - Split viral hits TSV by assigned species and extract read sequences
     - Cluster within species with VSEARCH and obtain representative sequences
+- Updated SUBSET_FASTQ to handle plaintext and FASTA input (and renamed to SUBSET_FASTN)
 
 # v2.8.3.2
 - Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.
