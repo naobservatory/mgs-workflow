@@ -40,6 +40,7 @@ nextflow_workflow {
         tag "expect_success"
         when {
             params {
+                n_clusters = 10
             }
             workflow {
                 '''
@@ -47,6 +48,7 @@ nextflow_workflow {
                 input[1] = COPY_FILE_BARE.out
                 input[2] = params.validation_cluster_identity
                 input[3] = 15
+                input[4] = params.n_clusters
                 '''
             }
         }
@@ -100,9 +102,11 @@ nextflow_workflow {
             def fastas_clustered = workflow.out.test_cluster_reps.collect{path(it[1]).fasta}
             def tabs_clustered = workflow.out.test_cluster_summ.collect{path(it[1]).csv(sep: "\t",decompress: true, header: false)}
             def tabs_clustered_out = workflow.out.test_cluster_tab.collect{path(it[1]).csv(sep: "\t",decompress: true)}
+            def tabs_clustered_ids = workflow.out.test_cluster_ids.collect{path(it[1]).csv(header: false)}
             assert fastas_clustered.size() == fastqs_merged.size()
             assert tabs_clustered.size() == fastas_clustered.size()
             assert tabs_clustered_out.size() == tabs_clustered.size()
+            assert tabs_clustered_ids.size() == tabs_clustered_out.size()
             for (int i=0; i < fastas_clustered.size(); i++) {
                 def n_clusters = tabs_clustered[i].columns["C0"].count("C")
                 def n_reps = tabs_clustered[i].columns["C0"].count("S")
@@ -113,6 +117,8 @@ nextflow_workflow {
                 assert n_reps == n_clusters
                 assert tabs_clustered_out[i].rowCount == n_seqs
                 assert tabs_clustered_out[i].columns["cluster_id"].unique().size() == n_clusters
+                def exp_output_ids = Math.min(n_clusters, params.n_clusters)
+                assert tabs_clustered_ids[i].columns["C0"].unique().size() == exp_output_ids
             }
             // Regrouping should work as expected
             def tabs_regrouped = workflow.out.test_regrouped.collect{path(it[1]).csv(sep: "\t",decompress: true)}

@@ -37,6 +37,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         db // Viral taxonomy DB
         cluster_identity // Identity threshold for VSEARCH clustering
         cluster_min_len // Minimum sequence length for VSEARCH clustering
+        n_clusters // Number of cluster representatives to validate for each specie
     main:
         // 1. Join to viral taxonomy DB
         rehead_ch = REHEAD_TSV(groups, "bowtie2_taxid_best", "taxid").output
@@ -76,12 +77,12 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         concat_ch = JOIN_FASTQ(bbmerge_ch, false).reads
         // 6. Cluster merged reads and extract clustering information
         cluster_ch = VSEARCH_CLUSTER(concat_ch, cluster_identity, 0, cluster_min_len)
-        cluster_tab_ch = PROCESS_VSEARCH_CLUSTER_OUTPUT(cluster_ch.summary).output
+        cluster_tab_ch = PROCESS_VSEARCH_CLUSTER_OUTPUT(cluster_ch.summary, n_clusters)
         // 7. Concatenate clustering information across species to regenerate per-group information
         // NB: This concatenation stage will move down as more steps are added, but will need to happen eventually
         // and is useful for testing, so I'm implementing it now
         // First label each element with species tag
-        to_concat_ch = cluster_tab_ch
+        to_concat_ch = cluster_tab_ch.output
         to_concat_labeled_ch = LABEL_GROUP_SPECIES(to_concat_ch, "group_species", "group_species").output
         // Then change each element from [group_species, path] to [group, path]
         split_label_ch = to_concat_labeled_ch.map{
@@ -110,6 +111,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_concat = concat_ch
         test_cluster_reps = cluster_ch.reps
         test_cluster_summ = cluster_ch.summary
-        test_cluster_tab = cluster_tab_ch
+        test_cluster_tab = cluster_tab_ch.output
+        test_cluster_ids = cluster_tab_ch.ids
         test_regrouped = regrouped_ch
 }
