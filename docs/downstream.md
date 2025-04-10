@@ -96,7 +96,7 @@ style F fill:#000,color:#fff,stroke:#000
 
 To run the `DOWNSTREAM` workflow, you need:
 
-1. One or more accessible **viral hits tables** produced by the `RUN` workflow. These are [typically saved](./output.md#viral-identification)  in the `RUN` workflow's output directory under `results/virus_hits_filtered.tsv.gz`.
+1. One or more accessible **viral hits tables** produced by the `RUN` workflow. These are [typically saved](./output.md#viral-identification)  in the `RUN` workflow's output directory under `results/virus_hits_final.tsv.gz`.
 2. For each hit table, an accessible **grouping TSV**, containing the following columns in the specified order:
     - `sample`: Sample ID (must include one row for every value of this column in the viral hits table)
     - `group`: Group IDs to use for duplicate annotatation

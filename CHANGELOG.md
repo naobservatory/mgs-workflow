@@ -1,3 +1,12 @@
+# v2.9.0.0-dev
+- Combined run_dev_se.nf workflow with run.nf: ONT is now an implemented platform!
+- Added end-to-end tests for ONT to github actions
+- Added a development_mode parameter to LOAD_SAMPLESHEET to allow testing on non-implemented platform/endedness
+- Rename `hits_filtered` output of short read pipeline to `hits_final` (so pipeline produces `virus_hits_final.fastq.gz`/`virus_hits_final.tsv.gz`)
+    - Also rename `hits_all` output of short read pipeline to `hits_unfiltered`
+- Rename `hits_hv` output of ONT pipeline to `hits_final` for consistency with short read pipeline
+     - and get rid of lingering references to human viruses/HV in comments, variable names, etc. 
+
 # v2.8.3.2
 - Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.
 - Added pass/fail test for FASTQC_LABELED.

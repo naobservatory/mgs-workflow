@@ -34,7 +34,9 @@ F
 end
 ```
 
-At a high level, the `run` workflow carries out two main analyses on raw input reads: sensitive and specific identification of vertebrate-infecting viral reads, and high-level taxonomic profiling. Optionally, it can also perform BLAST validation on putative vertebrate-infecting viral reads; however, this is slow and expensive and not performed by default.
+At a high level, the `run` workflow carries out two main analyses on raw input reads: sensitive and specific identification of vertebrate-infecting viral reads[^vertebrate], and high-level taxonomic profiling. Optionally, it can also perform BLAST validation on putative vertebrate-infecting viral reads; however, this is slow and expensive and not performed by default.
+
+[^vertebrate]: We say "vertebrate-infecting viruses" here and throughout the documentation for convenience, as the pipeline currently looks for vertebrate-infecting viruses by default. However, which viruses the pipeline looks for is configurable based on how you set up the index workflow.
 
 To perform these functions, the workflow runs a series of subworkflows responsible for different tasks:
 
@@ -194,16 +196,16 @@ style K fill:#000,color:#fff,stroke:#000
 style M fill:#000,color:#fff,stroke:#000
 ```
 
-1. To begin with, the raw reads are screened against a database of vertebrate-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least one 24-mer matching any vertebrate-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative vertebrate-infecting viral reads while discarding the vast majority of non-HV reads, reducing the cost associated with the rest of this phase.
+1. To begin with, the raw reads are screened against a database of vertebrate-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least one 24-mer matching any vertebrate-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative vertebrate-infecting viral reads while discarding the vast majority of non-viral reads, reducing the cost associated with the rest of this phase.
 2. Surviving reads undergo adapter and quality trimming with [FASTP](https://github.com/OpenGene/fastp) and [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) to remove adapter contamination and low-quality/low-complexity reads.
-3. Next, reads are aligned to the previously-mentioned database of vertebrate-infecting viral genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative HV reads as possible. The output files are processed to generate new read files containing any read pair for which at least one read matches the HV database.
+3. Next, reads are aligned to the previously-mentioned database of vertebrate-infecting viral genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative vertebrate viral reads as possible. The output files are processed to generate new read files containing any read pair for which at least one read matches the vertebrate viral database.
 4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using Bowtie2 in series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
 5. Surviving read pairs are then taxonomically profiled using the [TAXONOMY subworkflow](#taxonomic-assignment-taxonomy) to generate Kraken2 taxonomic assignments.
 6.  Finally, reads are assigned a final vertebrate-infecting virus status if they:
     - Are classified as vertebrate-infecting virus by both Bowtie2 and Kraken2; or
     - Are unassigned by Kraken and align to an vertebrate-infecting virus taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
 
-[^threshold]: Specifically, Kraken-unassigned read pairs are classed as HV if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
+[^threshold]: Specifically, Kraken-unassigned read pairs are classed as vertebrate viral if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
 
 ### Taxonomic profiling (PROFILE)
 
@@ -237,7 +239,7 @@ To do this, reads from SUBSET_CLEAN are separated into ribosomal and non-ribosom
 
 ### *Optional: BLAST validation phase (BLAST_VIRAL)*
 
-To evaluate the performance of the process described in the viral identification phase, it's useful to get some ground-truth information about whether the host viral assignments made in that subworkflow are correct. To do this, we use [BLASTN](https://blast.ncbi.nlm.nih.gov/Blast.cgi) to align the putative host viral reads output by the previous phase against the `core_nt` database, then process the output to check whether each sequence had a high-scoring alignment to at least one HV sequence. For computational tractability, this can be performed on only a subset of surviving host viral reads (specified by `params.blast_hv_fraction`)[^blast].
+To evaluate the performance of the process described in the viral identification phase, it's useful to get some ground-truth information about whether the host viral assignments made in that subworkflow are correct. To do this, we use [BLASTN](https://blast.ncbi.nlm.nih.gov/Blast.cgi) to align the putative host viral reads output by the previous phase against the `core_nt` database, then process the output to check whether each sequence had a high-scoring alignment to at least one vertebrate viral sequence. For computational tractability, this can be performed on only a subset of surviving vertebrate viral reads (specified by `params.blast_viral_fraction`)[^blast].
 
 ```mermaid
 ---
@@ -258,11 +260,11 @@ style H fill:#000,color:#fff,stroke:#000
 style I fill:#000,color:#fff,stroke:#000
 ```
 
-1. Input FASTQ files are subset as appropriate (based on `params.blast_hv_fraction`), then converted to FASTA.
+1. Input FASTQ files are subset as appropriate (based on `params.blast_viral_fraction`), then converted to FASTA.
 2. Reads in FASTA format are aligned to the specified NCBI database (default `core_nt`) with BLASTN.
 3. Tabular BLASTN outputs are filtered to keep only the best-scoring alignment for each combination of read and subject sequence, then filtered again to keep only alignments for each read that (a) are in the top N alignments for that read (default N=5), or (b) have a bitscore at least P% as high as the best-scoring alignment (default P=90).
 
-[^blast]: Setting `params.blast_hv_fraction` to 0 skips this step altogether.
+[^blast]: Setting `params.blast_viral_fraction` to 0 skips this step altogether.
 
 ## QC workflows
 

@@ -141,7 +141,7 @@ nextflow_process {
         when {
             params {
                 deviation = 1
-                tsv = "${projectDir}/test-data/gold-standard-results/virus_hits_filtered.tsv"
+                tsv = "${projectDir}/test-data/gold-standard-results/virus_hits_final.tsv"
             }
             process {
                 '''
@@ -187,7 +187,7 @@ nextflow_process {
                 process {
                     '''
                     input[0] = Channel.of("test")
-                        | combine(Channel.of("${projectDir}/test-data/gold-standard-results/virus_hits_filtered.tsv"))
+                        | combine(Channel.of("${projectDir}/test-data/gold-standard-results/virus_hits_final.tsv"))
                     '''
                 }
             }
