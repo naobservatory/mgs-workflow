@@ -9,15 +9,11 @@ the tabular BLAST output based on bitscore.
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { SUBSET_FASTN } from "../../../modules/local/subsetFastn"
-include { CONVERT_FASTQ_FASTA } from "../../../modules/local/convertFastqFasta"
 include { BLASTN as BLAST } from "../../../modules/local/blast"
 include { SORT_FILE as SORT_BLAST_1 } from "../../../modules/local/sortFile"
 include { SORT_FILE as SORT_BLAST_2 } from "../../../modules/local/sortFile"
 include { FILTER_TSV } from "../../../modules/local/filterTsv"
 include { FILTER_BLAST } from "../../../modules/local/filterBlast"
-include { SORT_FASTQ } from "../../../modules/local/sortFastq"
-include { COPY_FILE } from "../../../modules/local/copyFile"
 
 /***********
 | WORKFLOW |
