@@ -135,7 +135,7 @@ def main():
         subworkflow_tests.update(tests)
 
     print("=" * 72)
-    print(f"Found {len(subworkflow_tests)} tests that depend on the subworkflow:")
+    print(f"Found {len(subworkflow_tests)} tests that depend on affected subworkflows:")
     print("=" * 72)
     for test in subworkflow_tests:
         print(f"   • {test}")
@@ -169,7 +169,6 @@ def main():
     print("=" * 72)
     print(f"Identified {len(tests_to_execute)} tests to execute. Running...")
 
-    test_results = {}
     # Run all tests in a single nf-test command
     cmd = ["nf-test", "test"] + sorted(tests_to_execute)
     if verbose:
