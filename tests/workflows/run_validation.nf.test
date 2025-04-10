@@ -10,7 +10,7 @@ nextflow_pipeline {
         tag "run_validation_viral_hits"
         when {
           params {
-            viral_tsv = "${projectDir}/test-data/gold-standard-results/virus_hits_filtered.tsv"
+            viral_tsv = "${projectDir}/test-data/gold-standard-results/virus_hits_final.tsv"
             viral_fastq = ""
           }
         }

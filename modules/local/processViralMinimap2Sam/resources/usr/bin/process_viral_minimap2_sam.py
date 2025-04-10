@@ -151,7 +151,7 @@ def parse_arguments():
         "-r", "--reads",
         type=lambda f: open_by_suffix(f, "r"),
         default=sys.stdin,
-        help="Path to FASTQ that contains the non-masked version of HV reads (default: stdin)."
+        help="Path to FASTQ that contains the non-masked version of viral reads (default: stdin)."
     )
     parser.add_argument(
         "-m", "--metadata",

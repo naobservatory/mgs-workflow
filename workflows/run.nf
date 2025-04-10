@@ -1,5 +1,5 @@
 /***********************************************************************************************
-| WORKFLOW: PREPROCESSING, TAXONOMIC PROFILING AND HUMAN-VIRUS ANALYSIS ON SHORT-READ MGS DATA |
+| WORKFLOW: PREPROCESSING, TAXONMIC PROFILING AND HUMAN VIRUS ANALYSIS ON SHORT-READ MGS DATA (EITHER SINGLE-END OR PAIRED-END) |
 ***********************************************************************************************/
 
 import groovy.json.JsonOutput
@@ -11,7 +11,8 @@ import java.time.LocalDateTime
 
 include { LOAD_SAMPLESHEET } from "../subworkflows/local/loadSampleSheet"
 include { COUNT_TOTAL_READS } from "../subworkflows/local/countTotalReads"
-include { EXTRACT_VIRAL_READS_SHORT as EXTRACT_VIRAL_READS } from "../subworkflows/local/extractViralReadsShort"
+include { EXTRACT_VIRAL_READS_SHORT } from "../subworkflows/local/extractViralReadsShort"
+include { EXTRACT_VIRAL_READS_ONT } from "../subworkflows/local/extractViralReadsONT"
 include { SUBSET_TRIM } from "../subworkflows/local/subsetTrim"
 include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE} from "../subworkflows/local/profile"
@@ -38,7 +39,7 @@ workflow RUN {
     blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet and check platform
-    LOAD_SAMPLESHEET(params.sample_sheet, params.platform)
+    LOAD_SAMPLESHEET(params.sample_sheet, params.platform, false)
     samplesheet_ch = LOAD_SAMPLESHEET.out.samplesheet
     start_time_str = LOAD_SAMPLESHEET.out.start_time_str
     single_end_ch = LOAD_SAMPLESHEET.out.single_end
@@ -47,12 +48,25 @@ workflow RUN {
     COUNT_TOTAL_READS(samplesheet_ch, single_end_ch)
 
     // Extract and count human-viral reads
-    EXTRACT_VIRAL_READS(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
-        params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
-
+    if ( params.platform == "ont" ) {
+        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir)
+        hits_fastq = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
+        hits_final = EXTRACT_VIRAL_READS_ONT.out.hits_final
+        hits_unfiltered = Channel.empty()
+        bbduk_match = Channel.empty()
+        bbduk_trimmed = Channel.empty()
+     } else {
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
+            params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
+        hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
+        hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
+        hits_unfiltered = EXTRACT_VIRAL_READS_SHORT.out.hits_unfiltered
+        bbduk_match = EXTRACT_VIRAL_READS_SHORT.out.bbduk_match
+        bbduk_trimmed = EXTRACT_VIRAL_READS_SHORT.out.bbduk_trimmed
+    }
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
-        BLAST_VIRAL(EXTRACT_VIRAL_READS.out.hits_fastq, blast_db_path, params.blast_db_prefix,
+        BLAST_VIRAL(hits_fastq, blast_db_path, params.blast_db_prefix,
             params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed,
             params.blast_perc_id, params.blast_qcov_hsp_perc)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
@@ -106,10 +120,10 @@ workflow RUN {
         version_ch >> "logging"
         pipeline_compatibility_ch >> "logging"
         // Intermediate files
-        EXTRACT_VIRAL_READS.out.bbduk_match >> "reads_raw_viral"
-        EXTRACT_VIRAL_READS.out.hits_all    >> "intermediates"
-        EXTRACT_VIRAL_READS.out.hits_fastq  >> "intermediates"
-        EXTRACT_VIRAL_READS.out.bbduk_trimmed >> "reads_trimmed_viral"
+        bbduk_match >> "reads_raw_viral"
+        hits_unfiltered >> "intermediates"
+        hits_fastq  >> "intermediates"
+        bbduk_trimmed >> "reads_trimmed_viral"
         // QC
         COUNT_TOTAL_READS.out.read_counts >> "results"
         RUN_QC.out.qc_basic >> "results"
@@ -118,7 +132,7 @@ workflow RUN {
         RUN_QC.out.qc_qseqs >> "results"
         RUN_QC.out.qc_lengths >> "results"
         // Final results
-        EXTRACT_VIRAL_READS.out.hits_filtered >> "results"
+        hits_final >> "results"
         PROFILE.out.bracken >> "results"
         PROFILE.out.kraken >> "results"
         // Validation output (if any)
