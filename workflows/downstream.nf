@@ -12,6 +12,7 @@ import java.time.LocalDateTime
 include { LOAD_DOWNSTREAM_DATA } from "../subworkflows/local/loadDownstreamData"
 include { PREPARE_GROUP_TSVS } from "../subworkflows/local/prepareGroupTsvs"
 include { MARK_VIRAL_DUPLICATES } from "../subworkflows/local/markViralDuplicates"
+include { VALIDATE_VIRAL_ASSIGNMENTS } from "../subworkflows/local/validateViralAssignments"
 
 nextflow.preview.output = true
 
@@ -32,6 +33,11 @@ workflow DOWNSTREAM {
 
     // 3. Mark duplicates
     MARK_VIRAL_DUPLICATES(group_ch, params.aln_dup_deviation)
+
+    // 4. Validate taxonomic assignments
+    viral_db_path = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+    viral_db = Channel.of(viral_db_path)
+    VALIDATE_VIRAL_ASSIGNMENTS(MARK_VIRAL_DUPLICATES.out.dup, viral_db)
 
     // Publish results
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
