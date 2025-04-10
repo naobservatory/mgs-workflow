@@ -28,17 +28,6 @@ logger.addHandler(handler)
 # Auxiliary functions
 #=======================================================================
 
-def parse_arguments():
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(description="Process tabular output from VSEARCH clustering.")
-    parser.add_argument("vsearch_db", help="Path to tabular output from VSEARCH clustering.")
-    parser.add_argument("output_path", help="Output path for processed data frame.")
-    args = parser.parse_args()
-    logger.info("Command-line arguments parsed.")
-    logger.info(f"VSEARCH DB path: {args.vsearch_db}")
-    logger.info(f"Output path: {args.output_path}")
-    return args.vsearch_db, args.output_path
-
 def parse_vsearch_db(vsearch_path):
     """Parse VSEARCH clustering output into a DataFrame."""
     logger.info("Importing VSEARCH clustering output.")
@@ -131,11 +120,51 @@ def process_vsearch_db(vsearch_db):
     logger.info(f"Output DB columns: {output_db.columns.tolist()}.")
     return output_db
 
-def save_output(output_db, out_path):
+def extract_representative_ids(output_db, n_clusters):
+    """Extract representative sequence IDs for the largest clusters."""
+    logger.info(f"Extracting representative IDs for the largest {n_clusters} clusters.")
+    # Filter to representative sequences
+    rep_records = output_db[output_db["is_cluster_rep"]]
+    # Arrange by cluster size (descending) and ID (ascending)
+    sorted_records = rep_records.sort_values(
+        by=["cluster_size", "seq_id"],
+        ascending=[False, True]
+        )
+    # Get the N largest clusters and return their representative IDs
+    largest_clusters = sorted_records.head(n_clusters)
+    representative_ids = largest_clusters["seq_id"].unique()
+    logger.info(f"Extracted representative IDs: {representative_ids.tolist()}.")
+    return representative_ids
+
+def save_output_db(output_db, out_path):
     """Save processed DataFrame to output path."""
-    logger.info(f"Saving output to {out_path}.")
+    logger.info(f"Saving output DB to {out_path}.")
     output_db.to_csv(out_path, sep="\t", index=False)
-    logger.info("Output saved successfully.")
+    logger.info("Output DB saved successfully.")
+
+def save_output_ids(representative_ids, output_ids_path):
+    """Save representative sequence IDs to output path."""
+    logger.info(f"Saving representative IDs to {output_ids_path}.")
+    with open(output_ids_path, 'w') as f:
+        for seq_id in representative_ids:
+            f.write(f"{seq_id}\n")
+    logger.info("Representative IDs saved successfully.")
+
+def parse_arguments():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description="Process tabular output from VSEARCH clustering.")
+    parser.add_argument("vsearch_db", help="Path to tabular output from VSEARCH clustering.")
+    parser.add_argument("output_db", help="Output path for processed data frame.")
+    parser.add_argument("output_ids", help="Output path for representative sequence IDs for the largest clusters.")
+    parser.add_argument("--n_clusters", "-n", type=int, required=True,
+                        help="Number of largest clusters to output representative sequence IDs for.")
+    args = parser.parse_args()
+    logger.info("Command-line arguments parsed.")
+    logger.info(f"VSEARCH DB path: {args.vsearch_db}")
+    logger.info(f"Output DB path: {args.output_db}")
+    logger.info(f"ID output path: {args.output_ids}")
+    logger.info(f"Number of clusters to output: {args.n_clusters}") 
+    return args
 
 #=======================================================================
 # Main function
@@ -145,13 +174,17 @@ def main():
     start_time = time.time()
     logger.info("Initializing process.")
     # Parse command-line arguments
-    vsearch_path, out_path = parse_arguments()
+    args = parse_arguments()
     # Import VSEARCH clustering output (tab-delimited, no header)
-    vsearch_db = parse_vsearch_db(vsearch_path)
+    vsearch_db = parse_vsearch_db(args.vsearch_db)
     # Process VSEARCH DB into output format
     output_db = process_vsearch_db(vsearch_db)
+    # Extract representative sequence IDs for the largest clusters
+    representative_ids = extract_representative_ids(output_db, args.n_clusters)
     # Save output
-    save_output(output_db, out_path)
+    save_output_db(output_db, args.output_db)
+    save_output_ids(representative_ids, args.output_ids)
+    # Cleanup
     end_time = time.time()
     logger.info("Process completed.")
     logger.info("Total time elapsed: %.2f seconds" % (end_time - start_time))
