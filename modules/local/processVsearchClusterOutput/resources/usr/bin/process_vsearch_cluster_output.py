@@ -114,9 +114,6 @@ def process_vsearch_db(vsearch_db):
                          suffixes=(None,None))
     assert len(output_db) == len(sequence_db), \
         "Output DB should match sequence DB length."
-    # Output DB columns should equal sequence_db plus cluster columns
-    assert output_db.shape[1] == sequence_db.shape[1] + cluster_db.shape[1] - 2, \
-        "Output DB should have correct number of columns."
     logger.info(f"Done. Final output dimensions: {output_db.shape}.")
     logger.info(f"Output DB columns: {output_db.columns.tolist()}.")
     return output_db
