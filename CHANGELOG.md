@@ -5,8 +5,12 @@
 - Rename `hits_filtered` output of short read pipeline to `hits_final` (so pipeline produces `virus_hits_final.fastq.gz`/`virus_hits_final.tsv.gz`)
     - Also rename `hits_all` output of short read pipeline to `hits_unfiltered`
 - Rename `hits_hv` output of ONT pipeline to `hits_final` for consistency with short read pipeline
-- Get rid of lingering references to human viruses/HV in comments, variable names, etc. 
+- Get rid of lingering references to human viruses/HV in comments, variable names, etc.
 - Began development of post-hoc validation of putative viral hits in the DOWNSTREAM workflow
+    - Split viral hits TSV by assigned species and extract read sequences (SPLIT_VIRAL_TSV_BY_SPECIES)
+    - Cluster within species with VSEARCH and obtain representative sequences (CLUSTER_VIRAL_ASSIGNMENTS)
+- Updated SUBSET_FASTQ to handle plaintext and FASTA input (and renamed to SUBSET_FASTN)
+- Split out merge/join part of TAXONOMY workflow into its own subworkflow (MERGE_JOIN_READS) with associated tests
 
 # v2.8.3.2
 - Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.
