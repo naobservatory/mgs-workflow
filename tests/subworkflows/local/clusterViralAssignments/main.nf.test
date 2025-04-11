@@ -93,7 +93,7 @@ nextflow_workflow {
 
     test("Should run without failures on single-end input data"){
         tag "expect_success"
-        tag "interleaved"
+        tag "single_end"
         setup {
             run("LOAD_SAMPLESHEET") {
                 script "subworkflows/local/loadSampleSheet/main.nf"
@@ -102,6 +102,15 @@ nextflow_workflow {
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
                     input[1] = "illumina"
                     input[2] = true
+                    """
+                }
+            }
+            run("COPY_FILE") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    """
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = "reads.fastq.gz"
                     """
                 }
             }
@@ -115,7 +124,7 @@ nextflow_workflow {
             }
             workflow {
                 '''
-                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[0] = COPY_FILE.out
                 input[1] = params.cluster_identity
                 input[2] = params.cluster_min_len
                 input[3] = params.n_clusters
