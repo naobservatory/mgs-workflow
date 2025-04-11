@@ -4,7 +4,7 @@ process SUBSET_FASTN {
     label "single"
     input:
         tuple val(sample), path(fastn)
-        val readFraction // NB: can only handle 2 decimal places
+        val readFraction // NB: will round to 2 decimal places
         val randomSeed
     output:
         tuple val(sample), path("subset_${fastn}"), emit: output
