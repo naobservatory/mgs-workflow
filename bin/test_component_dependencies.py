@@ -27,9 +27,10 @@ def find_dependency(directory, component):
     for line in grep_results.stdout.splitlines():
         if any(trigger in line for trigger in relevant_triggers):
                 file = line.split(":", 1)[0]
-                if "/.nf-test" in file: # Needs to be /*.nf-test
+                if "nf-test" in file:
                     continue
-                file_paths.add(file)
+                else:
+                    file_paths.add(file)
 
     return file_paths
 
