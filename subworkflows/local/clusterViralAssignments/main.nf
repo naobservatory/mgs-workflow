@@ -10,7 +10,7 @@ and extract the representative sequences of the top N largest clusters.
 include { MERGE_JOIN_READS } from "../../../subworkflows/local/mergeJoinReads"
 include { VSEARCH_CLUSTER } from "../../../modules/local/vsearch"
 include { PROCESS_VSEARCH_CLUSTER_OUTPUT } from "../../../modules/local/processVsearchClusterOutput"
-include { SUBSEQ_FASTN } from "../../../modules/local/subseqFastn"
+include { DOWNSAMPLE_FASTN_BY_ID } from "../../../modules/local/downsampleFastnById"
 include { CONVERT_FASTQ_FASTA } from "../../../modules/local/convertFastqFasta"
 
 /***********
@@ -33,7 +33,7 @@ workflow CLUSTER_VIRAL_ASSIGNMENTS {
         cluster_info_ch = PROCESS_VSEARCH_CLUSTER_OUTPUT(cluster_ch.summary, n_clusters)
         // 4. Extract representative sequences for the N largest clusters for each species
         id_prep_ch = merge_ch.single_reads.combine(cluster_info_ch.ids, by: 0)
-        rep_fastq_ch = SUBSEQ_FASTN(id_prep_ch).output
+        rep_fastq_ch = DOWNSAMPLE_FASTN_BY_ID(id_prep_ch).output
         rep_fasta_ch = CONVERT_FASTQ_FASTA(rep_fastq_ch).output
     emit:
         tsv = cluster_info_ch.output
