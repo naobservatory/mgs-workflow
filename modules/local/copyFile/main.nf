@@ -14,10 +14,10 @@ process COPY_FILE {
 }
 
 // Copy a file without sample annotation
-// Currently only used for testing
 process COPY_FILE_BARE {
     label "single"
     label "coreutils"
+    label "testing_only" // Process is currently only used for testing
     input:
         path(file)
         val(outname)
