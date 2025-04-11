@@ -109,7 +109,12 @@ def main():
     tests_to_execute.update(direct_tests)
 
     print("=" * 72)
-    print(f"Found {len(direct_tests)} direct tests:")
+    if len(direct_tests) == 0:
+        print("No direct tests found.")
+    elif len(direct_tests) == 1:
+        print("Found 1 direct test:")
+    else:
+        print(f"Found {len(direct_tests)} direct tests:")
     print("=" * 72)
     for test in direct_tests:
         print(f"   • {test}")
@@ -135,7 +140,7 @@ def main():
         subworkflow_tests.update(tests)
 
     print("=" * 72)
-    print(f"Found {len(subworkflow_tests)} tests that depend on affected subworkflows:")
+    print(f"Found {len(subworkflow_tests)} tests for affected subworkflows:")
     print("=" * 72)
     for test in subworkflow_tests:
         print(f"   • {test}")
@@ -157,7 +162,7 @@ def main():
         workflow_tests.add(get_workflow_test(workflow))
 
     print("=" * 72)
-    print(f"Found {len(workflow_tests)} dependent workflow tests:")
+    print(f"Found {len(workflow_tests)} tests for affected workflows:")
     print("=" * 72)
     for test in workflow_tests:
         print(f"   • {test}")
@@ -167,7 +172,7 @@ def main():
     tests_to_execute.update(workflow_tests)
 
     print("=" * 72)
-    print(f"Identified {len(tests_to_execute)} tests to execute. Running...")
+    print(f"Identified {len(tests_to_execute)} test files to execute. Running...")
 
     # Run all tests in a single nf-test command
     cmd = ["nf-test", "test"] + sorted(tests_to_execute)
