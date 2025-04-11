@@ -11,6 +11,7 @@
     - Cluster within species with VSEARCH and obtain representative sequences (CLUSTER_VIRAL_ASSIGNMENTS)
 - Updated SUBSET_FASTQ to handle plaintext and FASTA input (and renamed to SUBSET_FASTN)
 - Split out merge/join part of TAXONOMY workflow into its own subworkflow (MERGE_JOIN_READS) with associated tests
+- Added `test_component_dependencies.py` script to test all modules, subworkflows, and workflows that depend on a given component (e.g., BBDUK, or TAXONOMY)
 
 # v2.8.3.2
 - Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.
