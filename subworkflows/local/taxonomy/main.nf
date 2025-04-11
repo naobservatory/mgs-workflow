@@ -6,9 +6,7 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { BBMERGE } from "../../../modules/local/bbmerge"
-include { JOIN_FASTQ } from "../../../modules/local/joinFastq"
-include { SUMMARIZE_BBMERGE } from "../../../modules/local/summarizeBBMerge"
+include { MERGE_JOIN_READS } from "../../../subworkflows/local/mergeJoinReads"
 include { KRAKEN } from "../../../modules/local/kraken"
 include { HEAD_TSV as HEAD_KRAKEN_REPORTS } from "../../../modules/local/headTsv"
 include { ADD_SAMPLE_COLUMN as LABEL_KRAKEN_REPORTS } from "../../../modules/local/addSampleColumn"
@@ -30,23 +28,10 @@ workflow TAXONOMY {
         bracken_threshold
         single_end
     main:
-        // Split single-end value channel into two branches, one of which will be empty
-        single_end_check = single_end.branch{
-            single: it
-            paired: !it
-        }
-        // Forward reads into one of two channels based on endedness (the other will be empty)
-        reads_ch_single = single_end_check.single.combine(reads_ch).map{it -> [it[1], it[2]] }
-        reads_ch_paired = single_end_check.paired.combine(reads_ch).map{it -> [it[1], it[2]] }
-        // In paired-end case, merge and join
-        merged_ch = BBMERGE(reads_ch_paired)
-        single_read_ch_paired = JOIN_FASTQ(merged_ch.reads, false).reads
-        summarize_bbmerge_ch_paired = SUMMARIZE_BBMERGE(merged_ch.reads).summary
-        // In single-end case, take unmodified reads
-        single_read_ch_single = reads_ch_single
-        summarize_bbmerge_ch_single = Channel.empty()
-        single_read_ch = single_read_ch_paired.mix(single_read_ch_single)
-        summarize_bbmerge_ch = summarize_bbmerge_ch_paired.mix(summarize_bbmerge_ch_single)
+        // Merge and join interleaved sequences to produce a single sequence per input pair
+        merge_ch = MERGE_JOIN_READS(reads_ch, single_end)
+        single_read_ch = merge_ch.single_reads
+        summarize_bbmerge_ch = merge_ch.bbmerge_summary
         // Run Kraken and munge reports
         kraken_ch = KRAKEN(single_read_ch, kraken_db_ch)
         kraken_headers = "pc_reads_total,n_reads_clade,n_reads_direct,n_minimizers_total,n_minimizers_distinct,rank,taxid,name"

@@ -1,11 +1,11 @@
 nextflow_process {
 
-    name "Test process SUBSET_FASTQ"
-    script "modules/local/subsetFastq/main.nf"
-    process "SUBSET_FASTQ"
+    name "Test process SUBSET_FASTN"
+    script "modules/local/subsetFastn/main.nf"
+    process "SUBSET_FASTN"
     config "tests/configs/run.config"
     tag "module"
-    tag "subset_fastq"
+    tag "subset_fastn"
 
     setup {
         run("GZIP_FILE") {
@@ -101,7 +101,75 @@ nextflow_process {
         }
     }
 
-    test("Should run correctly on interleaved input") {
+    test("Should run without errors on gzipped toy FASTQ data with intermediate read fraction") {
+        tag "expect_success"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_FILE.out
+                input[1] = 0.5
+                input[2] = ""
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should be valid FASTQ
+            def fastq_out = path(process.out.output[0][1]).fastq
+            assert fastq_out.sequences.size() > 0
+        }
+    }
+
+    test("Should run without errors on uncompressed toy FASTQ data with intermediate read fraction") {
+        tag "expect_success"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fastq"))
+                input[1] = 0.5
+                input[2] = ""
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should be valid FASTQ
+            def fastq_out = path(process.out.output[0][1]).fastq
+            assert fastq_out.sequences.size() > 0
+        }
+    }
+
+    test("Should run without errors on uncompressed toy FASTA data with intermediate read fraction") {
+        tag "expect_success"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test-random.fasta"))
+                input[1] = 0.5
+                input[2] = ""
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should be valid FASTA
+            def fasta_out = path(process.out.output[0][1]).fasta
+            assert fasta_out.keySet().size() > 0
+        }
+    }
+
+    test("Should run correctly on interleaved input FASTQ") {
         tag "expect_success"
         tag "real_data"
         config "tests/configs/run.config"
@@ -164,7 +232,7 @@ nextflow_process {
         }
     }
 
-    test("Should run correctly on single-end input") {
+    test("Should run correctly on single-end input FASTQ") {
         tag "expect_success"
         tag "real_data"
         config "tests/configs/run.config"

@@ -7,6 +7,10 @@
 - Rename `hits_hv` output of ONT pipeline to `hits_final` for consistency with short read pipeline
 - Get rid of lingering references to human viruses/HV in comments, variable names, etc.
 - Began development of post-hoc validation of putative viral hits in the DOWNSTREAM workflow
+    - Split viral hits TSV by assigned species and extract read sequences (SPLIT_VIRAL_TSV_BY_SPECIES)
+    - Cluster within species with VSEARCH and obtain representative sequences (CLUSTER_VIRAL_ASSIGNMENTS)
+- Updated SUBSET_FASTQ to handle plaintext and FASTA input (and renamed to SUBSET_FASTN)
+- Split out merge/join part of TAXONOMY workflow into its own subworkflow (MERGE_JOIN_READS) with associated tests
 - Added `test_component_dependencies.py` script to test all modules, subworkflows, and workflows that depend on a given component (e.g., BBDUK, or TAXONOMY)
 
 # v2.8.3.2
