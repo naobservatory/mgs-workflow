@@ -4,7 +4,7 @@ process PROCESS_VSEARCH_CLUSTER_OUTPUT {
     label "single"
     input:
         tuple val(sample), path(db)
-        val n_clusters // Return representative IDs of the N largest cluster
+        val n_clusters // Return representative IDs of the N largest clusters
     output:
         tuple val(sample), path("${sample}_vsearch_tab.tsv.gz"), emit: output
         tuple val(sample), path("${sample}_vsearch_ids.txt"), emit: ids

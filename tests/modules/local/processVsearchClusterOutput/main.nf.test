@@ -8,7 +8,7 @@ nextflow_process {
     tag "process_vsearch_cluster_output"
 
     setup {
-        run("LOAD_SAMPLESHEET", alias: "LOAD_SAMPLESHEET") {
+        run("LOAD_SAMPLESHEET") {
             script "subworkflows/local/loadSampleSheet/main.nf"
             process {
                 """
