@@ -110,7 +110,8 @@ def process_vsearch_db(vsearch_db):
     logger.info("Merging cluster information into sequence records.")
     output_db = pd.merge(sequence_db, cluster_db,
                          on=["cluster_id", "cluster_rep_id"],
-                         how="inner")
+                         how="inner", validate="many_to_one",
+                         suffixes=(None,None))
     assert len(output_db) == len(sequence_db), \
         "Output DB should match sequence DB length."
     # Output DB columns should equal sequence_db plus cluster columns
