@@ -51,4 +51,44 @@ nextflow_process {
             assert output_lines == input_reads
         }
     }
+
+    test("Should handle empty input file and produce empty output files") {
+        tag "empty_file"
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE", alias: "GZIP_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test_empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_EMPTY.out
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output files should be empty
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            
+            // Check output is empty
+            def output_lines = countGzipLines(process.out.output[0][1])
+            assert output_lines == 0
+            
+            // Check report is empty (or contains only header)
+            def report_lines = countGzipLines(process.out.report[0][1])
+            assert report_lines <= 1
+        }
+    }
 }
