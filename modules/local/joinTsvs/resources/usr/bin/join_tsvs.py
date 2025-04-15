@@ -80,25 +80,101 @@ def check_sorting(id_curr, id_next, file_str, input_path):
         msg = f"File {file_str} is not sorted: encountered ID {id_curr} after {id_next} ({input_path})."
         raise ValueError(msg)
 
+def handle_empty_files(input_path_1, input_path_2, is_empty_1, is_empty_2, join_type, output_file):
+    """Handle joining when one or both files are empty."""
+    with open_by_suffix(output_file, "w") as output:
+        # Both files are empty - create empty output file
+        if is_empty_1 and is_empty_2:
+            print_log("Warning: Both input files are empty. Creating empty output file.")
+            return
+            
+        # For strict joins, raise error if any file is empty
+        if join_type == "strict" and (is_empty_1 or is_empty_2):
+            file_name = input_path_1 if is_empty_1 else input_path_2
+            print_log(f"Error: Strict join cannot be performed with empty file: {file_name}")
+            raise ValueError(f"Strict join failed: File is empty: {file_name}")
+            
+        # For inner joins with any empty file, create empty output
+        if join_type == "inner" and (is_empty_1 or is_empty_2):
+            empty_file = input_path_1 if is_empty_1 else input_path_2
+            print_log(f"Warning: Inner join with empty file {empty_file}. Creating empty output.")
+            return
+            
+        # File 1 is empty
+        if is_empty_1:
+            print_log(f"Warning: First input file is empty: {input_path_1}")
+            if join_type == "left":
+                # Left join with empty left file = empty output
+                print_log("Left join with empty left file. Creating empty output.")
+            elif join_type in ("right", "outer"):
+                # Right or outer join with empty left file = copy right file
+                print_log(f"{join_type.capitalize()} join with empty left file. Using right file as output.")
+                with open_by_suffix(input_path_2, "r") as file_2:
+                    # Copy entire file 
+                    for line in file_2:
+                        output.write(line)
+            return
+            
+        # File 2 is empty
+        if is_empty_2:
+            print_log(f"Warning: Second input file is empty: {input_path_2}")
+            if join_type == "right":
+                # Right join with empty right file = empty output
+                print_log("Right join with empty right file. Creating empty output.")
+            elif join_type in ("left", "outer"):
+                # Left or outer join with empty right file = copy left file
+                print_log(f"{join_type.capitalize()} join with empty right file. Using left file as output.")
+                with open_by_suffix(input_path_1, "r") as file_1:
+                    # Copy entire file
+                    for line in file_1:
+                        output.write(line)
+            return
+
 def join_tsvs(input_path_1, input_path_2, field, join_type, output_file):
     """Join two TSV files linewise on a shared column."""
-    # Open files
+    # First check if either file is empty
+    with open_by_suffix(input_path_1, "r") as test_file_1:
+        header_line_1 = test_file_1.readline().strip()
+        is_empty_1 = not header_line_1
+        
+    with open_by_suffix(input_path_2, "r") as test_file_2:
+        header_line_2 = test_file_2.readline().strip()
+        is_empty_2 = not header_line_2
+    
+    # Handle empty file cases if needed
+    if is_empty_1 or is_empty_2:
+        handle_empty_files(input_path_1, input_path_2, is_empty_1, is_empty_2, join_type, output_file)
+        return
+    
+    # Open files for normal processing
     with open_by_suffix(input_path_1, "r") as file_1, open_by_suffix(input_path_2, "r") as file_2, open_by_suffix(output_file, "w") as output:
         # Read header lines
-        header_1 = file_1.readline().strip().split("\t")
-        header_2 = file_2.readline().strip().split("\t")
-        # Process and write header
+        header_line_1 = file_1.readline().strip()
+        header_line_2 = file_2.readline().strip()
+        is_empty_1 = not header_line_1
+        is_empty_2 = not header_line_2
+
+        # Handle empty file cases if needed
+        if is_empty_1 or is_empty_2:
+            return handle_empty_files(input_path_1, input_path_2, is_empty_1, is_empty_2, join_type, output_file)
+        
+        # Otherwise, process normally
+        header_1 = header_line_1.split("\t")
+        header_2 = header_line_2.split("\t")
         merged_header, field_index_1, field_index_2 = \
                 process_headers(header_1, header_2, field)
         write_line(merged_header, output)
+        
         # Define placeholders for non-inner joins
         placeholder_file1 = ["NA"] * (len(header_1) - 1)
         placeholder_file2 = ["NA"] * (len(header_2) - 1)
+        
         # Get first two lines from each file
         line_1_curr, row_1_curr, id_1_curr = get_line_id(file_1, field_index_1)
         line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
         line_2_curr, row_2_curr, id_2_curr = get_line_id(file_2, field_index_2)
         line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
+        
         # Iterate until we exhaust either file
         while line_1_curr and line_2_curr:
             # Verify that files are sorted
