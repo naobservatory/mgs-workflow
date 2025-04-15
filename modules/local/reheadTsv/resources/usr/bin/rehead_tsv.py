@@ -28,17 +28,34 @@ def rename_columns(input_path, input_fields, output_fields, out_path):
     """Rename columns in TSV file."""
     if len(input_fields) != len(output_fields):
         raise ValueError("Input and output field lists must be the same length.")
+    
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
-        # Read and handle header line
-        headers_in = inf.readline().strip().split("\t")
+        # Read the header line
+        header_line = inf.readline().strip()
+        
+        # Check if file is empty
+        if not header_line:
+            print_log("Warning: Input file is empty. Creating empty output file.")
+            outf.write("")  # Write empty string to create the file
+            return
+        
+        # Process header fields
+        headers_in = header_line.split("\t")
+        
+        # Verify all input fields exist in the header
         for field in input_fields:
             if field not in headers_in:
                 raise ValueError(f"Input field not found in file header: {field}")
+        
+        # Rename header fields
         headers_out = headers_in.copy()
         for i in range(len(input_fields)):
             headers_out[headers_in.index(input_fields[i])] = output_fields[i]
-        header_line = "\t".join(headers_out)
-        outf.write(header_line + "\n")
+        
+        # Write new header
+        new_header_line = "\t".join(headers_out)
+        outf.write(new_header_line + "\n")
+        
         # Write entire remainder of input file to output
         for line in inf:
             outf.write(line)
