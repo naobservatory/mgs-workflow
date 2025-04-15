@@ -27,17 +27,33 @@ def open_by_suffix(filename, mode="r", debug=False):
 def add_header_line(input_path, header_fields, out_path):
     """Add header line to TSV file."""
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
+        # Read first line
+        first_line_content = inf.readline().strip()
+        
+        # Check if file is empty
+        if not first_line_content:
+            print_log(f"Warning: Input file {input_path} is empty. Creating output with header only.")
+            # Write header line to output
+            header_line = "\t".join(header_fields)
+            outf.write(header_line + "\n")
+            return
+            
+        # Parse first line
+        first_line = first_line_content.split("\t")
+        
         # Check number of fields in input
-        first_line = inf.readline().strip().split("\t")
         if len(first_line) != len(header_fields):
             print_log("Number of header fields: {}".format(len(header_fields)))
             print_log("Number of fields in input file: {}".format(len(first_line)))
             raise ValueError("Number of header fields does not match number of fields in input file.")
+            
         # Write header line to output
         header_line = "\t".join(header_fields)
         outf.write(header_line + "\n")
+        
         # Write first line of input file to output
         outf.write("\t".join(first_line) + "\n")
+        
         # Write entire remainder of input file to output
         for line in inf:
             outf.write(line)
