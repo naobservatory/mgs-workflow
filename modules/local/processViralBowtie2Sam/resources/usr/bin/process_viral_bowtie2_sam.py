@@ -306,9 +306,17 @@ def process_paired_sam(inf, outf, genbank_metadata, viral_taxids):
     """Process paired SAM file into a TSV."""
     # Write headers
     head = write_sam_headers_paired(outf)
-    # Process file and generate content
+    
+    # Check if the SAM file is empty (check first line)
     fwd_line = get_next_alignment(inf)
+    if fwd_line is None:
+        print_log("Warning: Input SAM file is empty. Creating empty output with header only.")
+        return
+        
+    # Get the next alignment for paired processing
     rev_line = get_next_alignment(inf)
+    
+    # Process file and generate content
     while True:
         if fwd_line is None: # If no line, check for reverse line then break
             if rev_line is not None: # Break if reverse line exists without forward line
