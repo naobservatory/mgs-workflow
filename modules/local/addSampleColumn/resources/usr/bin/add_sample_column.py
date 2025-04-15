@@ -27,16 +27,29 @@ def open_by_suffix(filename, mode="r", debug=False):
 def add_sample_column(input_path, sample_name, sample_column, out_path):
     """Add sample name column to TSV file."""
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
-        # Read and handle header line
-        headers_in = inf.readline().strip().split("\t")
+        # Read header line
+        header_line = inf.readline().strip()
+        
+        # Check if file is empty
+        if not header_line:
+            print_log(f"Warning: Input file {input_path} is empty. Creating empty output file.")
+            outf.write("")  # Write empty string to create the file
+            return
+            
+        # Process header
+        headers_in = header_line.split("\t")
         if sample_column in headers_in:
             raise ValueError(f"Sample name column already exists: {sample_column}")
+            
+        # Add sample column to header
         headers_out = headers_in + [sample_column]
-        header_line = "\t".join(headers_out)
-        outf.write(header_line + "\n")
+        new_header = "\t".join(headers_out)
+        outf.write(new_header + "\n")
+        
         # Add sample name to each subsequent line and write to output
         for line in inf:
-            outf.write(line.strip() + "\t" + sample_name + "\n")
+            if line.strip():  # Skip completely empty lines
+                outf.write(line.strip() + "\t" + sample_name + "\n")
 
 def main():
     # Parse arguments
