@@ -28,10 +28,10 @@ process EXTRACT_VIRAL_HITS_TO_FASTQ {
                     NR == 1 {
                         for (i = 1; i <= NF; i++) { if ($i == "seq_id") { colIndex = i; break } }
                         if (colIndex == -1) {
-                            print "ERROR: No column named \"seq_id\" in header" > "/dev/stderr"
+                            print "ERROR: No column named 'seq_id' in header" > "/dev/stderr"
                             exit 1
                         } else {
-                            print "\"seq_id\" column index: $colIndex" > "/dev/stderr"
+                            print "'seq_id' column index: $colIndex" > "/dev/stderr"
                         }
                         next # Skip printing the header itself
                     }
@@ -41,7 +41,6 @@ process EXTRACT_VIRAL_HITS_TO_FASTQ {
                 | seqtk subseq !{fastq} - \\
                 | gzip -c > virus_hits_final.fastq.gz
         fi
-        
         # Link input to output for testing
         ln -s !{hits_tsv} virus_hits_in.tsv.gz
         ln -s !{fastq} virus_reads_in.fastq.gz

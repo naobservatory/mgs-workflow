@@ -54,8 +54,9 @@ def sort_tsv_file(input_file, output_file, sort_field):
             # Find the index of the sort field (0-based)
             col_index = header_fields.index(sort_field)
         except ValueError:
-            logger.error(f"Could not find sort field '{sort_field}' in header: {header_fields}")
-            raise ValueError(f"Sort field '{sort_field}' not found in header")
+            msg = f"Could not find sort field in input header: '{sort_field}', {header_fields}"
+            logger.error(msg)
+            raise ValueError(msg)
             
         logger.info(f"Found '{sort_field}' in column {col_index+1}. Sorting by column {col_index+1}.")
         
