@@ -7,18 +7,32 @@ process COUNT_READS {
     output:
         path("${sample}_read_count.tsv"), emit: output
         tuple val(sample), path("${sample}_reads_in.fastq.gz"), emit: input
-    shell:
-        '''
-        # Count reads in file
-        READS=!{single_end ? reads : reads[0]}
-        COUNT=$(zcat ${READS} | wc -l | awk '{print $1/4}')
-        COUNT_SINGLE=!{single_end ? '${COUNT}' : '$(expr ${COUNT} \\* 2)'}
-        COUNT_PAIR=!{single_end ? 'NA' : '${COUNT}'}
+    script:
+        def readFile = single_end ? reads : reads[0]
+        def extractCmd = readFile.toString().endsWith(".gz") ? "zcat" : "cat"
+        """
+        READS=${readFile}
+        # First check if file is empty (before trying to decompress)
+        if [ ! -s \${READS} ]; then
+            COUNT=0 # File is completely empty, set count to 0
+        else
+            # File has content - try to count lines
+            # This will fail if file is corrupted
+            LINECOUNT=\$(${extractCmd} \${READS} | wc -l)
+            if [ \${LINECOUNT} -eq 0 ]; then
+                COUNT=0 # File has content but no lines (e.g., gzip header only)
+            else
+                COUNT=\$(expr \${LINECOUNT} / 4)
+            fi
+        fi
+        # Convert raw count to single and paired counts
+        COUNT_SINGLE=${single_end ? '${COUNT}' : '$(expr ${COUNT} \\* 2)'}
+        COUNT_PAIR=${single_end ? 'NA' : '${COUNT}'}
         # Add header
-        echo -e "sample\tn_reads_single\tn_read_pairs" > !{sample}_read_count.tsv
+        echo -e "sample\\tn_reads_single\\tn_read_pairs" > ${sample}_read_count.tsv
         # Add sample and count
-        echo -e "!{sample}\t${COUNT_SINGLE}\t${COUNT_PAIR}" >> !{sample}_read_count.tsv
+        echo -e "${sample}\\t\${COUNT_SINGLE}\\t\${COUNT_PAIR}" >> ${sample}_read_count.tsv
         # Link output to input for tests
-        ln -s ${READS} !{sample}_reads_in.fastq.gz
-        '''
-}
+        ln -s \${READS} ${sample}_reads_in.fastq.gz
+        """
+    }

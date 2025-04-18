@@ -78,4 +78,46 @@ nextflow_process {
             // TODO: Add test for name & taxid fields (too complex for right now)
         }
     }
+
+    test("Should handle empty input file and produce empty output file") {
+        tag "empty_file"
+        tag "expect_success"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE", alias: "GZIP_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test_empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_EMPTY.out
+                input[1] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                input[2] = params.host_taxon
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output file should have only the header row
+            def outputFile = path(process.out.output[0][1])
+            def lines = outputFile.linesGzip.toList()
+            
+            // Should have exactly one line (the header)
+            assert lines.size() == 1
+            
+            // Check that header contains the expected column names
+            def expectedHeader = "kraken_classified\tseq_id\tkraken_assigned_name\tkraken_assigned_taxid\tkraken_assigned_host_virus\tkraken_length\tkraken_encoded_hits"
+            assert lines[0] == expectedHeader
+        }
+    }
 }
