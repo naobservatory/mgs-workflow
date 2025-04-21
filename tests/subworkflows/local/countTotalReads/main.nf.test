@@ -40,7 +40,29 @@ nextflow_workflow {
             assert file_out.columnNames == ['sample', 'n_reads_single', 'n_read_pairs']
             assert file_out.rows[0] == ["sample": "gold_standard", "n_reads_single": 165*2, "n_read_pairs": 165]
         }
-
     }
 
+    test("Should handle empty input files properly") {
+        tag "expect_success"
+        tag "empty_input"
+        config "tests/configs/run.config"
+
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = Channel.of("empty_sample").combine(Channel.of(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                input[1] = Channel.of(true)
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            def file_out = path(workflow.out.read_counts[0]).csv(sep: "\t", decompress: true) 
+            assert file_out.rowCount == 1
+            assert file_out.columnNames == ['sample', 'n_reads_single', 'n_read_pairs']
+            assert file_out.rows[0] == ["sample": "empty_sample", "n_reads_single": 0, "n_read_pairs": ""]
+        }
+    }
 }
