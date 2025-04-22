@@ -26,29 +26,18 @@ def open_by_suffix(filename, mode="r", debug=False):
 
 def add_column(input_path, column_name, column_value, out_path):
     """Add column to TSV file with specified name and value."""
-    # Check if input file is empty
-    if os.path.getsize(input_path) == 0:
-        # Create empty output file
-        with open(out_path, "w") as outf:
-            pass
-        return
-        
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Read and handle header line
         header_line = inf.readline().strip()
-        
-        # Handle case where file only has a header or is empty
+        # Handle empty file
         if not header_line:
-            # File is effectively empty
             return
-            
         headers_in = header_line.split("\t")
         if column_name in headers_in:
             raise ValueError(f"Column already exists: {column_name}")
         headers_out = headers_in + [column_name]
         header_line = "\t".join(headers_out)
         outf.write(header_line + "\n")
-        
         # Add column to each subsequent line and write to output
         for line in inf:
             line = line.strip()
