@@ -5,6 +5,89 @@ nextflow_process {
     process "SUMMARIZE_MULTIQC"
     tag "module"
     tag "summarize_multiqc"
+    
+    test("Should handle empty input files properly") {
+        tag "empty_input"
+        tag "expect_success"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    """
+                    input[0] = Channel.of("empty_sample").combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    """
+                }
+            }
+            run("FASTQC_LABELED") {
+                script "modules/local/fastqc/main.nf"
+                process {
+                    """
+                    input[0] = GZIP_FILE.out
+                    """
+                }
+            }
+            run("MULTIQC_LABELED") {
+                script "modules/local/multiqc/main.nf"
+                process {
+                    """
+                    input[0] = "test"
+                    input[1] = FASTQC_LABELED.out.zip
+                    """
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                """
+                input[0] = MULTIQC_LABELED.out.data
+                input[1] = true
+                """
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Basic stats TSV should have expected structure and content
+            def tsv_basic  = path(process.out[0][0][0]).csv(sep: "\t", decompress: true)
+            with (tsv_basic) {
+                assert rowCount == 1
+                assert columnCount == 15
+                def zero_cols = ["percent_gc", "mean_seq_len", "n_reads_single", "percent_duplicates", "n_bases_approx"]
+                for (col in zero_cols) {
+                    assert columns[col][0] == 0
+                }
+                assert columns["n_read_pairs"][0] == ""
+                assert columns["stage"][0] == "test"
+                assert columns["sample"][0] == "empty_sample"
+            }
+            def stage = tsv_basic.columns["stage"][0]
+            def sample = tsv_basic.columns["sample"][0]
+            // Length TSV should have expected structure and content
+            def tsv_lengths = path(process.out[0][0][4]).csv(sep: "\t", decompress: true)
+            with (tsv_lengths) {
+                assert columnCount == 5
+                assert columns["stage"][0] == stage
+                assert columns["sample"][0] == sample
+                assert columns["n_sequences"][0] == 0
+                assert columns["length"][0] == 0
+            }
+            // Other TSVs should have headers but no content
+            def tsv_adapt = path(process.out[0][0][1]).linesGzip
+            def tsv_adapt_headers = tsv_adapt[0].split("\t")
+            assert tsv_adapt.size() == 1
+            assert tsv_adapt_headers.size() == 6
+            def tsv_qbase = path(process.out[0][0][2]).linesGzip
+            def tsv_qbase_headers = tsv_qbase[0].split("\t")
+            assert tsv_qbase.size() == 1
+            assert tsv_qbase_headers.size() == 5
+            def tsv_qseqs = path(process.out[0][0][3]).linesGzip
+            def tsv_qseqs_headers = tsv_qseqs[0].split("\t")
+            assert tsv_qseqs.size() == 1
+            assert tsv_qseqs_headers.size() == 5
+        }
+    }
 
     test("Should run without failures on paired (non-interleaved) data") {
         tag "paired_end"
