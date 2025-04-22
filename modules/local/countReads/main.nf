@@ -11,6 +11,7 @@ process COUNT_READS {
         def readFile = single_end ? reads : reads[0]
         def extractCmd = readFile.toString().endsWith(".gz") ? "zcat" : "cat"
         """
+        set -xeou pipefail
         READS=${readFile}
         # First check if file is empty (before trying to decompress)
         if [ ! -s \${READS} ]; then
@@ -22,11 +23,11 @@ process COUNT_READS {
             if [ \${LINECOUNT} -eq 0 ]; then
                 COUNT=0 # File has content but no lines (e.g., gzip header only)
             else
-                COUNT=\$(expr \${LINECOUNT} / 4)
+                COUNT=\$(awk -v count=\${LINECOUNT} 'BEGIN {print count / 4}')
             fi
         fi
         # Convert raw count to single and paired counts
-        COUNT_SINGLE=${single_end ? '${COUNT}' : '$(expr ${COUNT} \\* 2)'}
+        COUNT_SINGLE=${single_end ? '${COUNT}' : '$(awk -v count=\${COUNT} \'BEGIN {print count * 2}\')'}
         COUNT_PAIR=${single_end ? 'NA' : '${COUNT}'}
         # Add header
         echo -e "sample\\tn_reads_single\\tn_read_pairs" > ${sample}_read_count.tsv
