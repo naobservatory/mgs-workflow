@@ -3,6 +3,22 @@ nextflow_pipeline {
     name "Test workflow RUN"
     script "main.nf" // Running from main so we have access to published files
     tag "workflow"
+    
+    test("Should handle empty input files") {
+        config "tests/configs/run.config"
+        tag "empty_input"
+        tag "expect_success"
+        when {
+            params {
+                // Use the empty sample sheet that references empty S3 files
+                sample_sheet = "${projectDir}/test-data/empty-samplesheet.csv"
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+        }
+    }
 
     test("Short read RUN workflow should run without errors") {
         config "tests/configs/run.config"
