@@ -88,16 +88,16 @@ nextflow_workflow {
             assert workflow.success
 
             // FASTQ and SAM output files should be empty
-            def fastq_and_sam_files = [
-                path(workflow.out.hits_fastq[0][1]),
+            def fastq_files = [
+                path(workflow.out.hits_fastq[0]),
                 path(workflow.out.test_fastq_filtered_human[0][1]),
-                path(workflow.out.test_fastq_filtered_contam[0][1]),
-                path(workflow.out.test_minimap2_virus[0][1])
+                path(workflow.out.test_fastq_filtered_contam[0][1])
             ]
             def fastqs = fastq_files.collect{ it.fastq }
             def read_counts = fastqs.collect{ it.getNumberOfRecords() }
             assert read_counts.every{ it == 0 }
-
+            def samlines = sam(workflow.out.test_minimap2_virus[0][1]).getSamLines()
+	    assert samlines.size() == 0
             // Tabular output files should have only header lines
             def tabular_files = [
                 path(workflow.out.hits_final[0]),
