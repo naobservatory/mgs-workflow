@@ -54,14 +54,13 @@ nextflow_process {
             def output_file = path(process.out.output[0])
             
             // Read the file manually to avoid issues with compressed file handling
-            def content = output_file.text
-            def lines = content.split("\n").findAll { it.trim() } // Remove empty lines
+            def content = output_file.text.split("\n")
             
             // There should be only a header line
-            assert lines.size() == 1
+            assert content.size() == 1
             
             // Header should have the expected columns
-            def header_fields = lines[0].split("\t")
+            def header_fields = content[0].split("\t")
             assert header_fields.size() == 4
             assert header_fields[0] == "x"
             assert header_fields[1] == "y"

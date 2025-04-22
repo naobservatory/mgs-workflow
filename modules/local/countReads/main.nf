@@ -11,7 +11,7 @@ process COUNT_READS {
         def readFile = single_end ? reads : reads[0]
         def extractCmd = readFile.toString().endsWith(".gz") ? "zcat" : "cat"
         """
-        set -xeou pipefail
+        set -eou pipefail
         READS=${readFile}
         # First check if file is empty (before trying to decompress)
         if [ ! -s \${READS} ]; then

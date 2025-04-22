@@ -67,13 +67,11 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json, single_end){
               n_reads_single = sum(total_sequences),
               n_read_pairs = ifelse(single_end, NA, sum(total_sequences) / 2),
               percent_duplicates = mean(percent_duplicates))
-  print(tab_json)
   # Read in basic stats from fastqc TSV
   columns_exclude <- c("Sample", "Filename", "File type", "Encoding", "Total Sequences", "Total Bases",
                       "Sequences flagged as poor quality", "Sequence length", "%GC",
                       "total_deduplicated_percentage", "basic_statistics", "avg_sequence_length",
                       "median_sequence_length")
-  print(fastqc_tsv %>% select(-any_of(columns_exclude)))
   tab_tsv <- fastqc_tsv %>%
     mutate(n_bases_approx = process_n_bases(`Total Bases`) %>% as.numeric) %>%
     select(-any_of(columns_exclude)) %>%
