@@ -1,0 +1,15 @@
+seq_id	rand1	rand2	taxid
+seq_A	0	0	5
+seq_B	0	0	5
+seq_B	0	0	6
+seq_C	0	0	5
+seq_C	0	0	7
+seq_D	0	0	5
+seq_D	0	0	6
+seq_D	0	0	7
+seq_E	0	0	5
+seq_E	0	0	1
+seq_F	0	0	5
+seq_G	0	0	8
+seq_I	0	0	5
+

@@ -1,0 +1,9 @@
+seq_A	5
+seq_B	2
+seq_C	1
+seq_D	1
+seq_E	1
+seq_F	5
+seq_G	8
+seq_I	5
+
