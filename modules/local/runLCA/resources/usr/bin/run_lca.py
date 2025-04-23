@@ -19,7 +19,6 @@ def load_parent_map(tree_filepath: str) -> Dict[int, int]:
 
     Returns:
         A dictionary mapping taxid (int) to parent_taxid (int).
-        Returns an empty dictionary if the file cannot be read.
     """
     parent_map: Dict[int, int] = {}
     try:
@@ -35,16 +34,16 @@ def load_parent_map(tree_filepath: str) -> Dict[int, int]:
                         sys.stderr.write(
                             f"Warning: Skipping malformed line in tree file: {line.strip()}\n"
                         )
-                        pass
+                        sys.exit(1)
     except FileNotFoundError:
         sys.stderr.write(f"Error: Tree file not found at {tree_filepath}\n")
-        return {}
+        sys.exit(1)
     except Exception as e:
         sys.stderr.write(f"Error loading tree file: {e}\n")
-        return {}
+        sys.exit(1)
 
     if NCBI_ROOT_TAXID not in parent_map:
-        parent_map[NCBI_ROOT_TAXID] = NCBI_ROOT_TAXID  # Parent of root is root
+        parent_map[NCBI_ROOT_TAXID] = NCBI_ROOT_TAXID
 
     return parent_map
 
@@ -62,7 +61,6 @@ def load_seq_taxids(
 
     Returns:
         A dictionary mapping seq_id (can be string or int) to a list of taxids (int).
-        Returns an empty dictionary if the file cannot be read.
     """
     seq_taxids: Dict[Any, List[int]] = {}
     try:
@@ -95,13 +93,13 @@ def load_seq_taxids(
                         sys.stderr.write(
                             f"Warning: Skipping line with non-integer taxid in seq file: {line.strip()}\n"
                         )
-                        pass
+                        sys.exit(1)
     except FileNotFoundError:
         sys.stderr.write(f"Error: Seq/Taxid file not found at {seq_taxid_filepath}\n")
-        return {}
+        sys.exit(1)
     except Exception as e:
         sys.stderr.write(f"Error loading seq/taxid file: {e}\n")
-        return {}
+        sys.exit(1)
 
     return seq_taxids
 
@@ -121,6 +119,10 @@ def get_path_to_root(taxid: int, parent_map: Dict[int, int]) -> List[int]:
     """
     path: List[int] = []
     current_taxid = taxid
+
+    if current_taxid not in parent_map:
+        sys.stderr.write(f"Warning: Taxid {current_taxid} not found in parent map.\n")
+        sys.exit(1)
 
     # Traverse up until we reach the root or an unknown taxid
     while current_taxid in parent_map:
@@ -144,9 +146,7 @@ def find_lca_two(taxid1: int, taxid2: int, parent_map: Dict[int, int]) -> Option
         parent_map: The dictionary mapping taxid to parent_taxid.
 
     Returns:
-        The LCA taxid (int), or None if inputs are invalid
-        (e.g., not found in parent_map or paths don't connect to root,
-        although the latter is unlikely with a valid tree fragment).
+        The LCA taxid (int).
     """
     if taxid1 == taxid2:
         return taxid1
@@ -154,12 +154,11 @@ def find_lca_two(taxid1: int, taxid2: int, parent_map: Dict[int, int]) -> Option
     path1 = get_path_to_root(taxid1, parent_map)
     path2 = get_path_to_root(taxid2, parent_map)
 
-    # If either path is empty, one of the taxids was invalid/not in map
     if not path1 or not path2:
         sys.stderr.write(
-            f"Warning: Could not get path for taxid {taxid1} or {taxid2}. Returning None for LCA.\n"
+            f"Warning: Could not get path for taxid {taxid1} or {taxid2}.\n"
         )
-        return None
+        sys.exit(1)
 
     # Reverse paths to start from the root
     path1.reverse()
@@ -188,12 +187,18 @@ def find_lca_set(taxid_list: List[int], parent_map: Dict[int, int]) -> Optional[
         parent_map: The dictionary mapping taxid to parent_taxid.
 
     Returns:
-        The LCA taxid (int) for the set, or None if the list is empty
-        or if an LCA cannot be determined (e.g., due to invalid taxids).
+        The LCA taxid (int) for the set.
     """
     if not taxid_list:
-        return None
+        sys.stderr.write("Warning: Received empty taxid list.\n")
+        sys.exit(1)
+
     if len(taxid_list) == 1:
+        if taxid_list[0] not in parent_map:
+            sys.stderr.write(
+                f"Warning: Taxid {taxid_list[0]} not found in parent map.\n"
+            )
+            sys.exit(1)
         return taxid_list[0]
 
     # Start with the LCA of the first two taxids
@@ -201,17 +206,17 @@ def find_lca_set(taxid_list: List[int], parent_map: Dict[int, int]) -> Optional[
 
     if current_lca is None:
         sys.stderr.write(
-            f"Warning: Initial LCA calculation failed for {taxid_list[:2]}. Returning None for the set.\n"
+            f"Warning: Initial LCA calculation failed for {taxid_list[:2]}.\n"
         )
-        return None
+        sys.exit(1)
 
     for next_taxid in taxid_list[2:]:
         current_lca = find_lca_two(current_lca, next_taxid, parent_map)
         if current_lca is None:
             sys.stderr.write(
-                f"Warning: Subsequent LCA calculation failed with taxid {next_taxid}. Returning None for the set.\n"
+                f"Warning: Subsequent LCA calculation failed with taxid {next_taxid}.\n"
             )
-            return None
+            sys.exit(1)
 
     return current_lca
 
@@ -232,31 +237,28 @@ def main(
     """
     print("Loading taxonomy tree...")
     parent_map = load_parent_map(tree_filepath)
-    if not parent_map:
-        sys.stderr.write("Failed to load taxonomy tree. Exiting.\n")
-        sys.exit(1)
     print(f"Loaded parent map with {len(parent_map)} entries.")
 
     print("Loading seq_id to taxids mapping...")
     seq_taxids = load_seq_taxids(seq_taxid_filepath, group_col_name, taxid_col_name)
-    if not seq_taxids:
-        sys.stderr.write("Failed to load seq_id to taxids mapping. Exiting.\n")
-        sys.exit(1)
     print(f"Loaded mappings for {len(seq_taxids)} seq_ids.")
 
     print("Computing LCAs...")
+    try:
+        with open(outfile_name, "w") as file:
+            for seq_id, taxid_list in seq_taxids.items():
+                if not taxid_list:
+                    file.write(f"{seq_id}\tNone\n")
+                    continue
 
-    with open(outfile_name, "w") as file:
-        for seq_id, taxid_list in seq_taxids.items():
-            if not taxid_list:
-                file.write(f"{seq_id}\tNone\n")
-                continue
+                lca_taxid = find_lca_set(taxid_list, parent_map)
 
-            lca_taxid = find_lca_set(taxid_list, parent_map)
+                file.write(f"{seq_id}\t{lca_taxid}\n")
 
-            file.write(f"{seq_id}\t{lca_taxid}\n")
-
-    print("Processing complete. Results written to output.txt.")
+        print("Processing complete. Results written to output.txt.")
+    except Exception as e:
+        sys.stderr.write(f"Error occurred writing output: {e}\n")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
@@ -273,4 +275,3 @@ if __name__ == "__main__":
     outfile_name = sys.argv[5]
 
     main(tree_file, seq_taxid_file, group_col_name, taxid_col_name, outfile_name)
-

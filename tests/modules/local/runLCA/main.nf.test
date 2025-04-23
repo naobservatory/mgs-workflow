@@ -35,4 +35,25 @@ nextflow_process {
 
     }
 
+    test("Should fail if taxid is not found in tax-node-dmp") {
+            config "tests/configs/run.config"
+            when {
+                process {
+                    """
+                    input[0] = file("${projectDir}/test-data/toy-data/test-tax-node-dmp.txt")
+                    input[1] = file("${projectDir}/test-data/toy-data/test-blast-invalid-taxid.txt")
+                    input[2] = "seq_id"
+                    input[3] = "taxid"
+                    input[4] = "lca_output.txt"
+                    """
+                }
+            }
+
+            then {
+                // Additionally, assert process success to catch any other issues
+                assert process.failed
+           }
+
+    }
+
 }
