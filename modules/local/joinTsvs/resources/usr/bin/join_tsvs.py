@@ -80,25 +80,73 @@ def check_sorting(id_curr, id_next, file_str, input_path):
         msg = f"File {file_str} is not sorted: encountered ID {id_curr} after {id_next} ({input_path})."
         raise ValueError(msg)
 
-def join_tsvs(input_path_1, input_path_2, field, join_type, output_file):
+def copy_file(file, header, output):
+    """Copy a file to the output file, starting with header."""
+    write_line(header, output)
+    for line in file:
+        output.write(line)
+
+def handle_empty_files(file_1, file_2, is_empty_1, is_empty_2, join_type, header_1, header_2, output_file):
+    """Handle joining when one or both files are empty."""
+    if not is_empty_1 and not is_empty_2:
+        msg = "Error: called handle_empty_files with non-empty files"
+        print_log(msg)
+        raise ValueError(msg)
+    # Both files are empty - create empty output file (for all join types)
+    if is_empty_1 and is_empty_2:
+        print_log("Warning: Both input files are empty. Creating empty output file.")
+        return
+    empty_file = file_1 if is_empty_1 else file_2 # Otherwise, get non-empty file for logging
+    # For strict joins, raise error if any single file is empty
+    if join_type == "strict":
+        msg = f"Strict join cannot be performed with empty file: {empty_file}"
+        print_log(msg)
+        raise ValueError(msg)
+    # For other join types, act based on which file is empty
+    empty_file_log = "left" if is_empty_1 else "right"
+    nonempty_file_log = "right" if is_empty_1 else "left"
+    match (join_type, is_empty_1):
+        case ("inner", True) | ("inner", False) | ("left", True) | ("right", False):
+            print_log(f"Warning: {join_type} join with empty {empty_file_log} file. Creating empty output.")
+            return
+        case ("right", True) | ("outer", True):
+            print_log(f"{join_type} join with empty {empty_file_log} file. Using {nonempty_file_log} file as output.")
+            copy_file(file_2, header_2.split("\t"), output_file)
+        case ("left", False) | ("outer", False):
+            print_log(f"{join_type} join with empty {empty_file_log} file. Using {nonempty_file_log} file as output.")
+            copy_file(file_1, header_1.split("\t"), output_file)
+
+def join_tsvs(input_path_1, input_path_2, field, join_type, output_path):
     """Join two TSV files linewise on a shared column."""
-    # Open files
-    with open_by_suffix(input_path_1, "r") as file_1, open_by_suffix(input_path_2, "r") as file_2, open_by_suffix(output_file, "w") as output:
-        # Read header lines
-        header_1 = file_1.readline().strip().split("\t")
-        header_2 = file_2.readline().strip().split("\t")
-        # Process and write header
+    # Open files for normal processing
+    with open_by_suffix(input_path_1, "r") as file_1, open_by_suffix(input_path_2, "r") as file_2, open_by_suffix(output_path, "w") as output:
+        # Read header lines and check for empty files
+        header_line_1 = file_1.readline().strip()
+        header_line_2 = file_2.readline().strip()
+        is_empty_1 = not header_line_1
+        is_empty_2 = not header_line_2
+
+        # Handle empty file cases if needed
+        if is_empty_1 or is_empty_2:
+            return handle_empty_files(file_1, file_2, is_empty_1, is_empty_2, join_type, header_line_1, header_line_2, output)
+        
+        # Otherwise, process normally
+        header_1 = header_line_1.split("\t")
+        header_2 = header_line_2.split("\t")
         merged_header, field_index_1, field_index_2 = \
                 process_headers(header_1, header_2, field)
         write_line(merged_header, output)
+        
         # Define placeholders for non-inner joins
         placeholder_file1 = ["NA"] * (len(header_1) - 1)
         placeholder_file2 = ["NA"] * (len(header_2) - 1)
+        
         # Get first two lines from each file
         line_1_curr, row_1_curr, id_1_curr = get_line_id(file_1, field_index_1)
         line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
         line_2_curr, row_2_curr, id_2_curr = get_line_id(file_2, field_index_2)
         line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
+        
         # Iterate until we exhaust either file
         while line_1_curr and line_2_curr:
             # Verify that files are sorted

@@ -56,4 +56,34 @@ nextflow_process {
             assert total_input_lines == (output_lines_merged * 2) + output_lines_unmerged
         }
     }
+
+    test("Should handle empty input file and produce empty output files") {
+        tag "empty_file"
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of(
+                    ["test", "${projectDir}/test-data/toy-data/empty_file.txt"]
+                )
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Both output files (merged and unmerged) should be empty
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            
+            // Check merged reads output is empty
+            def output_lines_merged = countGzipLines(process.out.reads[0][1][0])
+            assert output_lines_merged == 0
+            
+            // Check unmerged reads output is empty
+            def output_lines_unmerged = countGzipLines(process.out.reads[0][1][1])
+            assert output_lines_unmerged == 0
+        }
+    }
 }

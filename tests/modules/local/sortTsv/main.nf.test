@@ -25,7 +25,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("\n  ERROR: Could not find sort field in input header")
+            assert process.errorReport.contains("ERROR: Could not find sort field in input header")
         }
     }
 
@@ -126,6 +126,32 @@ nextflow_process {
             assert tab_out.rowCount == tab_in.rowCount
             // Output and input headers should match
             assert tab_out.columnNames == tab_in.columnNames
+        }
+    }
+
+    test("Should handle empty input file and produce empty output file"){
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[1] = "x"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output should be empty
+            def outputFile = path(process.out.sorted[0][1])
+            def content = outputFile.text
+            
+            // Should be completely empty
+            assert content == ""
         }
     }
 

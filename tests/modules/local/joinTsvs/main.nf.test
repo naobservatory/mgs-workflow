@@ -407,4 +407,253 @@ nextflow_process {
         }
     }
 
+    test("Should handle empty first input file for inner join"){
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = "x"
+                input[2] = "inner"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should be empty
+            def outputFile = path(process.out.output[0][1])
+            assert outputFile.linesGzip.size() == 0
+        }
+    }
+
+    test("Should handle empty second input file for inner join"){
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[1] = "x"
+                input[2] = "inner"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should be empty
+            def outputFile = path(process.out.output[0][1])
+            assert outputFile.linesGzip.size() == 0
+        }
+    }
+
+    test("Should handle empty first input file for left join"){
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = "x"
+                input[2] = "left"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should be empty (since left table is empty)
+            def outputFile = path(process.out.output[0][1])
+            assert outputFile.linesGzip.size() == 0
+        }
+    }
+
+    test("Should handle empty second input file for left join"){
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[1] = "x"
+                input[2] = "left"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // For a left join with empty right side, output should be equivalent to first input
+            def tab_in_1 = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assertTableEquals(tab_in_1, tab_out)
+        }
+    }
+
+    test("Should handle empty first input file for right join"){
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = "x"
+                input[2] = "right"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // For a right join with empty left side, output should be equivalent to second input
+            def tab_in_2 = path(process.out.input[0][2]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)   
+            assertTableEquals(tab_in_2, tab_out)
+        }
+    }
+
+    test("Should handle empty second input file for right join"){
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[1] = "x"
+                input[2] = "right"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should be empty (since right table is empty)
+            def outputFile = path(process.out.output[0][1])
+            assert outputFile.linesGzip.size() == 0
+        }
+    }
+
+    test("Should handle empty first input file for outer join"){
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = "x"
+                input[2] = "outer"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should match second input (since left side is empty)
+            def tab_in_2 = path(process.out.input[0][2]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assertTableEquals(tab_in_2, tab_out)
+        }
+    }
+
+    test("Should handle empty second input file for outer join"){
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[1] = "x"
+                input[2] = "outer"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should match first input (since right side is empty)
+            def tab_in_1 = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assertTableEquals(tab_in_1, tab_out)
+        }
+    }
+
+    test("Should raise error on strict join with empty first input file"){
+        tag "expect_failed"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = "x"
+                input[2] = "strict"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Strict join cannot be performed with empty file")
+        }
+    }
+
+    test("Should raise error on strict join with empty second input file"){
+        tag "expect_failed"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[1] = "x"
+                input[2] = "strict"
+                input[3] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Strict join cannot be performed with empty file")
+        }
+    }
 }

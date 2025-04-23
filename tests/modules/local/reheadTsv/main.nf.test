@@ -205,4 +205,27 @@ nextflow_process {
         }
     }
 
+    test("Should handle empty input file and produce empty output file"){
+        tag "empty_file"
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[1] = "x"
+                input[2] = "new_col"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output should be empty
+            def outputFile = path(process.out.output[0][1])
+            assert outputFile.text == ""
+        }
+    }
 }

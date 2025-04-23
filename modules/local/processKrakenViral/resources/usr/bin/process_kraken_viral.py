@@ -59,6 +59,19 @@ def process_kraken(kraken_path, out_path, virus_status_dict):
         headers = ["kraken_classified", "seq_id", "kraken_assigned_name", "kraken_assigned_taxid", "kraken_assigned_host_virus", "kraken_length", "kraken_encoded_hits"]
         header_line = join_line(headers)
         outf.write(header_line)
+        
+        # Read the first line to check if the file is empty
+        first_line = inf.readline()
+        if not first_line:
+            print_log("Warning: Input Kraken file is empty. Creating empty output with header only.")
+            return
+            
+        # Process the first line
+        processed_line = process_line(first_line, virus_status_dict)
+        joined_line = join_line(processed_line)
+        outf.write(joined_line)
+        
+        # Process the rest of the file
         for line in inf:
             processed_line = process_line(line, virus_status_dict)
             joined_line = join_line(processed_line)
