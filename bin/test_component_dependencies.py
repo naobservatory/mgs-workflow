@@ -34,6 +34,49 @@ def find_dependency(directory, component):
 
     return file_paths
 
+def identify_component_file(component):
+    # Search in subworkflows and modules directories
+    search_dirs = ["subworkflows/local/", "modules/local/", "workflows/"]
+
+    pattern = f"\\b{component}\\b"
+    for d in search_dirs:
+        out = subprocess.run(
+            ["grep", "-r", pattern, d], capture_output=True, text=True
+        ).stdout.splitlines()
+
+        for hit in out:
+            path, line_content = hit.split(":", 1)
+            if line_content.lstrip().startswith("workflow "):
+                return path
+    raise ValueError(f"Could not find workflow/subworkflow with name '{component}'.")
+
+def get_subcomponents(component_path):
+    with open(component_path, "r") as f:
+        component_content = f.read()
+
+    modules, workflows = set(), set()
+    for line in component_content.splitlines():
+        if "include" in line:
+            # Extract the first all caps variable in the include line
+            match = re.search(r'include\s*{\s*([A-Z][A-Z0-9_]*)', line)
+            if match:
+                if "subworkflows" in line:
+                    workflows.add(match.group(1))
+                else:
+                    modules.add(match.group(1))
+                continue
+    return modules, workflows
+
+def collect_component_dependencies(component):
+    file_path = identify_component_file(component)
+    modules, workflows = get_subcomponents(file_path)
+
+    for wf in list(workflows):
+        sub_mods, sub_wfs = collect_component_dependencies(wf)
+        modules.update(sub_mods)
+        workflows.update(sub_wfs)
+
+    return modules, workflows
 
 def workflow_uses_subworkflow(workflow, subworkflow_path):
     workflow_path = f"workflows/{workflow}"
@@ -92,14 +135,23 @@ def parse_args():
         default=False,
     )
 
+    parser.add_argument(
+        "-t",
+        "--test-subcomponents",
+        action="store_true",
+        help="Test subcomponents of the component. Only applicable if the component is a workflow/subworkflow.",
+        default=False,
+    )
+
     args = parser.parse_args()
     component = args.component
     verbose = args.verbose
-    return component, verbose
+    test_subcomponents = args.test_subcomponents
+    return component, verbose, test_subcomponents
 
 
 def main():
-    component, verbose = parse_args()
+    component, verbose, test_subcomponents = parse_args()
 
     # Validate component name - only allow alphanumerics and underscores
     if not re.match(r'^[a-zA-Z0-9_]+$', component):
@@ -164,12 +216,33 @@ def main():
     for workflow in dependent_workflows:
         workflow_tests.add(get_workflow_test(workflow))
 
+
     print("=" * 72)
     print(f"Found {len(workflow_tests)} tests for affected workflows:")
     print("=" * 72)
     for test in workflow_tests:
         print(f"   • {test}")
     print()
+
+
+    # Identifying tests of modules and subworkflows within the component (Optional)
+    if test_subcomponents:
+        subcomp_tests = set()
+        modules, workflows = collect_component_dependencies(component)
+        for module in modules:
+            subcomp_tests.update(find_dependency("tests/", module))
+        for workflow in workflows:
+            subcomp_tests.update(find_dependency("tests/", workflow))
+
+        print("=" * 72)
+        print(f"Found {len(subcomp_tests)} tests for subcomponents of {component}:")
+        print("=" * 72)
+
+        for test in sorted(subcomp_tests):
+            print(f"   • {test}")
+        print()
+        tests_to_execute.update(subcomp_tests)
+
 
     tests_to_execute.update(subworkflow_tests)
     tests_to_execute.update(workflow_tests)
