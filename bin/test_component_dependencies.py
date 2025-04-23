@@ -47,6 +47,7 @@ def identify_component_file(component):
         for hit in out:
             path, line_content = hit.split(":", 1)
             if line_content.lstrip().startswith("workflow "):
+                # TODO: This could pose a problem when there are multiple matches, and the first match is erroneous..
                 return path
     raise ValueError(f"Could not find workflow/subworkflow with name '{component}'.")
 
