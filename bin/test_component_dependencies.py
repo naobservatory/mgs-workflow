@@ -139,22 +139,22 @@ def parse_args():
     )
 
     parser.add_argument(
-        "-t",
-        "--test-subcomponents",
+        "-s",
+        "--skip-subcomponents",
         action="store_true",
-        help="Test subcomponents of the component. Only applicable if the component is a workflow/subworkflow.",
+        help="Skip testing subcomponents of the component. Only applicable if the component is a workflow/subworkflow.",
         default=False,
     )
 
     args = parser.parse_args()
     component = args.component
     verbose = args.verbose
-    test_subcomponents = args.test_subcomponents
-    return component, verbose, test_subcomponents
+    skip_subcomponents = args.skip_subcomponents
+    return component, verbose, skip_subcomponents
 
 
 def main():
-    component, verbose, test_subcomponents = parse_args()
+    component, verbose, skip_subcomponents = parse_args()
 
     # Validate component name - only allow alphanumerics and underscores
     if not re.match(r'^[a-zA-Z0-9_]+$', component):
@@ -229,7 +229,7 @@ def main():
 
 
     # Identifying tests of modules and subworkflows within the component (Optional)
-    if test_subcomponents:
+    if not skip_subcomponents:
         subcomp_tests = set()
         modules, workflows = collect_component_dependencies(component)
         if modules is None and workflows is None:
