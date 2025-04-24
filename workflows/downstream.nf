@@ -41,10 +41,10 @@ workflow DOWNSTREAM {
         version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
     publish:
         // Saved inputs
-        Channel.fromPath(params.input_file) >> "input"
-        params_ch >> "input"
-        time_ch >> "logging"
-        version_ch >> "logging"
+        Channel.fromPath(params.input_file) >> "input_downstream"
+        params_ch >> "input_downstream"
+        time_ch >> "logging_downstream"
+        version_ch >> "logging_downstream"
         // Duplicate results
         MARK_VIRAL_DUPLICATES.out.dup >> "results_downstream"
 }
