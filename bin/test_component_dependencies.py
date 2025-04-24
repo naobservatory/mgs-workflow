@@ -35,8 +35,8 @@ def find_dependency(directory, component):
     return file_paths
 
 def identify_component_file(component):
-    # Search in subworkflows and modules directories
-    search_dirs = ["subworkflows/local/", "modules/local/", "workflows/"]
+    # Search in subworkflows and workflow directories
+    search_dirs = ["subworkflows/local/", "workflows/"]
 
     pattern = f"\\b{component}\\b"
     for d in search_dirs:
@@ -47,9 +47,9 @@ def identify_component_file(component):
         for hit in out:
             path, line_content = hit.split(":", 1)
             if line_content.lstrip().startswith("workflow "):
-                # TODO: This could pose a problem when there are multiple matches, and the first match is erroneous..
+                # TODO: This could pose a problem when there are multiple matches, and the first match is erroneous.
                 return path
-    raise ValueError(f"Could not find workflow/subworkflow with name '{component}'.")
+    return None
 
 def get_subcomponents(component_path):
     with open(component_path, "r") as f:
@@ -70,6 +70,8 @@ def get_subcomponents(component_path):
 
 def collect_component_dependencies(component):
     file_path = identify_component_file(component)
+    if file_path is None:
+        return None, None
     modules, workflows = get_subcomponents(file_path)
 
     for wf in list(workflows):
@@ -230,19 +232,24 @@ def main():
     if test_subcomponents:
         subcomp_tests = set()
         modules, workflows = collect_component_dependencies(component)
-        for module in modules:
-            subcomp_tests.update(find_dependency("tests/", module))
-        for workflow in workflows:
-            subcomp_tests.update(find_dependency("tests/", workflow))
+        if modules is None and workflows is None:
+            print("=" * 72)
+            print(f"No subcomponents found for {component}.")
 
-        print("=" * 72)
-        print(f"Found {len(subcomp_tests)} tests for subcomponents of {component}:")
-        print("=" * 72)
+        else:
+            for module in modules:
+                subcomp_tests.update(find_dependency("tests/", module))
+            for workflow in workflows:
+                subcomp_tests.update(find_dependency("tests/", workflow))
 
-        for test in sorted(subcomp_tests):
-            print(f"   • {test}")
-        print()
-        tests_to_execute.update(subcomp_tests)
+            print("=" * 72)
+            print(f"Found {len(subcomp_tests)} tests for subcomponents of {component}:")
+            print("=" * 72)
+
+            for test in sorted(subcomp_tests):
+                print(f"   • {test}")
+            print()
+            tests_to_execute.update(subcomp_tests)
 
 
     tests_to_execute.update(subworkflow_tests)
