@@ -3,17 +3,18 @@ nextflow_workflow {
     name "Test subworkflow EXTRACT_VIRAL_READS_ONT"
     script "subworkflows/local/extractViralReadsONT/main.nf"
     workflow "EXTRACT_VIRAL_READS_ONT"
-    config "tests/configs/run_dev_ont.config"
+    config "tests/configs/run_ont.config"
     tag "subworkflow"
     tag "extract_viral_reads_ont"
 
     setup {
-        run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
-            script "subworkflows/local/loadSampleSheetDev/main.nf"
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
             process {
                 """
                 input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
                 input[1] = "ont"
+                input[2] = false
                 """
             }
         }
@@ -34,15 +35,15 @@ nextflow_workflow {
             // Should run without failures
             assert workflow.success
 
-            // Viral minimap2 output should have the same read IDS as the final HV TSV
+            // Viral minimap2 output should have the same read IDS as the final vertebrate viral TSV
             def samlines = sam(workflow.out.test_minimap2_virus[0][1]).getSamLines()
             def sam_ids = samlines
                 .collect { line -> line.split('\t')[0] }  // Get read IDs
                 .toSet()
-            def hits_hv = path(workflow.out.hits_hv[0]).csv(sep: "\t", decompress: true)
-            def hits_hv_read_ids = hits_hv.columns["query_name"].toSet()
+            def hits_final = path(workflow.out.hits_final[0]).csv(sep: "\t", decompress: true)
+            def hits_final_read_ids = hits_final.columns["query_name"].toSet()
             assert sam_ids.size() > 0
-            assert sam_ids == hits_hv_read_ids
+            assert sam_ids == hits_final_read_ids
 
             // Check the the human and contam filtering work and produce FASTQ files that are subsets of the prior FASTQ file.
             def fastq_filtered_human = path(workflow.out.test_fastq_filtered_human[0][1]).fastq
@@ -55,6 +56,54 @@ nextflow_workflow {
             assert human_filter_num > contam_filter_num
             assert contam_filter_num > virus_filter_num
             assert virus_filter_num > 0
+        }
+    }
+
+    test("Should handle empty input file") {
+        tag "empty_file"
+        tag "expect_success"
+        tag "ont"
+        setup {
+            run("GZIP_FILE", alias: "GZIP_EMPTY_FORWARD") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+        }
+        when {
+            
+            workflow {
+                '''
+                input[0] = GZIP_EMPTY_FORWARD.out
+                input[1] = params.ref_dir
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+
+            // FASTQ and SAM output files should be empty
+            def fastq_files = [
+                path(workflow.out.hits_fastq[0]),
+                path(workflow.out.test_fastq_filtered_human[0][1]),
+                path(workflow.out.test_fastq_filtered_contam[0][1])
+            ]
+            def fastqs = fastq_files.collect{ it.fastq }
+            def read_counts = fastqs.collect{ it.getNumberOfRecords() }
+            assert read_counts.every{ it == 0 }
+            def samlines = sam(workflow.out.test_minimap2_virus[0][1]).getSamLines()
+	    assert samlines.size() == 0
+            // Tabular output files should have only header lines
+            def tabular_files = [
+                path(workflow.out.hits_final[0]),
+            ]
+            def tabular_lines = tabular_files.collect{ it.linesGzip.toList() }
+            assert tabular_lines.every{ it.size() == 1 }
         }
     }
 }

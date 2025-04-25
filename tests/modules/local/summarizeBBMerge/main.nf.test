@@ -14,6 +14,7 @@ nextflow_process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
                 input[1] = "illumina"
+                input[2] = false
                 """
             }
         }
@@ -57,6 +58,63 @@ nextflow_process {
             assert tab_out.columnNames == ["seq_id", "bbmerge_frag_length"]
             assert tab_out.rowCount == input_reads
             // TODO: Process input fastq directly using available plugins
+        }
+    }
+
+    test("Should handle empty input files and produce header-only output file") {
+        tag "empty_file"
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE", alias: "GZIP_EMPTY_MERGED") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+            run("GZIP_FILE", alias: "GZIP_EMPTY_UNMERGED") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+            run("COPY_FILE") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    '''
+                    input[0] = GZIP_EMPTY_UNMERGED.out
+                    input[1] = "unmerged_empty"
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_EMPTY_MERGED.out.mix(COPY_FILE.out)
+                    | groupTuple()
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output file should have only the header row (no data rows)
+            def outputFile = path(process.out.summary[0][1])
+            def lines = outputFile.linesGzip.toList()
+            
+            // Should have exactly one line (the header)
+            assert lines.size() == 1
+            
+            // Header should contain the expected columns
+            assert lines[0] == "seq_id\tbbmerge_frag_length"
         }
     }
 }

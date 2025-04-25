@@ -109,7 +109,9 @@ def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_d
         out_fh.write(header)
         try:
             with pysam.AlignmentFile(sam_file, "r") as sam_file:
+                num_reads = 0
                 for read in sam_file:
+                    num_reads += 1
                     print_log(f"Processing read: {read.query_name}")
                     if read.is_unmapped or read.is_secondary or read.is_supplementary:
                         continue
@@ -124,6 +126,8 @@ def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_d
                     assert test_key_line == header
 
                     out_fh.write(join_line(line.values()))
+                if num_reads == 0:
+                    print_log("Warning: Input SAM file is empty. Creating empty output with header only.")
 
         except Exception as e:
             import traceback
@@ -151,7 +155,7 @@ def parse_arguments():
         "-r", "--reads",
         type=lambda f: open_by_suffix(f, "r"),
         default=sys.stdin,
-        help="Path to FASTQ that contains the non-masked version of HV reads (default: stdin)."
+        help="Path to FASTQ that contains the non-masked version of viral reads (default: stdin)."
     )
     parser.add_argument(
         "-m", "--metadata",

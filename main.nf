@@ -1,7 +1,6 @@
 include { RUN } from "./workflows/run"
 include { RUN_VALIDATION } from "./workflows/run_validation"
 include { INDEX } from "./workflows/index"
-include { RUN_DEV_SE } from "./workflows/run_dev_se"
 include { DOWNSTREAM } from "./workflows/downstream"
 
 workflow {
@@ -11,8 +10,6 @@ workflow {
         RUN()
     } else if (params.mode == "run_validation") {
         RUN_VALIDATION()
-    } else if (params.mode == "run_dev_se") {
-        RUN_DEV_SE()
     } else if (params.mode == "downstream") {
         DOWNSTREAM()
     }
@@ -43,7 +40,15 @@ output {
         path "intermediates"
         tags nextflow_file_class: "intermediate", "nextflow.io/temporary": "false"
     }
-    "results_downstream" {
+    input_downstream {
+        path "input_downstream"
+        tags nextflow_file_class: "publish", "nextflow.io/temporary": "false"
+    }
+    logging_downstream {
+        path "logging_downstream"
+        tags nextflow_file_class: "publish", "nextflow.io/temporary": "false"
+    }
+    results_downstream {
         path "results_downstream"
         tags nextflow_file_class: "publish", "nextflow.io/temporary": "false"
     }

@@ -17,6 +17,7 @@ nextflow_workflow {
                     '''
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = "illumina"
+                    input[2] = false
                     '''
                 }
             }
@@ -64,16 +65,17 @@ nextflow_workflow {
     }
 
     test("Should run without failures on single-end data") {
-        config "tests/configs/run_dev_se.config"
+        config "tests/configs/run.config"
         tag "expect_success"
         tag "single_end"
         setup {
-            run("LOAD_SAMPLESHEET_DEV") {
-                script "subworkflows/local/loadSampleSheetDev/main.nf"
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
                 workflow {
                     '''
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
                     input[1] = "illumina"
+                    input[2] = true
                     '''
                 }
             }
@@ -81,10 +83,10 @@ nextflow_workflow {
                 script "subworkflows/local/subsetTrim/main.nf"
                 process {
                     '''
-                    input[0] = LOAD_SAMPLESHEET_DEV.out.samplesheet
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
                     input[1] = 49
                     input[2] = params.adapters
-                    input[3] = LOAD_SAMPLESHEET_DEV.out.single_end
+                    input[3] = LOAD_SAMPLESHEET.out.single_end
                     input[4] = false
                     input[5] = ""
                     '''
@@ -97,7 +99,7 @@ nextflow_workflow {
                 """
                 input[0] = SUBSET_TRIM.out.subset_reads
                 input[1] = SUBSET_TRIM.out.trimmed_subset_reads
-                input[2] = LOAD_SAMPLESHEET_DEV.out.single_end
+                input[2] = LOAD_SAMPLESHEET.out.single_end
                 """
             }
         }
@@ -119,5 +121,52 @@ nextflow_workflow {
             assert tsv_lengths.columnCount == 5
         }
     }
-
+    
+    test("Should handle empty input files properly") {
+        config "tests/configs/run.config"
+        tag "expect_success"
+        tag "empty_input"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    """
+                    input[0] = Channel.of("empty_sample").combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    """
+                }
+            }
+        }
+        when {
+            params {}
+            workflow {
+                """
+                input[0] = GZIP_FILE.out
+                input[1] = GZIP_FILE.out
+                input[2] = Channel.of(true)
+                """
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Basic stats TSV should have expected structure and content
+            def tsv_basic = path(workflow.out.qc_basic[0]).csv(sep: "\t", decompress: true)
+            assert tsv_basic.rowCount == 2
+            assert tsv_basic.columnCount == 15
+            // Lengths TSV should have expected structure and content
+            def tsv_lengths = path(workflow.out.qc_lengths[0]).csv(sep: "\t", decompress: true)
+            assert tsv_lengths.rowCount == 2
+            assert tsv_lengths.columnCount == 5
+            // Other TSVs should have expected structure and content
+            def tsv_adapt = path(workflow.out.qc_adapt[0]).linesGzip
+            assert tsv_adapt.size() == 1
+            assert tsv_adapt[0].split("\t").size() == 6
+            def tsv_qbase = path(workflow.out.qc_qbase[0]).linesGzip
+            assert tsv_qbase.size() == 1
+            assert tsv_qbase[0].split("\t").size() == 5
+            def tsv_qseqs = path(workflow.out.qc_qseqs[0]).linesGzip
+            assert tsv_qseqs.size() == 1
+            assert tsv_qseqs[0].split("\t").size() == 5
+        }
+    }
 }

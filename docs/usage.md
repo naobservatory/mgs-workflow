@@ -6,7 +6,7 @@ This page describes the process of running the pipeline's [core workflow](./run.
 > Before following the instructions on this page, make sure you have followed the [installation and setup instructions](./installation.md), including running the [index workflow](./index.md) or otherwise having a complete and up-to-date index directory in an accessible location.
 
 > [!IMPORTANT]
-> Currently, the pipeline only accepts paired short-read data; single-end and Oxford Nanopore versions are under development but are not ready for general use.
+> Currently, the pipeline accepts paired short-read data (Illumina and Aviti), and Oxford Nanopore data. Note that Oxford Nanopore version has not been fully benchmarked/optimized; use at your own risk. (Single-end short-read support has some development but is not ready for general use.)
 
 ## 1. Preparing input files
 
@@ -18,6 +18,7 @@ To run the workflow on new data, you need:
     - The base directory in which to put the working and output directories (`params.base_dir`).
     - The directory containing the outputs of the reference workflow (`params.ref_dir`).
     - The sample sheet (`params.sample_sheet`).
+    - The platform (e.g. `illumina` or `ont`)
     - Various other parameter values.
 
 > [!TIP]
@@ -27,9 +28,14 @@ To run the workflow on new data, you need:
 
 The sample sheet must be an uncompressed CSV file with the following headers in the order specified:
 
+For paired data: 
 - `sample` (1st column): Sample ID
 - `fastq_1` (2nd column): Path to FASTQ file 1 which should be the forward read for this sample
 - `fastq_2` (3rd column): Path to FASTQ file 2 which should be the reverse read for this sample
+
+For single-end data (ONT):
+- `sample` (1st column)
+- `fastq` (2nd column)
 
 If you're working with NAO data, [mgs-metadata](https://github.com/naobservatory/mgs-metadata) (private) generates these and puts them in S3 alongside the data.
 
@@ -41,9 +47,11 @@ The config file specifies parameters and other configuration options used by Nex
 - Edit `params.ref_dir` to point to the directory containing the outputs of the reference workflow.
 - Edit `params.sample_sheet` to point to your sample sheet.
 - Edit `params.base_dir` to point to the directory in which Nextflow should put the pipeline working and output directories.
+- Make sure `params.platform` matches your data
 - If running on AWS Batch (see below), edit `process.queue` to the name of your Batch job queue.
 
 Most other entries in the config file can be left at their default values for most runs. See [here](./config.md) for a full description of config file parameters and their meanings.
+    - note that for ONT data, the BLAST-related parameters may need to be modified from their default values, as noted in [config.md] and in the comments in `configs/run.config`
 
 ## 2. Choosing a profile
 

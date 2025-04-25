@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Usage: ./parallel_nf_test.sh <total_threads> [additional_args]
-# Example: ./parallel_nf_test.sh 4 --verbose --some-flag
+# Usage: ./run_parallel_test.sh <total_threads> [additional_args]
+# Example: ./run_parallel_test.sh 4 --verbose --some-flag
 
 # Function to print usage
 print_usage() {

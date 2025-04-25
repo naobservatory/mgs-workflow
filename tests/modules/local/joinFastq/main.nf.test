@@ -14,6 +14,7 @@ nextflow_process {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
                 input[1] = "illumina"
+                input[2] = false
                 """
             }
         }

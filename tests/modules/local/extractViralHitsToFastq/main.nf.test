@@ -98,4 +98,86 @@ nextflow_process {
             }
         }
     }
+    
+    test("Should handle completely empty input TSV and produce empty output files") {
+        tag "empty_file"
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE", alias: "GZIP_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test_empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_EMPTY.out.map{it[1]}
+                input[1] = GZIP_FASTQ.out.map{it[1]}
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output files should be empty
+            def ids_out = path(process.out.ids[0])
+            assert ids_out.linesGzip.size() == 0
+            
+            def fastq_out = path(process.out.fastq[0])
+            assert fastq_out.linesGzip.size() == 0
+        }
+    }
+    
+    test("Should handle input TSV with header but no data rows") {
+        tag "header_only"
+        tag "expect_success"
+        setup {
+            run("HEAD_TSV") {
+                script "modules/local/headTsv/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test_header_only")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    input[1] = "seq_id,kraken_assigned_host_virus,bowtie2_length_normalized_score_max"
+                    input[2] = "header_only"
+                    '''
+                }
+            }
+            run("GZIP_FILE", alias: "GZIP_HEADER_ONLY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = HEAD_TSV.out.output
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_HEADER_ONLY.out.map{it[1]}
+                input[1] = GZIP_FASTQ.out.map{it[1]}
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output files should be empty
+            def ids_out = path(process.out.ids[0])
+            assert ids_out.linesGzip.size() == 0
+            
+            def fastq_out = path(process.out.fastq[0])
+            assert fastq_out.linesGzip.size() == 0
+        }
+    }
 }

@@ -68,9 +68,14 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json, single_end){
               n_read_pairs = ifelse(single_end, NA, sum(total_sequences) / 2),
               percent_duplicates = mean(percent_duplicates))
   # Read in basic stats from fastqc TSV
+  columns_exclude <- c("Sample", "Filename", "File type", "Encoding", "Total Sequences", "Total Bases",
+                      "Sequences flagged as poor quality", "Sequence length", "%GC",
+                      "total_deduplicated_percentage", "basic_statistics", "avg_sequence_length",
+                      "median_sequence_length")
   tab_tsv <- fastqc_tsv %>%
     mutate(n_bases_approx = process_n_bases(`Total Bases`) %>% as.numeric) %>%
-    select(n_bases_approx, per_base_sequence_quality:adapter_content) %>%
+    select(-any_of(columns_exclude)) %>%
+    select(n_bases_approx, everything()) %>%
     summarize_all(function(x) paste(x, collapse="/"))
   return(bind_cols(tab_json, tab_tsv))
 }
@@ -136,6 +141,11 @@ extract_per_base_quality <- function(multiqc_json){
   # Extract per-base sequence quality data from multiqc JSON
   datasets <- multiqc_json$report_plot_data$fastqc_per_base_sequence_quality_plot$datasets$lines
   data_out <- lapply(datasets, extract_per_base_quality_single) %>% bind_rows()
+  # Make sure all columns are present even if no quality data
+  if (nrow(data_out) == 0){
+    data_out <- data_out %>% mutate(file = character(), position = numeric(),
+                                    mean_phred_score = numeric())
+  }
   return(data_out)
 }
 
@@ -153,6 +163,11 @@ extract_per_sequence_quality <- function(multiqc_json){
   # Extract per-base sequence quality data from multiqc JSON
   datasets <- multiqc_json$report_plot_data$fastqc_per_sequence_quality_scores_plot$datasets$lines
   data_out <- lapply(datasets, extract_per_sequence_quality_single) %>% bind_rows()
+  # Make sure all columns are present even if no quality data
+  if (nrow(data_out) == 0){
+    data_out <- data_out %>% mutate(file = character(), mean_phred_score = numeric(),
+                                    n_sequences = numeric())
+  }
   return(data_out)
 }
 

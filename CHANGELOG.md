@@ -1,3 +1,23 @@
+# v2.9.0.0
+- Implemented ONT analysis in the RUN workflow
+    - Combined run_dev_se.nf with run.nf
+    - Renamed `hits_filtered` outputs of short-read workflow and `hits_hv` outputs of ONT workflow to `hits_final` for consistency across platforms
+    - Also renamed `hits_all` output of short-read pipeline to `hits_unfiltered`
+    - Added end-to-end tests for ONT to github actions
+- Prepared DOWNSTREAM workflow for running with internal mgs-orchestrator repo
+    - Added `expected-outputs-downstream.txt` file containing list of expected output files for the DOWNSTREAM workflow
+    - Modified output paths for non-results DOWNSTREAM outputs to avoid overwriting RUN outputs
+    - Changed strict-join of hits and grouping TSVs across sample names to inner-join (to drop samples that are not present in both TSVs)
+- Began development of post-hoc validation of putative viral hits in the DOWNSTREAM workflow
+    - Split viral hits TSV by assigned species and extract read sequences (SPLIT_VIRAL_TSV_BY_SPECIES)
+    - Cluster within species with VSEARCH and obtain representative sequences (CLUSTER_VIRAL_ASSIGNMENTS)
+    - Split out merge/join part of TAXONOMY workflow into its own subworkflow (MERGE_JOIN_READS) that can be used by both TAXONOMY and post-hoc validation (with associated tests)
+- Added a development_mode parameter to LOAD_SAMPLESHEET to allow testing on non-implemented platform/endedness
+- Get rid of lingering references to human viruses/HV in comments, variable names, etc.
+- Updated SUBSET_FASTQ to handle plaintext and FASTA input (and renamed to SUBSET_FASTN)
+- Modified various RUN workflow components to correctly handle empty input files (which previously caused failures).
+- Added `test_component_dependencies.py` script to test all modules, subworkflows, and workflows that depend on a given component (e.g., BBDUK, or TAXONOMY)
+
 # v2.8.3.2
 - Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.
 - Added pass/fail test for FASTQC_LABELED.

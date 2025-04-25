@@ -1,8 +1,8 @@
 // Replace a string in a file while retaining channel structure
-// Currently only used for testing
 process REPLACE_STRING {
     label "single"
     label "coreutils"
+    label "testing_only" // Process is currently only used for testing
     input:
         tuple val(label), path(file)
         val(outname)
@@ -19,10 +19,10 @@ process REPLACE_STRING {
 }
 
 // Replace a string in a compressed file while retaining channel structure
-// Currently only used for testing
 process REPLACE_STRING_IN_COMPRESSED_FILE {
     label "single"
     label "coreutils"
+    label "testing_only" // Process is currently only used for testing
     input:
         tuple val(label), path(file)
         val(outname)

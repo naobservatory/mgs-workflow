@@ -17,6 +17,7 @@ nextflow_process {
                     """
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = "illumina"
+                    input[2] = false
                     """
                 }
             }
@@ -48,14 +49,15 @@ nextflow_process {
     test("Should run without failures on single-end data") {
         tag "expect_success"
         tag "single_end"
-        config "tests/configs/run_dev_se.config"
+        config "tests/configs/run.config"
         setup {
-            run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
-                script "subworkflows/local/loadSampleSheetDev/main.nf"
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
                     input[1] = "illumina"
+                    input[2] = true
                     """
                 }
             }
@@ -81,6 +83,60 @@ nextflow_process {
             def fastq_in = path(process.out.input[0][1]).fastq
             def reads_in = fastq_in.getNumberOfRecords()
             assert file_out.rows[0] == ["sample": sample_name, "n_reads_single": reads_in, "n_read_pairs": ""]
+        }
+    }
+
+    test("Should run without failures on a plaintext empty file") {
+        tag "expect_success"
+        tag "single_end"
+        config "tests/configs/run.config"
+        when {
+            params {}
+            process {
+                """
+                input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[1] = true
+                """
+            }
+        }
+        then {
+            assert process.success
+            def file_out = path(process.out.output[0]).csv(sep: "\t") 
+            assert file_out.rowCount == 1
+            assert file_out.columnNames == ["sample", "n_reads_single", "n_read_pairs"]
+            assert file_out.rows[0] == ["sample": "test", "n_reads_single": 0, "n_read_pairs": ""]
+        }
+    }
+
+    test("Should run without failures on a gzipped empty file") {
+        tag "expect_success"
+        tag "single_end"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    """
+                    input[0] = Channel.of("test").combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    """
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                """
+                input[0] = GZIP_FILE.out
+                input[1] = true
+                """
+            }
+        }
+        then {
+            assert process.success
+            def file_out = path(process.out.output[0]).csv(sep: "\t") 
+            assert file_out.rowCount == 1
+            assert file_out.columnNames == ["sample", "n_reads_single", "n_read_pairs"]
+            assert file_out.rows[0] == ["sample": "test", "n_reads_single": 0, "n_read_pairs": ""]
         }
     }
 

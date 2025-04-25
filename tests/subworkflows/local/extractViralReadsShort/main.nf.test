@@ -21,6 +21,7 @@ nextflow_workflow {
                 """
                 input[0] = "${projectDir}/test-data/samplesheet.csv"
                 input[1] = "illumina"
+                input[2] = false
                 """
             }
         }
@@ -68,15 +69,15 @@ nextflow_workflow {
             assert test_joined_tab.rowCount == Math.min(test_bowtie_tab.rowCount, test_kraken_tab.rowCount)
             assert test_joined_tab.columnCount == test_bowtie_tab.columnCount + test_kraken_tab.columnCount - 1 + 2
             // Test filtering produced expected results
-            def hits_all_tab = path(workflow.out.hits_all[0]).csv(sep: "\t", decompress: true)
-            def hits_filtered_tab = path(workflow.out.hits_filtered[0]).csv(sep: "\t", decompress: true)
+            def hits_all_tab = path(workflow.out.hits_unfiltered[0]).csv(sep: "\t", decompress: true)
+            def hits_final_tab = path(workflow.out.hits_final[0]).csv(sep: "\t", decompress: true)
             assertTableEquals hits_all_tab, test_joined_tab
-            assert hits_all_tab.columnNames == hits_filtered_tab.columnNames
-            assert hits_all_tab.rowCount >= hits_filtered_tab.rowCount
+            assert hits_all_tab.columnNames == hits_final_tab.columnNames
+            assert hits_all_tab.rowCount >= hits_final_tab.rowCount
             def hits_exp_tab = filter_tab(hits_all_tab, params.bt2_score_threshold)
-            assert hits_exp_tab.columnNames == hits_filtered_tab.columnNames
-            assert hits_exp_tab.rowCount == hits_filtered_tab.rowCount
-            assertTableEquals hits_exp_tab, hits_filtered_tab
+            assert hits_exp_tab.columnNames == hits_final_tab.columnNames
+            assert hits_exp_tab.rowCount == hits_final_tab.rowCount
+            assertTableEquals hits_exp_tab, hits_final_tab
             // Filtered FASTQ should be a subset of test FASTQ
             def hits_fastq = path(workflow.out.hits_fastq[0]).fastq
             assert hits_fastq.getNumberOfRecords() <= test_reads_count
@@ -84,7 +85,7 @@ nextflow_workflow {
                 assert r in test_reads_fastq.readNames
             }
             // Elements from test FASTQ should be in filtered FASTQ iff they're in filtered TSV
-            def ids_filtered = hits_filtered_tab.columns["seq_id"]
+            def ids_filtered = hits_final_tab.columns["seq_id"]
             def ids_fastq_in = test_reads_fastq.readNames.collect{ it.tokenize(" ")[0] }
             def ids_fastq_out = hits_fastq.readNames.collect{ it.tokenize(" ")[0] }
             for (id in ids_fastq_in) {
@@ -94,6 +95,86 @@ nextflow_workflow {
                     assert !(id in ids_fastq_out)
                 }
             }
+        }
+    }
+    
+    test("Should handle empty input file") {
+        tag "empty_file"
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE", alias: "GZIP_EMPTY_FORWARD") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+            run("GZIP_FILE", alias: "GZIP_EMPTY_REVERSE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+            run("COPY_FILE") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    '''
+                    input[0] = GZIP_EMPTY_REVERSE.out
+                    input[1] = "reverse_empty"
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+                bt2_score_threshold = 20
+            }
+            workflow {
+                '''
+                input[0] = GZIP_EMPTY_FORWARD.out.mix(COPY_FILE.out).groupTuple()
+                input[1] = params.ref_dir
+                input[2] = "${params.ref_dir}/results/kraken_db"
+                input[3] = params.bt2_score_threshold
+                input[4] = params.adapters
+                input[5] = params.host_taxon
+                input[6] = params.cutadapt_error_rate
+                input[7] = "1"
+                input[8] = "24"
+                input[9] = "viral"
+                input[10] = "5"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+
+            // FASTQ output files should be empty
+            def fastq_files = [
+                path(workflow.out.bbduk_match[0][1]),
+                path(workflow.out.bbduk_trimmed[0][1]),
+                path(workflow.out.hits_fastq[0]),
+                path(workflow.out.test_reads[0][1])
+            ]
+            def fastqs = fastq_files.collect{ it.fastq }
+            def read_counts = fastqs.collect{ it.getNumberOfRecords() }
+            assert read_counts.every{ it == 0 }
+
+            // Tabular output files should have only header lines
+            def tabular_files = [
+                path(workflow.out.hits_unfiltered[0]),
+                path(workflow.out.hits_final[0]),
+                path(workflow.out.test_kraken[0][1]),
+                path(workflow.out.test_bowtie[0][1]),
+                path(workflow.out.test_joined[0][1])
+            ]
+            def tabular_lines = tabular_files.collect{ it.linesGzip.toList() }
+            assert tabular_lines.every{ it.size() == 1 }
         }
     }
 }

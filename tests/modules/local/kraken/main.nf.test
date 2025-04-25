@@ -3,17 +3,18 @@ nextflow_process {
     name "Test process KRAKEN"
     script "modules/local/kraken/main.nf"
     process "KRAKEN"
-    config "tests/configs/run_dev_se.config"
+    config "tests/configs/run.config"
     tag "module"
     tag "kraken"
 
     setup {
-        run("LOAD_SAMPLESHEET_DEV", alias: "LOAD_SAMPLESHEET") {
-            script "subworkflows/local/loadSampleSheetDev/main.nf"
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
             process {
                 """
                 input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
                 input[1] = "illumina"
+                input[2] = true
                 """
             }
         }
@@ -48,6 +49,46 @@ nextflow_process {
             def output_lines = countGzipLines(process.out.output[0][1])
             def input_reads  = countGzipLines(process.out.input[0][1]) / 4
             assert output_lines == input_reads
+        }
+    }
+
+    test("Should handle empty input file and produce empty output files") {
+        tag "empty_file"
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE", alias: "GZIP_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test_empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_EMPTY.out
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output files should be empty
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            
+            // Check output is empty
+            def output_lines = countGzipLines(process.out.output[0][1])
+            assert output_lines == 0
+            
+            // Check report is empty (or contains only header)
+            def report_lines = countGzipLines(process.out.report[0][1])
+            assert report_lines <= 1
         }
     }
 }

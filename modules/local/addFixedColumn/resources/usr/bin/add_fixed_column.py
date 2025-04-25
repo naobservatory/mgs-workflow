@@ -28,7 +28,11 @@ def add_column(input_path, column_name, column_value, out_path):
     """Add column to TSV file with specified name and value."""
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Read and handle header line
-        headers_in = inf.readline().strip().split("\t")
+        header_line = inf.readline().strip()
+        # Handle empty file
+        if not header_line:
+            return
+        headers_in = header_line.split("\t")
         if column_name in headers_in:
             raise ValueError(f"Column already exists: {column_name}")
         headers_out = headers_in + [column_name]
@@ -36,7 +40,9 @@ def add_column(input_path, column_name, column_value, out_path):
         outf.write(header_line + "\n")
         # Add column to each subsequent line and write to output
         for line in inf:
-            outf.write(line.strip() + "\t" + column_value + "\n")
+            line = line.strip()
+            if line:  # Skip empty lines
+                outf.write(line + "\t" + column_value + "\n")
 
 def main():
     # Parse arguments

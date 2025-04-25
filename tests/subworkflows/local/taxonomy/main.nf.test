@@ -17,6 +17,7 @@ nextflow_workflow {
                     """
                     input[0] = "${projectDir}/test-data/samplesheet.csv"
                     input[1] = "illumina"
+                    input[2] = false
                     """
                 }
             }
@@ -77,14 +78,15 @@ nextflow_workflow {
     test("Should run without failures on unpaired input") {
         tag "expect_success"
         tag "single_end"
-        config "tests/configs/run_dev_se.config"
+        config "tests/configs/run.config"
         setup {
-            run("LOAD_SAMPLESHEET_DEV") {
-                script "subworkflows/local/loadSampleSheetDev/main.nf"
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
                 process {
                     """
                     input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
                     input[1] = "illumina"
+                    input[2] = true
                     """
                 }
             }
@@ -92,7 +94,7 @@ nextflow_workflow {
                 script "modules/local/copyFile/main.nf"
                 process {
                     """
-                    input[0] = LOAD_SAMPLESHEET_DEV.out.samplesheet
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
                     input[1] = "reads.fastq.gz"
                     """
                 }
@@ -106,7 +108,7 @@ nextflow_workflow {
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "D"
                 input[3] = "5"
-                input[4] = LOAD_SAMPLESHEET_DEV.out.single_end
+                input[4] = LOAD_SAMPLESHEET.out.single_end
                 '''
             }
         }
@@ -139,6 +141,62 @@ nextflow_workflow {
             assert bracken_tab.columnNames == bracken_headers_exp
             // BBMerge summary output should be empty
             assert workflow.out.bbmerge_summary == []
+        }
+    }
+
+    test("Should handle empty input file") {
+        tag "empty_file"
+        tag "expect_success"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE", alias: "GZIP_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test_empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            workflow {
+                '''
+                input[0] = GZIP_EMPTY.out
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                input[2] = "D"
+                input[3] = "5"
+                input[4] = Channel.of(true)
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            
+            // Single reads should be empty
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def single_read_lines = countGzipLines(workflow.out.single_reads[0][1])
+            assert single_read_lines == 0
+            
+            // Kraken output should have only header row
+            def kraken_output_lines = countGzipLines(workflow.out.kraken_output[0][1])
+            assert kraken_output_lines == 0
+            
+            // Kraken reports should have header row only
+            def kraken_report_file = path(workflow.out.kraken_reports[0])
+            def kraken_lines = kraken_report_file.linesGzip.toList()
+            assert kraken_lines.size() == 1  // Just header
+            
+            // Check header columns
+            def kraken_headers = kraken_lines[0].split("\t")
+            def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample"]
+            assert kraken_headers.size() == kraken_headers_exp.size()
+            
+            // Bracken output should be completely empty
+            def bracken_file = path(workflow.out.bracken[0])
+            assert bracken_file.linesGzip.size() == 0
         }
     }
 }
