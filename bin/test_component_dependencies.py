@@ -187,7 +187,7 @@ def main():
     # Identifying dependents
     #-----------------------------------------------------------------#
 
-    # Find subworkflows that directly use the component
+    # Find dependent subworkflows
     dependent_subworkflows = set(find_dependency("subworkflows/", component))
 
     # Find transitive dependencies - subworkflows that use other dependent subworkflows
@@ -200,7 +200,7 @@ def main():
     # Combine all dependent subworkflows
     dependent_subworkflows.update(transitive_dependencies)
 
-    # Identifying tests that use the affected subworkflows
+    # Identifying tests for dependent subworkflows
     subworkflow_tests = set()
     for dependent_subworkflow in dependent_subworkflows:
         tests = find_dependency("tests/subworkflows/", dependent_subworkflow)
@@ -213,17 +213,17 @@ def main():
         print(f"   • {test}")
     print()
 
-    # Identifying workflows that use the component
+    # Identifying dependent workflows
     dependent_workflows = set()
     dependent_workflows.update(find_dependency("workflows/", component))
 
-    # Identifying workflows that use affected subworkflows
+    # Identifying dependent workflows of dependent subworkflows
     for workflow in os.listdir("workflows/"):
         for dependent_subworkflow in dependent_subworkflows:
             if workflow_uses_subworkflow(workflow, dependent_subworkflow):
                 dependent_workflows.add(workflow)
 
-    # Identifying tests that use the affected workflows
+    # Identifying tests for dependent workflows
     workflow_tests = set()
     for workflow in dependent_workflows:
         workflow_tests.add(get_workflow_test(workflow))
@@ -240,7 +240,7 @@ def main():
     # Identifying dependencies
     #-----------------------------------------------------------------#
 
-    # Identifying tests of modules and subworkflows within the component
+    # Identifying module and subworkflow dependencies and their tests
     if not skip_subcomponents:
         subcomp_tests = set()
         modules, workflows = collect_component_dependencies(component)
@@ -267,6 +267,10 @@ def main():
 
     tests_to_execute.update(subworkflow_tests)
     tests_to_execute.update(workflow_tests)
+
+    #-----------------------------------------------------------------#
+    # Running tests
+    #-----------------------------------------------------------------#
 
     print("=" * 72)
     print(f"Identified {len(tests_to_execute)} test files to execute. Running...")
