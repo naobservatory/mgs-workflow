@@ -4,6 +4,7 @@ import subprocess
 import os
 import re
 import sys
+
 def find_dependency(directory, component):
 
     directory = directory.rstrip("/")
@@ -162,7 +163,11 @@ def main():
 
     tests_to_execute = set()
 
+
+    #-----------------------------------------------------------------#
     # Identifying tests that directly use the component
+    #-----------------------------------------------------------------#
+
     direct_tests = find_dependency("tests/", component)
     tests_to_execute.update(direct_tests)
 
@@ -177,6 +182,10 @@ def main():
     for test in direct_tests:
         print(f"   • {test}")
     print()
+
+    #-----------------------------------------------------------------#
+    # Identifying dependents
+    #-----------------------------------------------------------------#
 
     # Find subworkflows that directly use the component
     dependent_subworkflows = set(find_dependency("subworkflows/", component))
@@ -227,8 +236,11 @@ def main():
         print(f"   • {test}")
     print()
 
+    #-----------------------------------------------------------------#
+    # Identifying dependencies
+    #-----------------------------------------------------------------#
 
-    # Identifying tests of modules and subworkflows within the component (Optional)
+    # Identifying tests of modules and subworkflows within the component
     if not skip_subcomponents:
         subcomp_tests = set()
         modules, workflows = collect_component_dependencies(component)
@@ -238,9 +250,10 @@ def main():
 
         else:
             for module in modules:
-                subcomp_tests.update(find_dependency("tests/", module))
+                subcomp_tests.update(find_dependency("tests/modules/local/", module))
             for workflow in workflows:
-                subcomp_tests.update(find_dependency("tests/", workflow))
+                subcomp_tests.update(find_dependency("tests/subworkflows/local/", workflow))
+
 
             print("=" * 72)
             print(f"Found {len(subcomp_tests)} tests for subcomponents of {component}:")
