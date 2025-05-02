@@ -12,7 +12,9 @@ config:
 ---
 flowchart LR
 A(Raw reads) --> B[LOAD_SAMPLESHEET]
-B --> C[COUNT_TOTAL_READS] & D1[EXTRACT_VIRAL_READS_SHORT] & D2[EXTRACT_VIRAL_READS_ONT] & E[SUBSET_TRIM]
+B --> C[COUNT_TOTAL_READS] & E[SUBSET_TRIM]
+B --> |Short reads|D1[EXTRACT_VIRAL_READS_SHORT]
+B --> |ONT reads|D2[EXTRACT_VIRAL_READS_ONT]
 D1 & D2 -.-> |Optional|F[BLAST_VIRAL]
 E --> I(Subset reads)
 E --> J(Subset trimmed reads)
@@ -48,7 +50,9 @@ To perform these functions, the workflow runs a series of subworkflows responsib
     - [Taxonomic assignment (TAXONOMY)](#taxonomic-assignment-taxonomy)
     - [QC (QC)](#qc-qc)
 3. [Analysis subworkflows](#analysis-subworkflows): Perform the primary analysis
-    - [Viral identification (EXTRACT_VIRAL_READS)](#viral-identification-extract_viral_reads)
+    - An EXTRACT_VIRAL_READS subworkflow that depends on the read type
+        - [Viral identification for Illumina reads and other short reads (EXTRACT_VIRAL_READS_SHORT)](#viral-identification-extract_viral_reads_short)
+        - [Viral identification for ONT reads and other short reads (EXTRACT_VIRAL_READS_ONT)](#viral-identification-extract_viral_reads_ont)
     - [Taxonomic profiling (PROFILE)](#taxonomic-profiling-profile)
     - [BLAST validation (BLAST_VIRAL)](#blast-validation-blast_viral)
 4. [QC subworkflows](#qc-subworkflows): Conduct quality control on the analysis results
@@ -155,13 +159,13 @@ style J fill:#000,color:#fff,stroke:#000
 
 ## Analysis subworkflows
 
-### Viral identification (EXTRACT_VIRAL_READS)
+### Viral identification (short read version) (EXTRACT_VIRAL_READS_SHORT)
 
-The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It uses a multi-step process designed to keep computational costs low while minimizing false-positive and false-negative errors.
+The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It takes as input paired-end short-reads and uses a multi-step process designed to keep computational costs low while minimizing false-positive and false-negative errors.
 
 ```mermaid
 ---
-title: EXTRACT_VIRAL_READS
+title: EXTRACT_VIRAL_READS_SHORT
 config:
   layout: horizontal
 ---
@@ -198,6 +202,53 @@ style M fill:#000,color:#fff,stroke:#000
 ```
 
 1. To begin with, the raw reads are screened against a database of vertebrate-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least one 24-mer matching any vertebrate-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative vertebrate-infecting viral reads while discarding the vast majority of non-viral reads, reducing the cost associated with the rest of this phase.
+2. Surviving reads undergo adapter and quality trimming with [FASTP](https://github.com/OpenGene/fastp) and [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) to remove adapter contamination and low-quality/low-complexity reads.
+3. Next, reads are aligned to the previously-mentioned database of vertebrate-infecting viral genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative vertebrate viral reads as possible. The output files are processed to generate new read files containing any read pair for which at least one read matches the vertebrate viral database.
+4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using Bowtie2 in series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
+5. Surviving read pairs are then taxonomically profiled using the [TAXONOMY subworkflow](#taxonomic-assignment-taxonomy) to generate Kraken2 taxonomic assignments.
+6.  Finally, reads are assigned a final vertebrate-infecting virus status if they:
+    - Are classified as vertebrate-infecting virus by both Bowtie2 and Kraken2; or
+    - Are unassigned by Kraken and align to an vertebrate-infecting virus taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
+
+[^threshold]: Specifically, Kraken-unassigned read pairs are classed as vertebrate viral if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
+
+### Viral identification (ONT version) (EXTRACT_VIRAL_READS_ONT)
+
+The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It takes as input ONT (oxford nanopore) reads. Due to the smaller size of ONT datasets compared to most short-read datasets, EXTRACT_VIRAL_READS_ONT currently uses a simpler worflow than EXTRACT_VIRAL_READS_SHORT, and is less optimized for low computational costs. 
+
+```mermaid
+---
+title: EXTRACT_VIRAL_READS_ONT
+config:
+  layout: horizontal
+---
+flowchart LR
+A(Raw reads) --> B[FILTLONG]
+B --> C[BBMask (entropy masking)]
+C --> D[Minimap2 (human index)]
+D --> E[Minimap2 (other contaminants index)]
+E --> F[Minimap2 (viral index)]
+F --> G(Viral hits table)
+F --> H(Viral FASTQ)
+
+subgraph "Filter and mask"
+B
+C
+end
+subgraph "Remove contaminants"
+D
+E
+end
+subgraph "Identify viral reads"
+F
+G
+end
+style A fill:#fff,stroke:#000
+style G fill:#000,color:#fff,stroke:#000
+style H fill:#000,color:#fff,stroke:#000
+```
+
+1. First To begin with, the raw reads are screened against a database of vertebrate-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least one 24-mer matching any vertebrate-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative vertebrate-infecting viral reads while discarding the vast majority of non-viral reads, reducing the cost associated with the rest of this phase.
 2. Surviving reads undergo adapter and quality trimming with [FASTP](https://github.com/OpenGene/fastp) and [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) to remove adapter contamination and low-quality/low-complexity reads.
 3. Next, reads are aligned to the previously-mentioned database of vertebrate-infecting viral genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative vertebrate viral reads as possible. The output files are processed to generate new read files containing any read pair for which at least one read matches the vertebrate viral database.
 4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using Bowtie2 in series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
