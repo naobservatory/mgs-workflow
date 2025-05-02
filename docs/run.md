@@ -224,10 +224,10 @@ config:
 ---
 flowchart LR
 A(Raw reads) --> B[FILTLONG]
-B --> C[BBMask (entropy masking)]
-C --> D[Minimap2 (human index)]
-D --> E[Minimap2 (other contaminants index)]
-E --> F[Minimap2 (viral index)]
+B --> C["BBMask (entropy masking")]
+C --> D["Minimap2 <br> (human index)"]
+D --> E["Minimap2 <br> (other contaminants index)"]
+E --> F["Minimap2 <br> (viral index)"]
 F --> G(Viral hits table)
 F --> H(Viral FASTQ)
 
