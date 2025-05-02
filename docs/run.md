@@ -224,7 +224,7 @@ config:
 ---
 flowchart LR
 A(Raw reads) --> B[FILTLONG]
-B --> C["BBMask (entropy masking)"]
+B --> C["BBMask <br> (entropy masking)"]
 C --> D["Minimap2 <br> (human index)"]
 D --> E["Minimap2 <br> (other contaminants index)"]
 E --> F["Minimap2 <br> (viral index)"]
@@ -241,23 +241,16 @@ E
 end
 subgraph "Identify viral reads"
 F
-G
 end
 style A fill:#fff,stroke:#000
 style G fill:#000,color:#fff,stroke:#000
 style H fill:#000,color:#fff,stroke:#000
 ```
 
-1. First To begin with, the raw reads are screened against a database of vertebrate-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least one 24-mer matching any vertebrate-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative vertebrate-infecting viral reads while discarding the vast majority of non-viral reads, reducing the cost associated with the rest of this phase.
-2. Surviving reads undergo adapter and quality trimming with [FASTP](https://github.com/OpenGene/fastp) and [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) to remove adapter contamination and low-quality/low-complexity reads.
-3. Next, reads are aligned to the previously-mentioned database of vertebrate-infecting viral genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative vertebrate viral reads as possible. The output files are processed to generate new read files containing any read pair for which at least one read matches the vertebrate viral database.
-4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using Bowtie2 in series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
-5. Surviving read pairs are then taxonomically profiled using the [TAXONOMY subworkflow](#taxonomic-assignment-taxonomy) to generate Kraken2 taxonomic assignments.
-6.  Finally, reads are assigned a final vertebrate-infecting virus status if they:
-    - Are classified as vertebrate-infecting virus by both Bowtie2 and Kraken2; or
-    - Are unassigned by Kraken and align to an vertebrate-infecting virus taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
-
-[^threshold]: Specifically, Kraken-unassigned read pairs are classed as vertebrate viral if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
+1. First, reads are filtered for length and quality with [Filtlong](https://github.com/rrwick/Filtlong), and low-complexity regions are masked with [BBMask](https://archive.jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmask-guide/) (entropy masking).
+2. Next, common contaminant sequences are removed, by aligning reads to contaminants with [Minimap2](https://github.com/lh3/minimap2) in a series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
+    - Note that, unlike for EXTRACT_VIRAL_READS_SHORT, contaminant removal is done before viral read identification. EXTRACT_VIRAL_READS_ONT is frequently used on swab samples (not just on wastewater samples); we avoid analyzing human reads from swab samples for privacy/compliant reasons, so we wish to discard human reads as early in the workflow as possible.
+3. Finally, reads are aligned to our database of vertebrate-infecting viral genomes using Minimap2. (As noted above, the viral database is generated from Genbank by the index workflow.)
 
 ### Taxonomic profiling (PROFILE)
 
