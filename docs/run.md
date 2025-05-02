@@ -224,7 +224,7 @@ config:
 ---
 flowchart LR
 A(Raw reads) --> B[FILTLONG]
-B --> C["BBMask (entropy masking")]
+B --> C["BBMask (entropy masking)"]
 C --> D["Minimap2 <br> (human index)"]
 D --> E["Minimap2 <br> (other contaminants index)"]
 E --> F["Minimap2 <br> (viral index)"]
