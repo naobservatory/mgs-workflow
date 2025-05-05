@@ -59,6 +59,8 @@ nextflow_process {
                     assert columns[col][0] == 0
                 }
                 assert columns["n_read_pairs"][0] == ""
+                assert columns["per_base_sequence_quality"][0] == ""
+                assert columns["per_sequence_quality_scores"][0] == ""
                 assert columns["stage"][0] == "test"
                 assert columns["sample"][0] == "empty_sample"
             }
