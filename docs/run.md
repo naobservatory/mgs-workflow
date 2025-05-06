@@ -52,7 +52,7 @@ To perform these functions, the workflow runs a series of subworkflows responsib
 3. [Analysis subworkflows](#analysis-subworkflows): Perform the primary analysis
     - An EXTRACT_VIRAL_READS subworkflow that depends on the read type
         - [Viral identification for Illumina reads and other short reads (EXTRACT_VIRAL_READS_SHORT)](#viral-identification-extract_viral_reads_short)
-        - [Viral identification for ONT reads and other short reads (EXTRACT_VIRAL_READS_ONT)](#viral-identification-extract_viral_reads_ont)
+        - [Viral identification for ONT reads and other long reads (EXTRACT_VIRAL_READS_ONT)](#viral-identification-ont-version)
     - [Taxonomic profiling (PROFILE)](#taxonomic-profiling-profile)
     - [BLAST validation (BLAST_VIRAL)](#blast-validation-blast_viral)
 4. [QC subworkflows](#qc-subworkflows): Conduct quality control on the analysis results
@@ -212,9 +212,11 @@ style M fill:#000,color:#fff,stroke:#000
 
 [^threshold]: Specifically, Kraken-unassigned read pairs are classed as vertebrate viral if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
 
-### Viral identification (ONT version) (EXTRACT_VIRAL_READS_ONT)
+### Viral identification (ONT version) 
 
-The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It takes as input ONT (oxford nanopore) reads. Due to the smaller size of ONT datasets compared to most short-read datasets, EXTRACT_VIRAL_READS_ONT currently uses a simpler worflow than EXTRACT_VIRAL_READS_SHORT, and is less optimized for low computational costs. 
+`EXTRACT_VIRAL_READS_ONT`
+
+The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It takes as input ONT (oxford nanopore) reads. Due to the smaller size of ONT datasets compared to most short-read datasets, EXTRACT_VIRAL_READS_ONT currently uses a simpler workflow than EXTRACT_VIRAL_READS_SHORT, and is less optimized for low computational costs. 
 
 ```mermaid
 ---
