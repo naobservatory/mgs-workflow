@@ -54,6 +54,54 @@ Main heading represents the folder name, and subheadings represent a description
 #### Viral identification
 - `virus_hits_final.tsv.gz`: TSV output from EXTRACT_VIRAL_READS, giving information about each read pair assigned to a host-infecting virus.
 
+Columns of `virus_hits_final.tsv.gz`:
+- `seq_id`: Name of read that was identified as a viral hit
+- `query_len`: Length of read (after trimming) (for paired-end data, length of forward read)
+- `query_len_rev`: Length of reverse read (absent for single-end data)
+- `query_seq`: Sequence of read (for paired-end data, sequence of forward read) (NOTE currently sometimes reverse-complement for bowtie2 but not for minimap2--for minimap2 we reverse complement anything that aligns to the reverse strand to clean up the reads--do we want to make consistent? Store both for both?)
+- `query_seq_rev`: Sequence of reverse read (absent for single-end data)
+- `query_qual`: PHRED quality scores for read (for paired-end data, quality scores for forward read)
+- `query_qual_rev`: PHRED quality scores for reverse read (absent for single-end data)
+- `aligner_cigar`: CIGAR string representing alignment of read to aligned genome (for paired-end data, CIGAR string for forward read)
+- `aligner_cigar_rev`: CIGAR string representing alignment of reverse read to aligned genome (absent for single-end data)
+- `aligner_edit_distance`: Edit distance between read and aligned genome (for paired-end data, edit distance for forward read)
+- `aligner_edit_distance_rev`: Edit distance between reverse read and aligned genome (absent for single-end data)
+- `aligner_map_qual`: Mapping quality (for paired-end data, mapping quality of forward read)
+- `aligner_map_qual_rev`: Mapping quality of reverse read (absent for single-end data)
+- `aligner_ref_start`: Location of start of alignment on reference (for paired-end data, location of forward read alignment on reference)
+- `aligner_ref_end`: Location of start of alignment on reference (currently only provided for single-end/ONT data; do we want to add for all?)
+- `aligner_ref_start_rev`: Location of alignment of reverse read on reverse (absent for single-end data)
+- `aligner_alignment_start`: Location of start of alignment on query (currently only provided for single-end/ONT data; do we want to add for all?)
+- `aligner_alignment_end`: Location of end of alignment on query (currently only prov)
+- `aligner_top_alignment_score`: Score (directly from aligner) of top-scoring alignment (for paired-end data, score for forward read's top alignment)
+- `aligner_top_aligment_score_rev`: Score of top-scoring alignment of reverse read (absent for single-end data)
+- `aligner_next_alignment_score`: Score of second-best alignment (for paired-end data, score of second-best alignment of forward read; currently absent for single-end ONT data as minimap2 does not provide second-best alignments)
+- `aligner_next_alignment_score_rev`: Score of second-best alignment of reverse read (absent for single-end data)
+- `aligner_length_normalized_score_best`: Length-normalized alignment score (for paired-end data, max of scores for forward and reverse reads)
+- `aligner_length_normalized_score_fwd`: Length-normalized alignment score for forward read (absent for single-end data)
+- `aligner_length_normalized_score_rev`: Length-normalized alignment score for reverse read (absent for single-end data)
+- `aligner_pair_status`: (absent for single-end data)
+- `aligner_genome_id_best`: GenBank ID for best viral genome match to read, as identified by our aligner (bowtie2 or minimap2)
+- `aligner_genome_id_all`: GenBank IDs for forward and reverse read viral genome matches, joined by "/" (absent for single-end data)
+- `aligner_genome_id_fwd`: GenBank ID for viral genome matching forward read (absent for single-end data)
+- `aligner_genome_id_rev`: GenBank ID for viral genome matching reverse read (absent for single-end data)
+- `aligner_taxid_best`: NCBI taxon ID for taxon best matching read, as identified by our aligner (bowtie2 or minimap2)
+- `aligner_taxid_all` NCBI taxon ID for taxons matching forward and reverse reads, joined by "/" (absent for single-end data)
+- `aligner_taxid_fwd`: NCBI taxon ID for taxon matching forward read (absent for single-end data)
+- `aligner_taxid_rev`: NCBI taxon ID for taxon matching reverse read (absent for single-end data)
+- `aligner_fragment_length_consensus`: Inferred fragment length, as calculated by the aligner (NA if forward and reverse reads align to different genome IDs, absent for single-end data)
+- `aligner_fragment_length_fwd`: Inferred fragment length (forward read) (absent for single-end data)
+- `aligner_fragment_length_rev`: Inferred fragment length (reverse read) (absent for single-end data)
+- `kraken_classified`: was the read classified by kraken2 (True/False)? (currently absent for single-end data; only our paired-short-read pipeline runs kraken)
+- `kraken_assigned_name`: Name of taxon to which read was assigned (e.g. "Human astrovirus"); "unclassified" if unassigned (currently absent for single-end data)
+- `kraken_assigned_taxid`: NCBI taxon ID for taxon to which the read was assigned; 0 if unassigned (currently absent for single-end data)
+- `kraken_assigned_host_virus`: Infection status annotation 0-3 (see https://github.com/naobservatory/mgs-workflow/blob/dev/docs/annotation.md) (currently absent for single-end data)
+- `kraken_length`: 
+- `kraken_encoded_hits`: space-delimited list indicating LCA mapping of each minimizer in the sequence (from kraken raw output)
+- `bbmerge_frag_length`: Inferred fragment length, as calculated by bbmerge (NA if bbmerge could not calculate fragment length; absent for single-end data)
+- `sample`: Sample name corresponding to read (from our samplesheet)
+
+
 #### Taxonomic identification
 - `bracken_reports_merged.tsv.gz`: Bracken output reports in TSV format, labeled by sample and ribosomal status, for subset samples produced by SUBSET_TRIM.
 - `kraken_reports_merged.tsv.gz`: Kraken output reports in TSV format, labeled by sample and ribosomal status, for subset samples produced by SUBSET_TRIM.
