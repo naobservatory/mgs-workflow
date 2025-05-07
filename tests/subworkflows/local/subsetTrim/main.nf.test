@@ -1,7 +1,7 @@
 // Helper function: manual table filtering
 def filter_tab = { tab_in, threshold -> csv(tab_in.table.where(
     tab_in.table.intColumn("kraken_assigned_host_virus").isEqualTo(1).or(
-        tab_in.table.numberColumn("bowtie2_length_normalized_score_max").isGreaterThanOrEqualTo(threshold).and(
+        tab_in.table.numberColumn("aligner_length_normalized_score").isGreaterThanOrEqualTo(threshold).and(
             tab_in.table.intColumn("kraken_assigned_host_virus").isEqualTo(2).or(
                 tab_in.table.booleanColumn("kraken_classified").isFalse()))))) }
 

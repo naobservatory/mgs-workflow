@@ -107,8 +107,8 @@ fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, u
     let header_indices: HashMap<_, _> = headers.iter().enumerate().map(|(i, &s)| (s, i)).collect();
     // Define required header fields
     let required_headers = vec![
-        "seq_id", "bowtie2_genome_id_all", "bowtie2_ref_start_fwd", "bowtie2_ref_start_rev",
-        "query_qual_fwd", "query_qual_rev"
+        "seq_id", "aligner_genome_id_all", "bowtie2_ref_start_fwd", "bowtie2_ref_start_rev",
+        "query_qual", "query_qual_rev"
     ];
     // Build a lookup for required headers
     let mut indices = HashMap::new();
@@ -124,10 +124,10 @@ fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, u
 fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadEntry {
     // Extract required fields
     let query_name = fields[indices["seq_id"]].to_string();
-    let genome_id = fields[indices["bowtie2_genome_id_all"]].to_string();
+    let genome_id = fields[indices["aligner_genome_id_all"]].to_string();
     let ref_start_fwd = parse_int_or_na(&fields[indices["bowtie2_ref_start_fwd"]]);
     let ref_start_rev = parse_int_or_na(&fields[indices["bowtie2_ref_start_rev"]]);
-    let quality_fwd = fields[indices["query_qual_fwd"]].to_string();
+    let quality_fwd = fields[indices["query_qual"]].to_string();
     let quality_rev = fields[indices["query_qual_rev"]].to_string();
     // Handle split assignments
     let genome_id_sorted: String;
@@ -202,7 +202,7 @@ fn process_read_groups(header_out: &str, groups: HashMap<String, Vec<Vec<ReadEnt
     let mut writer_db = open_writer(output_path_db)?;
     let mut writer_meta = open_writer(output_path_meta)?;
     // Write the header line to the output files
-    let header_meta = "bowtie2_genome_id_all\tbowtie2_dup_exemplar\tbowtie2_dup_count\tbowtie2_dup_pairwise_match_frac";
+    let header_meta = "aligner_genome_id_all\tbowtie2_dup_exemplar\tbowtie2_dup_count\tbowtie2_dup_pairwise_match_frac";
     writeln!(writer_db, "{}", header_out)?;
     writeln!(writer_meta, "{}", header_meta)?;
     // Process each group of reads

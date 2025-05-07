@@ -12,6 +12,7 @@ import bz2
 import json
 import functools
 import math
+from Bio import Seq
 
 # Utility functions
 
@@ -102,7 +103,7 @@ def process_sam_alignment(sam_line, genbank_metadata, viral_taxids, paired):
     """Process a SAM alignment line."""
     fields_in = sam_line.strip().split("\t")
     out = {}
-    out["query_name"] = fields_in[0]
+    out["seq_id"] = fields_in[0]
     out.update(process_sam_flags(fields_in[1]))
     out["genome_id"] = fields_in[2]
     out["taxid"] = int(extract_viral_taxid(fields_in[2], genbank_metadata, viral_taxids))
@@ -114,8 +115,15 @@ def process_sam_alignment(sam_line, genbank_metadata, viral_taxids, paired):
         out["mate_ref_start"] = int(fields_in[7]) - 1 # Convert as above
         out["fragment_length"] = abs(int(fields_in[8]))
     out["query_seq"] = fields_in[9]
-    out["query_len"] = len(fields_in[9])
     out["query_qual"] = fields_in[10]
+    out["query_rc_by_aligner"] = False
+
+    if out["aligned_reverse"]:
+        out["query_seq"] = str(Seq.Seq(out["query_seq"]).reverse_complement())
+        out["query_qual"] = out["query_qual"][::-1]
+        out["query_rc_by_aligner"] = True
+
+    out["query_len"] = len(out["query_seq"])
     out.update(extract_optional_fields(fields_in[11:]))
     return(out)
 
@@ -125,22 +133,22 @@ def join_line(fields):
 
 def get_line(fields_dict):
     """Convert a dictionary of arguments into an output line."""
-    fields = [fields_dict["query_name"],
+    fields = [fields_dict["seq_id"],
               fields_dict["genome_id_best"], fields_dict["genome_id_all"],
               fields_dict["taxid_best"], fields_dict["taxid_all"],
               fields_dict["fragment_length"],
               fields_dict["genome_id_fwd"], fields_dict["genome_id_rev"],
               fields_dict["taxid_fwd"], fields_dict["taxid_rev"],
-              fields_dict["fragment_length_fwd"], fields_dict["fragment_length_rev"],
               fields_dict["best_alignment_score_fwd"], fields_dict["best_alignment_score_rev"],
               fields_dict["next_alignment_score_fwd"], fields_dict["next_alignment_score_rev"],
               fields_dict["edit_distance_fwd"], fields_dict["edit_distance_rev"],
               fields_dict["ref_start_fwd"], fields_dict["ref_start_rev"],
               fields_dict["map_qual_fwd"], fields_dict["map_qual_rev"],
               fields_dict["cigar_fwd"], fields_dict["cigar_rev"],
-              fields_dict["query_len_fwd"], fields_dict["query_len_rev"],
-              fields_dict["query_seq_fwd"], fields_dict["query_seq_rev"],
-              fields_dict["query_qual_fwd"], fields_dict["query_qual_rev"],
+              fields_dict["query_len"], fields_dict["query_len_rev"],
+              fields_dict["query_seq"], fields_dict["query_seq_rev"],
+              fields_dict["query_rc_by_aligner"] fields_dict["query_rc_by_aligner_rev"],
+              fields_dict["query_qual"], fields_dict["query_qual_rev"],
               fields_dict["length_normalized_score_fwd"], fields_dict["length_normalized_score_rev"],
               fields_dict["length_normalized_score_max"],
               fields_dict["pair_status"]]
@@ -150,7 +158,7 @@ def get_line(fields_dict):
 def line_from_single(read_dict):
     """Generate an output line from a single SAM alignment dictionary."""
     adj_score = float(read_dict["alignment_score"]) / math.log(float(read_dict["query_len"]))
-    out_dict = {"query_name": read_dict["query_name"],
+    out_dict = {"seq_id": read_dict["seq_id"],
                 "pair_status": read_dict["pair_status"],
                 "genome_id_best": read_dict["genome_id"],
                 "genome_id_all": read_dict["genome_id"],
@@ -161,30 +169,30 @@ def line_from_single(read_dict):
     if read_dict["is_mate_1"]:
         out_dict["genome_id_fwd"], out_dict["genome_id_rev"] = read_dict["genome_id"], "NA"
         out_dict["taxid_fwd"], out_dict["taxid_rev"] = read_dict["taxid"], "NA"
-        out_dict["fragment_length_fwd"], out_dict["fragment_length_rev"] = read_dict["fragment_length"], "NA"
         out_dict["best_alignment_score_fwd"], out_dict["best_alignment_score_rev"] = read_dict["alignment_score"], "NA"
         out_dict["next_alignment_score_fwd"], out_dict["next_alignment_score_rev"] = read_dict["next_best_alignment"], "NA"
         out_dict["edit_distance_fwd"], out_dict["edit_distance_rev"] = read_dict["edit_distance"], "NA"
         out_dict["ref_start_fwd"], out_dict["ref_start_rev"] = read_dict["ref_start"], "NA"
         out_dict["map_qual_fwd"], out_dict["map_qual_rev"] = read_dict["map_qual"], "NA"
         out_dict["cigar_fwd"], out_dict["cigar_rev"] = read_dict["cigar"], "NA"
-        out_dict["query_len_fwd"], out_dict["query_len_rev"] = read_dict["query_len"], "NA"
-        out_dict["query_seq_fwd"], out_dict["query_seq_rev"] = read_dict["query_seq"], "NA"
-        out_dict["query_qual_fwd"], out_dict["query_qual_rev"] = read_dict["query_qual"], "NA"
+        out_dict["query_len"], out_dict["query_len_rev"] = read_dict["query_len"], "NA"
+        out_dict["query_seq"], out_dict["query_seq_rev"] = read_dict["query_seq"], "NA"
+        out_dict["query_rc_by_aligner"], out_dict["query_rc_by_aligner_rev"] = read_dict["query_rc_by_aligner"], "NA"
+        out_dict["query_qual"], out_dict["query_qual_rev"] = read_dict["query_qual"], "NA"
         out_dict["length_normalized_score_fwd"], out_dict["length_normalized_score_rev"] = adj_score, "NA"
     else:
         out_dict["genome_id_fwd"], out_dict["genome_id_rev"] = "NA", read_dict["genome_id"]
         out_dict["taxid_fwd"], out_dict["taxid_rev"] = "NA", read_dict["taxid"]
-        out_dict["fragment_length_fwd"], out_dict["fragment_length_rev"] = "NA", read_dict["fragment_length"]
         out_dict["best_alignment_score_fwd"], out_dict["best_alignment_score_rev"] = "NA", read_dict["alignment_score"]
         out_dict["next_alignment_score_fwd"], out_dict["next_alignment_score_rev"] = "NA", read_dict["next_best_alignment"]
         out_dict["edit_distance_fwd"], out_dict["edit_distance_rev"] = "NA", read_dict["edit_distance"]
         out_dict["ref_start_fwd"], out_dict["ref_start_rev"] = "NA", read_dict["ref_start"]
         out_dict["map_qual_fwd"], out_dict["map_qual_rev"] = "NA", read_dict["map_qual"]
         out_dict["cigar_fwd"], out_dict["cigar_rev"] = "NA", read_dict["cigar"]
-        out_dict["query_len_fwd"], out_dict["query_len_rev"] = "NA", read_dict["query_len"]
-        out_dict["query_seq_fwd"], out_dict["query_seq_rev"] = "NA", read_dict["query_seq"]
-        out_dict["query_qual_fwd"], out_dict["query_qual_rev"] = "NA", read_dict["query_qual"]
+        out_dict["query_len"], out_dict["query_len_rev"] = "NA", read_dict["query_len"]
+        out_dict["query_seq"], out_dict["query_seq_rev"] = "NA", read_dict["query_seq"]
+        out_dict["query_rc_by_aligner"], out_dict["query_rc_by_aligner_rev"] = "NA", read_dict["query_rc_by_aligner"]
+        out_dict["query_qual"], out_dict["query_qual_rev"] = "NA", read_dict["query_qual"]
         out_dict["length_normalized_score_fwd"], out_dict["length_normalized_score_rev"] = "NA", adj_score
     return get_line(out_dict)
 
@@ -192,9 +200,9 @@ def line_from_pair(dict_1, dict_2):
     """Generate an output line from two SAM alignment dictionaries."""
     # Identify forward and reverse reads
     if dict_1["is_mate_1"] and dict_2["is_mate_1"]:
-        raise ValueError("Both reads are forward reads: {}".format(dict_1["query_name"]))
+        raise ValueError("Both reads are forward reads: {}".format(dict_1["seq_id"]))
     if not dict_1["is_mate_1"] and not dict_2["is_mate_1"]:
-        raise ValueError("Both reads are reverse reads: {}".format(dict_1["query_name"]))
+        raise ValueError("Both reads are reverse reads: {}".format(dict_1["seq_id"]))
     fwd_dict = dict_1 if dict_1["is_mate_1"] else dict_2
     rev_dict = dict_1 if not dict_1["is_mate_1"] else dict_2
     # Calculate length-adjusted alignment scores
@@ -228,7 +236,7 @@ def line_from_pair(dict_1, dict_2):
             taxid_all = "/".join(taxid_list)
     # Prepare dictionary for output
     out_dict = {
-        "query_name": fwd_dict["query_name"],
+        "seq_id": fwd_dict["seq_id"],
         "genome_id_best": genome_id_best,
         "genome_id_all": genome_id_all,
         "taxid_best": taxid_best,
@@ -238,8 +246,6 @@ def line_from_pair(dict_1, dict_2):
         "genome_id_rev": rev_dict["genome_id"],
         "taxid_fwd": fwd_dict["taxid"],
         "taxid_rev": rev_dict["taxid"],
-        "fragment_length_fwd": fwd_dict["fragment_length"],
-        "fragment_length_rev": rev_dict["fragment_length"],
         "best_alignment_score_fwd": fwd_dict["alignment_score"],
         "best_alignment_score_rev": rev_dict["alignment_score"],
         "next_alignment_score_fwd": fwd_dict["next_best_alignment"],
@@ -252,11 +258,13 @@ def line_from_pair(dict_1, dict_2):
         "map_qual_rev": rev_dict["map_qual"],
         "cigar_fwd": fwd_dict["cigar"],
         "cigar_rev": rev_dict["cigar"],
-        "query_len_fwd": fwd_dict["query_len"],
+        "query_len": fwd_dict["query_len"],
         "query_len_rev": rev_dict["query_len"],
-        "query_seq_fwd": fwd_dict["query_seq"],
+        "query_seq": fwd_dict["query_seq"],
         "query_seq_rev": rev_dict["query_seq"],
-        "query_qual_fwd": fwd_dict["query_qual"],
+        "query_rc_by_aligner": fwd_dict["query_rc_by_aligner"],
+        "query_rc_by_aligner_rev": rev_dict["query_rc_by_aligner"],
+        "query_qual": fwd_dict["query_qual"],
         "query_qual_rev": rev_dict["query_qual"],
         "length_normalized_score_fwd": adj_score_fwd,
         "length_normalized_score_rev": adj_score_rev,
@@ -269,35 +277,35 @@ def check_pair_status(line_dict, paired):
     """Check if pair status is valid for SAM entry line."""
     pair_status = line_dict["pair_status"]
     if pair_status not in ["UU", "UP", "CP", "DP"]:
-        raise ValueError(f"Invalid pair status: {line_dict['query_name']}, {pair_status}")
+        raise ValueError(f"Invalid pair status: {line_dict['seq_id']}, {pair_status}")
     elif paired and pair_status == "UU":
-        raise ValueError(f"Unpaired read in paired SAM file: {line_dict['query_name']}")
+        raise ValueError(f"Unpaired read in paired SAM file: {line_dict['seq_id']}")
     elif not paired and pair_status != "UU":
-        raise ValueError(f"Paired read in unpaired SAM file: {line_dict['query_name']}")
+        raise ValueError(f"Paired read in unpaired SAM file: {line_dict['seq_id']}")
 
 # File-level functions
 def write_sam_headers_paired(out_file):
     """Write header line to new TSV."""
-    headers = ["query_name",
-               "bowtie2_genome_id_best", "bowtie2_genome_id_all",
-               "bowtie2_taxid_best", "bowtie2_taxid_all",
+    headers = ["seq_id",
+               "aligner_genome_id", "aligner_genome_id_all",
+               "aligner_taxid", "aligner_taxid_all",
                "bowtie2_fragment_length",
-               "bowtie2_genome_id_fwd", "bowtie2_genome_id_rev",
-               "bowtie2_taxid_fwd", "bowtie2_taxid_rev",
-               "bowtie2_fragment_length_fwd", "bowtie2_fragment_length_rev",
-               "bowtie2_best_alignment_score_fwd", "bowtie2_best_alignment_score_rev",
-               "bowtie2_next_alignment_score_fwd", "bowtie2_next_alignment_score_rev",
-               "bowtie2_edit_distance_fwd", "bowtie2_edit_distance_rev",
+               "aligner_genome_id_fwd", "aligner_genome_id_rev",
+               "aligner_taxid_fwd", "aligner_taxid_rev",
+               "aligner_best_alignment_score", "aligner_best_alignment_score_rev",
+               "aligner_next_alignment_score", "aligner_next_alignment_score_rev",
+               "aligner_edit_distance", "aligner_edit_distance_rev",
                "bowtie2_ref_start_fwd", "bowtie2_ref_start_rev",
-               "bowtie2_map_qual_fwd", "bowtie2_map_qual_rev",
-               "bowtie2_cigar_fwd", "bowtie2_cigar_rev",
-               "query_len_fwd", "query_len_rev",
-               "query_seq_fwd", "query_seq_rev",
-               "query_qual_fwd", "query_qual_rev",
-               "bowtie2_length_normalized_score_fwd", 
-               "bowtie2_length_normalized_score_rev",
-               "bowtie2_length_normalized_score_max",
-               "bowtie2_pair_status"]
+               "aligner_map_qual", "aligner_map_qual_rev",
+               "aligner_cigar", "aligner_cigar_rev",
+               "query_len", "query_len_rev",
+               "query_seq", "query_seq_rev",
+               "query_rc_by_aligner", "query_rc_by_aligner_rev",
+               "query_qual", "query_qual_rev",
+               "aligner_length_normalized_score_fwd", 
+               "aligner_length_normalized_score_rev",
+               "aligner_length_normalized_score",
+               "aligner_pair_status"]
     header_line = join_line(headers)
     out_file.write(header_line)
     return None
@@ -321,7 +329,7 @@ def process_paired_sam(inf, outf, genbank_metadata, viral_taxids):
         if fwd_line is None: # If no line, check for reverse line then break
             if rev_line is not None: # Break if reverse line exists without forward line
                 rev_dict = process_sam_alignment(rev_line, genbank_metadata, viral_taxids, True)
-                msg = f"Invalid data: reverse line exists without forward line: {rev_dict['query_name']}"
+                msg = f"Invalid data: reverse line exists without forward line: {rev_dict['seq_id']}"
                 raise ValueError(msg)
             break
         # Extract forward read information and check pair status
@@ -329,7 +337,7 @@ def process_paired_sam(inf, outf, genbank_metadata, viral_taxids):
         check_pair_status(fwd_dict, True)
         if rev_line is None: # If no reverse line, check pair status, then process forward line as unpaired
             if fwd_dict["pair_status"] != "UP":
-                msg = f"Forward read is paired but reverse read is missing: {fwd_dict['query_name']}"
+                msg = f"Forward read is paired but reverse read is missing: {fwd_dict['seq_id']}"
                 raise ValueError(msg)
             line = line_from_single(fwd_dict)
             outf.write(line)
@@ -340,14 +348,14 @@ def process_paired_sam(inf, outf, genbank_metadata, viral_taxids):
         rev_dict = process_sam_alignment(rev_line, genbank_metadata, viral_taxids, True)
         check_pair_status(rev_dict, True)
         # Check for sorting
-        if fwd_dict["query_name"] > rev_dict["query_name"]:
-            msg = f"Reads are not sorted: encountered {fwd_dict['query_name']} before {rev_dict['query_name']}"
+        if fwd_dict["seq_id"] > rev_dict["seq_id"]:
+            msg = f"Reads are not sorted: encountered {fwd_dict['seq_id']} before {rev_dict['seq_id']}"
             raise ValueError(msg)
         # Check if read IDs match
-        if rev_dict["query_name"] != fwd_dict["query_name"]:
+        if rev_dict["seq_id"] != fwd_dict["seq_id"]:
             # If IDs mismatch, forward read should be unpaired
             if fwd_dict["pair_status"] != "UP":
-                msg = f"Forward read is paired but reverse read is missing: {fwd_dict['query_name']}"
+                msg = f"Forward read is paired but reverse read is missing: {fwd_dict['seq_id']}"
                 raise ValueError(msg)
             line = line_from_single(fwd_dict)
             outf.write(line)
@@ -356,7 +364,7 @@ def process_paired_sam(inf, outf, genbank_metadata, viral_taxids):
             continue
         # Check that pair statuses match
         if rev_dict["pair_status"] != fwd_dict["pair_status"]:
-            msg = f"Pair status mismatch: {fwd_dict['query_name']}, {fwd_dict['pair_status']}, {rev_dict['pair_status']}"
+            msg = f"Pair status mismatch: {fwd_dict['seq_id']}, {fwd_dict['pair_status']}, {rev_dict['pair_status']}"
             raise ValueError(msg)
         # If either line is missing a valid alignment, process the other as solo, else process pair together
         if fwd_dict["alignment_score"] is None:

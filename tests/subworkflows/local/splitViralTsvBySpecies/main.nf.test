@@ -58,7 +58,7 @@ nextflow_workflow {
             for (int i=0; i < tabs_in.size(); i++) {
                 assert tabs_sort[i].rowCount == tabs_in[i].rowCount
                 assert tabs_sort[i].columnCount == tabs_in[i].columnCount
-                assert tabs_sort[i].columns["taxid"].collect{ it.toString() } == tabs_in[i].columns["bowtie2_taxid_best"].collect{ it.toString() }.toSorted()
+                assert tabs_sort[i].columns["taxid"].collect{ it.toString() } == tabs_in[i].columns["aligner_taxid"].collect{ it.toString() }.toSorted()
             }
             // Joined DB should have expected contents
             def tabs_join = workflow.out.test_join.collect{path(it[1]).csv(sep: "\t",decompress: true)}

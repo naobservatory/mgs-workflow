@@ -28,9 +28,9 @@ def extract_viral_hit(fields, indices, drop_unpaired):
     """Convert a single TSV line to a FASTQ entry, handling missing mates."""
     # Extract fields
     seq_id = fields[indices["seq_id"]]
-    query_seq_fwd = fields[indices["query_seq_fwd"]]
+    query_seq_fwd = fields[indices["query_seq"]]
     query_seq_rev = fields[indices["query_seq_rev"]]
-    query_qual_fwd = fields[indices["query_qual_fwd"]]
+    query_qual_fwd = fields[indices["query_qual"]]
     query_qual_rev = fields[indices["query_qual_rev"]]
     # Check for unpaired reads
     if query_seq_fwd == "NA":
@@ -55,8 +55,8 @@ def extract_viral_hits(input_path, out_path, drop_unpaired):
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Read and handle header line
         headers = inf.readline().rstrip("\n").split("\t")
-        headers_exp = ["seq_id", "query_seq_fwd", "query_seq_rev",
-                       "query_qual_fwd", "query_qual_rev"]
+        headers_exp = ["seq_id", "query_seq", "query_seq_rev",
+                       "query_qual", "query_qual_rev"]
         for header in headers_exp:
             if header not in headers:
                 msg = f"Missing column in input TSV: {header}"

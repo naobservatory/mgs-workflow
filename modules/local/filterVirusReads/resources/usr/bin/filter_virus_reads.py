@@ -42,8 +42,8 @@ def filter_virus_reads(input_path, score_threshold, out_path):
             raise ValueError("Missing column in input TSV: 'kraken_classified'")
         if "kraken_assigned_host_virus" not in headers:
             raise ValueError("Missing column in input TSV: 'kraken_assigned_host_virus'")
-        if "bowtie2_length_normalized_score_max" not in headers:
-            raise ValueError("Missing column in input TSV: 'bowtie2_length_normalized_score_max'")
+        if "aligner_length_normalized_score" not in headers:
+            raise ValueError("Missing column in input TSV: 'aligner_length_normalized_score'")
         outf.write("\t".join(headers) + "\n")
         # Read in lines and filter based on Kraken assignment and score
         for line in inf:
@@ -52,7 +52,7 @@ def filter_virus_reads(input_path, score_threshold, out_path):
             kraken_assigned_host_virus = int(fields[idx["kraken_assigned_host_virus"]]) # 4-state: 0, 1, 2, 3
             if (not kraken_classified) and kraken_assigned_host_virus > 0:
                 raise ValueError("Inconsistent Kraken fields: 'kraken_classified' is False, but 'kraken_assigned_host_virus' is not 0: {}".format(fields[idx["seq_id"]]))
-            adj_score = float(fields[idx["bowtie2_length_normalized_score_max"]])
+            adj_score = float(fields[idx["aligner_length_normalized_score"]])
             # Only write reads that:
             # 1. Are classified by Kraken as host-infecting viruses; or
             # 2. Are classified by Kraken as potentially host-infecting viruses, and have a normalized Bowtie2 score above the threshold

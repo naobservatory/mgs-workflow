@@ -34,12 +34,12 @@ def join_line(fields):
 def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record):
     """Parse a Minimap2 SAM alignment."""
     out = {}
-    out["query_name"] = read.query_name
+    out["seq_id"] = read.query_name
 
     reference_genome_name = read.reference_name
-    out["minimap2_genome_id_primary"] = reference_genome_name
+    out["aligner_genome_id"] = reference_genome_name
     reference_taxid = extract_viral_taxid(reference_genome_name, genbank_metadata, viral_taxids)
-    out["minimap2_taxid_primary"] = reference_taxid
+    out["aligner_taxid"] = reference_taxid
 
 
     # Adding original read sequence and quality
@@ -51,22 +51,18 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record
     query_qual_clean_numeric = clean_query_record.letter_annotations["phred_quality"]
     # Turn numeric quality scores back into Phred+33 scores.
     query_qual_clean = "".join([chr(x+33) for x in query_qual_clean_numeric])
-    query_len_clean = len(query_seq_clean)
 
-    out["minimap2_read_length"] = read.query_length
-    out["minimap2_map_qual"] = read.mapping_quality
-    out["minimap2_ref_start"] = read.reference_start
-    out["minimap2_ref_end"] = read.reference_end
-    out["minimap2_alignment_start"] = read.query_alignment_start
-    out["minimap2_alignment_end"] = read.query_alignment_end
-    out["minimap2_cigar"] = read.cigarstring
-    out["minimap2_edit_distance"] = read.get_tag("NM")
-    out["minimap2_alignment_score"] = read.get_tag("AS")
-    out["minimap2_query_sequence"] = read.query_sequence
-    out["query_seq_clean"] = query_seq_clean
-    out["query_qual_clean"] = query_qual_clean
-    out["query_len_clean"] = query_len_clean
+    out["aligner_map_qual"] = read.mapping_quality
+    out["aligner_cigar"] = read.cigarstring
+    out["aligner_edit_distance"] = read.get_tag("NM")
+    out["aligner_best_alignment_score"] = read.get_tag("AS")
+    out["aligner_length_normalized_score"] = out["aligner_best_alignment_score"] / (read.query_alignment_end - read.query_alignment_start)
 
+    out["query_seq"] = query_seq_clean
+    out["query_rc_by_aligner"] = read.is_reverse
+    out["query_qual"] = query_qual_clean
+    out["query_len"] = read.query_length
+    
     return out
 
 
@@ -89,22 +85,18 @@ def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_d
     """Process a Minimap2 SAM file."""
     with open_by_suffix(out_file, "w") as out_fh:
         header = (
-            "query_name\t"
-            "minimap2_genome_id_primary\t"
-            "minimap2_taxid_primary\t"
-            "minimap2_read_length\t"
-            "minimap2_map_qual\t"
-            "minimap2_ref_start\t"
-            "minimap2_ref_end\t"
-            "minimap2_alignment_start\t"
-            "minimap2_alignment_end\t"
-            "minimap2_cigar\t"
-            "minimap2_edit_distance\t"
-            "minimap2_alignment_score\t"
-            "minimap2_query_sequence\t"
-            "query_seq_clean\t"
-            "query_qual_clean\t"
-            "query_len_clean\n"
+            "seq_id\t"
+            "aligner_genome_id\t"
+            "aligner_taxid\t"
+            "aligner_map_qual\t"
+            "aligner_cigar\t"
+            "aligner_edit_distance\t"
+            "aligner_best_alignment_score\t"
+            "aligner_length_normalized_score\t"
+            "query_seq\t"
+            "query_rc_by_aligner\t"
+            "query_qual\t"
+            "query_len\n"
         )
         out_fh.write(header)
         try:
@@ -112,10 +104,10 @@ def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_d
                 num_reads = 0
                 for read in sam_file:
                     num_reads += 1
-                    print_log(f"Processing read: {read.query_name}")
+                    print_log(f"Processing read: {read.seq_id}")
                     if read.is_unmapped or read.is_secondary or read.is_supplementary:
                         continue
-                    read_id = read.query_name
+                    read_id = read._name
 
                     clean_query_record = clean_read_dict[read_id]
                     line = parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record)

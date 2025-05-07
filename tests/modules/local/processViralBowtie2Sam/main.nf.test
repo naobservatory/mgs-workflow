@@ -109,12 +109,12 @@ nextflow_process {
             // Split header by tabs and verify the expected column headers
             def headers = lines[0].split("\t")
             def expectedHeaders = [
-                "query_name", 
-                "bowtie2_genome_id_best", 
-                "bowtie2_genome_id_all", 
-                "bowtie2_taxid_best", 
-                "bowtie2_taxid_all", 
-                "bowtie2_fragment_length"
+                "seq_id", 
+                "aligner_genome_id", 
+                "aligner_genome_id_genome_id_all", 
+                "aligner_taxid", 
+                "aligner_taxid_all", 
+                "aligner_fragment_length"
             ]
             
             // Verify all expected headers are present and in the right order

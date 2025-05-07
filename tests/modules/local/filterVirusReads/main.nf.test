@@ -1,7 +1,7 @@
 // Helper function: manual table filtering
 def filter_tab = { tab_in, threshold -> csv(tab_in.table.where(
     tab_in.table.intColumn("kraken_assigned_host_virus").isEqualTo(1).or(
-        tab_in.table.numberColumn("bowtie2_length_normalized_score_max").isGreaterThanOrEqualTo(threshold).and(
+        tab_in.table.numberColumn("aligner_length_normalized_score").isGreaterThanOrEqualTo(threshold).and(
             tab_in.table.intColumn("kraken_assigned_host_virus").isEqualTo(2).or(
                 tab_in.table.booleanColumn("kraken_classified").isFalse()))))) }
 
@@ -110,7 +110,7 @@ nextflow_process {
         }
     }
 
-    test("Should break when input is missing required headers (bowtie2_length_normalized_score_max)"){
+    test("Should break when input is missing required headers (aligner_length_normalized_score)"){
         tag "expect_failed"
         setup {
             run("REHEAD_TSV") {
@@ -119,7 +119,7 @@ nextflow_process {
                     '''
                     input[0] = Channel.of("test")
                         | combine(Channel.of("${projectDir}/test-data/toy-data/virus-hits-test.tsv"))
-                    input[1] = "bowtie2_length_normalized_score_max"
+                    input[1] = "aligner_length_normalized_score"
                     input[2] = "test"
                     '''
                 }
@@ -138,7 +138,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("ValueError: Missing column in input TSV: 'bowtie2_length_normalized_score_max'")
+            assert process.errorReport.contains("ValueError: Missing column in input TSV: 'aligner_length_normalized_score'")
         }
     }
 
