@@ -1,4 +1,4 @@
-seq_id	kraken_classified	kraken_assigned_host_virus	bowtie2_length_normalized_score_max
+seq_id	kraken_classified	kraken_assigned_host_virus	aligner_length_normalized_score
 XX	FALSE	1	20
 A0	TRUE	0	10
 B0	TRUE	0	15

@@ -107,7 +107,7 @@ fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, u
     let header_indices: HashMap<_, _> = headers.iter().enumerate().map(|(i, &s)| (s, i)).collect();
     // Define required header fields
     let required_headers = vec![
-        "seq_id", "aligner_genome_id_all", "bowtie2_ref_start_fwd", "bowtie2_ref_start_rev",
+        "seq_id", "aligner_genome_id_all", "aligner_ref_start", "aligner_ref_start_rev",
         "query_qual", "query_qual_rev"
     ];
     // Build a lookup for required headers
@@ -125,8 +125,8 @@ fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadE
     // Extract required fields
     let query_name = fields[indices["seq_id"]].to_string();
     let genome_id = fields[indices["aligner_genome_id_all"]].to_string();
-    let ref_start_fwd = parse_int_or_na(&fields[indices["bowtie2_ref_start_fwd"]]);
-    let ref_start_rev = parse_int_or_na(&fields[indices["bowtie2_ref_start_rev"]]);
+    let ref_start_fwd = parse_int_or_na(&fields[indices["aligner_ref_start"]]);
+    let ref_start_rev = parse_int_or_na(&fields[indices["aligner_ref_start_rev"]]);
     let quality_fwd = fields[indices["query_qual"]].to_string();
     let quality_rev = fields[indices["query_qual_rev"]].to_string();
     // Handle split assignments

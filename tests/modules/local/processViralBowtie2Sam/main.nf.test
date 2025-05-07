@@ -111,7 +111,7 @@ nextflow_process {
             def expectedHeaders = [
                 "seq_id", 
                 "aligner_genome_id", 
-                "aligner_genome_id_genome_id_all", 
+                "aligner_genome_id_all", 
                 "aligner_taxid", 
                 "aligner_taxid_all", 
                 "aligner_fragment_length"

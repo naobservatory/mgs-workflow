@@ -9,6 +9,7 @@ import datetime
 import pysam
 import gzip
 import bz2
+import math
 from collections import defaultdict
 from Bio import SeqIO
 
@@ -53,10 +54,11 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record
     query_qual_clean = "".join([chr(x+33) for x in query_qual_clean_numeric])
 
     out["aligner_map_qual"] = read.mapping_quality
+    out["aligner_ref_start"] = read.reference_start
     out["aligner_cigar"] = read.cigarstring
     out["aligner_edit_distance"] = read.get_tag("NM")
     out["aligner_best_alignment_score"] = read.get_tag("AS")
-    out["aligner_length_normalized_score"] = out["aligner_best_alignment_score"] / (read.query_alignment_end - read.query_alignment_start)
+    out["aligner_length_normalized_score"] = out["aligner_best_alignment_score"] / math.log(read.query_length)
 
     out["query_seq"] = query_seq_clean
     out["query_rc_by_aligner"] = read.is_reverse
@@ -89,6 +91,7 @@ def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_d
             "aligner_genome_id\t"
             "aligner_taxid\t"
             "aligner_map_qual\t"
+            "aligner_ref_start\t"
             "aligner_cigar\t"
             "aligner_edit_distance\t"
             "aligner_best_alignment_score\t"
@@ -104,10 +107,10 @@ def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_d
                 num_reads = 0
                 for read in sam_file:
                     num_reads += 1
-                    print_log(f"Processing read: {read.seq_id}")
+                    print_log(f"Processing read: {read.query_name}")
                     if read.is_unmapped or read.is_secondary or read.is_supplementary:
                         continue
-                    read_id = read._name
+                    read_id = read.query_name
 
                     clean_query_record = clean_read_dict[read_id]
                     line = parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record)
