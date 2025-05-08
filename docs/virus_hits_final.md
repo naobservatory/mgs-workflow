@@ -8,6 +8,7 @@
 - `query_qual`: PHRED quality scores for read (for paired-end data, quality scores for forward read). Like query_seq, not reverse-complemented. 
 - `aligner_cigar`: CIGAR string representing alignment of read to aligned genome (for paired-end data, CIGAR string for forward read). Note that this is the CIGAR string as returned by the aligner (so may involve reverse-complemented read).
 - `aligner_edit_distance`: Edit distance between read and aligned genome (for paired-end data, edit distance for forward read)
+- `aligner_ref_start`: Location of start of alignment on reference (for paired-end data, location of forward read alignment on reference)
 - `aligner_map_qual`: Mapping quality (MAPQ) as returned by bowtie2/minimap2 (for paired-end data, mapping quality of forward read)
 - `aligner_best_alignment_score`: Alignment score (directly from aligner) of best-scoring alignment (for paired-end data, score for forward read's best alignment). 
 - `aligner_length_normalized_score`: Length-normalized alignment score (for paired-end data, max of scores for forward and reverse reads)
@@ -21,6 +22,7 @@
 - `query_qual_rev`: PHRED quality scores for reverse read 
 - `aligner_cigar_rev`: CIGAR string representing alignment of reverse read to aligned genome 
 - `aligner_edit_distance_rev`: Edit distance between reverse read and aligned genome
+- `aligner_ref_start_rev`: Location of start of alignment of reverse read on reference 
 - `aligner_map_qual_rev`: Mapping quality (MAPQ) of reverse read (absent for single-end data)
 - `aligner_length_normalized_score_fwd`: Length-normalized alignment score for forward read
 - `aligner_length_normalized_score_rev`: Length-normalized alignment score for reverse read
@@ -43,6 +45,3 @@
 - `kraken_encoded_hits`: space-delimited list indicating LCA mapping of each minimizer in the sequence (from kraken raw output)
 - `bbmerge_frag_length`: Inferred fragment length, as calculated by bbmerge (NA if bbmerge could not calculate fragment length)
 
-Removed
-bowtie2_fragment_length_fwd/rev, minimap2_query_sequence, minimap2_read_length, minimap2_ref_start/end, minimap2_alignment_start/end 
-(fragment length fwd/rev makes no sense; minimap2_query_seq and _read_length are redundant with query_seq/query_len + query_rc_by_aligner, and minimap2_alignment/ref_start/end can be easily deduced from cigar string)

@@ -11,13 +11,13 @@
             "subset_qc_length_stats.tsv.gz:md5,deb6f5182ed916986640d4668459ddae",
             "subset_qc_quality_base_stats.tsv.gz:md5,a5492c9c3b986d99848b95328b32ea7b",
             "subset_qc_quality_sequence_stats.tsv.gz:md5,94c11e0dbcf2b58d685ab8701c04cf9b",
-            "virus_hits_final.tsv.gz:md5,7b8ab89a1b552b56d378f5f04c27c023"
+            "virus_hits_final.tsv.gz:md5,ceb59aed6928c98bad9c4bef0cf400fe"
         ],
         "meta": {
             "nf-test": "0.9.2",
-            "nextflow": "24.10.5"
+            "nextflow": "24.10.6"
         },
-        "timestamp": "2025-04-10T22:20:37.91187804"
+        "timestamp": "2025-05-08T13:03:15.822994689"
     },
     "run_output_ont": {
         "content": [
@@ -31,12 +31,12 @@
             "subset_qc_length_stats.tsv.gz:md5,a8bf085fd6baddac8583f424f72ce94e",
             "subset_qc_quality_base_stats.tsv.gz:md5,b5d5c45af7fedbf52dee84bdc25fb9b0",
             "subset_qc_quality_sequence_stats.tsv.gz:md5,f07808095a7926593aa2400e88a61fad",
-            "virus_hits_final.tsv.gz:md5,ee352cb0786204c1d889e77600ca3a6e"
+            "virus_hits_final.tsv.gz:md5,c4b8d128b72d75586667325cc2aab834"
         ],
         "meta": {
             "nf-test": "0.9.2",
-            "nextflow": "24.10.5"
+            "nextflow": "24.10.6"
         },
-        "timestamp": "2025-04-07T18:12:57.225744751"
+        "timestamp": "2025-05-08T13:04:41.728823747"
     }
 }
