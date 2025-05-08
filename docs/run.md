@@ -12,15 +12,18 @@ config:
 ---
 flowchart LR
 A(Raw reads) --> B[LOAD_SAMPLESHEET]
-B --> C[COUNT_TOTAL_READS] & D[EXTRACT_VIRAL_READS] & E[SUBSET_TRIM]
-D -.-> |Optional|F[BLAST_VIRAL]
+B --> C[COUNT_TOTAL_READS] & E[SUBSET_TRIM]
+B --> |Short reads|D1[EXTRACT_VIRAL_READS_SHORT]
+B --> |ONT reads|D2[EXTRACT_VIRAL_READS_ONT]
+D1 & D2 -.-> |Optional|F[BLAST_VIRAL]
 E --> I(Subset reads)
 E --> J(Subset trimmed reads)
 J --> G[RUN_QC] & H[PROFILE]
 I --> G[RUN_QC]
 %% Adjust layout by placing subgraphs in specific order
 subgraph "Viral identification"
-D
+D1
+D2
 end
 subgraph "Taxonomic Profile"
 H
@@ -47,7 +50,9 @@ To perform these functions, the workflow runs a series of subworkflows responsib
     - [Taxonomic assignment (TAXONOMY)](#taxonomic-assignment-taxonomy)
     - [QC (QC)](#qc-qc)
 3. [Analysis subworkflows](#analysis-subworkflows): Perform the primary analysis
-    - [Viral identification (EXTRACT_VIRAL_READS)](#viral-identification-extract_viral_reads)
+    - An EXTRACT_VIRAL_READS subworkflow that depends on the read type
+        - [Viral identification for Illumina reads and other short reads (EXTRACT_VIRAL_READS_SHORT)](#viral-identification-short-read-version)
+        - [Viral identification for ONT reads and other long reads (EXTRACT_VIRAL_READS_ONT)](#viral-identification-ont-version)
     - [Taxonomic profiling (PROFILE)](#taxonomic-profiling-profile)
     - [BLAST validation (BLAST_VIRAL)](#blast-validation-blast_viral)
 4. [QC subworkflows](#qc-subworkflows): Conduct quality control on the analysis results
@@ -154,13 +159,14 @@ style J fill:#000,color:#fff,stroke:#000
 
 ## Analysis subworkflows
 
-### Viral identification (EXTRACT_VIRAL_READS)
+### Viral identification (short read version)
+#### EXTRACT_VIRAL_READS_SHORT
 
-The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It uses a multi-step process designed to keep computational costs low while minimizing false-positive and false-negative errors.
+The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It takes as input paired-end short-reads and uses a multi-step process designed to keep computational costs low while minimizing false-positive and false-negative errors.
 
 ```mermaid
 ---
-title: EXTRACT_VIRAL_READS
+title: EXTRACT_VIRAL_READS_SHORT
 config:
   layout: horizontal
 ---
@@ -206,6 +212,47 @@ style M fill:#000,color:#fff,stroke:#000
     - Are unassigned by Kraken and align to an vertebrate-infecting virus taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
 
 [^threshold]: Specifically, Kraken-unassigned read pairs are classed as vertebrate viral if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
+
+### Viral identification (ONT version) 
+#### EXTRACT_VIRAL_READS_ONT
+
+The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It takes as input ONT (oxford nanopore) reads. Due to the smaller size of ONT datasets compared to most short-read datasets, EXTRACT_VIRAL_READS_ONT currently uses a simpler workflow than EXTRACT_VIRAL_READS_SHORT, and is less optimized for low computational costs. 
+
+```mermaid
+---
+title: EXTRACT_VIRAL_READS_ONT
+config:
+  layout: horizontal
+---
+flowchart LR
+A(Raw reads) --> B[FILTLONG]
+B --> C["BBMask <br> (entropy masking)"]
+C --> D["Minimap2 <br> (human index)"]
+D --> E["Minimap2 <br> (other contaminants index)"]
+E --> F["Minimap2 <br> (viral index)"]
+F --> G(Viral hits table)
+F --> H(Viral FASTQ)
+
+subgraph "Filter and mask"
+B
+C
+end
+subgraph "Remove contaminants"
+D
+E
+end
+subgraph "Identify viral reads"
+F
+end
+style A fill:#fff,stroke:#000
+style G fill:#000,color:#fff,stroke:#000
+style H fill:#000,color:#fff,stroke:#000
+```
+
+1. First, reads are filtered for length and quality with [Filtlong](https://github.com/rrwick/Filtlong), and low-complexity regions are masked with [BBMask](https://archive.jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmask-guide/) (entropy masking).
+2. Next, common contaminant sequences are removed, by aligning reads to contaminants with [Minimap2](https://github.com/lh3/minimap2) in a series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
+    - Note that, unlike for EXTRACT_VIRAL_READS_SHORT, contaminant removal is done before viral read identification. EXTRACT_VIRAL_READS_ONT is frequently used on swab samples (not just on wastewater samples); we avoid analyzing human reads from swab samples for privacy/compliance reasons, so we wish to discard human reads as early in the workflow as possible.
+3. Finally, reads are aligned to our database of vertebrate-infecting viral genomes using Minimap2. (As noted above, the viral database is generated from Genbank by the index workflow.)
 
 ### Taxonomic profiling (PROFILE)
 
