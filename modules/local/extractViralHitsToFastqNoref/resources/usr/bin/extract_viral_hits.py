@@ -60,7 +60,7 @@ def extract_viral_hits(input_path, out_path, single, drop_unpaired):
         headers = inf.readline().rstrip("\n").split("\t")
         headers_exp = ["seq_id", "query_seq", "query_qual"]
         if not single:
-            headers_exp += ["query_seq_rev", "query_qual_rev"
+            headers_exp += ["query_seq_rev", "query_qual_rev"]
         for header in headers_exp:
             if header not in headers:
                 msg = f"Missing column in input TSV: {header}"

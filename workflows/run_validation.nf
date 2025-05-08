@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF as EXTRACT_HITS } from "../modules/local/extractViralHitsToFastqNoref"
+include { EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED as EXTRACT_FASTQ } from "../modules/local/extractViralHitsToFastqNoref"
 include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 nextflow.preview.output = true
 
@@ -30,8 +30,9 @@ workflow RUN_VALIDATION {
     } else {
     // Option 2: Extract read sequences from output DB from RUN workflow (default)
         // Define input
-        tsv_ch = params.viral_tsv
-        fastq_ch = EXTRACT_HITS(tsv_ch, params.single_end, params.drop_unpaired).output
+        tsv_ch = Channel.value(["viral_hits", file(params.viral_tsv)])
+        fastq_out = EXTRACT_FASTQ(tsv_ch, params.single_end, params.drop_unpaired)
+        fastq_ch = fastq_out.output.map { label, fastq -> fastq }
     }
 
     // BLAST validation on host-viral reads

@@ -33,7 +33,7 @@ workflow DOWNSTREAM {
         viral_db = Channel.of(viral_db_path)
         dup_ch = MARK_VIRAL_DUPLICATES.out.dup.map{ label, tab, stats -> [label, tab] }
         //VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db,
-        //    params.validation_cluster_identity, 15, params.validation_n_clusters)
+        //    params.validation_cluster_identity, 15, params.validation_n_clusters, params.single_end)
         // Publish results
         params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
         params_ch = Channel.of(params_str).collectFile(name: "params-downstream.json")

@@ -29,9 +29,10 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         cluster_identity // Identity threshold for VSEARCH clustering
         cluster_min_len // Minimum sequence length for VSEARCH clustering
         n_clusters // Number of cluster representatives to validate for each specie
+        single_end // is data single or paired?
     main:
         // 1. Split viral hits TSV by species
-        split_ch = SPLIT_VIRAL_TSV_BY_SPECIES(groups, db)
+        split_ch = SPLIT_VIRAL_TSV_BY_SPECIES(groups, db, single_end)
         // 2. Cluster sequences within species and obtain representatives of largest clusters
         cluster_ch = CLUSTER_VIRAL_ASSIGNMENTS(split_ch.fastq, cluster_identity,
             cluster_min_len, n_clusters, Channel.of(false))
