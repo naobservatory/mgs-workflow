@@ -37,8 +37,8 @@ def extract_viral_hit(fields, indices, single, drop_unpaired):
         if query_seq_fwd == "NA":
             if drop_unpaired:
                 return None
-          query_seq_fwd = "N"
-          query_qual_fwd = "!"
+            query_seq_fwd = "N"
+            query_qual_fwd = "!"
         if query_seq_rev == "NA":
             if drop_unpaired:
                 return None
