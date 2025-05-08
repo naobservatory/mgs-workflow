@@ -24,39 +24,43 @@ def open_by_suffix(filename, mode="r", debug=False):
     else:
         return open(filename, mode)
 
-def extract_viral_hit(fields, indices, drop_unpaired):
-    """Convert a single TSV line to a FASTQ entry, handling missing mates."""
+def extract_viral_hit(fields, indices, single, drop_unpaired):
+    """Convert a single TSV line to a FASTQ entry, handling missing mates (if not single-end)."""
     # Extract fields
     seq_id = fields[indices["seq_id"]]
     query_seq_fwd = fields[indices["query_seq"]]
-    query_seq_rev = fields[indices["query_seq_rev"]]
     query_qual_fwd = fields[indices["query_qual"]]
-    query_qual_rev = fields[indices["query_qual_rev"]]
-    # Check for unpaired reads
-    if query_seq_fwd == "NA":
-        if drop_unpaired:
-            return None
-        query_seq_fwd = "N"
-        query_qual_fwd = "!"
-    if query_seq_rev == "NA":
-        if drop_unpaired:
-            return None
-        query_seq_rev = "N"
-        query_qual_rev = "!"
+    if not single:
+        query_seq_rev = fields[indices["query_seq_rev"]]
+        query_qual_rev = fields[indices["query_qual_rev"]]
+        # Check for unpaired reads
+        if query_seq_fwd == "NA":
+            if drop_unpaired:
+                return None
+          query_seq_fwd = "N"
+          query_qual_fwd = "!"
+        if query_seq_rev == "NA":
+            if drop_unpaired:
+                return None
+            query_seq_rev = "N"
+            query_qual_rev = "!"
     # Assemble FASTQ entry
     fastq_entry_fwd = f"@{seq_id} 1\n{query_seq_fwd}\n+\n{query_qual_fwd}\n"
-    fastq_entry_rev = f"@{seq_id} 2\n{query_seq_rev}\n+\n{query_qual_rev}\n"
-    fastq_entry = fastq_entry_fwd + fastq_entry_rev
-    return fastq_entry
+    if single:
+        return fastq_entry_fwd
+    else:
+        fastq_entry_rev = f"@{seq_id} 2\n{query_seq_rev}\n+\n{query_qual_rev}\n"
+        return fastq_entry_fwd + fastq_entry_rev
+        
 
-
-def extract_viral_hits(input_path, out_path, drop_unpaired):
+def extract_viral_hits(input_path, out_path, single, drop_unpaired):
     """Extract viral sequences from TSV file and write to FASTQ file."""
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Read and handle header line
         headers = inf.readline().rstrip("\n").split("\t")
-        headers_exp = ["seq_id", "query_seq", "query_seq_rev",
-                       "query_qual", "query_qual_rev"]
+        headers_exp = ["seq_id", "query_seq", "query_qual"]
+        if not single:
+            headers_exp += ["query_seq_rev", "query_qual_rev"
         for header in headers_exp:
             if header not in headers:
                 msg = f"Missing column in input TSV: {header}"
@@ -66,7 +70,7 @@ def extract_viral_hits(input_path, out_path, drop_unpaired):
         # Iterate over lines in input file
         for line in inf:
             fields = line.rstrip("\n").split("\t")
-            fastq_entry = extract_viral_hit(fields, indices, drop_unpaired)
+            fastq_entry = extract_viral_hit(fields, indices, single, drop_unpaired)
             if fastq_entry:
                 outf.write(fastq_entry)
 
@@ -75,10 +79,12 @@ def main():
     parser = argparse.ArgumentParser(description="Extract viral hits from a TSV to FASTQ file.")
     parser.add_argument("--input", "-i", required=True, help="Path to input TSV file.")
     parser.add_argument("--output", "-o", required=True, help="Path to output FASTQ file.")
+    parser.add_argument("--single", "-s", default=False, action="store_true", help="Input is single-end (Default: False)")
     parser.add_argument("--drop_unpaired", "-d", default=False, action="store_true", help="Drop unpaired reads. (Default: False)")
     args = parser.parse_args()
     input_path = args.input
     out_path = args.output
+    single = args.single
     drop_unpaired = args.drop_unpaired
     # Start time tracking
     print_log("Starting process.")
@@ -86,10 +92,11 @@ def main():
     # Print parameters
     print_log("Input TSV file: {}".format(input_path))
     print_log("Output FASTQ file: {}".format(out_path))
+    print_log("Single-end data: {}".format(single))
     print_log("Drop unpaired reads: {}".format(drop_unpaired))
     # Run labeling function
     print_log("Extracting viral hits...")
-    extract_viral_hits(input_path, out_path, drop_unpaired)
+    extract_viral_hits(input_path, out_path, single, drop_unpaired)
     print_log("...done.")
     # Finish time tracking
     end_time = time.time()

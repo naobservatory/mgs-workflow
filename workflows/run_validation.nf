@@ -31,7 +31,7 @@ workflow RUN_VALIDATION {
     // Option 2: Extract read sequences from output DB from RUN workflow (default)
         // Define input
         tsv_ch = params.viral_tsv
-        fastq_ch = EXTRACT_HITS(tsv_ch, params.drop_unpaired).output
+        fastq_ch = EXTRACT_HITS(tsv_ch, params.single_end, params.drop_unpaired).output
     }
 
     // BLAST validation on host-viral reads

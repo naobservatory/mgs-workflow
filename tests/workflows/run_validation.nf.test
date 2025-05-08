@@ -34,4 +34,19 @@ nextflow_pipeline {
             // TODO: Add tests for published outputs
         }
     }
+    test("Should run without errors on single-end data using the viral hits table") {
+        tag "run_validation_viral_hits_single"
+        when {
+          params {
+            viral_tsv = "${projectDir}/test-data/ont-ww-test-results/virus_hits_final.tsv"
+            single_end = true
+            viral_fastq = ""
+          }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // TODO: Add tests for published outputs
+        }
+    }
 }
