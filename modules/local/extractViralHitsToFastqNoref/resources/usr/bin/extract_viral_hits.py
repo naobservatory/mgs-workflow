@@ -58,6 +58,13 @@ def extract_viral_hits(input_path, out_path, drop_unpaired):
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Read and handle header line
         headers = inf.readline().rstrip("\n").split("\t")
+        # Infer whether paired or single end from header
+        if "query_seq_rev" in headers:
+            single = False
+            print_log("Processing paired-end reads.")
+        else:
+            single = True
+            print_log("Processing single-end reads.")
         headers_exp = ["seq_id", "query_seq", "query_qual"]
         if not single:
             headers_exp += ["query_seq_rev", "query_qual_rev"]
@@ -67,12 +74,6 @@ def extract_viral_hits(input_path, out_path, drop_unpaired):
                 raise ValueError(msg)
         # Get indices of required columns
         indices = {x: headers.index(x) for x in headers_exp}
-        if "query_seq_rev" in indices:
-            single = False
-            print_log("Processing paired-end reads.")
-        else:
-            single = True
-            print_log("Processing single-end reads.")
         # Iterate over lines in input file
         for line in inf:
             fields = line.rstrip("\n").split("\t")
