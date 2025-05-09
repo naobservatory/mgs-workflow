@@ -44,11 +44,17 @@ nextflow_workflow {
             }
             workflow {
                 '''
-                input[0] = PREPARE_GROUP_TSVS.out.groups
-                input[1] = COPY_FILE_BARE.out
-                input[2] = params.validation_cluster_identity
-                input[3] = 15
-                input[4] = params.n_clusters
+                input[0] = PREPARE_GROUP_TSVS.out.groups // groups
+                input[1] = COPY_FILE_BARE.out // db
+                input[2] = params.validation_cluster_identity // cluster_identity
+                input[3] = 15 // cluster_min_len
+                input[4] = params.n_clusters // n_clusters
+                input[5] = "${params.ref_dir}/results/${params.blast_db_prefix}" // blast_db_dir TODO
+                input[6] = params.blast_db_prefix // blast_db_prefix
+                input[7] = params.blast_perc_id // perc_id
+                input[8] = params.blast_qcov_hsp_perc // qcov_hsp_perc
+                input[9] = params.blast_max_rank // blast_max_rank
+                input[10] = params.blast_min_frac // blast_min_frac
                 '''
             }
         }
@@ -69,6 +75,21 @@ nextflow_workflow {
             for (int i=0; i < tabs_regrouped.size(); i++) {
                 assert tabs_regrouped[i].rowCount == tabs_in[i].rowCount
                 assert tabs_regrouped[i].columns["seq_id"].unique().toSorted() == tabs_in[i].columns["seq_id"].unique().toSorted()
+            }
+            // Basic BLAST invocation should work as expected
+            def blast_db = workflow.out.test_blast_db.collect{path(it[1]).csv(sep: "\t",decompress: true)}
+            def blast_query = workflow.out.test_blast_query.collect{path(it[1]).fasta}
+            def cluster_fasta = workflow.out.test_reps_fasta.collect{path(it[1]).fasta}
+            assert blast_query == cluster_fasta
+            assert blast_db.size() == blast_query.size()
+            for (int i=0; i < blast_db.size(); i++) {
+                if (blast_db[i].rowCount == 0) {
+                    continue
+                }
+                // qseqids should all be in query input
+                def ids_in = blast_query[i].keySet().collect{ it.tokenize(" ")[0] }.toSet()
+                def ids_out = blast_db[i].columns["qseqid"].toSet()
+                assert ids_in.containsAll(ids_out)
             }
         }
     }

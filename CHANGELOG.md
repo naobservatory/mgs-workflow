@@ -1,3 +1,9 @@
+# v2.9.0.1-dev
+
+- Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
+    - Split out core of BLAST_VIRAL subworkflow into a new BLAST_FASTA subworkflow that is called by both BLAST_VIRAL and VALIDATE_VIRAL_ASSIGNMENTS
+    - Added tests for BLAST_FASTA and updated tests for VALIDATE_VIRAL_ASSIGNMENTS
+
 # v2.9.0.0
 - Implemented ONT analysis in the RUN workflow
     - Combined run_dev_se.nf with run.nf
