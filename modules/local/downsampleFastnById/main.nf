@@ -9,7 +9,7 @@ process DOWNSAMPLE_FASTN_BY_ID {
         tuple val(sample), path("input_${fastn}"), path("input_${ids}"),  emit: input
     shell:
         '''
-        seqkit grep -f !{ids} !{fastn} | !{fastn.toString().endsWith(".gz") ? 'gzip -c' : 'cat'} > downsampled_!{fastn}
+        seqkit grep -f !{ids} !{fastn} | seqkit rmdup | !{fastn.toString().endsWith(".gz") ? 'gzip -c' : 'cat'} > downsampled_!{fastn}
         ln -s !{fastn} input_!{fastn}
         ln -s !{ids} input_!{ids}
         '''
