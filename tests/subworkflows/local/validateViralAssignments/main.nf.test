@@ -49,7 +49,6 @@ nextflow_workflow {
                 input[2] = params.validation_cluster_identity
                 input[3] = 15
                 input[4] = params.n_clusters
-                input[5] = false // not single-end
                 '''
             }
         }

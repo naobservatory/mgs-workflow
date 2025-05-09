@@ -26,7 +26,6 @@ workflow SPLIT_VIRAL_TSV_BY_SPECIES {
     take:
         groups // Labeled viral hit TSVs partitioned by group
         db // Viral taxonomy DB
-        single_end
     main:
         // 1. Join to viral taxonomy DB
         rehead_ch = REHEAD_TSV(groups, "aligner_taxid", "taxid").output
@@ -60,7 +59,7 @@ workflow SPLIT_VIRAL_TSV_BY_SPECIES {
                 }
             }
         // 4. Extract into interleaved FASTQ format
-        fastq_ch = EXTRACT_FASTQ(partitioned_flattened_ch, false, single_end).output
+        fastq_ch = EXTRACT_FASTQ(partitioned_flattened_ch, false).output
     emit:
         tsv = partitioned_flattened_ch
         fastq = fastq_ch

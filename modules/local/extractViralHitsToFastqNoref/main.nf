@@ -3,14 +3,13 @@ process EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED {
     label "single"
     input:
         tuple val(sample), path(tsv) // Viral hits TSV
-        val(single_end) // Boolean
         val(drop_unpaired) // Boolean
     output:
         tuple val(sample), path("${sample}_hits_out.fastq.gz"), emit: output
         tuple val(sample), path("${sample}_hits_in.tsv.gz"), emit: input
     shell:
         '''
-        extract_viral_hits.py !{drop_unpaired ? "-d" : ""} !{single_end ? "-s" : ""} -i !{tsv} -o !{sample}_hits_out.fastq.gz
+        extract_viral_hits.py !{drop_unpaired ? "-d" : ""} -i !{tsv} -o !{sample}_hits_out.fastq.gz
         # Link input files for testing
         ln -s !{tsv} !{sample}_hits_in.tsv.gz
         '''

@@ -31,7 +31,7 @@ workflow RUN_VALIDATION {
     // Option 2: Extract read sequences from output DB from RUN workflow (default)
         // Define input
         tsv_ch = Channel.value(["viral_hits", file(params.viral_tsv)])
-        fastq_out = EXTRACT_FASTQ(tsv_ch, params.single_end, params.drop_unpaired)
+        fastq_out = EXTRACT_FASTQ(tsv_ch, params.drop_unpaired)
         fastq_ch = fastq_out.output.map { label, fastq -> fastq }
     }
 
