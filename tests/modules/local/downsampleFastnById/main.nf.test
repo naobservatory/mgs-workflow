@@ -1,11 +1,11 @@
 nextflow_process {
 
-    name "Test process SUBSEQ_FASTN"
-    script "modules/local/subseqFastn/main.nf"
-    process "SUBSEQ_FASTN"
+    name "Test process DOWNSAMPLE_FASTN_BY_ID"
+    script "modules/local/downsampleFastnById/main.nf"
+    process "DOWNSAMPLE_FASTN_BY_ID"
     config "tests/configs/run.config"
     tag "module"
-    tag "subseq_fastn"
+    tag "downsample_fastn_by_id"
 
     test("Should correctly handle valid FASTQ input"){
         tag "expect_success"

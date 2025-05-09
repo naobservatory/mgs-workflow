@@ -1,3 +1,5 @@
+def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample","ribosomal"]
+def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample", "ribosomal"]
 nextflow_workflow {
 
     name "Test subworkflow PROFILE"
@@ -5,6 +7,53 @@ nextflow_workflow {
     workflow "PROFILE"
     tag "subworkflow"
     tag "profile"
+    
+    test("Should handle empty input files properly") {
+        tag "expect_success"
+        tag "empty_input"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    """
+                    input[0] = Channel.of("empty_sample").combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    """
+                }
+            }
+        }
+        when {
+            params {}
+            workflow {
+                '''
+                input[0] = GZIP_FILE.out
+                input[1] = "${params.ref_dir}/results/kraken_db"
+                input[2] = "${params.ref_dir}"
+                input[3] = "0.4"
+                input[4] = "27"
+                input[5] = "ribo"
+                input[6] = "1"
+                input[7] = Channel.of(true)
+                input[8] = "illumina"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            
+            // Output files should have expected structure and line count
+            def kraken_file = path(workflow.out.kraken[0]).linesGzip
+            def bracken_file = path(workflow.out.bracken[0]).linesGzip
+            assert kraken_file.size() == 1 // Just header
+            assert bracken_file.size() == 0 // Completely empty
+
+            // Kraken output should have expected fields
+            def kraken_headers = kraken_file[0].split("\t")
+            assert kraken_headers.size() == 10
+            assert kraken_headers == kraken_headers_exp
+        }
+    }
 
     test("Should run without failures on paired (interleaved) input") {
         tag "expect_success"
@@ -52,12 +101,10 @@ nextflow_workflow {
             assert workflow.success
             // Kraken reports should have expected fields
             def kraken_report_tab = path(workflow.out.kraken[0]).csv(sep: "\t", decompress: true)
-            def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample", "ribosomal"]
             assert kraken_report_tab.columnCount == 10
             assert kraken_report_tab.columnNames == kraken_headers_exp
             // Bracken output should have expected fields
             def bracken_tab = path(workflow.out.bracken[0]).csv(sep: "\t", decompress: true)
-            def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample", "ribosomal"]
             assert bracken_tab.columnCount == 9
             assert bracken_tab.columnNames == bracken_headers_exp
         }
@@ -100,12 +147,10 @@ nextflow_workflow {
             assert workflow.success
             // Kraken reports should have expected fields
             def kraken_report_tab = path(workflow.out.kraken[0]).csv(sep: "\t", decompress: true)
-            def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample", "ribosomal"]
             assert kraken_report_tab.columnCount == 10
             assert kraken_report_tab.columnNames == kraken_headers_exp
             // Bracken output should have expected fields
             def bracken_tab = path(workflow.out.bracken[0]).csv(sep: "\t", decompress: true)
-            def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample", "ribosomal"]
             assert bracken_tab.columnCount == 9
             assert bracken_tab.columnNames == bracken_headers_exp
         }
@@ -148,12 +193,10 @@ nextflow_workflow {
             assert workflow.success
             // Kraken reports should have expected fields
             def kraken_report_tab = path(workflow.out.kraken[0]).csv(sep: "\t", decompress: true)
-            def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample", "ribosomal"]
             assert kraken_report_tab.columnCount == 10
             assert kraken_report_tab.columnNames == kraken_headers_exp
             // Bracken output should have expected fields
             def bracken_tab = path(workflow.out.bracken[0]).csv(sep: "\t", decompress: true)
-            def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample", "ribosomal"]
             assert bracken_tab.columnCount == 9
             assert bracken_tab.columnNames == bracken_headers_exp
         }

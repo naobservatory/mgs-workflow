@@ -26,10 +26,11 @@ def open_by_suffix(filename: str, mode="r", debug=False):
         return open(filename, mode)
 
 def read_header(infile) -> List[str]:
-    """Read header from TSV file and return as list."""
+    """Read header from TSV file and return as list.
+    Returns empty list if file is empty."""
     header_line = infile.readline()
-    if not header_line:
-        raise ValueError("File is empty.")
+    if not header_line or not header_line.strip():
+        return []
     header = header_line.strip().split("\t")
     return header
 
@@ -56,32 +57,66 @@ def check_headers(header: List[str], reference_header: List[str]) -> bool:
 def concatenate_tsvs(input_files: List[str], out_path: str):
     """Concatenate multiple TSV files with matching headers."""
     with open_by_suffix(out_path, "w") as outf:
-        # Parse first file and get header mapping
-        with open_by_suffix(input_files[0]) as inf:
-            print_log(f"\tProcessing first file: {input_files[0]}")
-            # Extract header information
-            reference_header = read_header(inf)
-            # Write header to output file
-            outf.write("\t".join(reference_header) + "\n")
-            # Write contents of first file to output unchanged
-            for line in inf:
-                outf.write(line)
-        # Parse remaining files and write to output
+        # Find the first non-empty file to extract headers
+        reference_header = []
+        first_valid_index = -1
+        
+        for idx, input_path in enumerate(input_files):
+            try:
+                with open_by_suffix(input_path) as inf:
+                    # Extract header information
+                    header = read_header(inf)
+                    if not header:
+                        print_log(f"Warning: File is empty, skipping: {input_path}")
+                        continue
+                    
+                    reference_header = header
+                    first_valid_index = idx
+                    print_log(f"\tFound first non-empty file: {input_path}")
+                    
+                    # Write header to output file
+                    outf.write("\t".join(reference_header) + "\n")
+                    
+                    # Write contents of first valid file to output unchanged
+                    for line in inf:
+                        outf.write(line)
+                    
+                    break
+            except Exception as e:
+                print_log(f"Error processing file {input_path}: {str(e)}")
+                continue
+        
+        # If no valid files were found, create an empty output with no header
+        if not reference_header:
+            print_log("Warning: All input files are empty. Creating empty output file.")
+            return
+        
+        # Parse remaining files (after the first valid file) and write to output
         print_log(f"\tProcessing other files:")
-        for input_path in input_files[1:]:
-            print_log(f"\t\tProcessing file: {input_path}")
-            with open_by_suffix(input_path) as inf:
-                # Extract header information
-                header = read_header(inf)
-                # Verify header fields match reference header
-                check_headers(header, reference_header)
-                # Generate mapping of header fields to reference header
-                header_mapping = map_headers(header, reference_header)
-                # Write contents of file to output with mapped fields
-                for line in inf:
-                    fields = line.strip().split("\t")
-                    mapped_fields = [fields[i] for i in header_mapping]
-                    outf.write("\t".join(mapped_fields) + "\n")
+        for input_path in input_files[first_valid_index + 1:]:
+            try:
+                with open_by_suffix(input_path) as inf:
+                    # Extract header information
+                    header = read_header(inf)
+                    if not header:
+                        print_log(f"Warning: File is empty, skipping: {input_path}")
+                        continue
+                    
+                    # Verify header fields match reference header
+                    check_headers(header, reference_header)
+                    
+                    # Generate mapping of header fields to reference header
+                    header_mapping = map_headers(header, reference_header)
+                    print_log(f"\t\tProcessing file: {input_path}")
+                    
+                    # Write contents of file to output with mapped fields
+                    for line in inf:
+                        fields = line.strip().split("\t")
+                        mapped_fields = [fields[i] for i in header_mapping]
+                        outf.write("\t".join(mapped_fields) + "\n")
+            except Exception as e:
+                print_log(f"Error processing file {input_path}: {str(e)}")
+                raise
 
 def main():
     # Parse arguments

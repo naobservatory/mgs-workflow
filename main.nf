@@ -40,7 +40,15 @@ output {
         path "intermediates"
         tags nextflow_file_class: "intermediate", "nextflow.io/temporary": "false"
     }
-    "results_downstream" {
+    input_downstream {
+        path "input_downstream"
+        tags nextflow_file_class: "publish", "nextflow.io/temporary": "false"
+    }
+    logging_downstream {
+        path "logging_downstream"
+        tags nextflow_file_class: "publish", "nextflow.io/temporary": "false"
+    }
+    results_downstream {
         path "results_downstream"
         tags nextflow_file_class: "publish", "nextflow.io/temporary": "false"
     }

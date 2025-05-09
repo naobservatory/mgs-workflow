@@ -2,7 +2,7 @@
 process EXTRACT_FASTN_IDS {
     label "seqkit"
     label "single"
-    label "testing" // Currently only used for testing
+    label "testing_only" // Process is currently only used for testing
     input:
         tuple val(sample), path(fastn)
     output:

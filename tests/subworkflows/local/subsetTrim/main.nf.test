@@ -140,5 +140,57 @@ nextflow_workflow {
             }
         }
     }
-
+    
+    test("Should handle empty input files properly") {
+        config "tests/configs/run.config"
+        tag "empty_input"
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    """
+                    input[0] = Channel.of("empty_sample").combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    """
+                }
+            }
+        }
+        when {
+            params {
+                n_reads = 100
+            }
+            workflow {
+                """
+                input[0] = GZIP_FILE.out
+                input[1] = params.n_reads
+                input[2] = params.adapters
+                input[3] = Channel.of(true)
+                input[4] = "illumina"
+                input[5] = ""
+                """
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            
+            // Check if output files exist
+            def file_out_subset = path(workflow.out.subset_reads[0][1])
+            def file_out_trimmed = path(workflow.out.trimmed_subset_reads[0][1])
+            def file_out_failed = path(workflow.out.test_failed[0][1])
+            
+            assert file_out_subset.exists()
+            assert file_out_trimmed.exists()
+            assert file_out_failed.exists()
+            
+            // Check if fastq files are empty
+            def fastq_out_subset = file_out_subset.fastq
+            def fastq_out_trimmed = file_out_trimmed.fastq
+            def fastq_out_failed = file_out_failed.fastq
+            
+            assert fastq_out_subset.sequences.size() == 0
+            assert fastq_out_trimmed.sequences.size() == 0
+            assert fastq_out_failed.sequences.size() == 0
+        }
+    }
 }

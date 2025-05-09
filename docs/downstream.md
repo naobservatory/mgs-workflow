@@ -4,6 +4,10 @@ This page describes the structure and function of the `DOWNSTREAM` workflow. Thi
 
 [^comp]: These are kept to a minimum in the `RUN` workflow to minimize memory demands and maximize parallelization.
 
+> [!NOTE]
+> Currently, the `DOWNSTREAM` workflow is only used for short-read data. We intend to investigate similar workflows for ONT data in the future.
+
+
 ## Workflow structure
 
 ```mermaid

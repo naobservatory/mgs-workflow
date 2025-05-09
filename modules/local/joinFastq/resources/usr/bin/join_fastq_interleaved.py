@@ -29,6 +29,17 @@ def open_by_suffix(filename, mode="r", debug=False):
 def join_paired_reads(input_file, output_file, gap="N", debug=False):
     """Join non-overlapping paired-end reads from an interleaved FASTQ file."""
     with open_by_suffix(input_file, "r", debug) as inf, open_by_suffix(output_file, "w", debug) as outf:
+        # Check if file is empty
+        pos = inf.tell()
+        first_line = inf.readline()
+        if not first_line.strip():
+            print_log(f"Warning: Input file {input_file} is empty. Creating empty output file.")
+            # Output file is already opened and will be empty when the context manager closes
+            return
+
+        # Reset file position to beginning
+        inf.seek(pos)
+        
         if debug: print_log("\tInitiating parsing...")
         r0 = SeqIO.parse(inf, "fastq") # Read FASTQ
         if debug: print_log("\tOrganizing read pairs...")

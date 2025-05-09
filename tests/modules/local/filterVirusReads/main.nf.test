@@ -269,4 +269,26 @@ nextflow_process {
         }
     }
 
+    test("Should handle empty input file and produce empty output file"){
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = "${projectDir}/test-data/toy-data/empty_file.txt"
+                input[1] = 0
+                input[2] = "test"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Verify output is completely empty (no data, no header)
+            def outputFile = path(process.out.output.get(0)).linesGzip
+            assert outputFile.size() == 0
+        }
+    }
+
 }

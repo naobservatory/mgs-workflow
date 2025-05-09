@@ -28,7 +28,12 @@ def filter_virus_reads(input_path, score_threshold, out_path):
     """Filter putative virus reads based on Kraken and Bowtie2 results."""
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Read and handle header line
-        headers = inf.readline().strip().split("\t")
+        header_line = inf.readline().strip()
+        if not header_line:
+            print_log("Input file is empty or contains only whitespace. Creating empty output file.")
+            outf.write("")
+            return
+        headers = header_line.split("\t")
         idx = {h: i for i, h in enumerate(headers)}
         # Check for necessary columns in header
         if "seq_id" not in headers:

@@ -19,8 +19,9 @@ process KRAKEN {
         par="--db ${db} --use-names --report-minimizer-data --threads !{task.cpus} --report ${report}"
         # Run Kraken
         zcat !{reads} | kraken2 ${par} /dev/fd/0 > ${out}
-        # Make empty output file if no reads
+        # Make empty output files if needed
         touch ${out}
+        touch ${report}
         # Gzip output and report to save space
         gzip ${out}
         gzip ${report}

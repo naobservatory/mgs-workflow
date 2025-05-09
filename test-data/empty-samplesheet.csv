@@ -1,0 +1,2 @@
+sample,fastq_1,fastq_2
+gold_standard,s3://nao-testing/toy-data/empty_1.fastq,s3://nao-testing/toy-data/empty_2.fastq

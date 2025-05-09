@@ -1,8 +1,8 @@
 // Gzip a plaintext input file
-// Currently only used for testing
 process GZIP_FILE {
     label "single"
     label "coreutils"
+    label "testing_only" // Process is currently only used for testing
     input:
         tuple val(sample), path(file)
     output:
@@ -14,10 +14,10 @@ process GZIP_FILE {
 }
 
 // Gzip a file without sample annotation
-// Currently only used for testing
 process GZIP_FILE_BARE {
     label "single"
     label "coreutils"
+    label "testing_only" // Process is currently only used for testing
     input:
         tuple path(file)
     output:

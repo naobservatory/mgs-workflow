@@ -1,10 +1,9 @@
 // Unleave an interleaved FASTQ file and save paired output files
-// Currently only used for testing
 // TODO: Implement streamed version
-
 process UNLEAVE_FASTQ {
     label "small"
     label "BBTools"
+    label "testing_only" // Process is currently only used for testing
     input:
         tuple val(sample), path(reads_interleaved)
     output:
