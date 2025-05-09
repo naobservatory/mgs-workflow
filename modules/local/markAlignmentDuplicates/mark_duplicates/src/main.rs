@@ -135,14 +135,6 @@ fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadE
     let quality_fwd = fields[indices["query_qual"]].to_string();
     let quality_rev = fields[indices["query_qual_rev"]].to_string();
     
-    // println!(
-    //    "Read: {}, ref_start_fwd: {}, ref_start_rev: {}, quality_fwd: {}, quality_rev: {}",
-    //    query_name,
-    //    ref_start_fwd.map_or("None".to_string(), |v| v.to_string()),
-    //    ref_start_rev.map_or("None".to_string(), |v| v.to_string()),
-    //    quality_fwd,
-    //    quality_rev
-    //);
     // Handle split assignments
     let genome_id_sorted: String;
     let aln_start: Option<i32>;
@@ -173,7 +165,6 @@ fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadE
             (None, None) => (None, None),
         };
     };
-    // println!("aln_start: {:?}, aln_end: {:?}", aln_start, aln_end);
     let avg_quality = average_quality_score(&quality_fwd, &quality_rev);
     // Return the ReadEntry
     ReadEntry { query_name, genome_id: genome_id_sorted, aln_start, aln_end, avg_quality, fields }

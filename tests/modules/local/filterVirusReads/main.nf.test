@@ -1,9 +1,9 @@
 // Helper function: manual table filtering
 def filter_tab = { tab_in, threshold -> csv(tab_in.table.where(
-    tab_in.table.intColumn("kraken_assigned_host_virus").isEqualTo(1).or(
+    tab_in.table.intColumn("kraken2_assigned_host_virus").isEqualTo(1).or(
         tab_in.table.numberColumn("aligner_length_normalized_score").isGreaterThanOrEqualTo(threshold).and(
-            tab_in.table.intColumn("kraken_assigned_host_virus").isEqualTo(2).or(
-                tab_in.table.booleanColumn("kraken_classified").isFalse()))))) }
+            tab_in.table.intColumn("kraken2_assigned_host_virus").isEqualTo(2).or(
+                tab_in.table.booleanColumn("kraken2_classified").isFalse()))))) }
 
 nextflow_process {
 
@@ -46,7 +46,7 @@ nextflow_process {
         }
     }
 
-    test("Should break when input is missing required headers (kraken_classified)"){
+    test("Should break when input is missing required headers (kraken2_classified)"){
         tag "expect_failed"
         setup {
             run("REHEAD_TSV") {
@@ -55,7 +55,7 @@ nextflow_process {
                     '''
                     input[0] = Channel.of("test")
                         | combine(Channel.of("${projectDir}/test-data/toy-data/virus-hits-test.tsv"))
-                    input[1] = "kraken_classified"
+                    input[1] = "kraken2_classified"
                     input[2] = "test"
                     '''
                 }
@@ -74,11 +74,11 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("ValueError: Missing column in input TSV: 'kraken_classified'")
+            assert process.errorReport.contains("ValueError: Missing column in input TSV: 'kraken2_classified'")
         }
     }
 
-    test("Should break when input is missing required headers (kraken_assigned_host_virus)"){
+    test("Should break when input is missing required headers (kraken2_assigned_host_virus)"){
         tag "expect_failed"
         setup {
             run("REHEAD_TSV") {
@@ -87,7 +87,7 @@ nextflow_process {
                     '''
                     input[0] = Channel.of("test")
                         | combine(Channel.of("${projectDir}/test-data/toy-data/virus-hits-test.tsv"))
-                    input[1] = "kraken_assigned_host_virus"
+                    input[1] = "kraken2_assigned_host_virus"
                     input[2] = "test"
                     '''
                 }
@@ -106,7 +106,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("ValueError: Missing column in input TSV: 'kraken_assigned_host_virus'")
+            assert process.errorReport.contains("ValueError: Missing column in input TSV: 'kraken2_assigned_host_virus'")
         }
     }
 
@@ -157,7 +157,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("Inconsistent Kraken fields: 'kraken_classified' is False, but 'kraken_assigned_host_virus' is not 0")
+            assert process.errorReport.contains("Inconsistent Kraken fields: 'kraken2_classified' is False, but 'kraken2_assigned_host_virus' is not 0")
         }
     }
 
