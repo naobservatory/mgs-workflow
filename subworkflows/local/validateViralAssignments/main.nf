@@ -77,5 +77,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_cluster_ids = cluster_ch.ids
         test_reps_fastq = cluster_ch.fastq
         test_reps_fasta = cluster_ch.fasta
+        test_blast_db = blast_ch.blast
+        test_blast_query = blast_ch.query
         test_regrouped = regrouped_ch
 }
