@@ -57,9 +57,11 @@ fn match_reads(a: &ReadEntry, b: &ReadEntry) -> bool {
 }
 
 // Compare the positions with a deviation
+// If both positions are None, they are considered equal
 fn compare_positions(a: Option<i32>, b: Option<i32>, deviation: i32) -> bool {
     match (a, b) {
         (Some(x), Some(y)) => (x - y).abs() <= deviation,
+        (None, None) => true,
         _ => false,
     }
 }
@@ -87,6 +89,9 @@ fn parse_int_or_na(s: &str) -> Option<i32> {
 
 // Convert the ASCII quality score to a quality score
 fn ascii_to_quality_score(ascii_score: &str) -> f64 {
+    if ascii_score == "NA" {
+        return 0.0;
+    }
     ascii_score.chars()
         .map(|c| c as u8 as f64 - 33.0)
         .sum::<f64>() / ascii_score.len() as f64
@@ -129,6 +134,15 @@ fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadE
     let ref_start_rev = parse_int_or_na(&fields[indices["aligner_ref_start_rev"]]);
     let quality_fwd = fields[indices["query_qual"]].to_string();
     let quality_rev = fields[indices["query_qual_rev"]].to_string();
+    
+    // println!(
+    //    "Read: {}, ref_start_fwd: {}, ref_start_rev: {}, quality_fwd: {}, quality_rev: {}",
+    //    query_name,
+    //    ref_start_fwd.map_or("None".to_string(), |v| v.to_string()),
+    //    ref_start_rev.map_or("None".to_string(), |v| v.to_string()),
+    //    quality_fwd,
+    //    quality_rev
+    //);
     // Handle split assignments
     let genome_id_sorted: String;
     let aln_start: Option<i32>;
@@ -142,6 +156,7 @@ fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadE
         // Get the index of the first genome ID in the sorted list
         let genome_id_index = sorted_parts.iter().position(|&s| s == parts[0]).unwrap();
         // Arrange start coordinates to correspond to sorted genome IDs
+        // Note: this doesn't need to handle the case where one value is None because then you could never get multiple genome_ids
         (aln_start, aln_end) = if genome_id_index == 0 {
             (ref_start_fwd, ref_start_rev)
         } else {
@@ -150,18 +165,19 @@ fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadE
     } else {
         // If only one genome ID, use it directly
         genome_id_sorted = genome_id;
-        // Normalize coordinates: if values are present, use the minimum and maximum
+        // Normalize coordinates: handle cases where one value ks None
         (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
             (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
-            _ => (ref_start_fwd, ref_start_rev),
+            (Some(fwd), None) => (Some(fwd), None),
+            (None, Some(rev)) => (Some(rev), None),
+            (None, None) => (None, None),
         };
     };
+    // println!("aln_start: {:?}, aln_end: {:?}", aln_start, aln_end);
     let avg_quality = average_quality_score(&quality_fwd, &quality_rev);
     // Return the ReadEntry
     ReadEntry { query_name, genome_id: genome_id_sorted, aln_start, aln_end, avg_quality, fields }
 }
-
-// TODO: Handle split-ID read pairs
 
 fn extract_read_groups(input_path: &str) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>), Box<dyn Error>> {
     // Open the input file
