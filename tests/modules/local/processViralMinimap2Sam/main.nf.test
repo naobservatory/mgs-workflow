@@ -60,7 +60,7 @@ nextflow_process {
             def sam_read_ids = samlines
                 .collect { line -> line.split('\t')[0] }  // Get read IDs
                 .toSet()
-            def tsv_read_ids = path(process.out.output[0][1]).csv(sep: "\t", decompress: true).columns["query_name"].toSet()
+            def tsv_read_ids = path(process.out.output[0][1]).csv(sep: "\t", decompress: true).columns["seq_id"].toSet()
             assert sam_read_ids == tsv_read_ids
 
             // Output should be a valid TSV that can be parsed and read

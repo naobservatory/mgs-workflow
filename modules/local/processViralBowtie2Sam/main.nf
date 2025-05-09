@@ -1,7 +1,7 @@
 // Extract information from a paired Bowtie2 SAM file based on Genbank download metadata
 // Updated version with testing and gzipped output
 process PROCESS_VIRAL_BOWTIE2_SAM {
-    label "pandas"
+    label "pysam_biopython"
     label "single"
     input:
         tuple val(sample), path(sam)

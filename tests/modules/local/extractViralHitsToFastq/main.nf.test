@@ -145,7 +145,7 @@ nextflow_process {
                     '''
                     input[0] = Channel.of("test_header_only")
                         | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
-                    input[1] = "seq_id,kraken_assigned_host_virus,bowtie2_length_normalized_score_max"
+                    input[1] = "seq_id,kraken2_assigned_host_virus,aligner_length_normalized_score"
                     input[2] = "header_only"
                     '''
                 }
