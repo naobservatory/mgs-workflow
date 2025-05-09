@@ -40,7 +40,6 @@ workflow SPLIT_VIRAL_TSV_BY_SPECIES {
         join_sorted_ch = SORT_JOINED_SPECIES(join_ch, "taxid_species").sorted
         part_ch = PARTITION_TSV(join_sorted_ch, "taxid_species").output
         // 3. Restructure channel to separate species
-        // First rearrange each element from [group, [paths]] to [[group_species1, path1], [group_species2, path2], ...]
         partitioned_flattened_ch = part_ch.flatMap{
             group, filepaths ->
                 // Make sure paths are a list even if there's just one

@@ -22,7 +22,7 @@ workflow CLUSTER_VIRAL_ASSIGNMENTS {
         reads_ch // Single-end or interleaved FASTQ sequences
         cluster_identity // Identity threshold for VSEARCH clustering
         cluster_min_len // Minimum sequence length for VSEARCH clustering
-        n_clusters // Number of cluster representatives to validate for each specie
+        n_clusters // Number of cluster representatives to validate for each species
         single_end // Is the input read data single-ended (true) or interleaved (false)?
     main:
         // 1. Merge and join interleaved sequences to produce a single sequence per input pair
