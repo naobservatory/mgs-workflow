@@ -72,11 +72,21 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json, single_end){
                       "Sequences flagged as poor quality", "Sequence length", "%GC",
                       "total_deduplicated_percentage", "basic_statistics", "avg_sequence_length",
                       "median_sequence_length")
+  
   tab_tsv <- fastqc_tsv %>%
     mutate(n_bases_approx = process_n_bases(`Total Bases`) %>% as.numeric) %>%
     select(-any_of(columns_exclude)) %>%
     select(n_bases_approx, everything()) %>%
     summarize_all(function(x) paste(x, collapse="/"))
+  
+  # Ensure per_base_sequence_quality and per_sequence_quality_scores are present 
+  # (they are missing from multiqc JSON if multiqc was run on empty file, but we always want them)
+  required_columns <- c("per_base_sequence_quality", "per_sequence_quality_scores")
+  missing_cols <- setdiff(required_columns, colnames(tab_tsv))
+  if (length(missing_cols) > 0) {
+    tab_tsv[missing_cols] <- NA
+  } 
+  
   return(bind_cols(tab_json, tab_tsv))
 }
 
