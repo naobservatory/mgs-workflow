@@ -18,7 +18,7 @@
 
 ## Extra columns, for paired end only
 - `aligner_genome_id_all`: GenBank IDs for viral genomes matching forward and reverse reads, joined by "/" 
-- `aligner_taxid_all` NCBI taxon ID for taxons matching forward and reverse reads, joined by "/" 
+- `aligner_taxid_all`: NCBI taxon ID for taxons matching forward and reverse reads, joined by "/" 
 - `aligner_fragment_length`: Inferred fragment length, as calculated by the aligner (NA if forward and reverse reads align to different genome IDs/align discordantly)
 - `aligner_genome_id_fwd`: GenBank ID for viral genome matching forward read
 - `aligner_genome_id_rev`: GenBank ID for viral genome matching reverse read
@@ -38,7 +38,7 @@
 - `aligner_length_normalized_score_fwd`: Length-normalized alignment score for forward read
 - `aligner_length_normalized_score_rev`: Length-normalized alignment score for reverse read
 - `aligner_pair_status`: Pair status (UU for unpaired, CP for concordant pair, DP for discordant pair, UP for unaligned pair) 
-- `kraken2_classified`: was the read classified by kraken2 (True/False)? (all kraken2 columns are present in paired-end only as only our paired-short-read pipeline runs kraken2)
+- `kraken2_classified`: Was the read classified by kraken2 (True/False)? (all kraken2 columns are present in paired-end only as only our paired-short-read pipeline runs kraken2)
 - `kraken2_assigned_name`: Name of taxon to which read was assigned (e.g. "Human astrovirus"); "unclassified" if unassigned
 - `kraken2_assigned_taxid`: NCBI taxon ID for taxon to which the read was assigned; 0 if unassigned
 - `kraken2_assigned_host_virus`: Infection status annotation 0-3 (see https://github.com/naobservatory/mgs-workflow/blob/dev/docs/annotation.md) 
