@@ -501,6 +501,7 @@ def parse_input_tsv(
         score_field: str,
         child_to_parent: dict[int, int],
         artificial_taxids: set[int],
+        unclassified_taxids: set[int],
         ) -> None:
     """
     Iterate linewise over input TSV, calculating the LCA for each group
@@ -514,6 +515,8 @@ def parse_input_tsv(
         child_to_parent (dict[int, int]): Dictionary mapping each taxid to its parent.
         artificial_taxids (set[int]): Set of taxids that represent artificial or
             engineered sequences.
+        unclassified_taxids (set[int]): Set of taxids that represent unclassified
+            sequences.
     """
     with open_by_suffix(input_path) as inf, open_by_suffix(output_path, "w") as outf:
         # Write header to output file
@@ -559,39 +562,10 @@ def parse_input_tsv(
         logger.info(f"Processed {n_entries} entries in {n_groups} groups.")
 
 #=======================================================================
-# Miscellaneous functions
+# Taxonomy DB functions
 #=======================================================================
 
-def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
-    # Create parser
-    desc = "Given a sorted TSV containing group, taxid, and score columns, " \
-           "return a TSV with a single row per group containing the lowest " \
-           "common ancestor taxid across all taxids in the group."
-    parser = argparse.ArgumentParser(description=desc)
-    # Add arguments
-    parser.add_argument("--input", "-i", help="Path to input TSV.")
-    parser.add_argument("--output", "-o", help="Path to output TSV.")
-    parser.add_argument("--db", "-d", help="Path to taxonomy DB (raw NCBI nodes.dmp file).")
-    parser.add_argument("--group", "-g", help="Column header for group field.")
-    parser.add_argument("--taxid", "-t", help="Column header for taxid field.")
-    parser.add_argument("--score", "-s", help="Column header for score field.")
-    parser.add_argument("--artificial", "-a",
-                        help="Parent taxid for artificial sequences (to be handled separately).")
-    # Return parsed arguments
-    return parser.parse_args()
-
-def open_by_suffix(filename, mode="r", debug=False):
-    """Parse the suffix of a filename to determine the right open method
-    to use, then open the file. Can handle .gz, .bz2, and uncompressed files."""
-    if filename.endswith('.gz'):
-        return gzip.open(filename, mode + 't')
-    elif filename.endswith('.bz2'):
-        return bz2.BZ2file(filename, mode)
-    else:
-        return open(filename, mode)
-
-def parse_taxonomy_db(path: str, artificial_taxid: int
+def parse_nodes_db(path: str, artificial_taxid: int
                       ) -> tuple[dict[int, int], dict[int, set[int]]]:
     """
     Parse taxonomy DB into two dictionaries: one mapping each taxid
@@ -627,18 +601,20 @@ def parse_taxonomy_db(path: str, artificial_taxid: int
     # Return dictionaries
     return child_to_parent, parent_to_children
 
-def get_descendants(taxid: int, parent_to_children: dict[int, set[int]]) -> set[int]:
+def get_descendants(taxids: set[int], parent_to_children: dict[int, set[int]]) -> set[int]:
     """
     Get a set of all descendants of a taxid.
     Args:
-        taxid (int): Taxid to get descendants of.
+        taxids (set[int]): Set of taxids to get descendants of.
         parent_to_children (dict[int, set[int]]): Dictionary mapping each taxid
             to its children taxids.
     Returns:
         set[int]: Set of all descendants of the taxid, including the taxid itself.
     """
-    descendants = set([taxid])
-    descendants_new = parent_to_children[taxid]
+    descendants = taxids
+    descendants_new = set()
+    for taxid in descendants:
+        descendants_new.update(parent_to_children[taxid])
     while descendants_new:
         descendants.update(descendants_new)
         descendants_newer = set()
@@ -651,6 +627,79 @@ def get_descendants(taxid: int, parent_to_children: dict[int, set[int]]) -> set[
     # Return set of descendants
     return descendants
 
+def parse_names_db(path: str) -> dict[int, set[str]]:
+    """
+    Parse taxonomy names DB into a dictionary mapping each taxid to a
+    set of names.
+    Args:
+        path (str): Path to taxonomy names DB.
+    Returns:
+        dict[int, set[str]]: Dictionary mapping each taxid to a set of names.
+    """
+    names_db: dict[int, set[str]] = defaultdict(set)
+    with open_by_suffix(path) as f:
+        for line in f:
+            fields = line.strip().split("\t")
+            taxid = int(fields[0])
+            name = fields[2]
+            names_db[taxid].add(name)
+    # Return dictionary
+    return names_db
+
+def get_unclassified_taxids(names_db: dict[int, set[str]]) -> set[int]:
+    """
+    Get a set of taxids that are unclassified in the taxonomy names DB.
+    Args:
+        names_db (dict[int, set[str]]): Dictionary mapping each taxid to a
+            set of names.
+    Returns:
+        set[int]: Set of taxids that are unclassified (i.e. map to a name
+            containing "unclassified" or "sp.")
+    """
+    unclassified_taxids = set()
+    for taxid, names in names_db.items():
+        for name in names:
+            name_lower = name.lower()
+            if "unclassified" in name_lower or "sp." in name_lower:
+                unclassified_taxids.add(taxid)
+                break
+    # Return set of unclassified taxids
+    return unclassified_taxids
+
+#=======================================================================
+# I/O functions
+#=======================================================================
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    # Create parser
+    desc = "Given a sorted TSV containing group, taxid, and score columns, " \
+           "return a TSV with a single row per group containing the lowest " \
+           "common ancestor taxid across all taxids in the group."
+    parser = argparse.ArgumentParser(description=desc)
+    # Add arguments
+    parser.add_argument("--input", "-i", help="Path to input TSV.")
+    parser.add_argument("--output", "-o", help="Path to output TSV.")
+    parser.add_argument("--nodes-db", "-d", help="Path to taxonomy nodes DB (raw NCBI nodes.dmp file).")
+    parser.add_argument("--names-db", "-n", help="Path to taxonomy names DB (raw NCBI names.dmp file).")
+    parser.add_argument("--group", "-g", help="Column header for group field.")
+    parser.add_argument("--taxid", "-t", help="Column header for taxid field.")
+    parser.add_argument("--score", "-s", help="Column header for score field.")
+    parser.add_argument("--artificial", "-a",
+                        help="Parent taxid for artificial sequences (to be handled separately).")
+    # Return parsed arguments
+    return parser.parse_args()
+
+def open_by_suffix(filename, mode="r", debug=False):
+    """Parse the suffix of a filename to determine the right open method
+    to use, then open the file. Can handle .gz, .bz2, and uncompressed files."""
+    if filename.endswith('.gz'):
+        return gzip.open(filename, mode + 't')
+    elif filename.endswith('.bz2'):
+        return bz2.BZ2file(filename, mode)
+    else:
+        return open(filename, mode)
+
 #=======================================================================
 # Main function
 #=======================================================================
@@ -662,16 +711,25 @@ def main() -> None:
     args = parse_args()
     # Import taxonomy DB and process into dictionaries
     logger.info("Parsing taxonomy DB.")
-    child_to_parent, parent_to_children = parse_taxonomy_db(args.db, int(args.artificial))
+    child_to_parent, parent_to_children = parse_nodes_db(args.nodes_db, int(args.artificial))
     logger.info(f"Parsed taxonomy information for {len(child_to_parent)} taxids.")
+    # Parse names DB and get set of unclassified taxids
+    logger.info("Parsing taxonomy names DB.")
+    names_db = parse_names_db(args.names_db)
+    unclassified_taxids = get_unclassified_taxids(names_db)
+    logger.info(f"Found {len(unclassified_taxids)} unclassified taxids.")
+    # Get taxids descended from unclassified taxids
+    logger.info("Getting taxids descended from unclassified taxids.")
+    unclassified_taxids_descendants = get_descendants(unclassified_taxids, parent_to_children)
+    logger.info(f"Found {len(unclassified_taxids_descendants)} taxids descended from unclassified taxids.")
     # Get set of artificial taxids
     logger.info("Getting set of artificial taxids.")
-    artificial_taxids = get_descendants(int(args.artificial), parent_to_children)
+    artificial_taxids = get_descendants(set([int(args.artificial)]), parent_to_children)
     logger.info(f"Found {len(artificial_taxids)} artificial taxids.")
     # Parse input TSV and write LCA information to output TSV
     logger.info("Parsing input TSV.")
     parse_input_tsv(args.input, args.output, args.group, args.taxid, args.score,
-                    child_to_parent, artificial_taxids)
+                    child_to_parent, artificial_taxids, unclassified_taxids_descendants)
     # Log completion
     logger.info("Script complete.")
 

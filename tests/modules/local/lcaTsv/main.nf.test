@@ -16,7 +16,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "taxid"
                 score_field = "test_score"
@@ -26,11 +27,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -81,7 +83,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input-artificial.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "taxid"
                 score_field = "test_score"
@@ -91,11 +94,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -135,7 +139,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "missing"
                 taxid_field = "taxid"
                 score_field = "test_score"
@@ -145,11 +150,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -166,7 +172,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "missing"
                 score_field = "test_score"
@@ -176,11 +183,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -197,7 +205,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "taxid"
                 score_field = "missing"
@@ -207,11 +216,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -228,7 +238,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes-truncated.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes-truncated.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "taxid"
                 score_field = "test_score"
@@ -238,11 +249,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -259,7 +271,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input-unsorted.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "taxid"
                 score_field = "test_score"
@@ -269,11 +282,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
