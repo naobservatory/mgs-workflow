@@ -45,7 +45,8 @@ nextflow_process {
             def groups = tab_in.columns[params.group_field].unique()
             assert tab_out.rowCount == groups.size()
             // Output should have expected column names
-            def exp_headers_base = ["lca", "n_entries", "top_taxid", "min_score", "max_score", "mean_score"]
+            def exp_headers_base = ["lca", "n_entries", "n_classified", "top_taxid",
+                "top_taxid_classified", "min_score", "max_score", "mean_score"]
             def exp_headers_all = exp_headers_base.collect { it + "_all" }
             def exp_headers_natural = exp_headers_base.collect { it + "_natural" }
             def exp_headers_artificial = exp_headers_base.collect { it + "_artificial" }
@@ -112,7 +113,8 @@ nextflow_process {
             def groups = tab_in.columns[params.group_field].unique()
             assert tab_out.rowCount == groups.size()
             // Output should have expected column names
-            def exp_headers_base = ["lca", "n_entries", "top_taxid", "min_score", "max_score", "mean_score"]
+            def exp_headers_base = ["lca", "n_entries", "n_classified", "top_taxid",
+                "top_taxid_classified", "min_score", "max_score", "mean_score"]
             def exp_headers_all = exp_headers_base.collect { it + "_all" }
             def exp_headers_natural = exp_headers_base.collect { it + "_natural" }
             def exp_headers_artificial = exp_headers_base.collect { it + "_artificial" }
