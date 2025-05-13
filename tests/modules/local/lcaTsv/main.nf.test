@@ -1,3 +1,7 @@
+def filter_tab = { tab_in, group_field, group_id -> csv(tab_in.table.where(
+    tab_in.table.stringColumn(group_field).isEqualTo(group_id)
+    ))}
+
 nextflow_process {
 
     name "Test process LCA_TSV"
@@ -34,8 +38,29 @@ nextflow_process {
             // Output should have one row per input group
             def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
             def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
-            def n_groups = tab_in.columns[params.group_field].unique().size()
-            assert tab_out.rowCount == n_groups
+            def groups = tab_in.columns[params.group_field].unique()
+            assert tab_out.rowCount == groups.size()
+            // Output should have expected column names
+            def exp_headers = ["group_id", "lca", "n_entries", "min_score", "max_score", "mean_score"]
+            assert tab_out.columnNames == exp_headers
+            // Output should have expected column values
+            for (group in groups) {
+                println("\nProcessing group: ${group}")
+                def tab_in_filtered = filter_tab(tab_in, params.group_field, group)
+                def tab_out_filtered = filter_tab(tab_out, "group_id", group)
+                assert tab_out_filtered.rowCount == 1
+                def exp_lca = tab_in_filtered.columns["exp_lca"][0]
+                def exp_n_entries = tab_in_filtered.rowCount
+                def exp_min_score = tab_in_filtered.columns[params.score_field].min()
+                def exp_max_score = tab_in_filtered.columns[params.score_field].max()
+                def exp_mean_score = tab_in_filtered.columns[params.score_field].sum() / exp_n_entries
+                assert tab_out_filtered.columns["group_id"][0] == group
+                assert tab_out_filtered.columns["lca"][0] == exp_lca
+                assert tab_out_filtered.columns["n_entries"][0] == exp_n_entries
+                assert tab_out_filtered.columns["min_score"][0] == exp_min_score
+                assert tab_out_filtered.columns["max_score"][0] == exp_max_score
+                assert tab_out_filtered.columns["mean_score"][0] == exp_mean_score
+            }
         }
     }
 }

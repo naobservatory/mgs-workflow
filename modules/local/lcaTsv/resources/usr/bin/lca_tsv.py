@@ -109,10 +109,12 @@ def path_to_root(
         tuple[list[int], dict[int, list[int]]]: Tuple containing the path to the root
             and the updated path cache.
     """
+    logger.debug(f"Finding path to root for taxid: {taxid}")
     # Check input type
     assert isinstance(taxid, int), "Taxid must be an integer."
     # If path is already cached, return it
     if taxid in path_cache:
+        logger.debug(f"Path to root for target taxid {taxid} already cached: {path_cache[taxid]}")
         return path_cache[taxid], path_cache
     # Initialize path
     path: list[int] = [taxid]
@@ -130,13 +132,22 @@ def path_to_root(
                 logger.warning(msg)
                 path.append(TAXID_ROOT)
                 break
-            path.append(parent)
+            # Check if path for parent is already cached
+            if parent in path_cache:
+                logger.debug(f"Path to root for ancestor taxid {parent} already cached: {path_cache[parent]}")
+                path.extend(path_cache[parent])
+            # Otherwise, add parent to path
+            else:
+                path.append(parent)
     # Check path includes taxid and root
     assert path[0] == taxid, "Path does not start with taxid."
     assert path[-1] == TAXID_ROOT, "Path does not end with root."
-    # Add path to cache
-    path_cache[taxid] = path
+    # Add paths to cache for target taxid and all its parents
+    for i in range(len(path)):
+        # Each path is a suffix of the previous path
+        path_cache[path[i]] = path[i:]
     # Return the path and cache
+    logger.debug(f"Path to root for target taxid {taxid}: {path}")
     return path, path_cache
 
 def find_lca_paths(
@@ -182,6 +193,7 @@ def find_lca_pair(
         tuple[int, dict[int, list[int]]]: Tuple containing the LCA taxid
             and the updated path cache.
     """
+    logger.debug(f"Finding pairwise LCA for taxids: {taxid1} and {taxid2}")
     # Check types
     assert isinstance(taxid1, int), "Taxid 1 must be an integer."
     assert isinstance(taxid2, int), "Taxid 2 must be an integer."
@@ -193,6 +205,7 @@ def find_lca_pair(
     path2, path_cache = path_to_root(taxid2, child_to_parent, path_cache)
     # Find LCA by walking down paths until they diverge
     lca = find_lca_paths(path1, path2)
+    logger.debug(f"Found LCA for taxids {taxid1} and {taxid2}: {lca}")
     return lca, path_cache
 
 def find_lca_set(
@@ -211,6 +224,7 @@ def find_lca_set(
             and the updated path cache.
     """
     logger.debug(f"Finding LCA for taxids: {taxids}")
+    taxids_start = taxids.copy()
     assert isinstance(taxids, set), f"Taxids must be a set, got {type(taxids)} ({taxids})."
     assert len(taxids) > 0, "Taxids must be non-empty."
     # If only one taxid, return it as LCA
@@ -228,7 +242,7 @@ def find_lca_set(
     while taxids:
         lca, path_cache = find_lca_pair(lca, taxids.pop(), child_to_parent, path_cache)
     # Return the LCA and the updated path cache
-    logger.debug(f"Found LCA: {lca}")
+    logger.debug(f"Found LCA for taxids {taxids_start}: {lca}")
     return lca, path_cache
 
 def new_group(
