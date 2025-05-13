@@ -1,7 +1,7 @@
 {
     "run_output_shortread": {
         "content": [
-            "bracken_reports_merged.tsv.gz:md5,6c504fa837ef97ef2096f2569d8c6902",
+            "bracken_reports_merged.tsv.gz:md5,aabf52a8f4b32316b8f3de81d1a82644",
             "kraken_reports_merged.tsv.gz:md5,84f070b42b948d36ae38eaee4a61982e",
             "merged_blast_filtered.tsv.gz:md5,72bf159dac45375739901445727fc1c9",
             "merged_blast_input_subset.fasta.gz:md5,6868948847f1fa6a3278c6fc89f37b53",
@@ -17,11 +17,11 @@
             "nf-test": "0.9.2",
             "nextflow": "24.10.6"
         },
-        "timestamp": "2025-05-09T18:20:07.827624092"
+        "timestamp": "2025-05-13T15:37:35.965499775"
     },
     "run_output_ont": {
         "content": [
-            "bracken_reports_merged.tsv.gz:md5,1d456bff9c1e632fa7b85a9a00b48a7a",
+            "bracken_reports_merged.tsv.gz:md5,b888f3fcfab0e718155b5f9f5ed16115",
             "kraken_reports_merged.tsv.gz:md5,c088506d5e8bd2857e24d7180592b3aa",
             "merged_blast_filtered.tsv.gz:md5,109fc1f2ed21882a2c2107dde1b21a89",
             "merged_blast_input_subset.fasta.gz:md5,a15f75708e60de9e9471b946cd15e5f0",
@@ -37,6 +37,6 @@
             "nf-test": "0.9.2",
             "nextflow": "24.10.6"
         },
-        "timestamp": "2025-05-08T13:04:41.728823747"
+        "timestamp": "2025-05-13T15:39:00.977542291"
     }
 }
