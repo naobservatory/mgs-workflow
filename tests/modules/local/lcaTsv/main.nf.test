@@ -45,7 +45,6 @@ nextflow_process {
             assert tab_out.columnNames == exp_headers
             // Output should have expected column values
             for (group in groups) {
-                println("\nProcessing group: ${group}")
                 def tab_in_filtered = filter_tab(tab_in, params.group_field, group)
                 def tab_out_filtered = filter_tab(tab_out, "group_id", group)
                 assert tab_out_filtered.rowCount == 1
@@ -63,4 +62,150 @@ nextflow_process {
             }
         }
     }
+
+    test("Should break when group field is missing from input"){
+        tag "expect_failed"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
+                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                group_field = "missing"
+                taxid_field = "taxid"
+                score_field = "test_score"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of(params.input_path))
+                input[1] = params.db_path
+                input[2] = params.group_field
+                input[3] = params.taxid_field
+                input[4] = params.score_field
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("AssertionError: Group field not found in header")
+            assert !process.errorReport.contains("AssertionError: Taxid field not found in header")
+        }
+    }
+
+    test("Should break when taxid field is missing from input"){
+        tag "expect_failed"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
+                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                group_field = "seq_id"
+                taxid_field = "missing"
+                score_field = "test_score"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of(params.input_path))
+                input[1] = params.db_path
+                input[2] = params.group_field
+                input[3] = params.taxid_field
+                input[4] = params.score_field
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("AssertionError: Taxid field not found in header")
+            assert !process.errorReport.contains("AssertionError: Group field not found in header")
+        }
+    }
+
+    test("Should break when score field is missing from input"){
+        tag "expect_failed"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
+                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                group_field = "seq_id"
+                taxid_field = "taxid"
+                score_field = "missing"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of(params.input_path))
+                input[1] = params.db_path
+                input[2] = params.group_field
+                input[3] = params.taxid_field
+                input[4] = params.score_field
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("AssertionError: Score field not found in header")
+            assert !process.errorReport.contains("AssertionError: Group field not found in header")
+        }
+    }
+
+    test("Should break when root is missing from taxonomy DB"){
+        tag "expect_failed"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
+                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes-truncated.dmp"
+                group_field = "seq_id"
+                taxid_field = "taxid"
+                score_field = "test_score"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of(params.input_path))
+                input[1] = params.db_path
+                input[2] = params.group_field
+                input[3] = params.taxid_field
+                input[4] = params.score_field
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("AssertionError: Taxonomy DB does not contain root")
+            assert !process.errorReport.contains("AssertionError: Group field not found in header")
+        }
+    }
+
+    test("Should break when input TSV is not sorted by group field"){
+        tag "expect_failed"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input-unsorted.tsv"
+                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                group_field = "seq_id"
+                taxid_field = "taxid"
+                score_field = "test_score"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of(params.input_path))
+                input[1] = params.db_path
+                input[2] = params.group_field
+                input[3] = params.taxid_field
+                input[4] = params.score_field
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("AssertionError: Group ID out of order")
+            assert !process.errorReport.contains("AssertionError: Group field not found in header")
+        }
+    }
+
 }

@@ -91,6 +91,9 @@ def parse_taxonomy_db(path: str) -> dict:
             parent_taxid = int(fields[2])
             child_to_parent[taxid] = parent_taxid
             parent_to_children[parent_taxid].add(taxid)
+    # Check that DB contains root as the topmost taxid
+    assert TAXID_ROOT in child_to_parent, "Taxonomy DB does not contain root."
+    assert child_to_parent[TAXID_ROOT] == TAXID_ROOT, "Root taxid has a parent."
     # Return dictionaries
     return child_to_parent, parent_to_children
 
@@ -381,9 +384,9 @@ def parse_input_header(
             taxid, and score fields.
     """
     # Confirm fields are present
-    assert group_field in header_fields, f"Group field {group_field} not found in header."
-    assert taxid_field in header_fields, f"Taxid field {taxid_field} not found in header."
-    assert score_field in header_fields, f"Score field {score_field} not found in header."
+    assert group_field in header_fields, f"Group field not found in header: {group_field}"
+    assert taxid_field in header_fields, f"Taxid field not found in header: {taxid_field}"
+    assert score_field in header_fields, f"Score field not found in header: {score_field}"
     # Return indices
     group_idx = header_fields.index(group_field)
     taxid_idx = header_fields.index(taxid_field)
