@@ -170,10 +170,12 @@ def find_lca_paths(
     if path1 == path2:
         return path1[0]
     # Otherwise, walk down paths from root until they diverge
+    path1_copy = path1.copy()
+    path2_copy = path2.copy()
     lca = TAXID_ROOT
-    while path1 and path2:
-        ancestor1 = path1.pop()
-        ancestor2 = path2.pop()
+    while path1_copy and path2_copy:
+        ancestor1 = path1_copy.pop()
+        ancestor2 = path2_copy.pop()
         if ancestor1 != ancestor2:
             break
         lca = ancestor1
