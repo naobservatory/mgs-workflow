@@ -8,6 +8,7 @@ process LCA_TSV {
         val(group_field) // Column header for group field
         val(taxid_field) // Column header for taxid field
         val(score_field) // Column header for score field
+        val(taxid_artificial) // Parent taxid for artificial sequences
     output:
         tuple val(sample), path("lca_${tsv}"), emit: output // LCA-summarized TSV
         tuple val(sample), path("input_${tsv}"), path("input_${tax_db}"), emit: input // Input files for testing
@@ -15,7 +16,7 @@ process LCA_TSV {
         '''
         # Set up and run Python script
         io="-i !{tsv} -o lca_!{tsv} -d !{tax_db}"
-        par="-g !{group_field} -t !{taxid_field} -s !{score_field}"
+        par="-g !{group_field} -t !{taxid_field} -s !{score_field} -a !{taxid_artificial}"
         lca_tsv.py ${io} ${par}
         # Link input files to output for testing
         ln -s !{tsv} input_!{tsv}
