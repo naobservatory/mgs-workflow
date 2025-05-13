@@ -17,13 +17,14 @@ from datetime import datetime, timezone
 import gzip
 import bz2
 from dataclasses import dataclass
+from collections import defaultdict
 
 # Configure logging
 class UTCFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         dt = datetime.fromtimestamp(record.created, timezone.utc)
         return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 formatter = UTCFormatter('[%(asctime)s] %(message)s')
@@ -81,7 +82,7 @@ def parse_taxonomy_db(path: str) -> dict:
     to its parent taxid, and one mapping each taxid to its children taxids."""
     # Define dictionaries
     child_to_parent: dict[int, int] = {}
-    parent_to_children: dict[int, set[int]] = {}
+    parent_to_children: dict[int, set[int]] = defaultdict(set)
     # Read file line by line and parse into dictionaries
     with open_by_suffix(path) as f:
         for line in f:
@@ -209,21 +210,25 @@ def find_lca_set(
         tuple[int, dict[int, list[int]]]: Tuple containing the LCA taxid
             and the updated path cache.
     """
-    assert isinstance(taxids, set), "Taxids must be a set."
+    logger.debug(f"Finding LCA for taxids: {taxids}")
+    assert isinstance(taxids, set), f"Taxids must be a set, got {type(taxids)} ({taxids})."
     assert len(taxids) > 0, "Taxids must be non-empty."
     # If only one taxid, return it as LCA
     if len(taxids) == 1:
-        return taxids.pop(), path_cache
+        taxid = taxids.pop()
+        logger.debug(f"Only one taxid, returning it as LCA: {taxid}")
+        return taxid, path_cache
     # If any taxid is not in the dictionary, raise a warning and return the root
     for taxid in taxids:
         if taxid not in child_to_parent:
-            logger.warning(f"Taxid {taxid} not found in child_to_parent dictionary.")
+            logger.warning(f"Taxid {taxid} not found in child_to_parent dictionary; returning root.")
             return TAXID_ROOT, path_cache
     # Otherwise, find iterated pairwise LCA
     lca, path_cache = find_lca_pair(taxids.pop(), taxids.pop(), child_to_parent, path_cache)
     while taxids:
         lca, path_cache = find_lca_pair(lca, taxids.pop(), child_to_parent, path_cache)
     # Return the LCA and the updated path cache
+    logger.debug(f"Found LCA: {lca}")
     return lca, path_cache
 
 def new_group(
@@ -242,7 +247,7 @@ def new_group(
     """
     return Group(
         group_id=group_id,
-        taxids={taxid},
+        taxids=set([taxid]),
         n_entries=1,
         min_score=score,
         max_score=score,
@@ -271,6 +276,8 @@ def process_input_line(
         Group: Updated Group object containing information about the
             corresponding entry group.
     """
+    logger.debug(f"Processing input line: {fields}")
+    logger.debug(f"Group info: {group_info}")
     # Get group ID and confirm match with Group object
     group_id = fields[group_idx]
     if group_info is not None:
@@ -287,9 +294,12 @@ def process_input_line(
     max_score = max(group_info.max_score, score)
     score_sum = group_info.mean_score * group_info.n_entries + score
     mean_score = score_sum / (group_info.n_entries + 1)
+    # Create a new set with all the existing taxids plus the new one
+    updated_taxids = group_info.taxids.copy()
+    updated_taxids.add(taxid)
     return Group(
         group_id=group_id,
-        taxids=group_info.taxids.add(taxid),
+        taxids=updated_taxids,
         n_entries=group_info.n_entries + 1,
         min_score=min_score,
         max_score=max_score,
@@ -312,6 +322,7 @@ def process_group_to_output(
         tuple[str, dict[int, list[int]]]: Tuple containing the output line
             and the updated path cache.
     """
+    logger.debug(f"Processing group: {group_info}")
     # Get LCA of taxids in group
     lca, path_cache = find_lca_set(group_info.taxids, child_to_parent, path_cache)
     group_info.lca = lca

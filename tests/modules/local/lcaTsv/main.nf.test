@@ -1,0 +1,41 @@
+nextflow_process {
+
+    name "Test process LCA_TSV"
+    script "modules/local/lcaTsv/main.nf"
+    process "LCA_TSV"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "lca_tsv"
+
+    test("Should run without errors and produce expected output when run on valid input"){
+        tag "expect_success"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
+                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                group_field = "seq_id"
+                taxid_field = "taxid"
+                score_field = "test_score"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of(params.input_path))
+                input[1] = params.db_path
+                input[2] = params.group_field
+                input[3] = params.taxid_field
+                input[4] = params.score_field
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should have one row per input group
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
+            def n_groups = tab_in.columns[params.group_field].unique().size()
+            assert tab_out.rowCount == n_groups
+        }
+    }
+}
