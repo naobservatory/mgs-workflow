@@ -251,15 +251,21 @@ def update_subgroup(
             Subgroup object and the updated path cache.
     """
     # Compute new LCA
-    lca, path_cache = find_lca_pair(subgroup.lca, taxid, child_to_parent, path_cache)
-    # Update scores
-    min_score = min(subgroup.min_score, score)
-    max_score = max(subgroup.max_score, score)
-    score_sum = subgroup.mean_score * subgroup.n_entries + score
-    mean_score = score_sum / (subgroup.n_entries + 1)
+    if subgroup.lca is None:
+        lca, path_cache = taxid, path_cache
+        min_score = score
+        max_score = score
+        mean_score = score
+        top_taxid = taxid
+    else:
+        lca, path_cache = find_lca_pair(subgroup.lca, taxid, child_to_parent, path_cache)
+        min_score = min(subgroup.min_score, score)
+        max_score = max(subgroup.max_score, score)
+        score_sum = subgroup.mean_score * subgroup.n_entries + score
+        mean_score = score_sum / (subgroup.n_entries + 1)
+        top_taxid = taxid if score > subgroup.max_score else subgroup.top_taxid
     # Update other attributes
     n_entries = subgroup.n_entries + 1
-    top_taxid = taxid if score > subgroup.max_score else subgroup.top_taxid
     taxids = subgroup.taxids.copy()
     taxids.add(taxid)
     # Return updated Subgroup object
