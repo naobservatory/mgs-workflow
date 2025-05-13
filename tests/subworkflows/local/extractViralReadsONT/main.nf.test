@@ -41,7 +41,7 @@ nextflow_workflow {
                 .collect { line -> line.split('\t')[0] }  // Get read IDs
                 .toSet()
             def hits_final = path(workflow.out.hits_final[0]).csv(sep: "\t", decompress: true)
-            def hits_final_read_ids = hits_final.columns["query_name"].toSet()
+            def hits_final_read_ids = hits_final.columns["seq_id"].toSet()
             assert sam_ids.size() > 0
             assert sam_ids == hits_final_read_ids
 

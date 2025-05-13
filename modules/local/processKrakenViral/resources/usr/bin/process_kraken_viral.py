@@ -56,7 +56,7 @@ def process_kraken(kraken_path, out_path, virus_status_dict):
     """Process Kraken2 output into a TSV containing additional assignment information."""
     with open_by_suffix(kraken_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Write headings
-        headers = ["kraken_classified", "seq_id", "kraken_assigned_name", "kraken_assigned_taxid", "kraken_assigned_host_virus", "kraken_length", "kraken_encoded_hits"]
+        headers = ["kraken2_classified", "seq_id", "kraken2_assigned_name", "kraken2_assigned_taxid", "kraken2_assigned_host_virus", "kraken2_length", "kraken2_encoded_hits"]
         header_line = join_line(headers)
         outf.write(header_line)
         

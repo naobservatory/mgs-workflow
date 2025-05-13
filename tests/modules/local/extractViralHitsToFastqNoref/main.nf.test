@@ -1,51 +1,50 @@
 nextflow_process {
 
-    name "Test process EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF"
+    name "Test process EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED"
     script "modules/local/extractViralHitsToFastqNoref/main.nf"
-    process "EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF"
+    process "EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED"
     tag "module"
-    tag "extract_viral_hits_to_fastq_noref"
+    tag "extract_viral_hits_to_fastq_noref_labeled"
 
-    setup {
-        run("LOAD_SAMPLESHEET") {
-            script "subworkflows/local/loadSampleSheet/main.nf"
-            process {
-                '''
-                input[0] = "${projectDir}/test-data/samplesheet.csv"
-                input[1] = "illumina"
-                input[2] = false
-                '''
-            }
-        }
-        run("EXTRACT_VIRAL_READS_SHORT") {
-            script "subworkflows/local/extractViralReadsShort/main.nf"
-            process {
-                '''
-                input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = params.ref_dir
-                input[2] = "${params.ref_dir}/results/kraken_db"
-                input[3] = 20
-                input[4] = params.adapters
-                input[5] = params.host_taxon
-                input[6] = "0.33"
-                input[7] = "1"
-                input[8] = "24"
-                input[9] = "viral"
-                input[10] = 5
-                '''
-            }
-        }
-    }
-
-    test("Should run without errors and preserve entries") {
+    test("Should run correctly on interleaved data and preserve entries") {
         tag "interleaved"
         tag "expect_success"
         config "tests/configs/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = "illumina"
+                    input[2] = false
+                    '''
+                }
+            }
+            run("EXTRACT_VIRAL_READS_SHORT") {
+                script "subworkflows/local/extractViralReadsShort/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = params.ref_dir
+                    input[2] = "${params.ref_dir}/results/kraken_db"
+                    input[3] = 20
+                    input[4] = params.adapters
+                    input[5] = params.host_taxon
+                    input[6] = "0.33"
+                    input[7] = "1"
+                    input[8] = "24"
+                    input[9] = "viral"
+                    input[10] = 5
+                    '''
+                }
+            }
+        }
         when {
             params {}
             process {
                 '''
-                input[0] = EXTRACT_VIRAL_READS_SHORT.out.hits_final
+                input[0] = Channel.of("test").combine(EXTRACT_VIRAL_READS_SHORT.out.hits_final)
                 input[1] = false
                 '''
             }
@@ -54,8 +53,8 @@ nextflow_process {
             // Should run without failures
             assert process.success
             // Output should preserve read count
-            def tab_in = path(process.out.input[0]).csv(sep: "\t", decompress: true)
-            def fastq_out = path(process.out.output[0]).fastq
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true)
+            def fastq_out = path(process.out.output[0][1]).fastq
             def reads_in = tab_in.rowCount
             def reads_out = fastq_out.readNames.size()
             assert reads_in * 2 == reads_out
@@ -67,14 +66,14 @@ nextflow_process {
             for (int i = 0; i < reads_in; i++) {
                 assert tab_in.columns["seq_id"][i]+" 1" == fastq_out.readNames[2*i]
                 assert tab_in.columns["seq_id"][i]+" 2" == fastq_out.readNames[2*i+1]
-                seq_fwd = tab_in.columns["query_seq_fwd"][i]
+                seq_fwd = tab_in.columns["query_seq"][i]
                 seq_rev = tab_in.columns["query_seq_rev"][i]
                 if (seq_fwd == "") {
                     assert seqs_out[2*i] == "N"
                     assert quals_out[2*i] == "!"
                 } else {
                     assert seqs_out[2*i] == seq_fwd
-                    assert quals_out[2*i] == tab_in.columns["query_qual_fwd"][i]
+                    assert quals_out[2*i] == tab_in.columns["query_qual"][i]
                 }
                 if (seq_rev == "") {
                     assert seqs_out[2*i+1] == "N"
@@ -83,6 +82,62 @@ nextflow_process {
                     assert seqs_out[2*i+1] == seq_rev
                     assert quals_out[2*i+1] == tab_in.columns["query_qual_rev"][i]
                 }
+            }
+        }
+    }
+
+    test("Should run correctly on single-end data and preserve entries") {
+        tag "single_end"
+        tag "expect_success"
+        config "tests/configs/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                    input[1] = "ont"
+                    input[2] = false
+                    '''
+                }
+            }
+            run("EXTRACT_VIRAL_READS_ONT") {
+                script "subworkflows/local/extractViralReadsONT/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = params.ref_dir
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test").combine(EXTRACT_VIRAL_READS_ONT.out.hits_final)
+                input[1] = false
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should preserve read count
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true)
+            def fastq_out = path(process.out.output[0][1]).fastq
+            def reads_in = tab_in.rowCount
+            def reads_out = fastq_out.readNames.size()
+            assert reads_in == reads_out
+            // Read IDs and sequences should match
+            def quals_out = fastq_out.qualityScores
+            def seqs_out = fastq_out.sequences
+            def seq_fwd
+            def seq_rev
+            for (int i = 0; i < reads_in; i++) {
+                assert tab_in.columns["seq_id"][i]+" 1" == fastq_out.readNames[i]
+                assert seqs_out[i] == tab_in.columns["query_seq"][i]
+                assert quals_out[i] == tab_in.columns["query_qual"][i]
             }
         }
     }
