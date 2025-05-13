@@ -111,10 +111,9 @@ def find_lca_paths(
     # If paths are identical, return the first taxid
     if path1 == path2:
         return path1[0]
-    # Create copies of paths to avoid modifying the originals
+    # Otherwise, walk down paths from root until they diverge
     path1_copy = path1.copy()
     path2_copy = path2.copy()
-    # Otherwise, walk down paths from root until they diverge
     lca = TAXID_ROOT
     while path1_copy and path2_copy:
         ancestor1 = path1_copy.pop()
@@ -587,7 +586,7 @@ def open_by_suffix(filename, mode="r", debug=False):
     if filename.endswith('.gz'):
         return gzip.open(filename, mode + 't')
     elif filename.endswith('.bz2'):
-        return bz2.BZ2file(filename, mode)
+        return bz2.BZ2File(filename, mode)
     else:
         return open(filename, mode)
 
