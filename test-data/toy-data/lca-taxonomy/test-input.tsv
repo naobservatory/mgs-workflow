@@ -1,0 +1,14 @@
+seq_id	taxid	test_score	exp_lca	comments
+A	9001	100	9001	single match
+B	9002	100	9000	two matches
+B	9003	200	9000	two matches
+C	9004	100	9004	two identical matches
+C	9004	150	9004	two identical matches
+D	9005	100	9003	three close matches
+D	9006	200	9003	three close matches
+D	9007	300	9003	three close matches
+E	9005	100	9000	three distant matches
+E	9006	200	9000	three distant matches
+E	9008	300	9000	three distant matches
+F	9001	100	1	one match, one missing
+F	9999	150	1	one match, one missing
