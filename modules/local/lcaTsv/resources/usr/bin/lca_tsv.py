@@ -469,19 +469,37 @@ def output_group(
 # Functions for processing input and output
 #=======================================================================
 
-def get_output_header() -> list[str]:
+def get_output_header(
+        prefix: str,
+        group_field: str,
+        taxid_field: str,
+        score_field: str,
+        ) -> list[str]:
     """
     Get the header for the output TSV.
+    Args:
+        prefix (str): Prefix for output columns.
+        group_field (str): Input column header for group field.
+        taxid_field (str): Input column header for taxid field.
+        score_field (str): Input column header for score field.
     Returns:
-        str: Header for the output TSV.
+        list[str]: Header for the output TSV.
     """
-    fields_base = ["lca", "n_entries", "n_classified", "top_taxid",
-                   "top_taxid_classified", "min_score", "max_score",
-                   "mean_score"]
-    fields_all = [f + "_all" for f in fields_base]
-    fields_natural = [f + "_natural" for f in fields_base]
-    fields_artificial = [f + "_artificial" for f in fields_base]
-    return ["group_id"] + fields_all + fields_natural + fields_artificial
+    fields_base = [
+        taxid_field + "_lca",
+        "n_assignments_total",
+        "n_assignments_classified",
+        taxid_field + "_top",
+        taxid_field + "_top_classified",
+        score_field + "_min",
+        score_field + "_max",
+        score_field + "_mean",
+    ]
+    fields_prefixed = [prefix + "_" + f for f in fields_base]
+    fields_all = [f + "_all" for f in fields_prefixed]
+    fields_natural = [f + "_natural" for f in fields_prefixed]
+    fields_artificial = [f + "_artificial" for f in fields_prefixed]
+    return [group_field] + fields_all + fields_natural + fields_artificial
 
 def write_output_line(
         fields: list[str],
@@ -580,6 +598,7 @@ def parse_input_tsv(
         child_to_parent: dict[int, int],
         artificial_taxids: set[int],
         unclassified_taxids: set[int],
+        prefix: str,
         ) -> None:
     """
     Iterate linewise over input TSV, calculating the LCA for each group
@@ -595,10 +614,11 @@ def parse_input_tsv(
             engineered sequences.
         unclassified_taxids (set[int]): Set of taxids that represent unclassified
             sequences.
+        prefix (str): Prefix for output columns.
     """
     with open_by_suffix(input_path) as inf, open_by_suffix(output_path, "w") as outf:
         # Write header to output file
-        output_header = get_output_header()
+        output_header = get_output_header(prefix, group_field, taxid_field, score_field)
         write_output_line(output_header, output_header, outf)
         # Read header from input file
         header = inf.readline().strip().split("\t")
@@ -767,6 +787,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--score", "-s", help="Column header for score field.")
     parser.add_argument("--artificial", "-a",
                         help="Parent taxid for artificial sequences (to be handled separately).")
+    parser.add_argument("--prefix", "-p", help="Column prefix for output columns.")
     # Return parsed arguments
     return parser.parse_args()
 
@@ -809,7 +830,8 @@ def main() -> None:
     # Parse input TSV and write LCA information to output TSV
     logger.info("Parsing input TSV.")
     parse_input_tsv(args.input, args.output, args.group, args.taxid, args.score,
-                    child_to_parent, artificial_taxids, unclassified_taxids_descendants)
+                    child_to_parent, artificial_taxids, unclassified_taxids_descendants,
+                    args.prefix)
     # Log completion
     logger.info("Script complete.")
 
