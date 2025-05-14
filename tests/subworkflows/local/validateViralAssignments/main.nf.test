@@ -81,6 +81,7 @@ nextflow_workflow {
             // Basic BLAST invocation should work as expected
             def blast_db = workflow.out.test_blast_db.collect{path(it[1]).csv(sep: "\t",decompress: true)}
             def blast_query = workflow.out.test_blast_query.collect{path(it[1]).fasta}
+            def blast_lca = workflow.out.test_blast_lca.collect{path(it[1]).csv(sep: "\t",decompress: true)}
             def cluster_fasta = workflow.out.test_reps_fasta.collect{path(it[1]).fasta}
             assert blast_query == cluster_fasta
             assert blast_db.size() == blast_query.size()
@@ -92,6 +93,8 @@ nextflow_workflow {
                 def ids_in = blast_query[i].keySet().collect{ it.tokenize(" ")[0] }.toSet()
                 def ids_out = blast_db[i].columns["qseqid"].toSet()
                 assert ids_in.containsAll(ids_out)
+                // LCA output should have one row per sequence in BLAST output
+                assert blast_lca[i].rowCount == blast_db[i].columns["qseqid"].toSet().size()
             }
         }
     }

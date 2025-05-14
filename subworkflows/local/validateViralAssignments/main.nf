@@ -80,5 +80,6 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_reps_fasta = cluster_ch.fasta
         test_blast_db = blast_ch.blast
         test_blast_query = blast_ch.query
+        test_blast_lca = blast_ch.lca
         test_regrouped = regrouped_ch
 }
