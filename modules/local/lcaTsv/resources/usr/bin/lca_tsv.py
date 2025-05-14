@@ -768,7 +768,7 @@ def get_unclassified_taxids(names_db: dict[int, set[str]]) -> set[int]:
     for taxid, names in names_db.items():
         for name in names:
             name_lower = name.lower()
-            if "unclassified" in name_lower or "sp." in name_lower:
+            if "unclassified" in name_lower or " sp." in name_lower:
                 unclassified_taxids.add(taxid)
                 break
     # Return set of unclassified taxids

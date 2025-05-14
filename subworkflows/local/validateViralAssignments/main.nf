@@ -30,12 +30,13 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         cluster_identity // Identity threshold for VSEARCH clustering
         cluster_min_len // Minimum sequence length for VSEARCH clustering
         n_clusters // Number of cluster representatives to validate for each specie
-        blast_db_dir // Path to BLAST reference DB
+        ref_dir // Path to reference directory containing BLAST DB
         blast_db_prefix // Prefix for BLAST reference DB files (e.g. "nt")
         perc_id // Minimum %ID required for BLAST to return an alignment
         qcov_hsp_perc // Minimum query coverage required for BLAST to return an alignment
         blast_max_rank // Only keep alignments that are in the top-N for that query by bitscore
         blast_min_frac // Only keep alignments that have at least this fraction of the best bitscore for that query
+        taxid_artificial // Parent taxid for artificial sequences in NCBI taxonomy
     main:
         // 1. Split viral hits TSV by species
         split_ch = SPLIT_VIRAL_TSV_BY_SPECIES(groups, db)
@@ -43,8 +44,8 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         cluster_ch = CLUSTER_VIRAL_ASSIGNMENTS(split_ch.fastq, cluster_identity,
             cluster_min_len, n_clusters, Channel.of(false))
         // 3. BLAST cluster representatives
-        blast_ch = BLAST_FASTA(cluster_ch.fasta, blast_db_dir, blast_db_prefix,
-            perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac)
+        blast_ch = BLAST_FASTA(cluster_ch.fasta, ref_dir, blast_db_prefix,
+            perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac, taxid_artificial)
         // 4. Concatenate clustering information across species to regenerate per-group information
         // NB: This concatenation stage will move down as more steps are added, but will need to happen eventually
         // and is useful for testing, so I'm implementing it now. It should probably get moved into its own

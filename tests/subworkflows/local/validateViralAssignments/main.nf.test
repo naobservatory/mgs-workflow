@@ -41,6 +41,7 @@ nextflow_workflow {
         when {
             params {
                 n_clusters = 10
+                taxid_artificial = 81077
             }
             workflow {
                 '''
@@ -49,12 +50,13 @@ nextflow_workflow {
                 input[2] = params.validation_cluster_identity // cluster_identity
                 input[3] = 15 // cluster_min_len
                 input[4] = params.n_clusters // n_clusters
-                input[5] = "${params.ref_dir}/results/${params.blast_db_prefix}" // blast_db_dir TODO
+                input[5] = params.ref_dir // ref_dir
                 input[6] = params.blast_db_prefix // blast_db_prefix
                 input[7] = params.blast_perc_id // perc_id
                 input[8] = params.blast_qcov_hsp_perc // qcov_hsp_perc
                 input[9] = params.blast_max_rank // blast_max_rank
                 input[10] = params.blast_min_frac // blast_min_frac
+                input[11] = params.taxid_artificial // taxid_artificial
                 '''
             }
         }

@@ -2,6 +2,8 @@
 // return a TSV with a single row per group containing the lowest common ancestor
 // taxid across all taxids in the group.
 process LCA_TSV {
+    label "python"
+    label "single"
     input:
         tuple val(sample), path(tsv) // Sorted TSV with group, taxid, and score columns
         path(nodes_db) // TSV containing taxonomic structure (mapping taxids to parent taxids)
