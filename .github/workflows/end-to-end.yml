@@ -30,7 +30,7 @@ jobs:
       - name: Setup Nextflow latest (stable)
         uses: nf-core/setup-nextflow@v1
         with:
-          version: "latest"
+          version: "24.10.6"
 
       - name: Install nf-test
         run: |
@@ -63,7 +63,7 @@ jobs:
       - name: Setup Nextflow latest (stable)
         uses: nf-core/setup-nextflow@v1
         with:
-          version: "latest"
+          version: "24.10.6"
 
       - name: Install nf-test
         run: |
@@ -96,7 +96,7 @@ jobs:
       - name: Setup Nextflow latest (stable)
         uses: nf-core/setup-nextflow@v1
         with:
-          version: "latest"
+          version: "24.10.6"
 
       - name: Install nf-test
         run: |
@@ -130,7 +130,7 @@ jobs:
       - name: Setup Nextflow latest (stable)
         uses: nf-core/setup-nextflow@v1
         with:
-          version: "latest"
+          version: "24.10.6"
 
       - name: Install nf-test
         run: |
@@ -163,7 +163,7 @@ jobs:
       - name: Setup Nextflow latest (stable)
         uses: nf-core/setup-nextflow@v1
         with:
-          version: "latest"
+          version: "24.10.6"
 
       - name: Install nf-test
         run: |
