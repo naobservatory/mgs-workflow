@@ -15,14 +15,15 @@ include { COPY_FILE } from "../../../modules/local/copyFile"
 workflow BLAST_VIRAL {
     take:
         viral_fastq // Interleaved or single-end
-        blast_db_dir
-        blast_db_prefix
+        ref_dir // Path to reference directory containing BLAST DB
+        blast_db_prefix // Prefix for BLAST reference DB files (e.g. "nt")
         read_fraction
         blast_max_rank
         blast_min_frac
         random_seed
         perc_id
         qcov_hsp_perc
+        taxid_artificial // Parent taxid for artificial sequences in NCBI taxonomy
     main:
         // 1. Subset viral reads for BLAST
         reads_in = Channel.of("merged")
@@ -34,8 +35,9 @@ workflow BLAST_VIRAL {
         // 2. Convert to FASTA
         fasta_ch = CONVERT_FASTQ_FASTA(subset_sorted_ch).output
         // 3. Run BLAST and process output
-        blast_ch = BLAST_FASTA(fasta_ch, blast_db_dir, blast_db_prefix,
-            perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac)
+        blast_ch = BLAST_FASTA(fasta_ch, ref_dir, blast_db_prefix,
+            perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac,
+            taxid_artificial)
         // 4. Rename subset FASTA file for output
         copy_ch = COPY_FILE(fasta_ch, "blast_input_subset.fasta.gz")
     emit:
