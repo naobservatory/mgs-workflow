@@ -14,6 +14,7 @@ E. [TODO] Compare taxids assigned in (4) to those assigned by RUN workflow
 
 include { SPLIT_VIRAL_TSV_BY_SPECIES } from "../../../subworkflows/local/splitViralTsvBySpecies"
 include { CLUSTER_VIRAL_ASSIGNMENTS } from "../../../subworkflows/local/clusterViralAssignments"
+include { BLAST_FASTA } from "../../../subworkflows/local/blastFasta"
 include { ADD_SAMPLE_COLUMN as LABEL_GROUP_SPECIES } from "../../../modules/local/addSampleColumn"
 include { CONCATENATE_TSVS_LABELED } from "../../../modules/local/concatenateTsvs"
 include { ADD_SAMPLE_COLUMN as LABEL_GROUP } from "../../../modules/local/addSampleColumn"
@@ -29,13 +30,22 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         cluster_identity // Identity threshold for VSEARCH clustering
         cluster_min_len // Minimum sequence length for VSEARCH clustering
         n_clusters // Number of cluster representatives to validate for each specie
+        blast_db_dir // Path to BLAST reference DB
+        blast_db_prefix // Prefix for BLAST reference DB files (e.g. "nt")
+        perc_id // Minimum %ID required for BLAST to return an alignment
+        qcov_hsp_perc // Minimum query coverage required for BLAST to return an alignment
+        blast_max_rank // Only keep alignments that are in the top-N for that query by bitscore
+        blast_min_frac // Only keep alignments that have at least this fraction of the best bitscore for that query
     main:
         // 1. Split viral hits TSV by species
         split_ch = SPLIT_VIRAL_TSV_BY_SPECIES(groups, db)
         // 2. Cluster sequences within species and obtain representatives of largest clusters
         cluster_ch = CLUSTER_VIRAL_ASSIGNMENTS(split_ch.fastq, cluster_identity,
             cluster_min_len, n_clusters, Channel.of(false))
-        // 3. Concatenate clustering information across species to regenerate per-group information
+        // 3. BLAST cluster representatives
+        blast_ch = BLAST_FASTA(cluster_ch.fasta, blast_db_dir, blast_db_prefix,
+            perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac)
+        // 4. Concatenate clustering information across species to regenerate per-group information
         // NB: This concatenation stage will move down as more steps are added, but will need to happen eventually
         // and is useful for testing, so I'm implementing it now. It should probably get moved into its own
         // workflow eventually.
@@ -67,5 +77,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_cluster_ids = cluster_ch.ids
         test_reps_fastq = cluster_ch.fastq
         test_reps_fasta = cluster_ch.fasta
+        test_blast_db = blast_ch.blast
+        test_blast_query = blast_ch.query
         test_regrouped = regrouped_ch
 }
