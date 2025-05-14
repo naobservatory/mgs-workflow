@@ -397,4 +397,92 @@ nextflow_process {
         }
     }
 
+    test("Should correctly handle fully empty input (no header)"){
+        tag "expect_success"
+        tag "empty_input"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/empty_file.txt"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
+                group_field = "seq_id"
+                taxid_field = "taxid"
+                score_field = "test_score"
+                artificial_taxid = 8000
+                prefix = "test"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of(params.input_path))
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
+                input[7] = params.prefix
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should be empty
+            def output_file = path(process.out.output[0][1])
+            assert output_file.exists()
+            assert output_file.size() == 0
+        }
+    }
+
+    test("Should correctly handle empty input (header only)"){
+        tag "expect_success"
+        tag "empty_input"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input-empty.tsv"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
+                group_field = "seq_id"
+                taxid_field = "taxid"
+                score_field = "test_score"
+                artificial_taxid = 8000
+                prefix = "test"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of(params.input_path))
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
+                input[7] = params.prefix
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should be empty
+            def output_file = path(process.out.output[0][1])
+            assert output_file.exists()
+            assert output_file.readLines().size() == 1
+            // Output should have expected column names
+            def exp_headers_base = [params.taxid_field + "_lca",
+                "n_assignments_total", "n_assignments_classified",
+                params.taxid_field + "_top", params.taxid_field + "_top_classified",
+                params.score_field + "_min", params.score_field + "_max",
+                params.score_field + "_mean"]
+            def exp_headers_prefixed = exp_headers_base.collect { params.prefix + "_" + it }
+            def exp_headers_all = exp_headers_prefixed.collect { it + "_all" }
+            def exp_headers_natural = exp_headers_prefixed.collect { it + "_natural" }
+            def exp_headers_artificial = exp_headers_prefixed.collect { it + "_artificial" }
+            def exp_headers = [params.group_field] + exp_headers_all + exp_headers_natural + exp_headers_artificial
+            def exp_headers_joined = exp_headers.join("\t")
+            assert output_file.readLines()[0] == exp_headers_joined
+        }
+    }
 }
