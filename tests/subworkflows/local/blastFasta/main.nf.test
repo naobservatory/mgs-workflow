@@ -1,4 +1,11 @@
 def checkGzipSorted = { file,key -> ["bash", "-c", "zcat " + file + " | sort -C " + key + " && printf 1 || printf 0"].execute().text.trim() as Integer }
+def exp_lca_headers_base = ["staxid_lca", "n_assignments_total", "n_assignments_classified",
+    "staxid_top", "staxid_top_classified", "bitscore_min", "bitscore_max", "bitscore_mean"]
+def exp_lca_headers_prefixed = exp_lca_headers_base.collect{ "blast_${it}" }
+def exp_lca_headers_all = exp_lca_headers_prefixed.collect{ it + "_all" }
+def exp_lca_headers_natural = exp_lca_headers_prefixed.collect{ it + "_natural" }
+def exp_lca_headers_artificial = exp_lca_headers_prefixed.collect{ it + "_artificial" }
+def exp_lca_headers = ["qseqid"] + exp_lca_headers_all + exp_lca_headers_natural + exp_lca_headers_artificial
 
 nextflow_workflow {
 
@@ -94,6 +101,11 @@ nextflow_workflow {
             def ids_in = fasta_in.keySet().collect{ it.tokenize(" ")[0] }.toSet()
             def ids_out = tab_out.columns["qseqid"].toSet()
             assert ids_in.containsAll(ids_out)
+            // LCA output should have expected columns
+            def lca_out = path(workflow.out.lca[0][1]).csv(sep: "\t", decompress: true)
+            assert lca_out.columnNames == exp_lca_headers
+            // LCA output should have one row per sequence in BLAST output
+            assert lca_out.rowCount == tab_out.columns["qseqid"].toSet().size()
         }
     }
 
@@ -184,6 +196,11 @@ nextflow_workflow {
             def ids_in = fasta_in.keySet().collect{ it.tokenize(" ")[0] }.toSet()
             def ids_out = tab_out.columns["qseqid"].toSet()
             assert ids_in.containsAll(ids_out)
+            // LCA output should have expected columns
+            def lca_out = path(workflow.out.lca[0][1]).csv(sep: "\t", decompress: true)
+            assert lca_out.columnNames == exp_lca_headers
+            // LCA output should have one row per sequence in BLAST output
+            assert lca_out.rowCount == tab_out.columns["qseqid"].toSet().size()
         }
     }
 
@@ -274,6 +291,11 @@ nextflow_workflow {
             def ids_in = fasta_in.keySet().collect{ it.tokenize(" ")[0] }.toSet()
             def ids_out = tab_out.columns["qseqid"].toSet()
             assert ids_in.containsAll(ids_out)
+            // LCA output should have expected columns
+            def lca_out = path(workflow.out.lca[0][1]).csv(sep: "\t", decompress: true)
+            assert lca_out.columnNames == exp_lca_headers
+            // LCA output should have one row per sequence in BLAST output
+            assert lca_out.rowCount == tab_out.columns["qseqid"].toSet().size()
         }
     } 
 
@@ -324,7 +346,11 @@ nextflow_workflow {
                          "bitscore_rank_dense", "bitscore_fraction"]
             def cols_out = tab_out[0].split("\t")
             assert cols_out == cols_out_exp
+            // LCA output should have header row only
+            def lca_out = path(workflow.out.lca[0][1]).linesGzip
+            assert lca_out.size() == 1
+            def cols_lca_out = lca_out[0].split("\t")
+            assert cols_lca_out == exp_lca_headers
         }
     }
-
 }
