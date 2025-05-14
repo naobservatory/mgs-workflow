@@ -532,7 +532,7 @@ def process_input_line(
         group_info: Group | None,
         artificial_taxids: set[int],
         unclassified_taxids: set[int],
-        ) -> tuple[Group, dict[int, list[int]]]:
+        ) -> Group:
     """
     Process a single line of an input TSV and return an updated Group object
     containing information about the corresponding entry group.
@@ -546,9 +546,8 @@ def process_input_line(
         artificial_taxids (set[int]): Set of taxids that represent artificial or
             engineered sequences.
     Returns:
-        tuple[Group, dict[int, list[int]]]: Tuple containing the updated
-            Group object containing information about the corresponding entry
-            group and the updated path cache.
+        Group: Updated Group object containing information about the corresponding
+            entry group.
     """
     logger.debug(f"Processing input line: {fields}")
     logger.debug(f"Group info: {group_info}")
@@ -562,12 +561,9 @@ def process_input_line(
     score = float(fields[score_idx])
     # If no Group object, create one
     if group_info is None:
-        # NB: new_group returns a Group object only
         return new_group(group_id, taxid, score, artificial_taxids,
                          unclassified_taxids)
     # Otherwise, update Group object
-    # NB: update_group returns a tuple with the updated Group object and the
-    # updated path cache
     return update_group(group_info, taxid, score, artificial_taxids,
                         unclassified_taxids)
 
