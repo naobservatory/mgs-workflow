@@ -16,7 +16,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "taxid"
                 score_field = "test_score"
@@ -26,11 +27,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -43,7 +45,8 @@ nextflow_process {
             def groups = tab_in.columns[params.group_field].unique()
             assert tab_out.rowCount == groups.size()
             // Output should have expected column names
-            def exp_headers_base = ["lca", "n_entries", "top_taxid", "min_score", "max_score", "mean_score"]
+            def exp_headers_base = ["lca", "n_entries", "n_classified", "top_taxid",
+                "top_taxid_classified", "min_score", "max_score", "mean_score"]
             def exp_headers_all = exp_headers_base.collect { it + "_all" }
             def exp_headers_natural = exp_headers_base.collect { it + "_natural" }
             def exp_headers_artificial = exp_headers_base.collect { it + "_artificial" }
@@ -81,7 +84,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input-artificial.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "taxid"
                 score_field = "test_score"
@@ -91,11 +95,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -108,7 +113,8 @@ nextflow_process {
             def groups = tab_in.columns[params.group_field].unique()
             assert tab_out.rowCount == groups.size()
             // Output should have expected column names
-            def exp_headers_base = ["lca", "n_entries", "top_taxid", "min_score", "max_score", "mean_score"]
+            def exp_headers_base = ["lca", "n_entries", "n_classified", "top_taxid",
+                "top_taxid_classified", "min_score", "max_score", "mean_score"]
             def exp_headers_all = exp_headers_base.collect { it + "_all" }
             def exp_headers_natural = exp_headers_base.collect { it + "_natural" }
             def exp_headers_artificial = exp_headers_base.collect { it + "_artificial" }
@@ -130,12 +136,79 @@ nextflow_process {
         }
     }
 
+    test("Should run without errors and produce expected output when run on partially unclassified input"){
+        tag "expect_success"
+        tag "unclassified"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input-unclassified.tsv"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
+                group_field = "seq_id"
+                taxid_field = "taxid"
+                score_field = "test_score"
+                artificial_taxid = 8000
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of(params.input_path))
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            // Output should have one row per input group
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
+            def groups = tab_in.columns[params.group_field].unique()
+            assert tab_out.rowCount == groups.size()
+            // Output should have expected column names
+            def exp_headers_base = ["lca", "n_entries", "n_classified", "top_taxid",
+                "top_taxid_classified", "min_score", "max_score", "mean_score"]
+            def exp_headers_all = exp_headers_base.collect { it + "_all" }
+            def exp_headers_natural = exp_headers_base.collect { it + "_natural" }
+            def exp_headers_artificial = exp_headers_base.collect { it + "_artificial" }
+            def exp_headers = ["group_id"] + exp_headers_all + exp_headers_natural + exp_headers_artificial
+            assert tab_out.columnNames == exp_headers
+            // Output should have expected column values
+            for (group in groups) {
+                def tab_in_filtered = filter_tab(tab_in, params.group_field, group)
+                def tab_out_filtered = filter_tab(tab_out, "group_id", group)
+                assert tab_out_filtered.rowCount == 1
+                def exp_lca = tab_in_filtered.columns["exp_lca"][0]
+                def exp_top_taxid = tab_in_filtered.columns["exp_top_taxid"][0]
+                def exp_top_taxid_classified = tab_in_filtered.columns["exp_top_taxid_classified"][0]
+                def exp_n_entries = tab_in_filtered.rowCount
+                def exp_min_score = tab_in_filtered.columns[params.score_field].min()
+                def exp_max_score = tab_in_filtered.columns[params.score_field].max()
+                def exp_mean_score = tab_in_filtered.columns[params.score_field].sum() / exp_n_entries
+                assert tab_out_filtered.columns["group_id"][0] == group
+                assert tab_out_filtered.columns["lca_all"][0] == exp_lca
+                assert tab_out_filtered.columns["n_entries_all"][0] == exp_n_entries
+                assert tab_out_filtered.columns["min_score_all"][0] == exp_min_score
+                assert tab_out_filtered.columns["max_score_all"][0] == exp_max_score
+                assert tab_out_filtered.columns["mean_score_all"][0] == exp_mean_score
+                assert tab_out_filtered.columns["top_taxid_all"][0] == exp_top_taxid
+                assert tab_out_filtered.columns["top_taxid_classified_all"][0] == exp_top_taxid_classified
+            }
+        }
+    }
+
     test("Should break when group field is missing from input"){
         tag "expect_failed"
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "missing"
                 taxid_field = "taxid"
                 score_field = "test_score"
@@ -145,11 +218,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -166,7 +240,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "missing"
                 score_field = "test_score"
@@ -176,11 +251,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -197,7 +273,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "taxid"
                 score_field = "missing"
@@ -207,11 +284,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -228,7 +306,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes-truncated.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes-truncated.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "taxid"
                 score_field = "test_score"
@@ -238,11 +317,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }
@@ -259,7 +339,8 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-input-unsorted.tsv"
-                db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                nodes_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-nodes.dmp"
+                names_db_path = "${projectDir}/test-data/toy-data/lca-taxonomy/test-names.dmp"
                 group_field = "seq_id"
                 taxid_field = "taxid"
                 score_field = "test_score"
@@ -269,11 +350,12 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
-                input[1] = params.db_path
-                input[2] = params.group_field
-                input[3] = params.taxid_field
-                input[4] = params.score_field
-                input[5] = params.artificial_taxid
+                input[1] = params.nodes_db_path
+                input[2] = params.names_db_path
+                input[3] = params.group_field
+                input[4] = params.taxid_field
+                input[5] = params.score_field
+                input[6] = params.artificial_taxid
                 '''
             }
         }

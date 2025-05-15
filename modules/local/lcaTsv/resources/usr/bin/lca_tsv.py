@@ -202,81 +202,132 @@ class Subgroup:
     A subgroup of a Group object, tracking information about a subset of
     entries, including taxids, scores, and the top taxid and LCA.
     """
-    taxids: set[int]
-    n_entries: int
-    min_score: float | None
-    max_score: float | None
-    mean_score: float | None
-    top_taxid: int | None
-    lca: int | None
+    taxids: list[int]
+    taxids_classified: list[int]
+    scores: list[float]
+    summary: dict[str, int|float] | None
 
 def new_subgroup(
         taxid: int | None,
         score: float | None,
+        unclassified_taxids: set[int],
     ) -> Subgroup:
     """
     Create a new Subgroup object from minimal input information.
     Args:
         taxid (int | None): Taxid of entry, if any.
         score (float | None): Score of entry, if any.
+        unclassified_taxids (set[int]): Set of unclassified taxids.
     Returns:
         Subgroup: New Subgroup object.
     """
     return Subgroup(
-        taxids = set([taxid]) if taxid is not None else set(),
-        n_entries = 1 if taxid is not None else 0,
-        min_score = score if score is not None else None,
-        max_score = score if score is not None else None,
-        mean_score = score if score is not None else None,
-        top_taxid = taxid if taxid is not None else None,
-        lca = taxid if taxid is not None else None,
+        taxids = [taxid] if taxid is not None else [],
+        taxids_classified = [taxid not in unclassified_taxids] if taxid is not None else [],
+        scores = [score] if score is not None else [],
+        summary = None,
     )
 
 def update_subgroup(
         subgroup: Subgroup,
         taxid: int,
         score: float,
-        child_to_parent: dict[int, int],
-        path_cache: dict[int, list[int]],
-    ) -> tuple[Subgroup, dict[int, list[int]]]:
+        unclassified_taxids: set[int],
+    ) -> Subgroup:
     """
     Update a Subgroup object with new taxid and score information.
     Args:
         subgroup (Subgroup): Subgroup object to update.
         taxid (int): Taxid of new entry.
         score (float): Score of new entry.
+        unclassified_taxids (set[int]): Set of unclassified taxids.
     Returns:
-        tuple[Subgroup, dict[int, list[int]]]: Tuple containing the updated
-            Subgroup object and the updated path cache.
+        Subgroup: Updated Subgroup object.
     """
-    # Compute new LCA
-    if subgroup.lca is None:
-        lca, path_cache = taxid, path_cache
-        min_score = score
-        max_score = score
-        mean_score = score
-        top_taxid = taxid
+    if len(subgroup.taxids) == 0:
+        taxids = [taxid]
+        taxids_classified = [taxid not in unclassified_taxids]
+        scores = [score]
     else:
-        lca, path_cache = find_lca_pair(subgroup.lca, taxid, child_to_parent, path_cache)
-        min_score = min(subgroup.min_score, score)
-        max_score = max(subgroup.max_score, score)
-        score_sum = subgroup.mean_score * subgroup.n_entries + score
-        mean_score = score_sum / (subgroup.n_entries + 1)
-        top_taxid = taxid if score > subgroup.max_score else subgroup.top_taxid
-    # Update other attributes
-    n_entries = subgroup.n_entries + 1
-    taxids = subgroup.taxids.copy()
-    taxids.add(taxid)
+        taxids = subgroup.taxids + [taxid]
+        taxids_classified = subgroup.taxids_classified + [taxid not in unclassified_taxids]
+        scores = subgroup.scores + [score]
     # Return updated Subgroup object
     return Subgroup(
         taxids = taxids,
-        n_entries = n_entries,
-        min_score = min_score,
-        max_score = max_score,
-        mean_score = mean_score,
-        top_taxid = top_taxid,
-        lca = lca,
-    ), path_cache
+        taxids_classified = taxids_classified,
+        scores = scores,
+        summary = None,
+    )
+
+def summarize_subgroup(
+        subgroup: Subgroup,
+        child_to_parent: dict[int, int],
+        path_cache: dict[int, list[int]],
+) -> tuple[Subgroup, dict[int, list[int]]]:
+    """
+    Summarize a Subgroup object into a dictionary of statistics.
+    Args:
+        subgroup (Subgroup): Subgroup object to summarize.
+        child_to_parent (dict[int, int]): Dictionary mapping each taxid to its parent.
+        path_cache (dict[int, list[int]]): Cache of precomputed paths to the root.
+    Returns:
+        tuple[Subgroup, dict[int, list[int]]]: Tuple containing the summarized
+            Subgroup object and the updated path cache.
+    """
+    if len(subgroup.taxids) == 0:
+        subgroup.summary = {
+            "min_score": None,
+            "max_score": None,
+            "mean_score": None,
+            "n_entries": 0,
+            "n_classified": 0,
+            "top_taxid": None,
+            "top_taxid_classified": None,
+            "lca": None,
+        }
+        return subgroup, path_cache
+    # Summary score statistics
+    min_score = min(subgroup.scores)
+    max_score = max(subgroup.scores)
+    mean_score = sum(subgroup.scores) / len(subgroup.scores)
+    # Summary taxid statistics
+    n_entries = len(subgroup.taxids)
+    n_classified = sum(subgroup.taxids_classified)
+    # Top taxid:
+    # Out of all taxids with a joint max score, choose the first classified one if any,
+    # otherwise choose the first unclassified one
+    is_top_taxid = [score == max_score for score in subgroup.scores]
+    top_and_classified = [x and y for x, y in zip(is_top_taxid, subgroup.taxids_classified, strict=True)]
+    top_taxid_classified = any(top_and_classified)
+    if top_taxid_classified:
+        top_taxid = subgroup.taxids[top_and_classified.index(True)]
+    else:
+        top_taxid = subgroup.taxids[is_top_taxid.index(True)]
+    # LCA:
+    # If top taxid is classified, exclude all unclassified taxids
+    # Otherwise, exclude unclassified taxids that are not joint top in score
+    taxids_lca = set()
+    taxids_lca_zip = zip(subgroup.taxids, subgroup.taxids_classified, is_top_taxid)
+    for taxid, classified, is_top in taxids_lca_zip:
+        if top_taxid_classified and classified:
+            taxids_lca.add(taxid)
+        elif not top_taxid_classified:
+            if classified or is_top:
+                taxids_lca.add(taxid)
+    lca, path_cache = find_lca_set(taxids_lca, child_to_parent, path_cache)
+    # Return summarized statistics
+    subgroup.summary = {
+        "min_score": min_score,
+        "max_score": max_score,
+        "mean_score": mean_score,
+        "n_entries": n_entries,
+        "n_classified": n_classified,
+        "top_taxid": top_taxid,
+        "top_taxid_classified": top_taxid_classified,
+        "lca": lca,
+    }
+    return subgroup, path_cache
 
 def output_subgroup(
         subgroup: Subgroup,
@@ -284,13 +335,16 @@ def output_subgroup(
     """
     Process a Subgroup object into a list of fields for output.
     """
+    assert subgroup.summary is not None, "Subgroup has not yet been summarized."
     return [
-        str(subgroup.lca),
-        str(subgroup.n_entries),
-        str(subgroup.top_taxid),
-        str(subgroup.min_score),
-        str(subgroup.max_score),
-        str(subgroup.mean_score),
+        str(subgroup.summary["lca"]),
+        str(subgroup.summary["n_entries"]),
+        str(subgroup.summary["n_classified"]),
+        str(subgroup.summary["top_taxid"]),
+        str(subgroup.summary["top_taxid_classified"]),
+        str(subgroup.summary["min_score"]),
+        str(subgroup.summary["max_score"]),
+        str(subgroup.summary["mean_score"]),
     ]
 
 #=======================================================================
@@ -313,6 +367,7 @@ def new_group(
         taxid: int,
         score: float,
         artificial_taxids: set[int],
+        unclassified_taxids: set[int],
         ) -> Group:
     """
     Create a new Group object from minimal input information.
@@ -322,19 +377,21 @@ def new_group(
         score (float): Score of first entry.
         artificial_taxids (set[int]): Set of taxids that represent artificial
             or engineered sequences.
+        unclassified_taxids (set[int]): Set of taxids that represent unclassified
+            sequences.
     Returns:
         Group: New Group object.
     """
     # Determine if first entry is artificial
     is_artificial = taxid in artificial_taxids
     # Initialize all, natural, and artificial subgroups
-    subgroup_all = new_subgroup(taxid, score)
+    subgroup_all = new_subgroup(taxid, score, unclassified_taxids)
     if is_artificial:
-        subgroup_natural = new_subgroup(None, None)
-        subgroup_artificial = new_subgroup(taxid, score)
+        subgroup_natural = new_subgroup(None, None, unclassified_taxids)
+        subgroup_artificial = new_subgroup(taxid, score, unclassified_taxids)
     else:
-        subgroup_natural = new_subgroup(taxid, score)
-        subgroup_artificial = new_subgroup(None, None)
+        subgroup_natural = new_subgroup(taxid, score, unclassified_taxids)
+        subgroup_artificial = new_subgroup(None, None, unclassified_taxids)
     # Return Group object
     return Group(
         group_id=group_id,
@@ -347,35 +404,54 @@ def update_group(
         group: Group,
         taxid: int,
         score: float,
-        child_to_parent: dict[int, int],
-        path_cache: dict[int, list[int]],
         artificial_taxids: set[int],
-        ) -> tuple[Group, dict[int, list[int]]]:
+        unclassified_taxids: set[int],
+        ) -> Group:
     """
     Update a Group object with new taxid and score information.
     Args:
         group (Group): Group object to update.
         taxid (int): Taxid of new entry.
         score (float): Score of new entry.
-        child_to_parent (dict[int, int]): Dictionary mapping each taxid to its parent.
-        path_cache (dict[int, list[int]]): Cache of precomputed paths to the root.
         artificial_taxids (set[int]): Set of taxids that represent artificial or engineered sequences.
+        unclassified_taxids (set[int]): Set of taxids that represent unclassified
+            sequences.
     Returns:
-        tuple[Group, dict[int, list[int]]]: Tuple containing the updated
-            Group object and the updated path cache.
+        Group: Updated Group object.
     """
     # Determine if new entry is artificial
     is_artificial = taxid in artificial_taxids
     # Update all subgroup
-    group.all, path_cache = update_subgroup(group.all, taxid, score, child_to_parent, path_cache)
+    group.all = update_subgroup(group.all, taxid, score, unclassified_taxids)
     # Update natural and artificial subgroups as appropriate
     if is_artificial:
-        group.artificial, path_cache = update_subgroup(group.artificial, taxid, score,
-                                                       child_to_parent, path_cache)
+        group.artificial = update_subgroup(group.artificial, taxid, score, unclassified_taxids)
     else:
-        group.natural, path_cache = update_subgroup(group.natural, taxid, score,
-                                        child_to_parent, path_cache)
+        group.natural = update_subgroup(group.natural, taxid, score, unclassified_taxids)
     # Return updated Group object
+    return group
+
+def summarize_group(
+        group: Group,
+        child_to_parent: dict[int, int],
+        path_cache: dict[int, list[int]],
+        ) -> tuple[Group, dict[int, list[int]]]:
+    """
+    Summarize each Subgroup object in a Group object into a dictionary of
+    statistics.
+    Args:
+        group (Group): Group object to summarize.
+        child_to_parent (dict[int, int]): Dictionary mapping each taxid to its parent.
+        path_cache (dict[int, list[int]]): Cache of precomputed paths to the root.
+    Returns:
+        tuple[Group, dict[int, list[int]]]: Tuple containing the summarized
+            Group object and the updated path cache.
+    """
+    # Summarize subgroups
+    group.all, path_cache = summarize_subgroup(group.all, child_to_parent, path_cache)
+    group.natural, path_cache = summarize_subgroup(group.natural, child_to_parent, path_cache)
+    group.artificial, path_cache = summarize_subgroup(group.artificial, child_to_parent, path_cache)
+    # Return summarized Group object
     return group, path_cache
 
 def output_group(
@@ -384,8 +460,10 @@ def output_group(
     """
     Process a Group object into a list of fields for output.
     """
-    return [group.group_id] + output_subgroup(group.all) + \
-        output_subgroup(group.natural) + output_subgroup(group.artificial)
+    fields_all = output_subgroup(group.all)
+    fields_natural = output_subgroup(group.natural)
+    fields_artificial = output_subgroup(group.artificial)
+    return [group.group_id] + fields_all + fields_natural + fields_artificial
 
 #=======================================================================
 # Functions for processing input and output
@@ -397,8 +475,9 @@ def get_output_header() -> list[str]:
     Returns:
         str: Header for the output TSV.
     """
-    fields_base = ["lca", "n_entries", "top_taxid",
-                   "min_score", "max_score", "mean_score"]
+    fields_base = ["lca", "n_entries", "n_classified", "top_taxid",
+                   "top_taxid_classified", "min_score", "max_score",
+                   "mean_score"]
     fields_all = [f + "_all" for f in fields_base]
     fields_natural = [f + "_natural" for f in fields_base]
     fields_artificial = [f + "_artificial" for f in fields_base]
@@ -451,10 +530,9 @@ def process_input_line(
         taxid_idx: int,
         score_idx: int,
         group_info: Group | None,
-        child_to_parent: dict[int, int],
-        path_cache: dict[int, list[int]],
         artificial_taxids: set[int],
-        ) -> tuple[Group, dict[int, list[int]]]:
+        unclassified_taxids: set[int],
+        ) -> Group:
     """
     Process a single line of an input TSV and return an updated Group object
     containing information about the corresponding entry group.
@@ -468,9 +546,8 @@ def process_input_line(
         artificial_taxids (set[int]): Set of taxids that represent artificial or
             engineered sequences.
     Returns:
-        tuple[Group, dict[int, list[int]]]: Tuple containing the updated
-            Group object containing information about the corresponding entry
-            group and the updated path cache.
+        Group: Updated Group object containing information about the corresponding
+            entry group.
     """
     logger.debug(f"Processing input line: {fields}")
     logger.debug(f"Group info: {group_info}")
@@ -484,13 +561,11 @@ def process_input_line(
     score = float(fields[score_idx])
     # If no Group object, create one
     if group_info is None:
-        # NB: new_group returns a Group object only
-        return new_group(group_id, taxid, score, artificial_taxids), path_cache
+        return new_group(group_id, taxid, score, artificial_taxids,
+                         unclassified_taxids)
     # Otherwise, update Group object
-    # NB: update_group returns a tuple with the updated Group object and the
-    # updated path cache
-    return update_group(group_info, taxid, score, child_to_parent,
-                        path_cache, artificial_taxids)
+    return update_group(group_info, taxid, score, artificial_taxids,
+                        unclassified_taxids)
 
 def parse_input_tsv(
         input_path: str,
@@ -500,6 +575,7 @@ def parse_input_tsv(
         score_field: str,
         child_to_parent: dict[int, int],
         artificial_taxids: set[int],
+        unclassified_taxids: set[int],
         ) -> None:
     """
     Iterate linewise over input TSV, calculating the LCA for each group
@@ -513,6 +589,8 @@ def parse_input_tsv(
         child_to_parent (dict[int, int]): Dictionary mapping each taxid to its parent.
         artificial_taxids (set[int]): Set of taxids that represent artificial or
             engineered sequences.
+        unclassified_taxids (set[int]): Set of taxids that represent unclassified
+            sequences.
     """
     with open_by_suffix(input_path) as inf, open_by_suffix(output_path, "w") as outf:
         # Write header to output file
@@ -523,17 +601,17 @@ def parse_input_tsv(
         # Get indices of fields
         group_idx, taxid_idx, score_idx = parse_input_header(
             header, group_field, taxid_field, score_field)
-        path_cache = {}
         def parse_line(fields: list[str], group_info: Group | None) -> tuple[Group, dict[int, list[int]]]:
             return process_input_line(fields, group_idx, taxid_idx, score_idx, group_info,
-                                      child_to_parent, path_cache, artificial_taxids)
+                                      artificial_taxids, unclassified_taxids)
         # Process first line
         fields = inf.readline().strip().split("\t")
         group_id = fields[group_idx]
-        group_info, path_cache = parse_line(fields, None)
+        group_info = parse_line(fields, None)
         # Iterate over input file
         n_entries = 1
         n_groups = 1
+        path_cache = {}
         for line in inf:
             # Parse fields
             fields = line.strip().split("\t")
@@ -543,54 +621,27 @@ def parse_input_tsv(
                 f"Group ID out of order: {group_id_new} < {group_id}"
             # If group ID is unchanged, process line into existing Group object
             if group_id_new == group_id:
-                group_info, path_cache = parse_line(fields, group_info)
+                group_info = parse_line(fields, group_info)
             # Otherwise, write previous Group object to output and start new one
             else:
+                group_info, path_cache = summarize_group(group_info, child_to_parent, path_cache)
                 out_line = output_group(group_info)
                 write_output_line(out_line, output_header, outf)
-                group_info, path_cache = parse_line(fields, None)
+                group_info = parse_line(fields, None)
                 group_id = group_id_new
                 n_groups += 1
             n_entries += 1
         # Write last Group object to output
+        group_info, path_cache = summarize_group(group_info, child_to_parent, path_cache)
         out_line = output_group(group_info)
         write_output_line(out_line, output_header, outf)
         logger.info(f"Processed {n_entries} entries in {n_groups} groups.")
 
 #=======================================================================
-# Miscellaneous functions
+# Taxonomy DB functions
 #=======================================================================
 
-def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
-    # Create parser
-    desc = "Given a sorted TSV containing group, taxid, and score columns, " \
-           "return a TSV with a single row per group containing the lowest " \
-           "common ancestor taxid across all taxids in the group."
-    parser = argparse.ArgumentParser(description=desc)
-    # Add arguments
-    parser.add_argument("--input", "-i", help="Path to input TSV.")
-    parser.add_argument("--output", "-o", help="Path to output TSV.")
-    parser.add_argument("--db", "-d", help="Path to taxonomy DB (raw NCBI nodes.dmp file).")
-    parser.add_argument("--group", "-g", help="Column header for group field.")
-    parser.add_argument("--taxid", "-t", help="Column header for taxid field.")
-    parser.add_argument("--score", "-s", help="Column header for score field.")
-    parser.add_argument("--artificial", "-a",
-                        help="Parent taxid for artificial sequences (to be handled separately).")
-    # Return parsed arguments
-    return parser.parse_args()
-
-def open_by_suffix(filename, mode="r", debug=False):
-    """Parse the suffix of a filename to determine the right open method
-    to use, then open the file. Can handle .gz, .bz2, and uncompressed files."""
-    if filename.endswith('.gz'):
-        return gzip.open(filename, mode + 't')
-    elif filename.endswith('.bz2'):
-        return bz2.BZ2File(filename, mode)
-    else:
-        return open(filename, mode)
-
-def parse_taxonomy_db(path: str, artificial_taxid: int
+def parse_nodes_db(path: str, artificial_taxid: int
                       ) -> tuple[dict[int, int], dict[int, set[int]]]:
     """
     Parse taxonomy DB into two dictionaries: one mapping each taxid
@@ -626,18 +677,20 @@ def parse_taxonomy_db(path: str, artificial_taxid: int
     # Return dictionaries
     return child_to_parent, parent_to_children
 
-def get_descendants(taxid: int, parent_to_children: dict[int, set[int]]) -> set[int]:
+def get_descendants(taxids: set[int], parent_to_children: dict[int, set[int]]) -> set[int]:
     """
     Get a set of all descendants of a taxid.
     Args:
-        taxid (int): Taxid to get descendants of.
+        taxids (set[int]): Set of taxids to get descendants of.
         parent_to_children (dict[int, set[int]]): Dictionary mapping each taxid
             to its children taxids.
     Returns:
         set[int]: Set of all descendants of the taxid, including the taxid itself.
     """
-    descendants = set([taxid])
-    descendants_new = parent_to_children[taxid]
+    descendants = taxids
+    descendants_new = set()
+    for taxid in descendants:
+        descendants_new.update(parent_to_children[taxid])
     while descendants_new:
         descendants.update(descendants_new)
         descendants_newer = set()
@@ -650,6 +703,79 @@ def get_descendants(taxid: int, parent_to_children: dict[int, set[int]]) -> set[
     # Return set of descendants
     return descendants
 
+def parse_names_db(path: str) -> dict[int, set[str]]:
+    """
+    Parse taxonomy names DB into a dictionary mapping each taxid to a
+    set of names.
+    Args:
+        path (str): Path to taxonomy names DB.
+    Returns:
+        dict[int, set[str]]: Dictionary mapping each taxid to a set of names.
+    """
+    names_db: dict[int, set[str]] = defaultdict(set)
+    with open_by_suffix(path) as f:
+        for line in f:
+            fields = line.strip().split("\t")
+            taxid = int(fields[0])
+            name = fields[2]
+            names_db[taxid].add(name)
+    # Return dictionary
+    return names_db
+
+def get_unclassified_taxids(names_db: dict[int, set[str]]) -> set[int]:
+    """
+    Get a set of taxids that are unclassified in the taxonomy names DB.
+    Args:
+        names_db (dict[int, set[str]]): Dictionary mapping each taxid to a
+            set of names.
+    Returns:
+        set[int]: Set of taxids that are unclassified (i.e. map to a name
+            containing "unclassified" or "sp.")
+    """
+    unclassified_taxids = set()
+    for taxid, names in names_db.items():
+        for name in names:
+            name_lower = name.lower()
+            if "unclassified" in name_lower or "sp." in name_lower:
+                unclassified_taxids.add(taxid)
+                break
+    # Return set of unclassified taxids
+    return unclassified_taxids
+
+#=======================================================================
+# I/O functions
+#=======================================================================
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    # Create parser
+    desc = "Given a sorted TSV containing group, taxid, and score columns, " \
+           "return a TSV with a single row per group containing the lowest " \
+           "common ancestor taxid across all taxids in the group."
+    parser = argparse.ArgumentParser(description=desc)
+    # Add arguments
+    parser.add_argument("--input", "-i", help="Path to input TSV.")
+    parser.add_argument("--output", "-o", help="Path to output TSV.")
+    parser.add_argument("--nodes-db", "-d", help="Path to taxonomy nodes DB (raw NCBI nodes.dmp file).")
+    parser.add_argument("--names-db", "-n", help="Path to taxonomy names DB (raw NCBI names.dmp file).")
+    parser.add_argument("--group", "-g", help="Column header for group field.")
+    parser.add_argument("--taxid", "-t", help="Column header for taxid field.")
+    parser.add_argument("--score", "-s", help="Column header for score field.")
+    parser.add_argument("--artificial", "-a",
+                        help="Parent taxid for artificial sequences (to be handled separately).")
+    # Return parsed arguments
+    return parser.parse_args()
+
+def open_by_suffix(filename, mode="r", debug=False):
+    """Parse the suffix of a filename to determine the right open method
+    to use, then open the file. Can handle .gz, .bz2, and uncompressed files."""
+    if filename.endswith('.gz'):
+        return gzip.open(filename, mode + 't')
+    elif filename.endswith('.bz2'):
+        return bz2.BZ2File(filename, mode)
+    else:
+        return open(filename, mode)
+
 #=======================================================================
 # Main function
 #=======================================================================
@@ -661,16 +787,25 @@ def main() -> None:
     args = parse_args()
     # Import taxonomy DB and process into dictionaries
     logger.info("Parsing taxonomy DB.")
-    child_to_parent, parent_to_children = parse_taxonomy_db(args.db, int(args.artificial))
+    child_to_parent, parent_to_children = parse_nodes_db(args.nodes_db, int(args.artificial))
     logger.info(f"Parsed taxonomy information for {len(child_to_parent)} taxids.")
+    # Parse names DB and get set of unclassified taxids
+    logger.info("Parsing taxonomy names DB.")
+    names_db = parse_names_db(args.names_db)
+    unclassified_taxids = get_unclassified_taxids(names_db)
+    logger.info(f"Found {len(unclassified_taxids)} unclassified taxids.")
+    # Get taxids descended from unclassified taxids
+    logger.info("Getting taxids descended from unclassified taxids.")
+    unclassified_taxids_descendants = get_descendants(unclassified_taxids, parent_to_children)
+    logger.info(f"Found {len(unclassified_taxids_descendants)} taxids descended from unclassified taxids.")
     # Get set of artificial taxids
     logger.info("Getting set of artificial taxids.")
-    artificial_taxids = get_descendants(int(args.artificial), parent_to_children)
+    artificial_taxids = get_descendants(set([int(args.artificial)]), parent_to_children)
     logger.info(f"Found {len(artificial_taxids)} artificial taxids.")
     # Parse input TSV and write LCA information to output TSV
     logger.info("Parsing input TSV.")
     parse_input_tsv(args.input, args.output, args.group, args.taxid, args.score,
-                    child_to_parent, artificial_taxids)
+                    child_to_parent, artificial_taxids, unclassified_taxids_descendants)
     # Log completion
     logger.info("Script complete.")
 
