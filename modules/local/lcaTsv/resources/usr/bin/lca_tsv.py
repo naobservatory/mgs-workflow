@@ -613,19 +613,27 @@ def parse_input_tsv(
         prefix (str): Prefix for output columns.
     """
     with open_by_suffix(input_path) as inf, open_by_suffix(output_path, "w") as outf:
+        # Read header from input file
+        header = inf.readline().strip().split("\t")
+        logger.debug(f"Header: {header}")
+        if len(header) == 1 and header[0] == "":
+            logger.warning("Input file is empty (header only). Returning header only.")
+            return
         # Write header to output file
         output_header = get_output_header(prefix, group_field, taxid_field, score_field)
         write_output_line(output_header, output_header, outf)
-        # Read header from input file
-        header = inf.readline().strip().split("\t")
         # Get indices of fields
         group_idx, taxid_idx, score_idx = parse_input_header(
             header, group_field, taxid_field, score_field)
         def parse_line(fields: list[str], group_info: Group | None) -> tuple[Group, dict[int, list[int]]]:
             return process_input_line(fields, group_idx, taxid_idx, score_idx, group_info,
                                       artificial_taxids, unclassified_taxids)
-        # Process first line
+        # Check for empty file
         fields = inf.readline().strip().split("\t")
+        if len(fields) == 1 and fields[0] == "":
+            logger.warning("Input file is empty (header only). Returning header only.")
+            return
+        # Process first line
         group_id = fields[group_idx]
         group_info = parse_line(fields, None)
         # Iterate over input file
@@ -756,7 +764,7 @@ def get_unclassified_taxids(names_db: dict[int, set[str]]) -> set[int]:
     for taxid, names in names_db.items():
         for name in names:
             name_lower = name.lower()
-            if "unclassified" in name_lower or "sp." in name_lower:
+            if "unclassified" in name_lower or " sp." in name_lower:
                 unclassified_taxids.add(taxid)
                 break
     # Return set of unclassified taxids
