@@ -37,7 +37,7 @@ workflow BLAST_VIRAL {
         // 3. Run BLAST and process output
         blast_ch = BLAST_FASTA(fasta_ch, ref_dir, blast_db_prefix,
             perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac,
-            taxid_artificial)
+            taxid_artificial, "blast")
         // 4. Rename subset FASTA file for output
         copy_ch = COPY_FILE(fasta_ch, "blast_input_subset.fasta.gz")
     emit:
