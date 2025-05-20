@@ -1,0 +1,138 @@
+def countGzipLines = { file -> path(file).linesGzip.size() }
+def getGzipHeader = { file -> ["bash", "-c", "zcat " + file + " | head -n 1"].execute().text.trim() }
+def getGzipBody = { file -> ["bash", "-c", "zcat " + file + " | tail -n +2"].execute().text.trim() }
+
+nextflow_process {
+
+    name "Test process SELECT_TSV_COLUMNS"
+    script "modules/local/selectTsvColumns/main.nf"
+    process "SELECT_TSV_COLUMNS"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "select_tsv_columns"
+
+    test("Should fail when a selected field is not present"){
+        tag "expect_failed"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                fields = "x,a"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.fields
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Field not found in header: a")
+        }
+    }
+
+    test("Should fail when input file is empty (no header)"){
+        tag "expect_failed"
+        tag "empty_input"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/empty_file.txt"
+                fields = "x"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.fields
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: No header to select fields from.")
+        }
+    }
+
+    test("Should produce no change when all fields are selected"){
+        tag "expect_success"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                fields = "x,y,z"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.fields
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should match input
+            assert path(process.out.output[0][1]).md5 == path(process.out.input[0][1]).md5
+        }
+    }
+
+    test("Should successfully downsample columns when only some are selected"){
+        tag "expect_success"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                fields = "x,z"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.fields
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output and input row counts should match
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
+            assert tab_out.rowCount == tab_in.rowCount
+            // Selected columns should be unmodified
+            def fields = params.fields.split(",")
+            for (f in fields) {
+                assert tab_out.columns[f] == tab_in.columns[f]
+            }
+            // Only selected columns should be present in output
+            assert tab_out.columnNames == fields
+        }
+    }
+
+    test("Should correctly handle empty input file (header only)"){
+        tag "empty_input"
+        tag "expect_success"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_empty.tsv"
+                fields = "x,z"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.fields
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should contain a single header line and no body
+            def outputFile = path(process.out.output[0][1])
+            def lines = outputFile.text.split("\n")
+            assert lines.size() == 1
+            // Header should contain appropriate fields
+            def fields = params.fields.split(",")
+            def header = lines[0].split("\t")
+            assert header == fields
+        }
+    }
+}
