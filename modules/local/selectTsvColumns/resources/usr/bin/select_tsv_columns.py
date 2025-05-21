@@ -24,7 +24,7 @@ class UTCFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         dt = datetime.fromtimestamp(record.created, timezone.utc)
         return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 formatter = UTCFormatter('[%(asctime)s] %(message)s')
@@ -49,12 +49,11 @@ def parse_args() -> argparse.Namespace:
     # Return parsed arguments
     return parser.parse_args()
 
-def open_by_suffix(filename, mode="r", debug=False):
-    if debug:
-        print_log(f"\tOpening file object: {filename}")
-        print_log(f"\tOpening mode: {mode}")
-        print_log(f"\tGZIP mode: {filename.endswith('.gz')}")
-        print_log(f"\tBZ2 mode: {filename.endswith('.bz2')}")
+def open_by_suffix(filename, mode="r"):
+    logger.debug(f"\tOpening file object: {filename}")
+    logger.debug(f"\tOpening mode: {mode}")
+    logger.debug(f"\tGZIP mode: {filename.endswith('.gz')}")
+    logger.debug(f"\tBZ2 mode: {filename.endswith('.bz2')}")
     if filename.endswith('.gz'):
         return gzip.open(filename, mode + 't')
     elif filename.endswith('.bz2'):
