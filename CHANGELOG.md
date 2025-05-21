@@ -5,6 +5,7 @@
     - Added tests for BLAST_FASTA and updated tests for VALIDATE_VIRAL_ASSIGNMENTS
     - Implemented basic algorithm for computing the lowest common ancestor of sets of taxids in tabular TSV data (LCA_TSV), including special handling of artificial and unclassified taxids
     - Integrated LCA_TSV into BLAST_FASTA subworkflow and updated tests
+    - Implemented VALIDATE_CLUSTER_REPRESENTATIVES subworkflow for comparing Bowtie2 and BLAST-LCA assignments, including new SELECT_TSV_COLUMNS and COMPUTE_TAXID_DISTANCE processes
 
 # v2.9.0.0
 - Implemented ONT analysis in the RUN workflow
