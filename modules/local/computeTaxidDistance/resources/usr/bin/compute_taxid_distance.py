@@ -122,6 +122,13 @@ def parse_header(header_line: str, fields: list[str]) -> tuple[list[str], dict[s
 # Taxonomy functions
 #=======================================================================
 
+def parse_taxid(taxid_str: str) -> int|None:
+    """Parse a taxid string into an integer."""
+    try:
+        return int(taxid_str)
+    except ValueError:
+        return None
+
 def parse_nodes_db(path: str
                       ) -> tuple[dict[int, int], dict[int, set[int]]]:
     """
@@ -230,6 +237,8 @@ def compute_taxonomic_distance(
     # If taxids are the same, return 0
     if taxid_1 == taxid_2:
         return 0, path_cache
+    if taxid_1 is None or taxid_2 is None:
+        return None, path_cache
     # Get paths to root for both taxids (starting from taxid itself)
     path_1, path_cache = path_to_root(taxid_1, child_to_parent, path_cache)
     logger.debug(f"Path to root for taxid {taxid_1}: {path_1}")
@@ -295,8 +304,8 @@ def parse_input_tsv(
                 break 
             # Parse line into fields and extract taxids
             fields = line.strip().split("\t")
-            taxid_1 = int(fields[indices[field_names["taxid_1"]]])
-            taxid_2 = int(fields[indices[field_names["taxid_2"]]])
+            taxid_1 = parse_taxid(fields[indices[field_names["taxid_1"]]])
+            taxid_2 = parse_taxid(fields[indices[field_names["taxid_2"]]])
             # Compute taxonomic distance
             distance, path_cache = compute_taxonomic_distance(taxid_1, taxid_2,
                                                               child_to_parent,
