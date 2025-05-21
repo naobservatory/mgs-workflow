@@ -96,6 +96,14 @@ nextflow_workflow {
                 // LCA output should have one row per sequence in BLAST output
                 assert blast_lca[i].rowCount == blast_db[i].columns["qseqid"].toSet().size()
             }
+            // Taxid validation should work as expected
+            def tab_validate = workflow.out.test_validate.collect{path(it[1]).csv(sep: "\t", decompress: true)}
+            assert tab_validate.size() == blast_lca.size()
+            for (int i=0; i < tab_validate.size(); i++) {
+                if (tab_validate[i].rowCount > 0) {
+                    assert tab_validate[i].columns["seq_id"].unique().toSorted() == blast_lca[i].columns["qseqid"].unique().toSorted()
+                }
+            }
         }
     }
 

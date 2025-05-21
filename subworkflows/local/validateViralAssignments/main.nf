@@ -4,8 +4,9 @@ Perform efficient post-hoc validation of putative viral reads identified by the 
 A. Partition putative hits by assigned species
 B. Extract into FASTQ and merge read pairs into single sequences
 C. Cluster sequences from each species and identify representative sequences
-D. [TODO] Align representative sequences against a large reference DB
-E. [TODO] Compare taxids assigned in (4) to those assigned by RUN workflow
+D. Align representative sequences against a large reference DB
+E. Compare taxids assigned in (4) to those assigned by RUN workflow
+F. [TODO] Propagate validation information from cluster representatives to other hits
 */
 
 /***************************
@@ -15,6 +16,7 @@ E. [TODO] Compare taxids assigned in (4) to those assigned by RUN workflow
 include { SPLIT_VIRAL_TSV_BY_SPECIES } from "../../../subworkflows/local/splitViralTsvBySpecies"
 include { CLUSTER_VIRAL_ASSIGNMENTS } from "../../../subworkflows/local/clusterViralAssignments"
 include { BLAST_FASTA } from "../../../subworkflows/local/blastFasta"
+include { VALIDATE_CLUSTER_REPRESENTATIVES } from "../../../subworkflows/local/validateClusterRepresentatives"
 include { ADD_SAMPLE_COLUMN as LABEL_GROUP_SPECIES } from "../../../modules/local/addSampleColumn"
 include { CONCATENATE_TSVS_LABELED } from "../../../modules/local/concatenateTsvs"
 include { ADD_SAMPLE_COLUMN as LABEL_GROUP } from "../../../modules/local/addSampleColumn"
@@ -47,7 +49,11 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         blast_ch = BLAST_FASTA(cluster_ch.fasta, ref_dir, blast_db_prefix,
             perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac, taxid_artificial,
             "validation")
-        // 4. Concatenate clustering information across species to regenerate per-group information
+        // 4. Validate hit TSV taxids against BLAST results
+        validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(split_ch.tsv, blast_ch.lca, 
+            "validation_staxid_lca_natural",
+            "validation_distance", ref_dir)
+        // 5. Concatenate clustering information across species to regenerate per-group information
         // NB: This concatenation stage will move down as more steps are added, but will need to happen eventually
         // and is useful for testing, so I'm implementing it now. It should probably get moved into its own
         // workflow eventually.
@@ -82,5 +88,6 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_blast_db = blast_ch.blast
         test_blast_query = blast_ch.query
         test_blast_lca = blast_ch.lca
+        test_validate = validate_ch.output
         test_regrouped = regrouped_ch
 }
