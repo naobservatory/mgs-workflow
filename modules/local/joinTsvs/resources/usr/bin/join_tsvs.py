@@ -1,5 +1,16 @@
 #!/usr/bin/env python
 
+"""
+Given two sorted TSV files, join them linewise on a shared column.
+Can perform inner, left, right, outer, or strict joins; the latter will
+raise an error if there are any missing values in the join field on either
+side.
+"""
+
+#=======================================================================
+# Import libraries
+#=======================================================================
+
 # Import modules
 import argparse
 import time
@@ -7,16 +18,50 @@ import datetime
 import gzip
 import bz2
 import os
+import logging
+from datetime import datetime, timezone
 
-def print_log(message):
-    print("[", datetime.datetime.now(), "]  ", message, sep="")
+#=======================================================================
+# Configure logging
+#=======================================================================
 
-def open_by_suffix(filename, mode="r", debug=False):
-    if debug:
-        print_log(f"\tOpening file object: {filename}")
-        print_log(f"\tOpening mode: {mode}")
-        print_log(f"\tGZIP mode: {filename.endswith('.gz')}")
-        print_log(f"\tBZ2 mode: {filename.endswith('.bz2')}")
+class UTCFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        dt = datetime.fromtimestamp(record.created, timezone.utc)
+        return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger()
+handler = logging.StreamHandler()
+formatter = UTCFormatter('[%(asctime)s] %(message)s')
+handler.setFormatter(formatter)
+logger.handlers.clear()
+logger.addHandler(handler)
+
+#=======================================================================
+# I/O functions
+#=======================================================================
+
+def parse_args():
+    """Parse command-line arguments."""
+    # Create parser
+    desc = "Given two sorted TSV files, join them linewise on a shared column."
+    parser = argparse.ArgumentParser(description=desc)
+    # Add arguments
+    parser.add_argument("tsv1", help="Path to first TSV file.")
+    parser.add_argument("tsv2", help="Path to second TSV file.")
+    parser.add_argument("field", type=str, help="Field to join on.")
+    parser.add_argument("join_type", type=str, help="Type of join to perform (inner, left, right, outer, strict).")
+    parser.add_argument("output_file", type=str, help="Path to output TSV file.")
+    # Return parsed arguments
+    return parser.parse_args()
+
+def open_by_suffix(filename, mode="r"):
+    """Parse the suffix of a filename to determine the right open method
+    to use, then open the file. Can handle .gz, .bz2, and uncompressed files."""
+    logger.debug(f"Opening file object: {filename}")
+    logger.debug(f"Opening mode: {mode}")
+    logger.debug(f"GZIP mode: {filename.endswith('.gz')}")
+    logger.debug(f"BZ2 mode: {filename.endswith('.bz2')}")
     if filename.endswith('.gz'):
         return gzip.open(filename, mode + 't')
     elif filename.endswith('.bz2'):
@@ -24,13 +69,21 @@ def open_by_suffix(filename, mode="r", debug=False):
     else:
         return open(filename, mode)
 
+#=======================================================================
+# Auxiliary functions
+#=======================================================================
+
 def write_line(line_list, output_file):
     """Write a line to the output file."""
-    output_file.write("\t".join(line_list) + "\n")
+    line_joined = "\t".join(line_list) + "\n"
+    logger.debug(f"Writing line to output: {line_joined}")
+    output_file.write(line_joined)
 
 def fill_right(row_1, placeholder_2):
     """Fill in fields from file 2 with placeholder values."""
-    return row_1 + placeholder_2
+    new_row = row_1 + placeholder_2
+    logger.debug(f"Filling right: {new_row}")
+    return new_row
 
 def fill_left(placeholder_1, row_2, id_2, field_index_1, field_index_2):
     """Fill in fields from file 1 with placeholder values."""
@@ -41,30 +94,43 @@ def fill_left(placeholder_1, row_2, id_2, field_index_1, field_index_2):
         merged_row = placeholder_1[:field_index_1] + [id_2] + placeholder_1[field_index_1:]
     # Add remainder of row_2 excluding join field
     merged_row += [val for i, val in enumerate(row_2) if i != field_index_2]
+    logger.debug(f"Filling left: {merged_row}")
     return merged_row
 
 def process_headers(header_1, header_2, field):
     """Read, join and check headers from both files."""
+    # Log header fields
+    logger.debug(f"Header 1: {header_1}")
+    logger.debug(f"Header 2: {header_2}")
     # Verify that the field exists in both files
     if field not in header_1:
-        raise ValueError(f"Join field missing from file 1 ('{field}').")
+        msg = f"Join field missing from file 1 ('{field}')."
+        logger.error(msg)
+        raise ValueError(msg)
     if field not in header_2:
-        raise ValueError(f"Join field missing from file 2 ('{field}').")
+        msg = f"Join field missing from file 2 ('{field}')."
+        logger.error(msg)
+        raise ValueError(msg)
     # Check for duplicate field names across files
     for h in header_1:
         if h != field and h in header_2:
-            msg = f"Duplicate field name found across both files: '{h}'."
+            msg = f"Duplicate non-join field name found across both files: '{h}'."
+            logger.error(msg)
             raise ValueError(msg)
     for h in header_2:
         if h != field and h in header_1:
-            msg = f"Duplicate field name found across both files: '{h}'."
+            msg = f"Duplicate non-join field name found across both files: '{h}'."
+            logger.error(msg)
             raise ValueError(msg)
     # Get index of join field
     field_index_1 = header_1.index(field)
     field_index_2 = header_2.index(field)
+    logger.debug(f"Field index 1: {field_index_1}")
+    logger.debug(f"Field index 2: {field_index_2}")
     # Prepare new header
     merged_header = header_1 + \
             [h for i, h in enumerate(header_2) if i != field_index_2]
+    logger.debug(f"Merged header: {merged_header}")
     return merged_header, field_index_1, field_index_2
 
 def get_line_id(file, field_index):
@@ -76,8 +142,10 @@ def get_line_id(file, field_index):
 
 def check_sorting(id_curr, id_next, file_str, input_path):
     """Check that the file is sorted and raise an error if not."""
+    logger.debug(f"Checking sorting for file {file_str}: {id_curr}, {id_next}")
     if id_next is not None and id_curr > id_next:
         msg = f"File {file_str} is not sorted: encountered ID {id_curr} after {id_next} ({input_path})."
+        logger.error(msg)
         raise ValueError(msg)
 
 def copy_file(file, header, output):
@@ -90,163 +158,199 @@ def handle_empty_files(file_1, file_2, is_empty_1, is_empty_2, join_type, header
     """Handle joining when one or both files are empty."""
     if not is_empty_1 and not is_empty_2:
         msg = "Error: called handle_empty_files with non-empty files"
-        print_log(msg)
+        logger.error(msg)
         raise ValueError(msg)
     # Both files are empty - create empty output file (for all join types)
     if is_empty_1 and is_empty_2:
-        print_log("Warning: Both input files are empty. Creating empty output file.")
+        logger.warning("Both input files are empty. Creating empty output file.")
         return
     empty_file = file_1 if is_empty_1 else file_2 # Otherwise, get non-empty file for logging
     # For strict joins, raise error if any single file is empty
     if join_type == "strict":
         msg = f"Strict join cannot be performed with empty file: {empty_file}"
-        print_log(msg)
+        logger.error(msg)
         raise ValueError(msg)
     # For other join types, act based on which file is empty
     empty_file_log = "left" if is_empty_1 else "right"
     nonempty_file_log = "right" if is_empty_1 else "left"
     match (join_type, is_empty_1):
         case ("inner", True) | ("inner", False) | ("left", True) | ("right", False):
-            print_log(f"Warning: {join_type} join with empty {empty_file_log} file. Creating empty output.")
+            logger.warning(f"{join_type} join with empty {empty_file_log} file. Creating empty output.")
             return
         case ("right", True) | ("outer", True):
-            print_log(f"{join_type} join with empty {empty_file_log} file. Using {nonempty_file_log} file as output.")
+            logger.warning(f"{join_type} join with empty {empty_file_log} file. Using {nonempty_file_log} file as output.")
             copy_file(file_2, header_2.split("\t"), output_file)
         case ("left", False) | ("outer", False):
-            print_log(f"{join_type} join with empty {empty_file_log} file. Using {nonempty_file_log} file as output.")
+            logger.warning(f"{join_type} join with empty {empty_file_log} file. Using {nonempty_file_log} file as output.")
             copy_file(file_1, header_1.split("\t"), output_file)
 
+#=======================================================================
+# Join function
+#=======================================================================
+
 def join_tsvs(input_path_1, input_path_2, field, join_type, output_path):
-    """Join two TSV files linewise on a shared column."""
+    """Join two sorted TSV files linewise on a shared column."""
     # Open files for normal processing
-    with open_by_suffix(input_path_1, "r") as file_1, open_by_suffix(input_path_2, "r") as file_2, open_by_suffix(output_path, "w") as output:
+    with open_by_suffix(input_path_1, "r") as file_1, \
+         open_by_suffix(input_path_2, "r") as file_2, \
+         open_by_suffix(output_path, "w") as output:
         # Read header lines and check for empty files
         header_line_1 = file_1.readline().strip()
         header_line_2 = file_2.readline().strip()
         is_empty_1 = not header_line_1
         is_empty_2 = not header_line_2
-
         # Handle empty file cases if needed
         if is_empty_1 or is_empty_2:
             return handle_empty_files(file_1, file_2, is_empty_1, is_empty_2, join_type, header_line_1, header_line_2, output)
-        
         # Otherwise, process normally
         header_1 = header_line_1.split("\t")
         header_2 = header_line_2.split("\t")
         merged_header, field_index_1, field_index_2 = \
                 process_headers(header_1, header_2, field)
         write_line(merged_header, output)
-        
         # Define placeholders for non-inner joins
         placeholder_file1 = ["NA"] * (len(header_1) - 1)
         placeholder_file2 = ["NA"] * (len(header_2) - 1)
-        
         # Get first two lines from each file
         line_1_curr, row_1_curr, id_1_curr = get_line_id(file_1, field_index_1)
         line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
+        logger.debug(f"Reading current line from file 1: {line_1_curr}, {row_1_curr}, {id_1_curr}")
+        logger.debug(f"Reading next line from file 1: {line_1_next}, {row_1_next}, {id_1_next}")
         line_2_curr, row_2_curr, id_2_curr = get_line_id(file_2, field_index_2)
         line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
-        
+        logger.debug(f"Reading current line from file 2: {line_2_curr}, {row_2_curr}, {id_2_curr}")
+        logger.debug(f"Reading next line from file 2: {line_2_next}, {row_2_next}, {id_2_next}")
         # Iterate until we exhaust either file
         while line_1_curr and line_2_curr:
             # Verify that files are sorted
             check_sorting(id_1_curr, id_1_next, "1", input_path_1)
             check_sorting(id_2_curr, id_2_next, "2", input_path_2)
+            logger.debug(f"Comparing IDs between file 1 and file 2: {id_1_curr}, {id_2_curr}")
             # If IDs match, write to output and check for one-to-many join
             if id_1_curr == id_2_curr:
+                logger.debug(f"IDs match: {id_1_curr}, {id_2_curr}")
                 merged_row = row_1_curr + [val for i, val in enumerate(row_2_curr) if i != field_index_2]
                 write_line(merged_row, output)
                 if id_1_curr != id_1_next and id_2_curr != id_2_next:
+                    logger.debug(f"Neither current ID matches next ID; advancing both files.")
                     line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
                     line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
+                    logger.debug(f"Updated current line from file 1: {line_1_curr}, {row_1_curr}, {id_1_curr}")
+                    logger.debug(f"Updated next line from file 1: {line_1_next}, {row_1_next}, {id_1_next}")
                     line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
                     line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
+                    logger.debug(f"Updated current line from file 2: {line_2_curr}, {row_2_curr}, {id_2_curr}")
+                    logger.debug(f"Updated next line from file 2: {line_2_next}, {row_2_next}, {id_2_next}")
                 elif id_1_curr != id_1_next:
+                    logger.debug(f"Current ID from file 2 matches next ID; advancing file 2 only.")
                     line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
                     line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
+                    logger.debug(f"Updated current line from file 2: {line_2_curr}, {row_2_curr}, {id_2_curr}")
+                    logger.debug(f"Updated next line from file 2: {line_2_next}, {row_2_next}, {id_2_next}")
                 elif id_2_curr != id_2_next:
+                    logger.debug(f"Current ID from file 1 matches next ID; advancing file 1 only.")
                     line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
                     line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
+                    logger.debug(f"Updated current line from file 1: {line_1_curr}, {row_1_curr}, {id_1_curr}")
+                    logger.debug(f"Updated next line from file 1: {line_1_next}, {row_1_next}, {id_1_next}")
                 else:
                     ids = f"{id_1_curr}, {id_1_next}, {id_2_curr}, {id_2_next}"
                     msg = f"Unsupported many-to-many join detected for ID {id_1_curr} ({ids})."
+                    logger.error(msg)
                     raise ValueError(msg)
             # If IDs don't match, handle on the basis of join type
             elif id_1_curr < id_2_curr:
+                logger.debug(f"File 1 ID is less than file 2 ID: {id_1_curr}, {id_2_curr}")
                 # File 2 is missing ID present in file 1
                 if join_type == "strict":
                     msg = f"Strict join failed: ID {id_1_curr} missing from file 2."
+                    logger.error(msg)
                     raise ValueError(msg)
                 elif join_type in ("left", "outer"):
                     merged_row = fill_right(row_1_curr, placeholder_file2)
                     write_line(merged_row, output)
+                else:
+                    logger.debug(f"Skipping line.")
+                logger.debug(f"Advancing file 1.")
                 line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
                 line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
+                logger.debug(f"Updated current line from file 1: {line_1_curr}, {row_1_curr}, {id_1_curr}")
+                logger.debug(f"Updated next line from file 1: {line_1_next}, {row_1_next}, {id_1_next}")
             else:
                 # File 1 is missing ID present in file 2
+                logger.debug(f"File 2 ID is less than file 1 ID: {id_2_curr}, {id_1_curr}")
                 if join_type == "strict":
                     msg = f"Strict join failed: ID {id_2_curr} missing from file 1."
+                    logger.error(msg)
                     raise ValueError(msg)
-                if join_type in ("right", "outer"):
+                elif join_type in ("right", "outer"):
                     merged_row = fill_left(placeholder_file1, row_2_curr, id_2_curr, field_index_1, field_index_2)
                     write_line(merged_row, output)
+                else:
+                    logger.debug(f"Skipping line.")
+                logger.debug(f"Advancing file 2.")
                 line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
                 line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
+                logger.debug(f"Updated current line from file 2: {line_2_curr}, {row_2_curr}, {id_2_curr}")
+                logger.debug(f"Updated next line from file 2: {line_2_next}, {row_2_next}, {id_2_next}")
         # Read out file 1
         while line_1_curr:
+            logger.debug(f"Reading current line from file 1 only: {id_1_curr}")
             check_sorting(id_1_curr, id_1_next, "1", input_path_1)
             if join_type == "strict":
                 msg = f"Strict join failed: ID {id_1_curr} missing from file 2."
+                logger.error(msg)
                 raise ValueError(msg)
-            if join_type in ("left", "outer"):
+            elif join_type in ("left", "outer"):
                 merged_row = fill_right(row_1_curr, placeholder_file2)
                 write_line(merged_row, output)
+            else:
+                logger.debug(f"Skipping line.")
+            logger.debug(f"Advancing file 1.")
             line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
             line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
+            logger.debug(f"Updated current line from file 1: {line_1_curr}, {row_1_curr}, {id_1_curr}")
+            logger.debug(f"Updated next line from file 1: {line_1_next}, {row_1_next}, {id_1_next}")
         # Read out file 2
         while line_2_curr:
+            logger.debug(f"Reading current line from file 2 only: {id_2_curr}")
             check_sorting(id_2_curr, id_2_next, "2", input_path_2)
             if join_type == "strict":
                 msg = f"Strict join failed: ID {id_2_curr} missing from file 1."
+                logger.error(msg)
                 raise ValueError(msg)
-            if join_type in ("right", "outer"):
+            elif join_type in ("right", "outer"):
                 merged_row = fill_left(placeholder_file1, row_2_curr, id_2_curr, field_index_1, field_index_2)
                 write_line(merged_row, output)
+            else:
+                logger.debug(f"Skipping line.")
+            logger.debug(f"Advancing file 2.")
             line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
             line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
+            logger.debug(f"Updated current line from file 2: {line_2_curr}, {row_2_curr}, {id_2_curr}")
+            logger.debug(f"Updated next line from file 2: {line_2_next}, {row_2_next}, {id_2_next}")
+
+#=======================================================================
+# Main function
+#=======================================================================
 
 def main():
-    # Parse arguments
-    parser = argparse.ArgumentParser(description="Join two TSV files linewise on a shared column.")
-    parser.add_argument("tsv1", help="Path to first TSV file.")
-    parser.add_argument("tsv2", help="Path to second TSV file.")
-    parser.add_argument("field", type=str, help="Field to join on.")
-    parser.add_argument("join_type", type=str, help="Type of join to perform (inner, left, right, outer, strict).")
-    parser.add_argument("output_file", type=str, help="Path to output TSV file.")
-    args = parser.parse_args()
-    # Assign variables
-    input_path_1 = args.tsv1
-    input_path_2 = args.tsv2
-    field = args.field
-    join_type = args.join_type
-    output_file = args.output_file
-    # Start time tracking
-    print_log("Starting process.")
+    logger.info("Initializing script.")
     start_time = time.time()
+    # Parse arguments
+    logger.info("Parsing arguments.")
+    args = parse_args()
+    logger.info(f"Arguments: {args}")
     # Verify that join type is valid
-    if join_type not in ("inner", "left", "right", "outer", "strict"):
+    if args.join_type not in ("inner", "left", "right", "outer", "strict"):
         raise ValueError("Invalid join type. Must be one of 'inner', 'left', 'right', 'outer', or 'strict'.")
-    # Print parameters
-    print_log("Input TSV file 1: {}".format(input_path_1))
-    print_log("Input TSV file 2: {}".format(input_path_2))
-    print_log("Field to join on: {}".format(field))
-    print_log("Join type: {}".format(join_type))
-    print_log("Output file: {}".format(output_file))
     # Run joining function
-    join_tsvs(input_path_1, input_path_2, field, join_type, output_file)
-    # Finish time tracking
+    logger.info("Executing join.")
+    join_tsvs(args.tsv1, args.tsv2, args.field, args.join_type, args.output_file)
+    # Log completion
+    logger.info("Script completed successfully.")
     end_time = time.time()
-    print_log("Total time elapsed: %.2f seconds" % (end_time - start_time))
+    logger.info(f"Total time elapsed: {end_time - start_time} seconds")
 
 if __name__ == "__main__":
     main()
