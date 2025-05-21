@@ -75,7 +75,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         regrouped_label_ch = split_label_ch.groupTuple()
         regrouped_concat_ch = CONCATENATE_TSVS_LABELED(regrouped_label_ch, "clusters").output
         regrouped_ch = LABEL_GROUP(regrouped_concat_ch, "group", "clusters").output
-        // TODO: Implement D,E from docstring
+        // TODO: Implement F from docstring
     emit:
         test_in   = groups
         test_db   = db

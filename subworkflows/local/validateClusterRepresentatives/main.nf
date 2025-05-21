@@ -13,6 +13,7 @@ include { SELECT_TSV_COLUMNS } from "../../../modules/local/selectTsvColumns"
 include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
 include { REHEAD_TSV } from "../../../modules/local/reheadTsv"
 include { COMPUTE_TAXID_DISTANCE } from "../../../modules/local/computeTaxidDistance"
+include { REHEAD_TSV as REHEAD_TSV_2 } from "../../../modules/local/reheadTsv"
 
 /***********
 | WORKFLOW |
@@ -44,8 +45,11 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
         // NB: As implemented, this will produce a negative distance if the original
         // taxid is too high (ancestor of LCA taxid), and a positive distance if the
         // original taxid is too low (descendant of LCA taxid).
+        // 4. Rename seq_id to cluster_rep_id for downstream processing
+        rename_ch = REHEAD_TSV_2(dist_ch, "seq_id", "cluster_rep_id").output
     emit:
-        output = dist_ch
+        output = rename_ch
+        test_dist = dist_ch
         test_select = select_ch
         test_rehead = rehead_ch
         test_join = join_ch
