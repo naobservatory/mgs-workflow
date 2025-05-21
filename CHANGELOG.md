@@ -1,7 +1,8 @@
-# v2.9.0.1
+# v2.9.0.1-dev
 
 - Modified Github Actions to pull specific Nextflow version (rather than "latest")
 - Fixed missing-columns bug for empty files in SUMMARIZE_MULTIQC
+- Restructured SORT_TSV process to improve memory efficiency
 - Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
     - Split out core of BLAST_VIRAL subworkflow into a new BLAST_FASTA subworkflow that is called by both BLAST_VIRAL and VALIDATE_VIRAL_ASSIGNMENTS
     - Added tests for BLAST_FASTA and updated tests for VALIDATE_VIRAL_ASSIGNMENTS
