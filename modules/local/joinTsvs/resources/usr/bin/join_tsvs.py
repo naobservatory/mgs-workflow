@@ -29,7 +29,7 @@ class UTCFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         dt = datetime.fromtimestamp(record.created, timezone.utc)
         return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 formatter = UTCFormatter('[%(asctime)s] %(message)s')
@@ -75,9 +75,9 @@ def open_by_suffix(filename, mode="r"):
 
 def write_line(line_list, output_file):
     """Write a line to the output file."""
-    line_joined = "\t".join(line_list) + "\n"
+    line_joined = "\t".join(line_list)
     logger.debug(f"Writing line to output: {line_joined}")
-    output_file.write(line_joined)
+    output_file.write(line_joined + "\n")
 
 def fill_right(row_1, placeholder_2):
     """Fill in fields from file 2 with placeholder values."""
@@ -214,12 +214,12 @@ def join_tsvs(input_path_1, input_path_2, field, join_type, output_path):
         # Get first two lines from each file
         line_1_curr, row_1_curr, id_1_curr = get_line_id(file_1, field_index_1)
         line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
-        logger.debug(f"Reading current line from file 1: {line_1_curr}, {row_1_curr}, {id_1_curr}")
-        logger.debug(f"Reading next line from file 1: {line_1_next}, {row_1_next}, {id_1_next}")
+        logger.debug(f"Reading current line from file 1: {row_1_curr}, {id_1_curr}")
+        logger.debug(f"Reading next line from file 1: {row_1_next}, {id_1_next}")
         line_2_curr, row_2_curr, id_2_curr = get_line_id(file_2, field_index_2)
         line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
-        logger.debug(f"Reading current line from file 2: {line_2_curr}, {row_2_curr}, {id_2_curr}")
-        logger.debug(f"Reading next line from file 2: {line_2_next}, {row_2_next}, {id_2_next}")
+        logger.debug(f"Reading current line from file 2: {row_2_curr}, {id_2_curr}")
+        logger.debug(f"Reading next line from file 2: {row_2_next}, {id_2_next}")
         # Iterate until we exhaust either file
         while line_1_curr and line_2_curr:
             # Verify that files are sorted
@@ -235,24 +235,24 @@ def join_tsvs(input_path_1, input_path_2, field, join_type, output_path):
                     logger.debug(f"Neither current ID matches next ID; advancing both files.")
                     line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
                     line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
-                    logger.debug(f"Updated current line from file 1: {line_1_curr}, {row_1_curr}, {id_1_curr}")
-                    logger.debug(f"Updated next line from file 1: {line_1_next}, {row_1_next}, {id_1_next}")
+                    logger.debug(f"Updated current line from file 1: {row_1_curr}, {id_1_curr}")
+                    logger.debug(f"Updated next line from file 1: {row_1_next}, {id_1_next}")
                     line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
                     line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
-                    logger.debug(f"Updated current line from file 2: {line_2_curr}, {row_2_curr}, {id_2_curr}")
-                    logger.debug(f"Updated next line from file 2: {line_2_next}, {row_2_next}, {id_2_next}")
+                    logger.debug(f"Updated current line from file 2: {row_2_curr}, {id_2_curr}")
+                    logger.debug(f"Updated next line from file 2: {row_2_next}, {id_2_next}")
                 elif id_1_curr != id_1_next:
                     logger.debug(f"Current ID from file 2 matches next ID; advancing file 2 only.")
                     line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
                     line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
-                    logger.debug(f"Updated current line from file 2: {line_2_curr}, {row_2_curr}, {id_2_curr}")
-                    logger.debug(f"Updated next line from file 2: {line_2_next}, {row_2_next}, {id_2_next}")
+                    logger.debug(f"Updated current line from file 2: {row_2_curr}, {id_2_curr}")
+                    logger.debug(f"Updated next line from file 2: {row_2_next}, {id_2_next}")
                 elif id_2_curr != id_2_next:
                     logger.debug(f"Current ID from file 1 matches next ID; advancing file 1 only.")
                     line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
                     line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
-                    logger.debug(f"Updated current line from file 1: {line_1_curr}, {row_1_curr}, {id_1_curr}")
-                    logger.debug(f"Updated next line from file 1: {line_1_next}, {row_1_next}, {id_1_next}")
+                    logger.debug(f"Updated current line from file 1: {row_1_curr}, {id_1_curr}")
+                    logger.debug(f"Updated next line from file 1: {row_1_next}, {id_1_next}")
                 else:
                     ids = f"{id_1_curr}, {id_1_next}, {id_2_curr}, {id_2_next}"
                     msg = f"Unsupported many-to-many join detected for ID {id_1_curr} ({ids})."
@@ -274,8 +274,8 @@ def join_tsvs(input_path_1, input_path_2, field, join_type, output_path):
                 logger.debug(f"Advancing file 1.")
                 line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
                 line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
-                logger.debug(f"Updated current line from file 1: {line_1_curr}, {row_1_curr}, {id_1_curr}")
-                logger.debug(f"Updated next line from file 1: {line_1_next}, {row_1_next}, {id_1_next}")
+                logger.debug(f"Updated current line from file 1: {row_1_curr}, {id_1_curr}")
+                logger.debug(f"Updated next line from file 1: {row_1_next}, {id_1_next}")
             else:
                 # File 1 is missing ID present in file 2
                 logger.debug(f"File 2 ID is less than file 1 ID: {id_2_curr}, {id_1_curr}")
@@ -291,8 +291,8 @@ def join_tsvs(input_path_1, input_path_2, field, join_type, output_path):
                 logger.debug(f"Advancing file 2.")
                 line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
                 line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
-                logger.debug(f"Updated current line from file 2: {line_2_curr}, {row_2_curr}, {id_2_curr}")
-                logger.debug(f"Updated next line from file 2: {line_2_next}, {row_2_next}, {id_2_next}")
+                logger.debug(f"Updated current line from file 2: {row_2_curr}, {id_2_curr}")
+                logger.debug(f"Updated next line from file 2: {row_2_next}, {id_2_next}")
         # Read out file 1
         while line_1_curr:
             logger.debug(f"Reading current line from file 1 only: {id_1_curr}")
@@ -309,8 +309,8 @@ def join_tsvs(input_path_1, input_path_2, field, join_type, output_path):
             logger.debug(f"Advancing file 1.")
             line_1_curr, row_1_curr, id_1_curr = line_1_next, row_1_next, id_1_next
             line_1_next, row_1_next, id_1_next = get_line_id(file_1, field_index_1)
-            logger.debug(f"Updated current line from file 1: {line_1_curr}, {row_1_curr}, {id_1_curr}")
-            logger.debug(f"Updated next line from file 1: {line_1_next}, {row_1_next}, {id_1_next}")
+            logger.debug(f"Updated current line from file 1: {row_1_curr}, {id_1_curr}")
+            logger.debug(f"Updated next line from file 1: {row_1_next}, {id_1_next}")
         # Read out file 2
         while line_2_curr:
             logger.debug(f"Reading current line from file 2 only: {id_2_curr}")
@@ -327,8 +327,8 @@ def join_tsvs(input_path_1, input_path_2, field, join_type, output_path):
             logger.debug(f"Advancing file 2.")
             line_2_curr, row_2_curr, id_2_curr = line_2_next, row_2_next, id_2_next
             line_2_next, row_2_next, id_2_next = get_line_id(file_2, field_index_2)
-            logger.debug(f"Updated current line from file 2: {line_2_curr}, {row_2_curr}, {id_2_curr}")
-            logger.debug(f"Updated next line from file 2: {line_2_next}, {row_2_next}, {id_2_next}")
+            logger.debug(f"Updated current line from file 2: {row_2_curr}, {id_2_curr}")
+            logger.debug(f"Updated next line from file 2: {row_2_next}, {id_2_next}")
 
 #=======================================================================
 # Main function
