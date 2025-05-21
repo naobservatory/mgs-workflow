@@ -14,7 +14,7 @@ process SELECT_TSV_COLUMNS {
         tuple val(sample), path("input_${tsv}"), emit: input
     shell:
         '''
-        select_tsv_columns.py -i !{tsv} -o selected_!{tsv} -f !{fields}
+        select_tsv_columns.py -i !{tsv} -o selected_!{tsv} -f "!{fields}"
         # Link input to output for testing
         ln -s !{tsv} input_!{tsv}
         '''
