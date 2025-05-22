@@ -1,4 +1,4 @@
-# v2.9.0.1-dev
+# v2.9.0.1
 
 - Modified Github Actions to pull specific Nextflow version (rather than "latest")
 - Fixed missing-columns bug for empty files in SUMMARIZE_MULTIQC
