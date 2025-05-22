@@ -30,6 +30,7 @@ workflow BLAST_FASTA {
         blast_max_rank // Only keep alignments that are in the top-N for that query by bitscore
         blast_min_frac // Only keep alignments that have at least this fraction of the best bitscore for that query
         taxid_artificial // Parent taxid for artificial sequences in NCBI taxonomy
+        lca_prefix // Prefix for LCA column names (e.g. "blast")
     main:
         // 0. Get reference paths
         blast_db_dir = "${ref_dir}/results/${blast_db_prefix}"
@@ -49,7 +50,7 @@ workflow BLAST_FASTA {
         // 4. Apply LCA to BLAST output
         lca_ch = LCA_TSV(filter_ch_2, nodes_db, names_db,
             "qseqid", "staxid", "bitscore", taxid_artificial,
-            "blast").output
+            lca_prefix).output
     emit:
         lca = lca_ch
         blast = filter_ch_2
