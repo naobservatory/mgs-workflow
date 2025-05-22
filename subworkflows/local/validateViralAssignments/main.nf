@@ -51,7 +51,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             "validation")
         // 4. Validate hit TSV taxids against BLAST results
         validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(split_ch.tsv, blast_ch.lca, 
-            "validation_staxid_lca_natural",
+            "validation_staxid_lca_natural", // LCA taxid computed from BLAST results, excluding artificial sequences
             "validation_distance", ref_dir)
         // 5. Concatenate clustering information across species to regenerate per-group information
         // NB: This concatenation stage will move down as more steps are added, but will need to happen eventually
