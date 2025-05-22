@@ -13,10 +13,12 @@ Returns split hits in TSV and FASTQ formats, each as a flattened channel of
 include { REHEAD_TSV } from "../../../modules/local/reheadTsv"
 include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
 include { PARTITION_TSV } from "../../../modules/local/partitionTsv"
+include { SORT_TSV as SORT_SEQ_ID } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_GROUP_TAXID } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_DB_TAXID } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_JOINED_SPECIES } from "../../../modules/local/sortTsv"
 include { EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED as EXTRACT_FASTQ } from "../../../modules/local/extractViralHitsToFastqNoref"
+include { CHECK_TSV_DUPLICATES } from "../../../modules/local/checkTsvDuplicates"
 
 /***********
 | WORKFLOW |
@@ -27,8 +29,11 @@ workflow SPLIT_VIRAL_TSV_BY_SPECIES {
         groups // Labeled viral hit TSVs partitioned by group
         db // Viral taxonomy DB
     main:
+        // 0. Check for duplicate read IDs (throw error if found)
+        sort_seq_id_ch = SORT_SEQ_ID(groups, "seq_id").sorted
+        check_ch = CHECK_TSV_DUPLICATES(sort_seq_id_ch, "seq_id").output
         // 1. Join to viral taxonomy DB
-        rehead_ch = REHEAD_TSV(groups, "bowtie2_taxid_best", "taxid").output
+        rehead_ch = REHEAD_TSV(check_ch, "bowtie2_taxid_best", "taxid").output
         rehead_sorted_ch = SORT_GROUP_TAXID(rehead_ch, "taxid").sorted
         db_sorted_ch = SORT_DB_TAXID(
             Channel.of("db").combine(db),
