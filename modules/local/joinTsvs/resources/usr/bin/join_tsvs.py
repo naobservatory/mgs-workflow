@@ -50,7 +50,10 @@ def parse_args():
     parser.add_argument("tsv1", help="Path to first TSV file.")
     parser.add_argument("tsv2", help="Path to second TSV file.")
     parser.add_argument("field", type=str, help="Field to join on.")
-    parser.add_argument("join_type", type=str, help="Type of join to perform (inner, left, right, outer, strict).")
+    parser.add_argument("join_type",
+                        type=str,
+                        choices=("inner", "left", "right", "outer", "strict"),
+                        help="Type of join to perform (inner, left, right, outer, strict).")
     parser.add_argument("output_file", type=str, help="Path to output TSV file.")
     # Return parsed arguments
     return parser.parse_args()
@@ -341,9 +344,6 @@ def main():
     logger.info("Parsing arguments.")
     args = parse_args()
     logger.info(f"Arguments: {args}")
-    # Verify that join type is valid
-    if args.join_type not in ("inner", "left", "right", "outer", "strict"):
-        raise ValueError("Invalid join type. Must be one of 'inner', 'left', 'right', 'outer', or 'strict'.")
     # Run joining function
     logger.info("Executing join.")
     join_tsvs(args.tsv1, args.tsv2, args.field, args.join_type, args.output_file)
