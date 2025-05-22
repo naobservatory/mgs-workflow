@@ -50,11 +50,13 @@ TAXID_ROOT = 1
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     # Create parser
-    desc = "Given a TSV with two taxid columns, compute the vertical taxonomic " \
-           "distance (number of parent-child steps) between the two taxids for " \
-           "each row. Rows for which the two taxids are the same are given a " \
-           "distance of 0; rows for which one taxid is not an ancestor of the " \
-           "other are given a distance of NA."
+    desc = (
+        "Given a TSV with two taxid columns, compute the vertical taxonomic "
+        "distance (number of parent-child steps) between the two taxids for "
+        "each row. Rows for which the two taxids are the same are given a "
+        "distance of 0; rows for which one taxid is not an ancestor of the "
+        "other are given a distance of NA."
+    )
     parser = argparse.ArgumentParser(description=desc)
     # Add arguments
     parser.add_argument("--input", "-i", help="Path to input TSV.")
@@ -136,7 +138,6 @@ def parse_nodes_db(path: str
     to its parent taxid, and one mapping each taxid to its children taxids.
     Args:
         path (str): Path to taxonomy DB.
-        artificial_taxid (int): Taxid of artificial parent.
     Returns:
         tuple[dict[int, int], dict[int, set[int]]]: Tuple containing the
             child-to-parent dictionary and the parent-to-children dictionary.
@@ -195,9 +196,8 @@ def path_to_root(
             # Should not encounter loops before reaching the root
             if parent == path[-1]:
                 msg = f"Taxid {taxid} has a self-loop in the child_to_parent dictionary."
-                logger.warning(msg)
-                path.append(TAXID_ROOT)
-                break
+                logger.error(msg)
+                raise ValueError(msg)
             # Check if path for parent is already cached
             if parent in path_cache:
                 logger.debug(f"Path to root for ancestor taxid {parent} already cached: {path_cache[parent]}")
@@ -224,7 +224,8 @@ def compute_taxonomic_distance(
         ) -> tuple[int|None, dict[int, list[int]]]:
     """
     Compute the taxonomic distance between two taxids as the number of
-    parent-child steps between them.
+    parent-child steps between them. Distance is negative if taxid_1 is an
+    ancestor of taxid_2 and positive if taxid_2 is an ancestor of taxid_1.
     Args:
         taxid_1 (int): The first taxid.
         taxid_2 (int): The second taxid.
@@ -261,7 +262,7 @@ def compute_taxonomic_distance(
 # Functions for processing input and output
 #=======================================================================
 
-def parse_input_tsv(
+def process_input_to_output(
         input_path: str,
         output_path: str,
         field_names: dict[str, str],
@@ -339,7 +340,7 @@ def main() -> None:
               "distance": args.distance_field}
     # Parse input TSV and compute taxonomic distances
     logger.info("Parsing input TSV and computing taxonomic distances.")
-    parse_input_tsv(args.input, args.output, fields, child_to_parent)
+    process_input_to_output(args.input, args.output, fields, child_to_parent)
     # Log completion
     logger.info("Script completed successfully.")
     end_time = time.time()

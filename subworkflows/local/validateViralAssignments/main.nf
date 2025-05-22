@@ -52,7 +52,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             "validation")
         // 4. Validate hit TSV taxids against BLAST results
         validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(split_ch.tsv, blast_ch.lca, 
-            "validation_staxid_lca_natural",
+            "validation_staxid_lca_natural", // LCA taxid computed from BLAST results, excluding artificial sequences
             "validation_distance", ref_dir)
         // 5. Propagate validation information back to individual hits
         propagate_ch = PROPAGATE_VALIDATION_INFORMATION(split_ch.tsv, cluster_ch.tsv, validate_ch.output)
