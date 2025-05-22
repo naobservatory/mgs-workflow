@@ -31,7 +31,7 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
         nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
         // 1. Prepare inputs for joining
         // Subset hits TSV to only seq_id and taxid columns
-        select_ch = SELECT_TSV_COLUMNS(hits_tsv, "seq_id,taxid").output
+        select_ch = SELECT_TSV_COLUMNS(hits_tsv, "seq_id,taxid", "keep").output
         // Rename qseqid to seq_id in LCA TSV
         rehead_ch = REHEAD_TSV(lca_tsv, "qseqid", "seq_id").output
         // Combine channels for joining
