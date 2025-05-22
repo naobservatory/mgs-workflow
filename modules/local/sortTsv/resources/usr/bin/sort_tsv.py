@@ -93,7 +93,7 @@ def process_header(header_line: str, sort_field: str) -> int | None:
         logger.error(msg)
         raise ValueError(msg)
     index = header_fields.index(sort_field)
-    logger.info(f"Found '{sort_field}' in column {index+1}. Sorting by column {index+1}.")
+    logger.info(f"Found '{sort_field}' in column {index+1} (1-indexed). Sorting by column {index+1}.")
     return index
 
 #=======================================================================
