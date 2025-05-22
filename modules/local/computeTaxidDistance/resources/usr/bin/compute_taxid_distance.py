@@ -149,6 +149,7 @@ def parse_nodes_db(path: str
     with open_by_suffix(path) as f:
         for line in f:
             fields = line.strip().split("\t")
+            # Parse taxids strictly (not tolerating non-integer strings)
             taxid = int(fields[0])
             parent_taxid = int(fields[2])
             child_to_parent[taxid] = parent_taxid
@@ -156,7 +157,7 @@ def parse_nodes_db(path: str
     # Check that DB contains root as the topmost taxid
     assert TAXID_ROOT in child_to_parent and TAXID_ROOT in parent_to_children, \
         "Taxonomy DB does not contain root."
-    assert child_to_parent[TAXID_ROOT] == TAXID_ROOT, "Root taxid has a parent."
+    assert child_to_parent[TAXID_ROOT] == TAXID_ROOT, "Root taxid has a parent." # NCBI file has root as a child of itself
     assert TAXID_ROOT in parent_to_children[TAXID_ROOT], "Root taxid must be its own child."
     # Return dictionaries
     return child_to_parent, parent_to_children
@@ -303,7 +304,7 @@ def process_input_to_output(
             # If line is empty, break
             if not line.strip():
                 break 
-            # Parse line into fields and extract taxids
+            # Parse line into fields and extract taxids (parsing non-integer strings as None)
             fields = line.strip().split("\t")
             taxid_1 = parse_taxid(fields[indices[field_names["taxid_1"]]])
             taxid_2 = parse_taxid(fields[indices[field_names["taxid_2"]]])

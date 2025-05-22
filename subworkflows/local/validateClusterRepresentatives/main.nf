@@ -11,9 +11,9 @@ the two taxids to evaluate validation status.
 
 include { SELECT_TSV_COLUMNS } from "../../../modules/local/selectTsvColumns"
 include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
-include { REHEAD_TSV } from "../../../modules/local/reheadTsv"
+include { REHEAD_TSV as REHEAD_QSEQID} from "../../../modules/local/reheadTsv"
 include { COMPUTE_TAXID_DISTANCE } from "../../../modules/local/computeTaxidDistance"
-include { REHEAD_TSV as REHEAD_TSV_2 } from "../../../modules/local/reheadTsv"
+include { REHEAD_TSV as REHEAD_SEQ_ID } from "../../../modules/local/reheadTsv"
 
 /***********
 | WORKFLOW |
@@ -33,7 +33,7 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
         // Subset hits TSV to only seq_id and taxid columns
         select_ch = SELECT_TSV_COLUMNS(hits_tsv, "seq_id,taxid", "keep").output
         // Rename qseqid to seq_id in LCA TSV
-        rehead_ch = REHEAD_TSV(lca_tsv, "qseqid", "seq_id").output
+        rehead_ch = REHEAD_QSEQID(lca_tsv, "qseqid", "seq_id").output
         // Combine channels for joining
         combine_ch = select_ch.combine(rehead_ch, by: 0)
         // 2. Inner-join hits and LCA tables by seq_id
@@ -46,7 +46,7 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
         // taxid is too high (ancestor of LCA taxid), and a positive distance if the
         // original taxid is too low (descendant of LCA taxid).
         // 4. Rename seq_id to cluster_rep_id for downstream processing
-        rename_ch = REHEAD_TSV_2(dist_ch, "seq_id", "cluster_rep_id").output
+        rename_ch = REHEAD_SEQ_ID(dist_ch, "seq_id", "cluster_rep_id").output
     emit:
         output = rename_ch
         test_dist = dist_ch
