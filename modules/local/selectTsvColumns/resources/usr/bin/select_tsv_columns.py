@@ -15,6 +15,7 @@ import argparse
 import time
 import gzip
 import bz2
+import io
 
 #=======================================================================
 # Configure logging
@@ -49,7 +50,15 @@ def parse_args() -> argparse.Namespace:
     # Return parsed arguments
     return parser.parse_args()
 
-def open_by_suffix(filename, mode="r"):
+def open_by_suffix(filename: str, mode: str = "r") -> io.TextIOWrapper:
+    """
+    Open a file with the appropriate compression, as inferred from the filename suffix.
+    Args:
+        filename (str): Path to file.
+        mode (str): Mode to open file in.
+    Returns:
+        TextIOWrapper: File object.
+    """
     logger.debug(f"\tOpening file object: {filename}")
     logger.debug(f"\tOpening mode: {mode}")
     logger.debug(f"\tGZIP mode: {filename.endswith('.gz')}")
