@@ -1,7 +1,7 @@
 def checkGzipSorted = { file,key -> ["bash", "-c", "zcat " + file + " | sort -C " + key + " && printf 1 || printf 0"].execute().text.trim() as Integer }
 def exp_lca_headers_base = ["staxid_lca", "n_assignments_total", "n_assignments_classified",
     "staxid_top", "staxid_top_classified", "bitscore_min", "bitscore_max", "bitscore_mean"]
-def exp_lca_headers_prefixed = exp_lca_headers_base.collect{ "blast_${it}" }
+def exp_lca_headers_prefixed = exp_lca_headers_base.collect{ "testprefix_${it}" }
 def exp_lca_headers_all = exp_lca_headers_prefixed.collect{ it + "_all" }
 def exp_lca_headers_natural = exp_lca_headers_prefixed.collect{ it + "_natural" }
 def exp_lca_headers_artificial = exp_lca_headers_prefixed.collect{ it + "_artificial" }
@@ -54,6 +54,7 @@ nextflow_workflow {
                 perc_id = 60
                 qcov_hsp_perc = 30
                 taxid_artificial = 81077
+                lca_prefix = "testprefix"
             }
             workflow {
                 '''
@@ -65,6 +66,7 @@ nextflow_workflow {
                 input[5] = params.max_rank
                 input[6] = params.min_frac
                 input[7] = params.taxid_artificial
+                input[8] = params.lca_prefix
                 '''
             }
         }
@@ -149,6 +151,7 @@ nextflow_workflow {
                 perc_id = 60
                 qcov_hsp_perc = 30
                 taxid_artificial = 81077
+                lca_prefix = "testprefix"
             }
             workflow {
                 '''
@@ -160,6 +163,7 @@ nextflow_workflow {
                 input[5] = params.max_rank
                 input[6] = params.min_frac
                 input[7] = params.taxid_artificial
+                input[8] = params.lca_prefix
                 '''
             }
         }
@@ -244,6 +248,7 @@ nextflow_workflow {
                 perc_id = 0
                 qcov_hsp_perc = 0
                 taxid_artificial = 81077
+                lca_prefix = "testprefix"
             }
             workflow {
                 '''
@@ -255,6 +260,7 @@ nextflow_workflow {
                 input[5] = params.max_rank
                 input[6] = params.min_frac
                 input[7] = params.taxid_artificial
+                input[8] = params.lca_prefix
                 '''
             }
         }
@@ -320,6 +326,7 @@ nextflow_workflow {
                 perc_id = 60
                 qcov_hsp_perc = 30
                 taxid_artificial = 81077
+                lca_prefix = "testprefix"
             }
             workflow {
                 '''
@@ -331,6 +338,7 @@ nextflow_workflow {
                 input[5] = params.max_rank
                 input[6] = params.min_frac
                 input[7] = params.taxid_artificial
+                input[8] = params.lca_prefix
                 '''
             }
         }

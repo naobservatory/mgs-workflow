@@ -45,7 +45,8 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             cluster_min_len, n_clusters, Channel.of(false))
         // 3. BLAST cluster representatives
         blast_ch = BLAST_FASTA(cluster_ch.fasta, ref_dir, blast_db_prefix,
-            perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac, taxid_artificial)
+            perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac, taxid_artificial,
+            "validation")
         // 4. Concatenate clustering information across species to regenerate per-group information
         // NB: This concatenation stage will move down as more steps are added, but will need to happen eventually
         // and is useful for testing, so I'm implementing it now. It should probably get moved into its own
