@@ -1,5 +1,5 @@
 def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample","ribosomal"]
-def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample", "ribosomal"]
+def bracken_headers_exp = ["name", "taxid", "rank", "kraken2_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample", "ribosomal"]
 nextflow_workflow {
 
     name "Test subworkflow PROFILE"

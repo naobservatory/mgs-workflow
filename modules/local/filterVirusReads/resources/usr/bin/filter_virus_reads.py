@@ -38,35 +38,35 @@ def filter_virus_reads(input_path, score_threshold, out_path):
         # Check for necessary columns in header
         if "seq_id" not in headers:
             raise ValueError("Missing column in input TSV: 'seq_id'")
-        if "kraken_classified" not in headers:
-            raise ValueError("Missing column in input TSV: 'kraken_classified'")
-        if "kraken_assigned_host_virus" not in headers:
-            raise ValueError("Missing column in input TSV: 'kraken_assigned_host_virus'")
-        if "bowtie2_length_normalized_score_max" not in headers:
-            raise ValueError("Missing column in input TSV: 'bowtie2_length_normalized_score_max'")
+        if "kraken2_classified" not in headers:
+            raise ValueError("Missing column in input TSV: 'kraken2_classified'")
+        if "kraken2_assigned_host_virus" not in headers:
+            raise ValueError("Missing column in input TSV: 'kraken2_assigned_host_virus'")
+        if "aligner_length_normalized_score" not in headers:
+            raise ValueError("Missing column in input TSV: 'aligner_length_normalized_score'")
         outf.write("\t".join(headers) + "\n")
         # Read in lines and filter based on Kraken assignment and score
         for line in inf:
             fields = line.strip().split("\t")
-            kraken_classified = fields[idx["kraken_classified"]].lower() == "true"
-            kraken_assigned_host_virus = int(fields[idx["kraken_assigned_host_virus"]]) # 4-state: 0, 1, 2, 3
-            if (not kraken_classified) and kraken_assigned_host_virus > 0:
-                raise ValueError("Inconsistent Kraken fields: 'kraken_classified' is False, but 'kraken_assigned_host_virus' is not 0: {}".format(fields[idx["seq_id"]]))
-            adj_score = float(fields[idx["bowtie2_length_normalized_score_max"]])
+            kraken2_classified = fields[idx["kraken2_classified"]].lower() == "true"
+            kraken2_assigned_host_virus = int(fields[idx["kraken2_assigned_host_virus"]]) # 4-state: 0, 1, 2, 3
+            if (not kraken2_classified) and kraken2_assigned_host_virus > 0:
+                raise ValueError("Inconsistent Kraken fields: 'kraken2_classified' is False, but 'kraken2_assigned_host_virus' is not 0: {}".format(fields[idx["seq_id"]]))
+            adj_score = float(fields[idx["aligner_length_normalized_score"]])
             # Only write reads that:
             # 1. Are classified by Kraken as host-infecting viruses; or
             # 2. Are classified by Kraken as potentially host-infecting viruses, and have a normalized Bowtie2 score above the threshold
             # 3. Are unclassified by Kraken, but have a normalized Bowtie2 score above the threshold; or
-            msg = f"{kraken_classified}\t{kraken_assigned_host_virus}\t{adj_score}/{score_threshold}"
-            if kraken_assigned_host_virus == 1:
+            msg = f"{kraken2_classified}\t{kraken2_assigned_host_virus}\t{adj_score}/{score_threshold}"
+            if kraken2_assigned_host_virus == 1:
                 msg = msg+"\tKEEP"
                 print_log(msg)
                 outf.write("\t".join(fields) + "\n")
-            elif adj_score >= score_threshold and kraken_assigned_host_virus > 1:
+            elif adj_score >= score_threshold and kraken2_assigned_host_virus > 1:
                 msg = msg+"\tKEEP"
                 print_log(msg)
                 outf.write("\t".join(fields) + "\n")
-            elif adj_score >= score_threshold and not kraken_classified:
+            elif adj_score >= score_threshold and not kraken2_classified:
                 msg = msg+"\tKEEP"
                 print_log(msg)
                 outf.write("\t".join(fields) + "\n")

@@ -28,7 +28,7 @@ workflow SPLIT_VIRAL_TSV_BY_SPECIES {
         db // Viral taxonomy DB
     main:
         // 1. Join to viral taxonomy DB
-        rehead_ch = REHEAD_TSV(groups, "bowtie2_taxid_best", "taxid").output
+        rehead_ch = REHEAD_TSV(groups, "aligner_taxid", "taxid").output
         rehead_sorted_ch = SORT_GROUP_TAXID(rehead_ch, "taxid").sorted
         db_sorted_ch = SORT_DB_TAXID(
             Channel.of("db").combine(db),

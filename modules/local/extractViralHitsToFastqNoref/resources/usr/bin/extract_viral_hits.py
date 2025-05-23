@@ -24,39 +24,50 @@ def open_by_suffix(filename, mode="r", debug=False):
     else:
         return open(filename, mode)
 
-def extract_viral_hit(fields, indices, drop_unpaired):
-    """Convert a single TSV line to a FASTQ entry, handling missing mates."""
+def extract_viral_hit(fields, indices, single, drop_unpaired):
+    """Convert a single TSV line to a FASTQ entry, handling missing mates (if not single-end)."""
     # Extract fields
     seq_id = fields[indices["seq_id"]]
-    query_seq_fwd = fields[indices["query_seq_fwd"]]
-    query_seq_rev = fields[indices["query_seq_rev"]]
-    query_qual_fwd = fields[indices["query_qual_fwd"]]
-    query_qual_rev = fields[indices["query_qual_rev"]]
-    # Check for unpaired reads
-    if query_seq_fwd == "NA":
-        if drop_unpaired:
-            return None
-        query_seq_fwd = "N"
-        query_qual_fwd = "!"
-    if query_seq_rev == "NA":
-        if drop_unpaired:
-            return None
-        query_seq_rev = "N"
-        query_qual_rev = "!"
+    query_seq_fwd = fields[indices["query_seq"]]
+    query_qual_fwd = fields[indices["query_qual"]]        
+    if not single:
+        query_seq_rev = fields[indices["query_seq_rev"]]
+        query_qual_rev = fields[indices["query_qual_rev"]]
+        # Check for unpaired reads
+        if query_seq_fwd == "NA":
+            if drop_unpaired:
+                return None
+            query_seq_fwd = "N"
+            query_qual_fwd = "!"
+        if query_seq_rev == "NA":
+            if drop_unpaired:
+                return None
+            query_seq_rev = "N"
+            query_qual_rev = "!"
     # Assemble FASTQ entry
     fastq_entry_fwd = f"@{seq_id} 1\n{query_seq_fwd}\n+\n{query_qual_fwd}\n"
-    fastq_entry_rev = f"@{seq_id} 2\n{query_seq_rev}\n+\n{query_qual_rev}\n"
-    fastq_entry = fastq_entry_fwd + fastq_entry_rev
-    return fastq_entry
-
+    if single:
+        return fastq_entry_fwd
+    else:
+        fastq_entry_rev = f"@{seq_id} 2\n{query_seq_rev}\n+\n{query_qual_rev}\n"
+        return fastq_entry_fwd + fastq_entry_rev
+        
 
 def extract_viral_hits(input_path, out_path, drop_unpaired):
     """Extract viral sequences from TSV file and write to FASTQ file."""
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Read and handle header line
         headers = inf.readline().rstrip("\n").split("\t")
-        headers_exp = ["seq_id", "query_seq_fwd", "query_seq_rev",
-                       "query_qual_fwd", "query_qual_rev"]
+        # Infer whether paired or single end from header
+        if "query_seq_rev" in headers:
+            single = False
+            print_log("Processing paired-end reads.")
+        else:
+            single = True
+            print_log("Processing single-end reads.")
+        headers_exp = ["seq_id", "query_seq", "query_qual"]
+        if not single:
+            headers_exp += ["query_seq_rev", "query_qual_rev"]
         for header in headers_exp:
             if header not in headers:
                 msg = f"Missing column in input TSV: {header}"
@@ -66,7 +77,7 @@ def extract_viral_hits(input_path, out_path, drop_unpaired):
         # Iterate over lines in input file
         for line in inf:
             fields = line.rstrip("\n").split("\t")
-            fastq_entry = extract_viral_hit(fields, indices, drop_unpaired)
+            fastq_entry = extract_viral_hit(fields, indices, single, drop_unpaired)
             if fastq_entry:
                 outf.write(fastq_entry)
 
