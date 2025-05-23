@@ -14,6 +14,7 @@ nextflow_workflow {
             params {
                 hits_tsv = "${projectDir}/test-data/toy-data/validate-cluster-reps/test-hits.tsv"
                 lca_tsv = "${projectDir}/test-data/toy-data/validate-cluster-reps/test-lca.tsv"
+                hits_taxid_column = "taxid"
                 lca_taxid_column = "lca_taxid"
                 tax_dist_column = "tax_dist"
                 ref_dir = "${projectDir}/test-data/toy-data/validate-cluster-reps/"
@@ -22,9 +23,10 @@ nextflow_workflow {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.hits_tsv)) // hits_tsv
                 input[1] = Channel.of("test").combine(Channel.of(params.lca_tsv)) // lca_tsv
-                input[2] = params.lca_taxid_column // lca_taxid_column
-                input[3] = params.tax_dist_column // tax_dist_column
-                input[4] = params.ref_dir // ref_dir
+                input[2] = params.hits_taxid_column // hits_taxid_column
+                input[3] = params.lca_taxid_column // lca_taxid_column
+                input[4] = params.tax_dist_column // tax_dist_column
+                input[5] = params.ref_dir // ref_dir
                 '''
             }
         }
@@ -63,7 +65,7 @@ nextflow_workflow {
             def tab_out = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_out.rowCount == tab_dist.rowCount
             assert tab_out.columnCount == tab_dist.columnCount
-            assert tab_out.columns["cluster_rep_id"] == tab_dist.columns["seq_id"]
+            assert tab_out.columns["vsearch_cluster_rep_id"] == tab_dist.columns["seq_id"]
         }
     }
 }

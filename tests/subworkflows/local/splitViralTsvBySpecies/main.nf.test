@@ -105,7 +105,7 @@ nextflow_workflow {
             for (int i=0; i < tabs_in.size(); i++) {
                 assert tabs_sort[i].rowCount == tabs_in[i].rowCount
                 assert tabs_sort[i].columnCount == tabs_in[i].columnCount
-                assert tabs_sort[i].columns["taxid"].collect{ it.toString() } == tabs_in[i].columns["bowtie2_taxid_best"].collect{ it.toString() }.toSorted()
+                assert tabs_sort[i].columns["bowtie2_taxid_best"].collect{ it.toString() } == tabs_in[i].columns["bowtie2_taxid_best"].collect{ it.toString() }.toSorted()
             }
             // Joined DB should have expected contents
             def tabs_join = workflow.out.test_join.collect{path(it[1]).csv(sep: "\t",decompress: true)}
@@ -113,7 +113,7 @@ nextflow_workflow {
             assert tabs_join.size() == tabs_sort.size()
             for (int i=0; i < tabs_sort.size(); i++) {
                 assert tabs_join[i].rowCount == tabs_sort[i].rowCount
-                assert tabs_join[i].columnCount == tabs_sort[i].columnCount + tab_db.columnCount - 1
+                assert tabs_join[i].columnNames == tabs_sort[i].columnNames + ["taxid_species"]
                 for (c in tabs_join[i].columnNames) {
                     if (c in tabs_sort[i].columnNames) {
                         assert tabs_sort[i].columns[c] == tabs_join[i].columns[c]

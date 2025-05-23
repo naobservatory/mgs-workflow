@@ -129,14 +129,6 @@ nextflow_workflow {
             for (int i = 0; i < tabs_split.size(); i++) {
                 assert tabs_split[i].rowCount == tabs_clust[i].rowCount
             }
-            // Regrouping should work as expected
-            def tabs_in = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t",decompress: true)}
-            def tabs_regrouped = workflow.out.test_regrouped.collect{path(it[1]).csv(sep: "\t",decompress: true)}
-            assert tabs_regrouped.size() == tabs_in.size()
-            for (int i=0; i < tabs_regrouped.size(); i++) {
-                assert tabs_regrouped[i].rowCount == tabs_in[i].rowCount
-                assert tabs_regrouped[i].columns["seq_id"].unique().toSorted() == tabs_in[i].columns["seq_id"].unique().toSorted()
-            }
             // Basic BLAST invocation should work as expected
             def blast_db = workflow.out.test_blast_db.collect{path(it[1]).csv(sep: "\t",decompress: true)}
             def blast_query = workflow.out.test_blast_query.collect{path(it[1]).fasta}
@@ -160,7 +152,7 @@ nextflow_workflow {
             assert tabs_validate.size() == blast_lca.size()
             for (int i=0; i < tabs_validate.size(); i++) {
                 if (tabs_validate[i].rowCount > 0) {
-                    assert tabs_validate[i].columns["cluster_rep_id"].unique().toSorted() == blast_lca[i].columns["qseqid"].unique().toSorted()
+                    assert tabs_validate[i].columns["vsearch_cluster_rep_id"].unique().toSorted() == blast_lca[i].columns["qseqid"].unique().toSorted()
                 }
             }
             // Propagation should work as expected
@@ -173,6 +165,14 @@ nextflow_workflow {
                     def ncol_exp = tabs_split[i].columnCount + tabs_validate[i].columnCount + tabs_clust[i].columnCount - 3
                     assert tabs_propagate[i].columnCount == ncol_exp
                 }
+            }
+            // Regrouping should work as expected
+            def tabs_in = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t",decompress: true)}
+            def tabs_regrouped = workflow.out.annotated_hits.collect{path(it[1]).csv(sep: "\t",decompress: true)}
+            assert tabs_regrouped.size() == tabs_in.size()
+            for (int i=0; i < tabs_regrouped.size(); i++) {
+                assert tabs_regrouped[i].rowCount == tabs_in[i].rowCount
+                assert tabs_regrouped[i].columns["seq_id"].unique().toSorted() == tabs_in[i].columns["seq_id"].unique().toSorted()
             }
         }
     }

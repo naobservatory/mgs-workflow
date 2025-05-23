@@ -31,7 +31,7 @@ nextflow_process {
         }
     }
 
-    test("Should fail when a selected field is not present"){
+    test("Should fail when a selected field is not present (in 'keep' mode)"){
         tag "expect_failed"
         when {
             params {
@@ -159,6 +159,42 @@ nextflow_process {
             }
             // Only selected columns should be present in output
             assert tab_out.columnNames == fields
+        }
+    }
+
+    test("Should ignore missing fields when selecting (in 'drop' mode)"){
+        tag "expect_success"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                fields = "x,a"
+                mode = "drop"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.fields
+                input[2] = params.mode
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output and input row counts should match
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
+            assert tab_out.rowCount == tab_in.rowCount
+            // Columns should be kept or dropped as expected
+            def fields_in = tab_in.columnNames
+            def fields_out = tab_out.columnNames
+            def fields_drop = params.fields.split(",")
+            def fields_exp = fields_in.findAll{!fields_drop.contains(it)}
+            assert fields_out == fields_exp
+            // Selected columns should be unmodified
+            for (f in fields_out) {
+                assert tab_out.columns[f] == tab_in.columns[f]
+            }
         }
     }
 

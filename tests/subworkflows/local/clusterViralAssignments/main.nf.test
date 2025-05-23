@@ -70,7 +70,7 @@ nextflow_workflow {
                 assert fastas_clustered[i].size() == n_reps
                 assert n_reps == n_clusters
                 assert tabs_clustered_out[i].rowCount == n_seqs
-                assert tabs_clustered_out[i].columns["cluster_id"].unique().size() == n_clusters
+                assert tabs_clustered_out[i].columns["vsearch_cluster_id"].unique().size() == n_clusters
                 def exp_output_ids = Math.min(n_clusters, params.n_clusters)
                 assert tabs_clustered_ids[i].columns["C0"].unique().size() == exp_output_ids
             }
@@ -154,7 +154,7 @@ nextflow_workflow {
                 assert fastas_clustered[i].size() == n_reps
                 assert n_reps == n_clusters
                 assert tabs_clustered_out[i].rowCount == n_seqs
-                assert tabs_clustered_out[i].columns["cluster_id"].unique().size() == n_clusters
+                assert tabs_clustered_out[i].columns["vsearch_cluster_id"].unique().size() == n_clusters
                 def exp_output_ids = Math.min(n_clusters, params.n_clusters)
                 assert tabs_clustered_ids[i].columns["C0"].unique().size() == exp_output_ids
             }

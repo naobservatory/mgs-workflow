@@ -1,4 +1,4 @@
-seq_id	cluster_id	cluster_rep_id	seq_length	is_cluster_rep
+seq_id	vsearch_cluster_id	vsearch_cluster_rep_id	vsearch_seq_length	vsearch_is_cluster_rep
 H1	0	R1	151	False
 H2	1	R2	151	False
 H3	2	R3	151	False
