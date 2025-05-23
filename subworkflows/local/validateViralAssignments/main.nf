@@ -20,6 +20,9 @@ include { VALIDATE_CLUSTER_REPRESENTATIVES } from "../../../subworkflows/local/v
 include { PROPAGATE_VALIDATION_INFORMATION } from "../../../subworkflows/local/propagateValidationInformation"
 include { CONCATENATE_TSVS_ACROSS_SPECIES as CONCATENATE_CLUSTERING_INFO } from "../../../subworkflows/local/concatenateTsvsAcrossSpecies"
 include { CONCATENATE_TSVS_ACROSS_SPECIES as CONCATENATE_BLAST_RESULTS } from "../../../subworkflows/local/concatenateTsvsAcrossSpecies"
+include { SELECT_TSV_COLUMNS } from "../../../modules/local/selectTsvColumns"
+include { COPY_FILE as COPY_HITS } from "../../../modules/local/copyFile"
+include { COPY_FILE as COPY_BLAST } from "../../../modules/local/copyFile"
 
 /***********
 | WORKFLOW |
@@ -60,11 +63,15 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         // 6. Concatenate validation info and BLAST results across species (to regenerate per-group information)
         regrouped_ch = CONCATENATE_CLUSTERING_INFO(propagate_ch.output, "validation")
         regrouped_blast_ch = CONCATENATE_BLAST_RESULTS(blast_ch.blast, "validation")
+        // 7. Cleanup
+        regrouped_drop_ch = SELECT_TSV_COLUMNS(regrouped_ch.output, "taxid_species", "drop").output
+        output_hits_ch = COPY_HITS(regrouped_drop_ch, "validation_hits.tsv.gz")
+        output_blast_ch = COPY_BLAST(regrouped_blast_ch.output, "validation_blast.tsv.gz")
     emit:
         // Main output
-        annotated_hits = regrouped_ch.output
+        annotated_hits = output_hits_ch
         // Intermediate output
-        blast_results = regrouped_blast_ch.output
+        blast_results = output_blast_ch
         // Extra outputs for testing
         test_in   = groups
         test_db   = db

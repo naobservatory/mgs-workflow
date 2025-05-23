@@ -152,7 +152,7 @@ nextflow_workflow {
             assert tabs_validate.size() == blast_lca.size()
             for (int i=0; i < tabs_validate.size(); i++) {
                 if (tabs_validate[i].rowCount > 0) {
-                    assert tabs_validate[i].columns["cluster_rep_id"].unique().toSorted() == blast_lca[i].columns["qseqid"].unique().toSorted()
+                    assert tabs_validate[i].columns["vsearch_cluster_rep_id"].unique().toSorted() == blast_lca[i].columns["qseqid"].unique().toSorted()
                 }
             }
             // Propagation should work as expected
