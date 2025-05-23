@@ -25,7 +25,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("ERROR: Could not find sort field in input header")
+            assert process.errorReport.contains("Could not find sort field in input header")
         }
     }
 
@@ -131,7 +131,7 @@ nextflow_process {
 
     test("Should handle empty input file and produce empty output file"){
         tag "expect_success"
-        tag "empty_file"
+        tag "empty_input"
         when {
             params {}
             process {

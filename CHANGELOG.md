@@ -1,4 +1,4 @@
-# v2.9.1.0
+# v2.10.0.0-dev
 - Changed column names in `virus_hits_final.tsv` for consistency between Illumina and ONT output
     - added `docs/virus_hits_final.md` with full documentation of column names
     - prefixes `bowtie2_` and `minimap2_` changed to `aligner_`
@@ -9,6 +9,18 @@
     - To make this happen, updated `EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED` to infer endedness based on input file and to work correctly on both single-end and paired-end data. 
 - Made `MARK_ALIGNMENT_DUPLICATES` explicitly handle NAs. Now if forward reads match and reverse read alignments are NA, reads will be marked as duplicates.
     - This is more conservative (will tend to mark more duplicates) than our previous approach (previously, if either read alignment was NA, a read couldn't be part of a duplicate group). 
+
+# v2.9.0.1-dev
+
+- Modified Github Actions to pull specific Nextflow version (rather than "latest")
+- Fixed missing-columns bug for empty files in SUMMARIZE_MULTIQC
+- Restructured SORT_TSV process to improve memory efficiency
+- Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
+    - Split out core of BLAST_VIRAL subworkflow into a new BLAST_FASTA subworkflow that is called by both BLAST_VIRAL and VALIDATE_VIRAL_ASSIGNMENTS
+    - Added tests for BLAST_FASTA and updated tests for VALIDATE_VIRAL_ASSIGNMENTS
+    - Implemented basic algorithm for computing the lowest common ancestor of sets of taxids in tabular TSV data (LCA_TSV), including special handling of artificial and unclassified taxids
+    - Integrated LCA_TSV into BLAST_FASTA subworkflow and updated tests
+    - Implemented VALIDATE_CLUSTER_REPRESENTATIVES subworkflow for comparing Bowtie2 and BLAST-LCA assignments, including new SELECT_TSV_COLUMNS and COMPUTE_TAXID_DISTANCE processes
 
 # v2.9.0.0
 - Implemented ONT analysis in the RUN workflow
