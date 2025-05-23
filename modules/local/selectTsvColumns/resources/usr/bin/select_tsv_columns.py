@@ -42,18 +42,20 @@ logger.addHandler(handler)
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     # Create parser
-    desc = "Given a TSV column with an initial header line, " \
-           "return a new TSV containing either: " \
-           "1. Only the specified columns, with all others dropped (" \
-           "'keep' mode) or " \
-           "2. All columns except the specified ones, with only the latter " \
-           "dropped ('drop' mode)."
+    desc = (
+        "Given a TSV column with an initial header line, "
+        "return a new TSV containing either: "
+        "1. Only the specified columns, with all others dropped ('keep' mode) or "
+        "2. All columns except the specified ones, with only the latter dropped ('drop' mode)."
+    )
     parser = argparse.ArgumentParser(description=desc)
     # Add arguments
     parser.add_argument("--input", "-i", help="Path to input TSV.")
     parser.add_argument("--output", "-o", help="Path to output TSV.")
     parser.add_argument("--fields", "-f", help="Comma-separated list of fields to select.")
-    parser.add_argument("--mode", "-m", help="Mode to select columns: 'keep' or 'drop'.")
+    parser.add_argument("--mode", "-m", 
+                        choices=["keep", "drop"],
+                        help="Mode to select columns: 'keep' or 'drop'.")
     # Return parsed arguments
     return parser.parse_args()
 
@@ -142,9 +144,7 @@ def main():
     logger.info(f"Input TSV file: {input_path}")
     logger.info(f"Output TSV file: {output_path}")
     # Check mode
-    mode = args.mode.lower()
-    if mode not in ["keep", "drop"]:
-        raise ValueError(f"Invalid mode (must be 'keep' or 'drop'): {mode}")
+    mode = args.mode
     logger.info(f"Mode: {mode}")
     # Extract fields to select from header
     fields = args.fields.split(",")
