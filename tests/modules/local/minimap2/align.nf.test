@@ -173,24 +173,11 @@ nextflow_process {
         tag "expect_success"
         tag "empty_file"
 
-        setup {
-            run("LOAD_SAMPLESHEET_EMPTY") {
-                script "subworkflows/local/loadSampleSheet/main.nf"
-                process {
-                    """
-                    input[0] = "${projectDir}/test-data/empty-samplesheet.csv"
-                    input[1] = "ont"
-                    input[2] = false
-                    """
-                }
-            }
-        }
-
         when {
             params {}
             process {
                 '''
-                input[0] = LOAD_SAMPLESHEET_EMPTY.out.samplesheet
+                input[0] = Channel.of(tuple("empty", "${projectDir}/test-data/toy-data/empty_file.txt"))
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
                 input[2] = "test"
                 input[3] = false
