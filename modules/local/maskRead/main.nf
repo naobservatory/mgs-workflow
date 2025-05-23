@@ -23,7 +23,7 @@ process MASK_FASTQ_READS {
         zcat -f !{reads} | bbmask.sh in=stdin.fastq out=stdout.fastq ${par} | gzip > ${out}
         
         # Check for empty output file without empty input
-        if [[ -s "!{reads}" && $(zcat "${out} | head | wc -l) -eq 0 ]]; then
+        if [[ -s "!{reads}" && $(zcat "${out}" | head | wc -l) -eq 0 ]]; then
             echo "Error: Output file is empty."
             exit 1
         fi
