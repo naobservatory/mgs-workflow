@@ -57,8 +57,13 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         propagate_ch = PROPAGATE_VALIDATION_INFORMATION(split_ch.tsv, cluster_ch.tsv, validate_ch.output)
         // 6. Concatenate validation info and BLAST results across species (to regenerate per-group information)
         regrouped_ch = CONCATENATE_CLUSTERING_INFO(propagate_ch.output, "validation")
-        regrouped_blast_ch = CONCATENATE_BLAST_RESULTS(blast_ch.lca, "validation")
+        regrouped_blast_ch = CONCATENATE_BLAST_RESULTS(blast_ch.blast, "validation")
     emit:
+        // Main output
+        annotated_hits = regrouped_ch.output
+        // Intermediate output
+        blast_results = regrouped_blast_ch.output
+        // Extra outputs for testing
         test_in   = groups
         test_db   = db
         test_split_tsv = split_ch.tsv
@@ -71,6 +76,5 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_blast_query = blast_ch.query
         test_blast_lca = blast_ch.lca
         test_validate = validate_ch.output
-        test_regrouped = regrouped_ch.output
         test_propagate = propagate_ch.output
 }
