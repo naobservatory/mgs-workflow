@@ -157,7 +157,7 @@ fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadE
     } else {
         // If only one genome ID, use it directly
         genome_id_sorted = genome_id;
-        // Normalize coordinates: handle cases where one value ks None
+        // Normalize coordinates: handle cases where one value is None
         (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
             (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
             (Some(fwd), None) => (Some(fwd), None),
