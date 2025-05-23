@@ -1,3 +1,14 @@
+# v2.9.0.1
+
+- Modified Github Actions to pull specific Nextflow version (rather than "latest")
+- Fixed missing-columns bug for empty files in SUMMARIZE_MULTIQC
+- Restructured SORT_TSV process to improve memory efficiency
+- Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
+    - Split out core of BLAST_VIRAL subworkflow into a new BLAST_FASTA subworkflow that is called by both BLAST_VIRAL and VALIDATE_VIRAL_ASSIGNMENTS
+    - Added tests for BLAST_FASTA and updated tests for VALIDATE_VIRAL_ASSIGNMENTS
+    - Implemented basic algorithm for computing the lowest common ancestor of sets of taxids in tabular TSV data (LCA_TSV), including special handling of artificial and unclassified taxids
+    - Integrated LCA_TSV into BLAST_FASTA subworkflow and updated tests
+
 # v2.9.0.0
 - Implemented ONT analysis in the RUN workflow
     - Combined run_dev_se.nf with run.nf

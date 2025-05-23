@@ -45,7 +45,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
         no_contam_ch = contam_minimap2_ch.reads_unmapped
 
         // Identify virus reads
-        virus_minimap2_ch = MINIMAP2_VIRUS(no_human_ch, minimap2_virus_index, "virus", false)
+        virus_minimap2_ch = MINIMAP2_VIRUS(no_contam_ch, minimap2_virus_index, "virus", false)
         virus_sam_ch = virus_minimap2_ch.sam
 
         // Group cleaned reads and sam files by sample
