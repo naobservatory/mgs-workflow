@@ -173,11 +173,23 @@ nextflow_process {
         tag "expect_success"
         tag "empty_file"
 
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+        }
+
         when {
             params {}
             process {
                 '''
-                input[0] = Channel.of(tuple("empty", "${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[0] = GZIP_FILE.out
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
                 input[2] = "test"
                 input[3] = false
