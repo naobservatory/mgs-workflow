@@ -86,8 +86,8 @@ nextflow_process {
             // Should run without failures
             assert process.success
             // Output should be empty
-            def fastq_out = path(process.out.masked[0][1])
-            assert fastq_out.size() == 0
+            def fastq_out = path(process.out.masked[0][1]).fastq
+            assert fastq_out.readNames.size() == 0
         }
     }
 }
