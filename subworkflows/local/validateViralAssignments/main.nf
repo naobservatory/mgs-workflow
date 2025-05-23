@@ -20,6 +20,7 @@ include { VALIDATE_CLUSTER_REPRESENTATIVES } from "../../../subworkflows/local/v
 include { ADD_SAMPLE_COLUMN as LABEL_GROUP_SPECIES } from "../../../modules/local/addSampleColumn"
 include { CONCATENATE_TSVS_LABELED } from "../../../modules/local/concatenateTsvs"
 include { ADD_SAMPLE_COLUMN as LABEL_GROUP } from "../../../modules/local/addSampleColumn"
+include { PROPAGATE_VALIDATION_INFORMATION } from "../../../subworkflows/local/propagateValidationInformation"
 
 /***********
 | WORKFLOW |
@@ -53,7 +54,9 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(split_ch.tsv, blast_ch.lca, 
             "validation_staxid_lca_natural", // LCA taxid computed from BLAST results, excluding artificial sequences
             "validation_distance", ref_dir)
-        // 5. Concatenate clustering information across species to regenerate per-group information
+        // 5. Propagate validation information back to individual hits
+        propagate_ch = PROPAGATE_VALIDATION_INFORMATION(split_ch.tsv, cluster_ch.tsv, validate_ch.output)
+        // 6. Concatenate clustering information across species to regenerate per-group information
         // NB: This concatenation stage will move down as more steps are added, but will need to happen eventually
         // and is useful for testing, so I'm implementing it now. It should probably get moved into its own
         // workflow eventually.
@@ -90,4 +93,5 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_blast_lca = blast_ch.lca
         test_validate = validate_ch.output
         test_regrouped = regrouped_ch
+        test_propagate = propagate_ch.output
 }

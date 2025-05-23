@@ -2,7 +2,9 @@
 
 """
 Given a TSV column with an initial header line,
-return a new TSV containing only the specified columns.
+return a new TSV containing either:
+1. Only the specified columns, with all others dropped ("keep" mode)
+2. All columns except the specified ones, with only the latter dropped ("drop" mode)
 """
 
 #=======================================================================
@@ -40,13 +42,20 @@ logger.addHandler(handler)
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     # Create parser
-    desc = "Given a TSV column with an initial header line, " \
-           "return a new TSV containing only the specified columns."
+    desc = (
+        "Given a TSV column with an initial header line, "
+        "return a new TSV containing either: "
+        "1. Only the specified columns, with all others dropped ('keep' mode) or "
+        "2. All columns except the specified ones, with only the latter dropped ('drop' mode)."
+    )
     parser = argparse.ArgumentParser(description=desc)
     # Add arguments
     parser.add_argument("--input", "-i", help="Path to input TSV.")
     parser.add_argument("--output", "-o", help="Path to output TSV.")
     parser.add_argument("--fields", "-f", help="Comma-separated list of fields to select.")
+    parser.add_argument("--mode", "-m", 
+                        choices=["keep", "drop"],
+                        help="Mode to select columns: 'keep' or 'drop'.")
     # Return parsed arguments
     return parser.parse_args()
 
@@ -89,26 +98,35 @@ def subset_line(inputs: list[str], indices: list[int]) -> list[str]:
     """Subset a list of strings to a list of indices."""
     return [inputs[i] for i in indices]
 
-def select_columns(input_path: str, output_path: str, fields: list[str]) -> None:
+def select_columns(input_path: str, output_path: str, fields: list[str], mode: str) -> None:
     """Select columns in TSV file."""
     with open_by_suffix(input_path) as inf, open_by_suffix(output_path, "w") as outf:
         # Read the header line
         header_line = inf.readline().strip()
+        logger.debug(f"Input header: {header_line}")
         if not header_line:
             # No header = selected fields are missing
             raise ValueError("No header to select fields from.")
         headers_in = header_line.split("\t")
         # Get indices of selected fields
         indices = [get_header_index(headers_in, field) for field in fields]
+        # Get indices of fields to keep
+        if mode == "keep":
+            indices_keep = indices
+        elif mode == "drop":
+            indices_keep = [i for i in range(len(headers_in)) if i not in indices]
+        if not indices_keep:
+            raise ValueError("Dropping all fields.")
         # Write new header
-        new_header_line = join_line(subset_line(headers_in, indices))
+        new_header_line = join_line(subset_line(headers_in, indices_keep))
+        logger.debug(f"Output header: {new_header_line}")
         outf.write(new_header_line)
         # Subset and write body lines of input file
         for line in inf:
             line = line.strip()
             if not line:
                 continue
-            line_split_subset = subset_line(line.split("\t"), indices)
+            line_split_subset = subset_line(line.split("\t"), indices_keep)
             outf.write(join_line(line_split_subset))
 
 #=======================================================================
@@ -125,14 +143,17 @@ def main():
     output_path = args.output
     logger.info(f"Input TSV file: {input_path}")
     logger.info(f"Output TSV file: {output_path}")
+    # Check mode
+    mode = args.mode
+    logger.info(f"Mode: {mode}")
     # Extract fields to select from header
     fields = args.fields.split(",")
-    logger.info(f"Selected fields: {fields}")
+    logger.info(f"Fields to {mode}: {fields}")
     if len(fields) == 0:
         raise ValueError("No fields to select.")
     # Select columns from input TSV
     logger.info("Selecting columns from input TSV.")
-    select_columns(input_path, output_path, fields)
+    select_columns(input_path, output_path, fields, mode)
     # Finish time tracking
     logger.info("Script completed successfully.")
     end_time = time.time()

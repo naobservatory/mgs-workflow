@@ -1,7 +1,3 @@
-def countGzipLines = { file -> path(file).linesGzip.size() }
-def getGzipHeader = { file -> ["bash", "-c", "zcat " + file + " | head -n 1"].execute().text.trim() }
-def getGzipBody = { file -> ["bash", "-c", "zcat " + file + " | tail -n +2"].execute().text.trim() }
-
 nextflow_process {
 
     name "Test process SELECT_TSV_COLUMNS"
@@ -11,17 +7,43 @@ nextflow_process {
     tag "module"
     tag "select_tsv_columns"
 
+    test("Should fail given invalid mode"){
+        tag "expect_failed"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/empty_file.txt"
+                fields = "x,y,z"
+                mode = "invalid"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.fields
+                input[2] = params.mode
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert !process.errorReport.contains("ValueError: Field not found in header")
+            assert process.errorReport.contains("error: argument --mode/-m: invalid choice: 'invalid'")
+        }
+    }
+
     test("Should fail when a selected field is not present"){
         tag "expect_failed"
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
                 fields = "x,a"
+                mode = "keep"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
                 input[1] = params.fields
+                input[2] = params.mode
                 '''
             }
         }
@@ -29,6 +51,7 @@ nextflow_process {
             assert process.failed
             assert process.exitStatus == 1
             assert process.errorReport.contains("ValueError: Field not found in header: a")
+            assert !process.errorReport.contains("ValueError: No header to select fields from.")
         }
     }
 
@@ -39,32 +62,62 @@ nextflow_process {
             params {
                 input_path = "${projectDir}/test-data/toy-data/empty_file.txt"
                 fields = "x"
+                mode = "keep"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
                 input[1] = params.fields
+                input[2] = params.mode
                 '''
             }
         }
         then {
             assert process.failed
             assert process.exitStatus == 1
+            assert !process.errorReport.contains("ValueError: Field not found in header")
             assert process.errorReport.contains("ValueError: No header to select fields from.")
         }
     }
 
-    test("Should produce no change when all fields are selected"){
-        tag "expect_success"
+    test("Should fail when all fields are selected (in 'drop' mode)"){
+        tag "expect_failed"
+        tag "empty_input"
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
                 fields = "x,y,z"
+                mode = "drop"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
                 input[1] = params.fields
+                input[2] = params.mode
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert !process.errorReport.contains("ValueError: Field not found in header")
+            assert process.errorReport.contains("ValueError: Dropping all fields.")
+        }
+    }
+
+    test("Should produce no change when all fields are selected (in 'keep' mode)"){
+        tag "expect_success"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                fields = "x,y,z"
+                mode = "keep"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.fields
+                input[2] = params.mode
                 '''
             }
         }
@@ -76,17 +129,19 @@ nextflow_process {
         }
     }
 
-    test("Should successfully downsample columns when only some are selected"){
+    test("Should successfully downsample columns when only some are selected (in 'keep' mode)"){
         tag "expect_success"
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
                 fields = "x,z"
+                mode = "keep"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
                 input[1] = params.fields
+                input[2] = params.mode
                 '''
             }
         }
@@ -107,18 +162,55 @@ nextflow_process {
         }
     }
 
-    test("Should correctly handle empty input file (header only)"){
+    test("Should successfully downsample columns when only some are selected (in 'drop' mode)"){
+        tag "expect_success"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                fields = "x,z"
+                mode = "drop"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.fields
+                input[2] = params.mode
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output and input row counts should match
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
+            assert tab_out.rowCount == tab_in.rowCount
+            // Output should be missing specified columns, with others unchanged
+            def fields = params.fields.split(",")
+            for (c in tab_in.columnNames) {
+                if (fields.contains(c)) {
+                    assert !tab_out.columnNames.contains(c)
+                } else {
+                    assert tab_out.columns[c] == tab_in.columns[c]
+                }
+            }
+        }
+    }
+
+    test("Should correctly handle empty input file (header only, 'keep' mode)"){
         tag "empty_input"
         tag "expect_success"
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/test_tab_empty.tsv"
                 fields = "x,z"
+                mode = "keep"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
                 input[1] = params.fields
+                input[2] = params.mode
                 '''
             }
         }
@@ -135,4 +227,41 @@ nextflow_process {
             assert header == fields
         }
     }
+
+    test("Should correctly handle empty input file (header only, 'drop' mode)"){
+        tag "empty_input"
+        tag "expect_success"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_empty.tsv"
+                fields = "x,z"
+                mode = "drop"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.fields
+                input[2] = params.mode
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should contain a single header line and no body
+            def outputFile = path(process.out.output[0][1])
+            def lines = outputFile.text.split("\n")
+            assert lines.size() == 1
+            // Header should contain appropriate fields
+            def inputFile = path(process.out.input[0][1])
+            def lines_in = inputFile.text.split("\n")
+            def fields_in = lines_in[0].split("\t")
+            def fields_out = lines[0].split("\t")
+            def fields_drop = params.fields.split(",")
+            for (f in fields_in) {
+                assert fields_out.contains(f) != fields_drop.contains(f)
+            }
+        }
+    }
 }
+
