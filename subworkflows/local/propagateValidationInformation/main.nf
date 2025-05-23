@@ -27,9 +27,10 @@ workflow PROPAGATE_VALIDATION_INFORMATION {
         hits_tsv // Viral hits TSV, including seq_id and original taxid assignment
         cluster_tsv // Cluster TSV, including seq_id and cluster_rep_id
         validation_tsv // Validation TSV, including cluster_rep_id and validation status
+        taxid_column // Column header for taxid in hits TSV
     main:
         // 0. Drop redundant columns from validation TSV
-        select_ch = SELECT_TSV_COLUMNS(validation_tsv, "taxid", "drop").output
+        select_ch = SELECT_TSV_COLUMNS(validation_tsv, taxid_column, "drop").output
         // 1. Sort cluster and validation TSVs by cluster_rep_id
         sort_cluster_tsv = SORT_CLUSTER_TSV(cluster_tsv, "cluster_rep_id").sorted
         sort_validation_tsv = SORT_VALIDATION_TSV(select_ch, "cluster_rep_id").sorted

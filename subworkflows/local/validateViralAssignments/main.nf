@@ -51,10 +51,12 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             "validation")
         // 4. Validate hit TSV taxids against BLAST results
         validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(split_ch.tsv, blast_ch.lca, 
+            "bowtie2_taxid_best", // Column header for original taxid in hits TSV
             "validation_staxid_lca_natural", // LCA taxid computed from BLAST results, excluding artificial sequences
             "validation_distance", ref_dir)
         // 5. Propagate validation information back to individual hits
-        propagate_ch = PROPAGATE_VALIDATION_INFORMATION(split_ch.tsv, cluster_ch.tsv, validate_ch.output)
+        propagate_ch = PROPAGATE_VALIDATION_INFORMATION(split_ch.tsv, cluster_ch.tsv,
+            validate_ch.output, "bowtie2_taxid_best")
         // 6. Concatenate validation info and BLAST results across species (to regenerate per-group information)
         regrouped_ch = CONCATENATE_CLUSTERING_INFO(propagate_ch.output, "validation")
         regrouped_blast_ch = CONCATENATE_BLAST_RESULTS(blast_ch.blast, "validation")
