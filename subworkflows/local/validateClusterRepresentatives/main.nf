@@ -48,7 +48,7 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
         // taxid is too high (ancestor of LCA taxid), and a positive distance if the
         // original taxid is too low (descendant of LCA taxid).
         // 4. Rename seq_id to cluster_rep_id for downstream processing
-        rename_ch = REHEAD_SEQ_ID(dist_ch, "seq_id", "cluster_rep_id").output
+        rename_ch = REHEAD_SEQ_ID(dist_ch, "seq_id", "vsearch_cluster_rep_id").output
     emit:
         output = rename_ch
         test_dist = dist_ch

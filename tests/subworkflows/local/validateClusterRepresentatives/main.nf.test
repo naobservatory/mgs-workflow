@@ -65,7 +65,7 @@ nextflow_workflow {
             def tab_out = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_out.rowCount == tab_dist.rowCount
             assert tab_out.columnCount == tab_dist.columnCount
-            assert tab_out.columns["cluster_rep_id"] == tab_dist.columns["seq_id"]
+            assert tab_out.columns["vsearch_cluster_rep_id"] == tab_dist.columns["seq_id"]
         }
     }
 }
