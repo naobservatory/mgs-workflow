@@ -11,7 +11,7 @@ process MASK_FASTQ_READS {
         tuple val(sample), path("${sample}_in.fastq.gz"), emit: input
     shell:
         '''
-        set -e
+        set -eoux pipefail
 
         # Define input/output
         out=!{sample}_masked.fastq.gz
@@ -21,6 +21,12 @@ process MASK_FASTQ_READS {
 
         # Execute with streaming approach
         zcat -f !{reads} | bbmask.sh in=stdin.fastq out=stdout.fastq ${par} | gzip > ${out}
+        
+        # Check for empty output file without empty input
+        if [[ -s "!{reads}" && $(zcat "${out} | head | wc -l) -eq 0 ]]; then
+            echo "Error: Output file is empty."
+            exit 1
+        fi
 
         # Link input to output for testing
         ln -s !{reads} !{sample}_in.fastq.gz
