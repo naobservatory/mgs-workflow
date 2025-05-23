@@ -54,4 +54,40 @@ nextflow_process {
             assert non_masked_seqs == in_seqs
         }
     }
+
+    test("Should run correctly on empty FASTQ data") {
+        tag "expect_success"
+        tag "empty_file"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+        }
+
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = GZIP_FILE.out
+                input[1] = 25
+                input[2] = 0.55
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should be empty
+            def fastq_out = path(process.out.masked[0][1]).fastq
+            assert fastq_out.readNames.size() == 0
+        }
+    }
 }
