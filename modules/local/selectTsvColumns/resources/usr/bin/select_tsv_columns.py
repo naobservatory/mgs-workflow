@@ -81,12 +81,32 @@ def open_by_suffix(filename: str, mode: str = "r") -> io.TextIOWrapper:
 # TSV processing functions
 #=======================================================================
 
-def get_header_index(headers: list[str], field: str) -> int:
-    """Get the index of a field in a header line."""
+def get_header_index(
+    headers: list[str],
+    field: str,
+    mode: str = "keep"
+) -> int | None:
+    """
+    Get the index of a field in a header line. If the field is not found,
+    raise an error (if mode is "keep") or raise a warning and return None
+    (if mode is "drop").
+    Args:
+        headers (list[str]): List of header fields.
+        field (str): Field to get index of.
+        mode (str): Mode to select columns: 'keep' or 'drop'.
+    Returns:
+        int: Index of field in header.
+    """
     try:
         return headers.index(field)
     except ValueError:
-        raise ValueError(f"Field not found in header: {field}")
+        msg = f"Field not found in header: {field}"
+        if mode == "keep":
+            logger.error(msg)
+            raise ValueError(msg)
+        else:
+            logger.warning(msg)
+            return None
     
 def join_line(inputs: list[str]) -> str:
     """Join a list of strings with tabs followed by a newline."""
@@ -107,11 +127,12 @@ def select_columns(input_path: str, output_path: str, fields: list[str], mode: s
             raise ValueError("No header to select fields from.")
         headers_in = header_line.split("\t")
         # Get indices of selected fields
-        indices = [get_header_index(headers_in, field) for field in fields]
+        indices = [get_header_index(headers_in, field, mode) for field in fields]
         # Get indices of fields to keep
         if mode == "keep":
             indices_keep = indices
         elif mode == "drop":
+            indices = [i for i in indices if i is not None]
             indices_keep = [i for i in range(len(headers_in)) if i not in indices]
         if not indices_keep:
             raise ValueError("Dropping all fields.")
