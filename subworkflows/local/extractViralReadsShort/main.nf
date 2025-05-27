@@ -25,6 +25,13 @@ include { FILTER_VIRUS_READS } from "../../../modules/local/filterVirusReads"
 include { CONCATENATE_FILES } from "../../../modules/local/concatenateFiles"
 include { EXTRACT_VIRAL_HITS_TO_FASTQ } from "../../../modules/local/extractViralHitsToFastq"
 
+
+include { LCA_TSV } from "../../../modules/local/lcaTsv"
+include { FILTER_SAM } from "../../../modules/local/filterSam"
+include { FILTER_BOWTIE_VIRAL } from "../../../modules/local/filterBowtieViral"
+include { SORT_SAM } from "../../../modules/local/sortSam"
+include { SAM_TO_TSV } from "../../../modules/local/samToTsv"
+
 /***********
 | WORKFLOW |
 ***********/
@@ -56,21 +63,41 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
         adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
         // 3. Run Bowtie2 against a viral database and process output
-        par_virus = "--local --very-sensitive-local --score-min G,0.1,19"
+        par_virus = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
         bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path,
-            par_virus, "virus", true, false)
+            par_virus, "virus", false, false)
         // 4. Filter contaminants
         par_contaminants = "--local --very-sensitive-local"
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path,
             par_contaminants, "human", false, false)
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path,
             par_contaminants, "other", false, false)
+
+        // Filter Bowtie2 sam file to remove reads from above
+        bowtie2_ch_combined = bowtie2_ch.sam.combine(other_bt2_ch.reads_unmapped, by: 0)
+        bowtie2_viral_ch = FILTER_BOWTIE_VIRAL(bowtie2_ch_combined)
+
+        // Filter Bowtie2 reads with threshold
+        bowtie2_filtered_ch = FILTER_SAM(bowtie2_viral_ch.sam, 20)
+
+        // Sort the file and fill it in
+        bowtie2_sorted_ch = SORT_SAM(bowtie2_filtered_ch)
+
+        // Process sam to viral
+        bowtie2_tsv_ch = SAM_TO_TSV(bowtie2_sorted_ch)
+
+        // Run LCA
+        bowtie2_lca_results = LCA_TSV(bowtie2_tsv_ch) //TODO
+
+        // Add LCA results onto the tsv
+        //TODO
+
         // 5. Run Kraken on filtered viral candidates (via taxonomy subworkflow)
         tax_ch = TAXONOMY(other_bt2_ch.reads_unmapped, kraken_db_ch, "F", bracken_threshold, channel.value(false))
         // 6. Process and combine Kraken and Bowtie2 output
-        bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path)
+        //bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path)
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
-        bowtie2_sam_rehead_ch = REHEAD_BOWTIE_VIRAL(bowtie2_sam_ch.output, "query_name", "seq_id")
+        bowtie2_sam_rehead_ch = REHEAD_BOWTIE_VIRAL(bowtie2_sam_ch.output, "query_name", "seq_id") //TODO UPDATE THIS
         bowtie2_sam_sorted_ch = SORT_BOWTIE_VIRAL(bowtie2_sam_rehead_ch.output, "seq_id")
         kraken_sorted_ch = SORT_KRAKEN_VIRAL(kraken_output_ch.output, "seq_id")
         out_combined_ch = bowtie2_sam_sorted_ch.sorted.combine(kraken_sorted_ch.sorted, by: 0)
