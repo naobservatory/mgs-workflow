@@ -65,9 +65,9 @@ def open_by_suffix(filename: str, mode: str = "r") -> io.TextIOWrapper:
     logger.debug(f"\tOpening mode: {mode}")
     logger.debug(f"\tGZIP mode: {filename.endswith('.gz')}")
     logger.debug(f"\tBZ2 mode: {filename.endswith('.bz2')}")
-    if filename.endswith('.gz'):
+    if filename.lower().endswith(".gz"):
         return gzip.open(filename, mode + 't')
-    elif filename.endswith('.bz2'):
+    elif filename.lower().endswith(".bz2"):
         return bz2.BZ2file(filename, mode)
     else:
         return open(filename, mode)
