@@ -19,6 +19,7 @@ import time
 import tempfile
 import io
 import bz2
+import shutil
 
 
 #=======================================================================
@@ -110,7 +111,13 @@ def sort_tsv_file(input_file: str,
         output_file (str): The output TSV file path.
         sort_field (str): The column header to sort by.
     """
-    with tempfile.TemporaryDirectory() as temp_dir, \
+    # Create local temp directory base if it doesn't exist
+    temp_base = 'sort_tsv_tmp'
+    temp_base_exists = os.path.exists(temp_base)
+    os.makedirs(temp_base, exist_ok=True)
+    logger.debug(f"Using temporary directory base: {temp_base}")
+    # Use local directory to avoid memory-based tmpfs
+    with tempfile.TemporaryDirectory(dir=temp_base) as temp_dir, \
             open_by_suffix(input_file) as infile, \
             open_by_suffix(output_file, "w") as outfile:
         # Define temporary file paths
@@ -136,16 +143,20 @@ def sort_tsv_file(input_file: str,
             temp.write(first_data_line + "\n")
             for line in infile:
                 temp.write(line)
-        # Sort temporary file
-        run_sort(temp_body, temp_body_sorted, col_index)
+        # Sort temporary file (with custom temp directory for GNU sort)
+        run_sort(temp_body, temp_body_sorted, col_index, temp_base)
         # Write sorted data to output
         with open_by_suffix(temp_body_sorted) as temp:
             for line in temp:
                 outfile.write(line)
+    # Clean up temporary directory
+    if not temp_base_exists:
+        shutil.rmtree(temp_base)
 
 def run_sort(input_file: str,
              output_file: str,
-             sort_index: int) -> None:
+             sort_index: int,
+             temp_dir: str) -> None:
     """
     Run the sort command on a TSV file with a specified field separator,
     handling errors and logging, and write to an output file.
@@ -153,9 +164,12 @@ def run_sort(input_file: str,
         input_file (str): The input TSV file path.
         output_file (str): The output TSV file path.
         sort_index (int): The index of the column to sort by.
+        temp_dir (str): The temporary directory for GNU sort to use.
     """
     sort_cmd = ["sort", "-t", "\t", "-k", f"{sort_index+1},{sort_index+1}",
+                f"--temporary-directory={temp_dir}/sort",
                 "-o", output_file, input_file]
+    logger.debug(f"Running sort command: {sort_cmd}")
     try:
         subprocess.run(sort_cmd, check=True)
     except subprocess.CalledProcessError as e:
