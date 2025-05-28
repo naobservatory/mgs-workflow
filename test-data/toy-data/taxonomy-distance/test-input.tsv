@@ -1,0 +1,8 @@
+taxid1	taxid2	exp_distance	comment
+9000	9000	0	Matching taxids
+9001	9000	1	Child/parent
+9000	9001	-1	Parent/child
+9004	9000	2	Grandchild/grandparent
+9000	9004	-2	Grandparent/grandchild
+9001	9002	NA	Unrelated
+None	9000	NA	Invalid taxid

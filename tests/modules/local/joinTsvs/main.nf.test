@@ -29,7 +29,7 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 2")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
-            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Duplicate non-join field name found across both files")
             assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
             assert !process.errorReport.contains("ValueError: Strict join failed")
         }
@@ -57,7 +57,7 @@ nextflow_process {
             assert process.errorReport.contains("ValueError: Join field missing from file 2")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
-            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Duplicate non-join field name found across both files")
             assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
             assert !process.errorReport.contains("ValueError: Strict join failed")
         }
@@ -85,7 +85,7 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
             assert process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
-            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Duplicate non-join field name found across both files")
             assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
             assert !process.errorReport.contains("ValueError: Strict join failed")
         }
@@ -113,7 +113,7 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert process.errorReport.contains("ValueError: File 2 is not sorted")
-            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Duplicate non-join field name found across both files")
             assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
             assert !process.errorReport.contains("ValueError: Strict join failed")
         }
@@ -141,7 +141,7 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
-            assert process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert process.errorReport.contains("ValueError: Duplicate non-join field name found across both files")
             assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
             assert !process.errorReport.contains("ValueError: Strict join failed")
         }
@@ -169,7 +169,7 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
-            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Duplicate non-join field name found across both files")
             assert process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
             assert !process.errorReport.contains("ValueError: Strict join failed")
         }
@@ -197,7 +197,7 @@ nextflow_process {
             assert !process.errorReport.contains("ValueError: Join field missing from file 1")
             assert !process.errorReport.contains("ValueError: File 1 is not sorted")
             assert !process.errorReport.contains("ValueError: File 2 is not sorted")
-            assert !process.errorReport.contains("ValueError: Duplicate field name found across both files")
+            assert !process.errorReport.contains("ValueError: Duplicate non-join field name found across both files")
             assert !process.errorReport.contains("ValueError: Unsupported many-to-many join detected")
             assert process.errorReport.contains("ValueError: Strict join failed")
         }

@@ -1,0 +1,15 @@
+seq_id	taxid	test_score	exp_lca	exp_top_taxid	exp_top_taxid_classified	exp_n_classified	comment
+Q	9005	200	9004	9005	True	2	non-top unclassified match
+Q	9006	200	9004	9005	True	2	non-top unclassified match
+Q	9009	50	9004	9005	True	2	non-top unclassified match
+R	9005	200	9000	9009	False	2	top unclassified match
+R	9006	200	9000	9009	False	2	top unclassified match
+R	9009	260	9000	9009	False	2	top unclassified match
+S	9005	200	9003	9010	False	2	non-tied unclassified matches
+S	9006	200	9003	9010	False	2	non-tied unclassified matches
+S	9009	200	9003	9010	False	2	non-tied unclassified matches
+S	9010	240	9003	9010	False	2	non-tied unclassified matches
+T	9005	200	9000	9009	False	2	tied unclassified matches
+T	9006	200	9000	9009	False	2	tied unclassified matches
+T	9009	240	9000	9009	False	2	tied unclassified matches
+T	9010	240	9000	9009	False	2	tied unclassified matches

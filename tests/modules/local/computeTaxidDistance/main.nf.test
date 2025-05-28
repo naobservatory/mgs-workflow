@@ -1,0 +1,211 @@
+nextflow_process {
+
+    name "Test process COMPUTE_TAXID_DISTANCE"
+    script "modules/local/computeTaxidDistance/main.nf"
+    process "COMPUTE_TAXID_DISTANCE"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "compute_taxid_distance"
+
+    test("Should fail when a taxid field is not present"){
+        tag "expect_failed"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                taxid_field_1 = "x"
+                taxid_field_2 = "a"
+                distance_field = "distance"
+                nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.taxid_field_1
+                input[2] = params.taxid_field_2
+                input[3] = params.distance_field
+                input[4] = params.nodes_db_path
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Field not found in header: a")
+            assert !process.errorReport.contains("ValueError: Header line is empty")
+        }
+    }
+
+    test("Should fail when distance field is already present"){
+        tag "expect_failed"
+        tag "distance_field"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                taxid_field_1 = "x"
+                taxid_field_2 = "y"
+                distance_field = "z"
+                nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.taxid_field_1
+                input[2] = params.taxid_field_2
+                input[3] = params.distance_field
+                input[4] = params.nodes_db_path
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Distance field already present in input header")
+            assert !process.errorReport.contains("ValueError: Header line is empty")
+        }
+    }
+
+    test("Should fail when root is missing from taxonomy DB"){
+        tag "expect_failed"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
+                taxid_field_1 = "x"
+                taxid_field_2 = "y"
+                distance_field = "distance"
+                nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes-truncated.dmp"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.taxid_field_1
+                input[2] = params.taxid_field_2
+                input[3] = params.distance_field
+                input[4] = params.nodes_db_path
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("AssertionError: Taxonomy DB does not contain root.")
+            assert !process.errorReport.contains("ValueError: Header line is empty")
+        }
+    }
+        
+    test("Should fail when input file is empty (no header)"){
+        tag "expect_failed"
+        tag "empty_input"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/empty_file.txt"
+                taxid_field_1 = "x"
+                taxid_field_2 = "a"
+                distance_field = "distance"
+                nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.taxid_field_1
+                input[2] = params.taxid_field_2
+                input[3] = params.distance_field
+                input[4] = params.nodes_db_path
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("ValueError: Header line is empty: no fields to parse.")
+            assert !process.errorReport.contains("ValueError: Field not found in header: a")
+        }
+    }
+
+    test("Should correctly handle empty input file (header only)"){
+        tag "empty_input"
+        tag "expect_success"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/test_tab_empty.tsv"
+                taxid_field_1 = "x"
+                taxid_field_2 = "y"
+                distance_field = "distance"
+                nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.taxid_field_1
+                input[2] = params.taxid_field_2
+                input[3] = params.distance_field
+                input[4] = params.nodes_db_path
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should contain a single header line and no body
+            def inputFile = path(process.out.input[0][1])
+            def outputFile = path(process.out.output[0][1])
+            def inputLines = inputFile.text.split("\n")
+            def outputLines = outputFile.text.split("\n")
+            assert inputLines.size() == 1
+            assert outputLines.size() == 1
+            // Output header should have one additional field
+            def inputHeaders = inputLines[0].split("\t")
+            def outputHeaders = outputLines[0].split("\t")
+            assert outputHeaders.size() == inputHeaders.size() + 1
+            // Output header should be the same as input header, plus the new distance field
+            assert outputHeaders[0..-2] == inputHeaders
+            assert outputHeaders[-1] == params.distance_field
+        }
+    }
+
+    test("Should correctly handle valid input"){
+        tag "expect_success"
+        tag "valid_input"
+        when {
+            params {
+                input_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-input.tsv"
+                taxid_field_1 = "taxid1"
+                taxid_field_2 = "taxid2"
+                distance_field = "distance"
+                nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(Channel.of(params.input_path))
+                input[1] = params.taxid_field_1
+                input[2] = params.taxid_field_2
+                input[3] = params.distance_field
+                input[4] = params.nodes_db_path
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output and input row counts should match
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
+            assert tab_out.rowCount == tab_in.rowCount
+            // Column names should be identical except for the new distance column
+            assert tab_out.columnNames == tab_in.columnNames + [params.distance_field]
+            // Taxid columns should be present
+            assert params.taxid_field_1 in tab_out.columnNames
+            assert params.taxid_field_2 in tab_out.columnNames
+            // Pre-existing columns should be unmodified
+            for (c in tab_in.columnNames) {
+                assert tab_out.columns[c] == tab_in.columns[c]
+            }
+            // Distance column should be computed correctly
+            for (int r = 0; r < tab_out.rowCount; r++) {
+                def exp_dist = tab_out.columns["exp_distance"][r]
+                def obs_dist = tab_out.columns[params.distance_field][r]
+                assert exp_dist == obs_dist
+            }
+        }
+    }
+
+}
