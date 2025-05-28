@@ -68,6 +68,19 @@ def sort_sam_alignments(input_file, output_file):
             primary = [a for a in alignments if a['flag'] < 256]
             secondary = [a for a in alignments if a['flag'] >= 256]
             
+            # For primary alignments, check if mate exists
+            for a in primary[:]:  # Use slice copy to allow modification during iteration
+                # Check if this primary alignment has a mate
+                mate_flag = 128 if (a['flag'] & 64) else 64  # Expected mate flag
+                has_mate = any(other['flag'] & mate_flag and 
+                             other['flag'] < 256  # Also primary
+                             for other in alignments)
+                
+                if not has_mate and a['pair_status'] == 'UP':
+                    unmapped_mate = create_unmapped_mate(a)
+                    unmapped_parsed = parse_sam_line(unmapped_mate)
+                    primary.append(unmapped_parsed)
+            
             primary.sort(key=lambda x: x['flag'])
             
             # For secondary alignments, check if mate exists

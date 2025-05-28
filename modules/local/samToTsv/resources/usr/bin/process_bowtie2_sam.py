@@ -441,7 +441,6 @@ def process_paired_sam(inf, outf, genbank_metadata, viral_taxids):
     fwd_line = get_next_alignment(inf)
     rev_line = get_next_alignment(inf)
     while True:
-        print(fwd_line, rev_line)
         if fwd_line is None:  # If no line, check for reverse line then break
             if (
                 rev_line is not None
@@ -494,9 +493,7 @@ def process_paired_sam(inf, outf, genbank_metadata, viral_taxids):
         elif rev_dict["alignment_score"] is None:
             line = line_from_single(fwd_dict)
         else:
-            print(fwd_dict, rev_dict)
             line = line_from_pair(fwd_dict, rev_dict)
-            print("done")
         outf.write(line)
         fwd_line = get_next_alignment(inf)
         rev_line = get_next_alignment(inf)

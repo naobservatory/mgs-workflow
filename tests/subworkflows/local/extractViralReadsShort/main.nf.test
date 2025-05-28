@@ -30,6 +30,7 @@ nextflow_workflow {
     test("Should run without failures") {
         tag "expect_success"
         tag "paired_end"
+        tag "temp-run"
         when {
             params {
                 bt2_score_threshold = 20

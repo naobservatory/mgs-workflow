@@ -13,9 +13,10 @@ process SAM_TO_TSV {
         out=!{sample}_bowtie2_sam_processed.tsv.gz
         meta=!{genbank_metadata_path}
         db=!{viral_db_path}
-        cmd="process_viral_bowtie2_sam.py -m ${meta} -v ${db} -o ${out}"
-        # Sort input SAM and pass to script
-        zcat !{sam} | sort -t $'\t' -k1,1 | ${cmd}
+        infile=!{sam}
+        cmd="process_bowtie2_sam.py -s ${infile} -m ${meta} -v ${db} -o ${out}"
+        # Run script
+        ${cmd}
         # Link input to output for testing
         ln -s !{sam} !{sample}_bowtie2_sam_in.tsv.gz
         '''
