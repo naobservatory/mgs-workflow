@@ -15,12 +15,14 @@ nextflow_workflow {
                 hits_tsv = "${projectDir}/test-data/toy-data/propagate-validation/test-hits.tsv"
                 cluster_tsv = "${projectDir}/test-data/toy-data/propagate-validation/test-cluster.tsv"
                 validation_tsv = "${projectDir}/test-data/toy-data/propagate-validation/test-validation.tsv"
+                taxid_column = "taxid"
             }
             workflow {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.hits_tsv)) // hits_tsv
                 input[1] = Channel.of("test").combine(Channel.of(params.cluster_tsv)) // cluster_tsv
                 input[2] = Channel.of("test").combine(Channel.of(params.validation_tsv)) // validation_tsv
+                input[3] = params.taxid_column // taxid_column
                 '''
             }
         }

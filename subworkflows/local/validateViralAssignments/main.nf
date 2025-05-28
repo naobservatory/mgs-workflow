@@ -17,10 +17,12 @@ include { SPLIT_VIRAL_TSV_BY_SPECIES } from "../../../subworkflows/local/splitVi
 include { CLUSTER_VIRAL_ASSIGNMENTS } from "../../../subworkflows/local/clusterViralAssignments"
 include { BLAST_FASTA } from "../../../subworkflows/local/blastFasta"
 include { VALIDATE_CLUSTER_REPRESENTATIVES } from "../../../subworkflows/local/validateClusterRepresentatives"
-include { ADD_SAMPLE_COLUMN as LABEL_GROUP_SPECIES } from "../../../modules/local/addSampleColumn"
-include { CONCATENATE_TSVS_LABELED } from "../../../modules/local/concatenateTsvs"
-include { ADD_SAMPLE_COLUMN as LABEL_GROUP } from "../../../modules/local/addSampleColumn"
 include { PROPAGATE_VALIDATION_INFORMATION } from "../../../subworkflows/local/propagateValidationInformation"
+include { CONCATENATE_TSVS_ACROSS_SPECIES as CONCATENATE_CLUSTERING_INFO } from "../../../subworkflows/local/concatenateTsvsAcrossSpecies"
+include { CONCATENATE_TSVS_ACROSS_SPECIES as CONCATENATE_BLAST_RESULTS } from "../../../subworkflows/local/concatenateTsvsAcrossSpecies"
+include { SELECT_TSV_COLUMNS } from "../../../modules/local/selectTsvColumns"
+include { COPY_FILE as COPY_HITS } from "../../../modules/local/copyFile"
+include { COPY_FILE as COPY_BLAST } from "../../../modules/local/copyFile"
 
 /***********
 | WORKFLOW |
@@ -52,34 +54,25 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             "validation")
         // 4. Validate hit TSV taxids against BLAST results
         validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(split_ch.tsv, blast_ch.lca, 
+            "bowtie2_taxid_best", // Column header for original taxid in hits TSV
             "validation_staxid_lca_natural", // LCA taxid computed from BLAST results, excluding artificial sequences
             "validation_distance", ref_dir)
         // 5. Propagate validation information back to individual hits
-        propagate_ch = PROPAGATE_VALIDATION_INFORMATION(split_ch.tsv, cluster_ch.tsv, validate_ch.output)
-        // 6. Concatenate clustering information across species to regenerate per-group information
-        // NB: This concatenation stage will move down as more steps are added, but will need to happen eventually
-        // and is useful for testing, so I'm implementing it now. It should probably get moved into its own
-        // workflow eventually.
-        // First label each element with species tag
-        to_concat_ch = cluster_ch.tsv
-        to_concat_labeled_ch = LABEL_GROUP_SPECIES(to_concat_ch, "group_species", "group_species").output
-        // Then change each element from [group_species, path] to [group, path]
-        split_label_ch = to_concat_labeled_ch.map{
-            label, path ->
-                def pattern = /^(.*?)_(\d+)$/
-                def matcher = (label =~ pattern)
-                if (!matcher) {
-                    def msg = "Group label doesn't match required pattern: ${label}, ${path}, ${pattern}"
-                    throw new IllegalArgumentException(msg)
-                }
-                [matcher[0][1], path]
-        }
-        // Then group elements by group label and concatenate
-        regrouped_label_ch = split_label_ch.groupTuple()
-        regrouped_concat_ch = CONCATENATE_TSVS_LABELED(regrouped_label_ch, "clusters").output
-        regrouped_ch = LABEL_GROUP(regrouped_concat_ch, "group", "clusters").output
-        // TODO: Implement F from docstring
+        propagate_ch = PROPAGATE_VALIDATION_INFORMATION(split_ch.tsv, cluster_ch.tsv,
+            validate_ch.output, "bowtie2_taxid_best")
+        // 6. Concatenate validation info and BLAST results across species (to regenerate per-group information)
+        regrouped_ch = CONCATENATE_CLUSTERING_INFO(propagate_ch.output, "validation")
+        regrouped_blast_ch = CONCATENATE_BLAST_RESULTS(blast_ch.blast, "validation")
+        // 7. Cleanup
+        regrouped_drop_ch = SELECT_TSV_COLUMNS(regrouped_ch.output, "taxid_species", "drop").output
+        output_hits_ch = COPY_HITS(regrouped_drop_ch, "validation_hits.tsv.gz")
+        output_blast_ch = COPY_BLAST(regrouped_blast_ch.output, "validation_blast.tsv.gz")
     emit:
+        // Main output
+        annotated_hits = output_hits_ch
+        // Intermediate output
+        blast_results = output_blast_ch
+        // Extra outputs for testing
         test_in   = groups
         test_db   = db
         test_split_tsv = split_ch.tsv
@@ -92,6 +85,5 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_blast_query = blast_ch.query
         test_blast_lca = blast_ch.lca
         test_validate = validate_ch.output
-        test_regrouped = regrouped_ch
         test_propagate = propagate_ch.output
 }
