@@ -1,0 +1,355 @@
+nextflow_process {
+
+    name "Test process FILTER_VIRAL_SAM"
+    script "modules/local/filterViralSam/main.nf"
+    process "FILTER_VIRAL_SAM"
+    tag "module"
+    tag "filterViralSam"
+
+
+    test("Should filter contaminants and apply score threshold correctly") {
+        tag "expect_success"
+        tag "normal_filtering"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE_BARE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam-contaminants.fastq")))
+                    '''
+                }
+            }
+        }
+
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test_sample")
+                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-test.sam")))
+                    | combine(GZIP_FILE_BARE.out)
+                input[1] = 10.0
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Validate output file exists and has correct structure
+            def outputFile = path(process.out.sam[0][1])
+            assert outputFile.exists()
+            
+            // Count lines in output (should be 4: read1 pair kept, read2 pair filtered, contaminant1 removed)
+            def outputLines = outputFile.readLines()
+            def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
+            assert nonHeaderLines.size() == 2  // Only read1 pair should remain
+            
+            // Verify no contaminant reads in output
+            def hasContaminant = outputLines.any { it.contains('contaminant1') }
+            assert !hasContaminant
+            
+            // Verify read1 is present 
+            def hasRead1 = outputLines.any { it.contains('read1') }
+            assert hasRead1
+            
+            // Verify read2 is not present
+            def hasRead2 = outputLines.any { it.contains('read2') }
+            assert !hasRead2
+            
+            // Validate SAM format
+            for (line in nonHeaderLines) {
+                def fields = line.split('\t')
+                assert fields.size() >= 11  // Minimum SAM fields
+                assert fields[1] ==~ /\d+/  // FLAG is numeric
+                assert fields[3] ==~ /\d+/  // POS is numeric
+            }
+        }
+    }
+
+    test("Should add missing mates for UP reads") {
+        tag "expect_success"
+        tag "missing_mates"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test_sample")
+                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-up-reads.sam")))
+                    | combine(GZIP_FILE_EMPTY.out)
+                input[1] = 1.0
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            def outputFile = path(process.out.sam[0][1])
+            def outputLines = outputFile.readLines()
+            def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
+            
+            // Should have 4 lines: 2 original UP reads + 2 created mates
+            assert nonHeaderLines.size() == 4
+            
+            // Verify read pairing
+            def readNames = [:]
+            for (line in nonHeaderLines) {
+                def fields = line.split('\t')
+                def qname = fields[0]
+                def flag = fields[1] as Integer
+                readNames[qname] = (readNames[qname] ?: []) + [flag]
+            }
+            
+            // Each read should now have a pair
+            for (entry in readNames) {
+                assert entry.value.size() == 2
+                def flags = entry.value
+                // Should have one read1 and one read2
+                assert (flags[0] & 64) != (flags[1] & 64)  // One has read1 flag, other doesn't
+                assert (flags[0] & 128) != (flags[1] & 128)  // One has read2 flag, other doesn't
+            }
+            
+            // Check that created mates are unmapped (have flag 4)
+            def unmappedCount = 0
+            for (line in nonHeaderLines) {
+                def fields = line.split('\t')
+                def flag = fields[1] as Integer
+                if (flag & 4) {  // Unmapped flag
+                    unmappedCount++
+                    assert fields[5] == '*'  // CIGAR should be *
+                }
+            }
+            assert unmappedCount == 2  // Two created unmapped mates
+        }
+    }
+
+    test("Should filter secondary alignments by reference correctly") {
+        tag "expect_success"
+        tag "secondary_alignments"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_EMPTY2") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test_sample")
+                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-secondary.sam")))
+                    | combine(GZIP_FILE_EMPTY2.out)
+                input[1] = 10.0
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            def outputFile = path(process.out.sam[0][1])
+            def outputLines = outputFile.readLines()
+            def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
+            
+            // Should have primary (chr1) + secondary chr2 pairs = 4 lines
+            // chr3 secondary should be filtered out (scores too low)
+            assert nonHeaderLines.size() == 4
+            
+            // Check references present
+            def references = []
+            for (line in nonHeaderLines) {
+                def fields = line.split('\t')
+                references.add(fields[2])  // RNAME field
+            }
+            
+            assert 'chr1' in references  // Primary alignments
+            assert 'chr2' in references  // Secondary that passed threshold
+            assert !('chr3' in references)  // Secondary that failed threshold
+            
+            // Check flag distribution
+            def primaryCount = 0
+            def secondaryCount = 0
+            for (line in nonHeaderLines) {
+                def fields = line.split('\t')
+                def flag = fields[1] as Integer
+                if (flag < 256) {
+                    primaryCount++
+                } else {
+                    secondaryCount++
+                }
+            }
+            assert primaryCount == 2  // Primary pair
+            assert secondaryCount == 2  // One secondary pair
+        }
+    }
+
+    test("Should produce empty output when threshold too high") {
+        tag "expect_success"
+        tag "high_threshold"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_EMPTY3") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test_sample")
+                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-test.sam")))
+                    | combine(GZIP_FILE_BARE_EMPTY3.out)
+                input[1] = 1000.0
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            def outputFile = path(process.out.sam[0][1])
+            def outputLines = outputFile.readLines()
+            def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
+            
+            // Should be empty - all reads filtered by high threshold
+            assert nonHeaderLines.size() == 0
+        }
+    }
+
+    test("Should handle empty SAM input gracefully") {
+        tag "expect_success"
+        tag "empty_input"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_EMPTY4") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test_sample")
+                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    | combine(GZIP_FILE_BARE_EMPTY4.out)
+                input[1] = 10.0
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            def outputFile = path(process.out.sam[0][1])
+            assert outputFile.exists()
+            
+            // Should be empty
+            def outputLines = outputFile.readLines()
+            assert outputLines.size() == 0
+        }
+    }
+
+    test("Should handle all contaminant reads correctly") {
+        tag "expect_success"
+        tag "all_contaminants"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_ALL_CONTAM") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam-all-contaminants.fastq")))
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test_sample")
+                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-test.sam")))
+                    | combine(GZIP_FILE_BARE_ALL_CONTAM.out)
+                input[1] = 10.0
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            def outputFile = path(process.out.sam[0][1])
+            def outputLines = outputFile.readLines()
+            def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
+            
+            // Should filter out all reads since they're all contaminants in filter-viral-sam-all-contaminants.fastq
+            assert nonHeaderLines.size() == 0
+        }
+    }
+
+    test("Should fail with invalid score threshold") {
+        tag "expect_failure"
+        tag "invalid_threshold"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_FAIL") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test_sample")
+                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-test.sam")))
+                    | combine(GZIP_FILE_BARE_FAIL.out)
+                input[1] = "invalid_threshold"
+                '''
+            }
+        }
+        then {
+            // Should fail due to invalid threshold
+            assert process.failed
+        }
+    }
+}
