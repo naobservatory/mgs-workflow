@@ -69,7 +69,7 @@ def open_by_suffix(filename: str, mode: str = "r") -> io.TextIOWrapper:
     if filename.endswith('.gz'):
         return gzip.open(filename, mode + 't')
     elif filename.endswith('.bz2'):
-        return bz2.BZ2file(filename, mode)
+        return bz2.BZ2File(filename, mode)
     else:
         return open(filename, mode)
 
@@ -166,12 +166,23 @@ def run_sort(input_file: str,
         sort_index (int): The index of the column to sort by.
         temp_dir (str): The temporary directory for GNU sort to use.
     """
-    sort_cmd = ["sort", "-t", "\t", "-k", f"{sort_index+1},{sort_index+1}",
-                f"--temporary-directory={temp_dir}/sort",
-                "-o", output_file, input_file]
+    # Create the sort temporary directory
+    sort_temp_dir = os.path.join(temp_dir, "sort")
+    os.makedirs(sort_temp_dir, exist_ok=True)
+    logger.debug(f"Created sort temporary directory: {sort_temp_dir}")
+    # Build sort command with memory limits and proper temporary directory
+    sort_cmd = [
+        "sort", 
+        "-t", "\t",  # Tab delimiter
+        "-k", f"{sort_index+1},{sort_index+1}",  # Sort key
+        f"--temporary-directory={sort_temp_dir}",  # Temporary directory
+        "-o", output_file,  # Output file
+        input_file  # Input file
+    ]
     logger.debug(f"Running sort command: {sort_cmd}")
     try:
         subprocess.run(sort_cmd, check=True)
+        logger.debug("Sort command completed successfully")
     except subprocess.CalledProcessError as e:
         logger.error(f"Sort command failed: {e}")
         raise
