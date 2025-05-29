@@ -45,31 +45,100 @@ def calculate_normalized_score(alignment_score, query_length):
 def create_unmapped_mate(mapped_alignment):
     """Create unmapped mate for a secondary alignment missing its pair"""
     fields = mapped_alignment['fields'][:]
-    
     old_flag = mapped_alignment['flag']
-    new_flag = old_flag
     
-    # Flip read1/read2 bits
-    if old_flag & 128:  # This is read2, create read1
-        new_flag &= ~128    # Remove read2 flag
-        new_flag |= 64      # Add read1 flag
-    elif old_flag & 64:   # This is read1, create read2
-        new_flag &= ~64     # Remove read1 flag
-        new_flag |= 128     # Add read2 flag
+    # Flip read1/read2 bits and set unmapped
+    new_flag = (old_flag ^ 192) | 4  # XOR flips bits 6&7 (64|128), OR adds unmapped
+    new_flag &= ~8  # Ensure mate mapped flag is clear
     
-    # Set this read as unmapped, keep mate mapped
-    new_flag |= 4       # Set unmapped
-    new_flag &= ~8      # Ensure mate mapped flag is clear
-    
-    # Update fields - keep same RNAME but unmapped characteristics
+    # Update fields for unmapped mate
     fields[1] = str(new_flag)
-    fields[2] = mapped_alignment['fields'][2]  # RNAME = same as mapped mate
-    fields[3] = mapped_alignment['fields'][3]  # POS = same as mate (unmapped convention)
     fields[5] = '*'      # CIGAR = * (unmapped)
     fields[6] = '='      # RNEXT = same chromosome
     fields[7] = mapped_alignment['fields'][3]  # PNEXT = mate's position
     
     return '\t'.join(fields)
+
+def apply_score_filter(alignments, threshold, group_by_ref=False):
+    """Apply score threshold filtering to alignments"""
+    if group_by_ref:
+        # Group by reference and apply threshold per group
+        by_ref = defaultdict(list)
+        for alignment in alignments:
+            by_ref[alignment['rname']].append(alignment)
+        
+        kept = []
+        for ref_alignments in by_ref.values():
+            if len(ref_alignments) == 2:
+                max_score = max(a['normalized_score'] for a in ref_alignments)
+                if max_score >= threshold:
+                    kept.extend(ref_alignments)
+            elif len(ref_alignments) == 1:
+                if ref_alignments[0]['normalized_score'] >= threshold:
+                    kept.extend(ref_alignments)
+        return kept
+    else:
+        # Apply threshold to group as whole
+        if len(alignments) == 2:
+            max_score = max(a['normalized_score'] for a in alignments)
+            return alignments if max_score >= threshold else []
+        elif len(alignments) == 1:
+            return alignments if alignments[0]['normalized_score'] >= threshold else []
+        return []
+
+def add_missing_mates(alignments, group_by_ref=False):
+    """Add missing mates for UP reads"""
+    if group_by_ref:
+        by_ref = defaultdict(list)
+        for alignment in alignments:
+            by_ref[alignment['rname']].append(alignment)
+        
+        for ref_alignments in by_ref.values():
+            _add_mates_to_group(ref_alignments, lambda other, mate_flag, rname: 
+                              other['flag'] & mate_flag and other['rname'] == rname)
+    else:
+        _add_mates_to_group(alignments, lambda other, mate_flag, rname: 
+                           other['flag'] & mate_flag and other['flag'] < 256)
+
+def _add_mates_to_group(alignments, mate_check_fn):
+    """Helper to add mates to a group of alignments"""
+    for alignment in alignments[:]:  # Use slice copy
+        if alignment['pair_status'] == 'UP':
+            mate_flag = 128 if (alignment['flag'] & 64) else 64
+            has_mate = any(mate_check_fn(other, mate_flag, alignment['rname']) 
+                          for other in alignments)
+            
+            if not has_mate:
+                unmapped_mate_line = create_unmapped_mate(alignment)
+                unmapped_mate = parse_sam_line(unmapped_mate_line)
+                unmapped_mate['normalized_score'] = 0
+                alignments.append(unmapped_mate)
+
+def process_alignment_group(alignments, score_threshold):
+    """Process all alignments for a single read name"""
+    # Separate primary and secondary alignments
+    primary = [a for a in alignments if a['flag'] < 256]
+    secondary = [a for a in alignments if a['flag'] >= 256]
+    
+    # Calculate normalized scores for all alignments
+    for alignment in primary + secondary:
+        query_length = len(alignment['seq'])
+        alignment['normalized_score'] = calculate_normalized_score(
+            alignment['alignment_score'], query_length)
+    
+    # Apply score filtering
+    primary_kept = apply_score_filter(primary, score_threshold)
+    secondary_kept = apply_score_filter(secondary, score_threshold, group_by_ref=True)
+    
+    # Add missing mates
+    add_missing_mates(primary_kept)
+    add_missing_mates(secondary_kept, group_by_ref=True)
+    
+    # Sort and combine results
+    primary_sorted = sorted(primary_kept, key=lambda x: x['flag'])
+    secondary_sorted = sorted(secondary_kept, key=lambda x: (x['rname'], x['flag']))
+    
+    return primary_sorted + secondary_sorted
 
 def filter_viral_sam(input_sam, contaminant_ids_file, output_sam, score_threshold):
     """
@@ -91,7 +160,6 @@ def filter_viral_sam(input_sam, contaminant_ids_file, output_sam, score_threshol
     
     with open(input_sam, 'r') as f:
         for line in f:
-            # Skip header lines (should not be present based on our workflow)
             if line.startswith('@'):
                 continue
                 
@@ -102,102 +170,12 @@ def filter_viral_sam(input_sam, contaminant_ids_file, output_sam, score_threshol
     filtered_alignments = []
     
     for qname in sorted(alignments_by_qname.keys()):
-        alignments = alignments_by_qname[qname]
-        
-        # Skip if any read in this group is a contaminant
         if qname in contaminant_ids:
             continue
         
-        # Separate primary and secondary alignments
-        primary = [a for a in alignments if a['flag'] < 256]
-        secondary = [a for a in alignments if a['flag'] >= 256]
-        
-        # Process primary alignments
-        primary_kept = []
-        for alignment in primary:
-            query_length = len(alignment['seq'])
-            normalized_score = calculate_normalized_score(alignment['alignment_score'], query_length)
-            alignment['normalized_score'] = normalized_score
-            primary_kept.append(alignment)
-        
-        # Apply pair-based score filtering for primary alignments
-        if len(primary_kept) >= 2:
-            # Check if either read in the pair exceeds threshold
-            max_score = max(a['normalized_score'] for a in primary_kept)
-            if max_score < score_threshold:
-                primary_kept = []
-        elif len(primary_kept) == 1:
-            # Single read - check if it exceeds threshold
-            if primary_kept[0]['normalized_score'] < score_threshold:
-                primary_kept = []
-        
-        # Add missing mates for UP reads in primary
-        for alignment in primary_kept[:]:  # Use slice copy to allow modification
-            if alignment['pair_status'] == 'UP':
-                # Check if mate exists
-                mate_flag = 128 if (alignment['flag'] & 64) else 64
-                has_mate = any(other['flag'] & mate_flag and other['flag'] < 256 
-                              for other in primary_kept)
-                
-                if not has_mate:
-                    unmapped_mate_line = create_unmapped_mate(alignment)
-                    unmapped_mate = parse_sam_line(unmapped_mate_line)
-                    unmapped_mate['normalized_score'] = 0  # Unmapped has no score
-                    primary_kept.append(unmapped_mate)
-        
-        # Process secondary alignments similarly
-        secondary_kept = []
-        for alignment in secondary:
-            query_length = len(alignment['seq'])
-            normalized_score = calculate_normalized_score(alignment['alignment_score'], query_length)
-            alignment['normalized_score'] = normalized_score
-            secondary_kept.append(alignment)
-        
-        # Apply pair-based score filtering for secondary alignments by reference
-        secondary_by_ref = defaultdict(list)
-        for alignment in secondary_kept:
-            secondary_by_ref[alignment['rname']].append(alignment)
-        
-        secondary_final = []
-        for rname, ref_alignments in secondary_by_ref.items():
-            # Apply score threshold check for this reference
-            if len(ref_alignments) >= 2:
-                max_score = max(a['normalized_score'] for a in ref_alignments)
-                if max_score >= score_threshold:
-                    secondary_final.extend(ref_alignments)
-            elif len(ref_alignments) == 1:
-                if ref_alignments[0]['normalized_score'] >= score_threshold:
-                    secondary_final.extend(ref_alignments)
-        
-        # Add missing mates for UP reads in secondary
-        secondary_by_ref_final = defaultdict(list)
-        for alignment in secondary_final:
-            secondary_by_ref_final[alignment['rname']].append(alignment)
-        
-        for rname, ref_alignments in secondary_by_ref_final.items():
-            for alignment in ref_alignments[:]:  # Use slice copy
-                if alignment['pair_status'] == 'UP':
-                    # Check if mate exists for this reference
-                    mate_flag = 128 if (alignment['flag'] & 64) else 64
-                    has_mate = any(other['flag'] & mate_flag and other['rname'] == rname 
-                                  for other in ref_alignments)
-                    
-                    if not has_mate:
-                        unmapped_mate_line = create_unmapped_mate(alignment)
-                        unmapped_mate = parse_sam_line(unmapped_mate_line)
-                        unmapped_mate['normalized_score'] = 0
-                        ref_alignments.append(unmapped_mate)
-        
-        # Combine and sort all kept alignments for this read
-        all_kept = primary_kept + secondary_final
-        
-        # Sort: primary first (by flag), then secondary by reference name then flag
-        primary_sorted = sorted([a for a in all_kept if a['flag'] < 256], 
-                               key=lambda x: x['flag'])
-        secondary_sorted = sorted([a for a in all_kept if a['flag'] >= 256], 
-                                 key=lambda x: (x['rname'], x['flag']))
-        
-        filtered_alignments.extend(primary_sorted + secondary_sorted)
+        alignments = alignments_by_qname[qname]
+        kept_alignments = process_alignment_group(alignments, score_threshold)
+        filtered_alignments.extend(kept_alignments)
     
     # Write output
     with open(output_sam, 'w') as f:
