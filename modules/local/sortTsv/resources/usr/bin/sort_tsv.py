@@ -20,7 +20,7 @@ import tempfile
 import io
 import bz2
 import shutil
-
+import math
 
 #=======================================================================
 # Configure logging
@@ -49,6 +49,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("input_file", help="Input TSV file path")
     parser.add_argument("sort_field", help="Column header to sort by")
     parser.add_argument("output_file", help="Output TSV file path")
+    parser.add_argument("--memory-limit", "-m", type=int, help="Memory limit in GB", required=True)
     # Return parsed arguments
     return parser.parse_args()
 
@@ -103,7 +104,8 @@ def process_header(header_line: str, sort_field: str) -> int | None:
 
 def sort_tsv_file(input_file: str,
                   output_file: str,
-                  sort_field: str) -> None:
+                  sort_field: str,
+                  memory_limit: int) -> None:
     """
     Sort a TSV file by a specific column header.
     Args:
@@ -144,7 +146,7 @@ def sort_tsv_file(input_file: str,
             for line in infile:
                 temp.write(line)
         # Sort temporary file (with custom temp directory for GNU sort)
-        run_sort(temp_body, temp_body_sorted, col_index, temp_base)
+        run_sort(temp_body, temp_body_sorted, col_index, temp_base, memory_limit)
         # Write sorted data to output
         with open_by_suffix(temp_body_sorted) as temp:
             for line in temp:
@@ -156,7 +158,8 @@ def sort_tsv_file(input_file: str,
 def run_sort(input_file: str,
              output_file: str,
              sort_index: int,
-             temp_dir: str) -> None:
+             temp_dir: str,
+             memory_limit: int) -> None:
     """
     Run the sort command on a TSV file with a specified field separator,
     handling errors and logging, and write to an output file.
@@ -165,6 +168,7 @@ def run_sort(input_file: str,
         output_file (str): The output TSV file path.
         sort_index (int): The index of the column to sort by.
         temp_dir (str): The temporary directory for GNU sort to use.
+        memory_limit (int): The memory limit in GB.
     """
     # Create the sort temporary directory
     sort_temp_dir = os.path.join(temp_dir, "sort")
@@ -176,6 +180,7 @@ def run_sort(input_file: str,
         "-t", "\t",  # Tab delimiter
         "-k", f"{sort_index+1},{sort_index+1}",  # Sort key
         f"--temporary-directory={sort_temp_dir}",  # Temporary directory
+        f"--buffer-size={memory_limit}G",  # Memory limit
         "-o", output_file,  # Output file
         input_file  # Input file
     ]
@@ -200,12 +205,14 @@ def main():
     # Parse arguments
     logger.info("Parsing arguments.")
     args = parse_args()
+    memory_limit = math.floor(args.memory_limit * 0.9)
     logger.info(f"Input file: {args.input_file}")
     logger.info(f"Sort field: {args.sort_field}")
     logger.info(f"Output file: {args.output_file}")
+    logger.info(f"Memory limit: {memory_limit} GB")
     # Sort the TSV file
     logger.info("Sorting TSV file.")
-    sort_tsv_file(args.input_file, args.output_file, args.sort_field)
+    sort_tsv_file(args.input_file, args.output_file, args.sort_field, memory_limit)
     # Finish time tracking
     logger.info("Script completed successfully.")
     end_time = time.time()
