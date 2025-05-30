@@ -1,4 +1,4 @@
-# v2.9.0.2-dev
+# v2.9.0.2
 
 - Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
     - Implemented VALIDATE_CLUSTER_REPRESENTATIVES subworkflow for comparing Bowtie2 and BLAST-LCA assignments, including new SELECT_TSV_COLUMNS and COMPUTE_TAXID_DISTANCE processes
@@ -6,6 +6,7 @@
     - Implemented CHECK_TSV_DUPLICATES process and added to SPLIT_VIRAL_TSV_BY_SPECIES to prevent many-to-many joins during post-hoc validation
     - Implemented CONCATENATE_TSVS_ACROSS_SPECIES subworkflow for reconstructing grouped viral hits TSV from species-specific TSVs
 - Modified SORT_TSV behavior to avoid out-of-memory errors.
+- Updated trace path for DOWNSTREAM workflow to avoid overwriting RUN workflow trace.
 
 # v2.9.0.1
 
