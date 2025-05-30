@@ -2,7 +2,7 @@
 // Uses Python script to handle empty files properly
 process SORT_TSV {
     label "python"
-    label "single"
+    label "single_cpu_16GB_memory"
     input:
         tuple val(sample), path(tsv)
         val(sort_field)
