@@ -9,7 +9,7 @@ process EXTRACT_SHARED_FASTQ_READS {
         tuple val(sample), path("${sample}_fastq_1.fastq.gz"), path("${sample}_fastq_2.fastq.gz"), emit: input
     shell:
         '''
-        set -euo pipefail
+        set -euox pipefail
 
         # Get target read ids
         seqtk comp !{fastq_1} | cut -f 1 > fastq_1_ids.txt
