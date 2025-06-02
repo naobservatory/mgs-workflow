@@ -11,7 +11,7 @@ process MASK_FASTQ_READS {
         tuple val(sample), path("${sample}_in.fastq.gz"), emit: input
     shell:
         '''
-        set -eoux pipefail
+        set -eou pipefail
 
         # Define input/output
         out=!{sample}_masked.fastq.gz
