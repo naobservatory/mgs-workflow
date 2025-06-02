@@ -1,4 +1,4 @@
-# v2.9.04
+# v2.9.0.4
 - Make sure field per_tile_sequence_quality is always present in multiqc output summary file, to allow pipeline to run successfully on a mix of empty and non-empty files
 
 # v2.9.0.3
