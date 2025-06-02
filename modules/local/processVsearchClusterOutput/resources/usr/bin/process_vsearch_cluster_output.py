@@ -134,9 +134,12 @@ def extract_representative_ids(output_db, n_clusters):
     logger.info(f"Extracted representative IDs: {representative_ids.tolist()}.")
     return representative_ids
 
-def save_output_db(output_db, out_path):
+def save_output_db(output_db, out_path, output_prefix):
     """Save processed DataFrame to output path."""
     logger.info(f"Saving output DB to {out_path}.")
+    if output_prefix: # Add prefix to all column names except for seq_id
+        output_db = output_db.add_prefix(output_prefix + "_")
+        output_db = output_db.rename(columns={output_prefix + "_seq_id": "seq_id"})
     output_db.to_csv(out_path, sep="\t", index=False)
     logger.info("Output DB saved successfully.")
 
@@ -156,12 +159,15 @@ def parse_arguments():
     parser.add_argument("output_ids", help="Output path for representative sequence IDs for the largest clusters.")
     parser.add_argument("--n_clusters", "-n", type=int, required=True,
                         help="Number of largest clusters to output representative sequence IDs for.")
+    parser.add_argument("--output-prefix", "-p", type=str, default="",
+                        help="Column name prefix for output DB (default: no prefix)")
     args = parser.parse_args()
     logger.info("Command-line arguments parsed.")
     logger.info(f"VSEARCH DB path: {args.vsearch_db}")
     logger.info(f"Output DB path: {args.output_db}")
     logger.info(f"ID output path: {args.output_ids}")
     logger.info(f"Number of clusters to output: {args.n_clusters}") 
+    logger.info(f"Output DB column prefix: {args.output_prefix}")
     return args
 
 #=======================================================================
@@ -180,7 +186,7 @@ def main():
     # Extract representative sequence IDs for the largest clusters
     representative_ids = extract_representative_ids(output_db, args.n_clusters)
     # Save output
-    save_output_db(output_db, args.output_db)
+    save_output_db(output_db, args.output_db, args.output_prefix)
     save_output_ids(representative_ids, args.output_ids)
     # Cleanup
     end_time = time.time()

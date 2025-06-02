@@ -2,7 +2,7 @@
 // Uses Python script to handle empty files properly
 process SORT_TSV {
     label "python"
-    label "single"
+    label "single_cpu_16GB_memory"
     input:
         tuple val(sample), path(tsv)
         val(sort_field)
@@ -12,7 +12,7 @@ process SORT_TSV {
     shell:
         '''
         # Run the Python script to sort the TSV
-        sort_tsv.py !{tsv} !{sort_field} sorted_!{sort_field}_!{tsv}
+        sort_tsv.py -m !{task.memory.toGiga()} !{tsv} !{sort_field} sorted_!{sort_field}_!{tsv}
         
         # Link input to output for testing
         ln -s !{tsv} input_!{tsv}

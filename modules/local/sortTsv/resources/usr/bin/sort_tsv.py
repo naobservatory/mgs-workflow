@@ -19,7 +19,8 @@ import time
 import tempfile
 import io
 import bz2
-
+import shutil
+import math
 
 #=======================================================================
 # Configure logging
@@ -48,6 +49,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("input_file", help="Input TSV file path")
     parser.add_argument("sort_field", help="Column header to sort by")
     parser.add_argument("output_file", help="Output TSV file path")
+    parser.add_argument("--memory-limit", "-m", type=int, help="Memory limit in GB", required=True)
     # Return parsed arguments
     return parser.parse_args()
 
@@ -68,7 +70,7 @@ def open_by_suffix(filename: str, mode: str = "r") -> io.TextIOWrapper:
     if filename.endswith('.gz'):
         return gzip.open(filename, mode + 't')
     elif filename.endswith('.bz2'):
-        return bz2.BZ2file(filename, mode)
+        return bz2.BZ2File(filename, mode)
     else:
         return open(filename, mode)
 
@@ -102,7 +104,8 @@ def process_header(header_line: str, sort_field: str) -> int | None:
 
 def sort_tsv_file(input_file: str,
                   output_file: str,
-                  sort_field: str) -> None:
+                  sort_field: str,
+                  memory_limit: int) -> None:
     """
     Sort a TSV file by a specific column header.
     Args:
@@ -110,7 +113,13 @@ def sort_tsv_file(input_file: str,
         output_file (str): The output TSV file path.
         sort_field (str): The column header to sort by.
     """
-    with tempfile.TemporaryDirectory() as temp_dir, \
+    # Create local temp directory base if it doesn't exist
+    temp_base = 'sort_tsv_tmp'
+    temp_base_exists = os.path.exists(temp_base)
+    os.makedirs(temp_base, exist_ok=True)
+    logger.debug(f"Using temporary directory base: {temp_base}")
+    # Use local directory to avoid memory-based tmpfs
+    with tempfile.TemporaryDirectory(dir=temp_base) as temp_dir, \
             open_by_suffix(input_file) as infile, \
             open_by_suffix(output_file, "w") as outfile:
         # Define temporary file paths
@@ -136,16 +145,21 @@ def sort_tsv_file(input_file: str,
             temp.write(first_data_line + "\n")
             for line in infile:
                 temp.write(line)
-        # Sort temporary file
-        run_sort(temp_body, temp_body_sorted, col_index)
+        # Sort temporary file (with custom temp directory for GNU sort)
+        run_sort(temp_body, temp_body_sorted, col_index, temp_base, memory_limit)
         # Write sorted data to output
         with open_by_suffix(temp_body_sorted) as temp:
             for line in temp:
                 outfile.write(line)
+    # Clean up temporary directory
+    if not temp_base_exists:
+        shutil.rmtree(temp_base)
 
 def run_sort(input_file: str,
              output_file: str,
-             sort_index: int) -> None:
+             sort_index: int,
+             temp_dir: str,
+             memory_limit: int) -> None:
     """
     Run the sort command on a TSV file with a specified field separator,
     handling errors and logging, and write to an output file.
@@ -153,11 +167,27 @@ def run_sort(input_file: str,
         input_file (str): The input TSV file path.
         output_file (str): The output TSV file path.
         sort_index (int): The index of the column to sort by.
+        temp_dir (str): The temporary directory for GNU sort to use.
+        memory_limit (int): The memory limit in GB.
     """
-    sort_cmd = ["sort", "-t", "\t", "-k", f"{sort_index+1},{sort_index+1}",
-                "-o", output_file, input_file]
+    # Create the sort temporary directory
+    sort_temp_dir = os.path.join(temp_dir, "sort")
+    os.makedirs(sort_temp_dir, exist_ok=True)
+    logger.debug(f"Created sort temporary directory: {sort_temp_dir}")
+    # Build sort command with memory limits and proper temporary directory
+    sort_cmd = [
+        "sort", 
+        "-t", "\t",  # Tab delimiter
+        "-k", f"{sort_index+1},{sort_index+1}",  # Sort key
+        f"--temporary-directory={sort_temp_dir}",  # Temporary directory
+        f"--buffer-size={memory_limit}G",  # Memory limit
+        "-o", output_file,  # Output file
+        input_file  # Input file
+    ]
+    logger.debug(f"Running sort command: {sort_cmd}")
     try:
         subprocess.run(sort_cmd, check=True)
+        logger.debug("Sort command completed successfully")
     except subprocess.CalledProcessError as e:
         logger.error(f"Sort command failed: {e}")
         raise
@@ -175,12 +205,14 @@ def main():
     # Parse arguments
     logger.info("Parsing arguments.")
     args = parse_args()
+    memory_limit = math.floor(args.memory_limit * 0.9)
     logger.info(f"Input file: {args.input_file}")
     logger.info(f"Sort field: {args.sort_field}")
     logger.info(f"Output file: {args.output_file}")
+    logger.info(f"Memory limit: {memory_limit} GB")
     # Sort the TSV file
     logger.info("Sorting TSV file.")
-    sort_tsv_file(args.input_file, args.output_file, args.sort_field)
+    sort_tsv_file(args.input_file, args.output_file, args.sort_field, memory_limit)
     # Finish time tracking
     logger.info("Script completed successfully.")
     end_time = time.time()

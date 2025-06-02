@@ -8,39 +8,98 @@ nextflow_workflow {
     tag "downstream"
     tag "validate_viral_assignments"
 
-    setup {
-        run("LOAD_DOWNSTREAM_DATA") {
-            script "subworkflows/local/loadDownstreamData/main.nf"
-            process {
-                """
-                input[0] = "${projectDir}/test-data/downstream/input_file.csv"
-                """
+    test("Should fail when input TSV contains duplicate read IDs") {
+        tag "expect_failed"
+        tag "duplicate_input"
+        setup {
+            run("LOAD_DOWNSTREAM_DATA") {
+                script "subworkflows/local/loadDownstreamData/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/downstream/input_file.csv"
+                    """
+                }
+            }
+            run("PREPARE_GROUP_TSVS") {
+                script "subworkflows/local/prepareGroupTsvs/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_DOWNSTREAM_DATA.out.input
+                    '''
+                }
+            }
+            run("COPY_FILE_BARE") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    '''
+                    input[0] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                    input[1] = "virus-db.tsv.gz"
+                    '''
+                }
             }
         }
-        run("PREPARE_GROUP_TSVS") {
-            script "subworkflows/local/prepareGroupTsvs/main.nf"
-            process {
+        when {
+            params {
+                n_clusters = 3
+                taxid_artificial = 81077
+            }
+            workflow {
                 '''
-                input[0] = LOAD_DOWNSTREAM_DATA.out.input
+                input[0] = PREPARE_GROUP_TSVS.out.groups // groups
+                input[1] = COPY_FILE_BARE.out // db
+                input[2] = params.validation_cluster_identity // cluster_identity
+                input[3] = 15 // cluster_min_len
+                input[4] = params.n_clusters // n_clusters
+                input[5] = params.ref_dir // ref_dir
+                input[6] = params.blast_db_prefix // blast_db_prefix
+                input[7] = params.blast_perc_id // perc_id
+                input[8] = params.blast_qcov_hsp_perc // qcov_hsp_perc
+                input[9] = params.blast_max_rank // blast_max_rank
+                input[10] = params.blast_min_frac // blast_min_frac
+                input[11] = params.taxid_artificial // taxid_artificial
                 '''
             }
         }
-        run("COPY_FILE_BARE") {
-            script "modules/local/copyFile/main.nf"
-            process {
-                '''
-                input[0] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
-                input[1] = "virus-db.tsv.gz"
-                '''
-            }
+        then {
+            // Should run without failures
+            assert workflow.failed
+            assert workflow.exitStatus == 1
+            assert workflow.errorReport.contains("ValueError: Duplicate value found in field seq_id")
         }
     }
 
     test("Should run without failures on valid input data") {
         tag "expect_success"
+        setup {
+            run("LOAD_DOWNSTREAM_DATA") {
+                script "subworkflows/local/loadDownstreamData/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/downstream/input_file_single.csv"
+                    """
+                }
+            }
+            run("PREPARE_GROUP_TSVS") {
+                script "subworkflows/local/prepareGroupTsvs/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_DOWNSTREAM_DATA.out.input
+                    '''
+                }
+            }
+            run("COPY_FILE_BARE") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    '''
+                    input[0] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                    input[1] = "virus-db.tsv.gz"
+                    '''
+                }
+            }
+        }
         when {
             params {
-                n_clusters = 10
+                n_clusters = 3
                 taxid_artificial = 81077
             }
             workflow {
@@ -70,14 +129,6 @@ nextflow_workflow {
             for (int i = 0; i < tabs_split.size(); i++) {
                 assert tabs_split[i].rowCount == tabs_clust[i].rowCount
             }
-            // Regrouping should work as expected
-            def tabs_in = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t",decompress: true)}
-            def tabs_regrouped = workflow.out.test_regrouped.collect{path(it[1]).csv(sep: "\t",decompress: true)}
-            assert tabs_regrouped.size() == tabs_in.size()
-            for (int i=0; i < tabs_regrouped.size(); i++) {
-                assert tabs_regrouped[i].rowCount == tabs_in[i].rowCount
-                assert tabs_regrouped[i].columns["seq_id"].unique().toSorted() == tabs_in[i].columns["seq_id"].unique().toSorted()
-            }
             // Basic BLAST invocation should work as expected
             def blast_db = workflow.out.test_blast_db.collect{path(it[1]).csv(sep: "\t",decompress: true)}
             def blast_query = workflow.out.test_blast_query.collect{path(it[1]).fasta}
@@ -97,12 +148,31 @@ nextflow_workflow {
                 assert blast_lca[i].rowCount == blast_db[i].columns["qseqid"].toSet().size()
             }
             // Taxid validation should work as expected
-            def tab_validate = workflow.out.test_validate.collect{path(it[1]).csv(sep: "\t", decompress: true)}
-            assert tab_validate.size() == blast_lca.size()
-            for (int i=0; i < tab_validate.size(); i++) {
-                if (tab_validate[i].rowCount > 0) {
-                    assert tab_validate[i].columns["cluster_rep_id"].unique().toSorted() == blast_lca[i].columns["qseqid"].unique().toSorted()
+            def tabs_validate = workflow.out.test_validate.collect{path(it[1]).csv(sep: "\t", decompress: true)}
+            assert tabs_validate.size() == blast_lca.size()
+            for (int i=0; i < tabs_validate.size(); i++) {
+                if (tabs_validate[i].rowCount > 0) {
+                    assert tabs_validate[i].columns["vsearch_cluster_rep_id"].unique().toSorted() == blast_lca[i].columns["qseqid"].unique().toSorted()
                 }
+            }
+            // Propagation should work as expected
+            def tabs_propagate = workflow.out.test_propagate.collect{path(it[1]).csv(sep: "\t", decompress: true)}
+            assert tabs_propagate.size() == tabs_validate.size()
+            for (int i=0; i < tabs_propagate.size(); i++) {
+                assert tabs_propagate[i].rowCount == tabs_split[i].rowCount
+                assert tabs_propagate[i].columns["seq_id"].toSorted() == tabs_split[i].columns["seq_id"].toSorted()
+                if (tabs_validate[i].rowCount > 0) {
+                    def ncol_exp = tabs_split[i].columnCount + tabs_validate[i].columnCount + tabs_clust[i].columnCount - 3
+                    assert tabs_propagate[i].columnCount == ncol_exp
+                }
+            }
+            // Regrouping should work as expected
+            def tabs_in = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t",decompress: true)}
+            def tabs_regrouped = workflow.out.annotated_hits.collect{path(it[1]).csv(sep: "\t",decompress: true)}
+            assert tabs_regrouped.size() == tabs_in.size()
+            for (int i=0; i < tabs_regrouped.size(); i++) {
+                assert tabs_regrouped[i].rowCount == tabs_in[i].rowCount
+                assert tabs_regrouped[i].columns["seq_id"].unique().toSorted() == tabs_in[i].columns["seq_id"].unique().toSorted()
             }
         }
     }
