@@ -34,7 +34,6 @@ nextflow_workflow {
             def tab_cluster_in = path(params.cluster_tsv).csv(sep: "\t")
             def tab_validation_in = path(params.validation_tsv).csv(sep: "\t")
             def tab_drop_taxid = path(workflow.out.test_drop_taxid[0][1]).csv(sep: "\t")
-            def tab_drop_group_species = path(workflow.out.test_drop_group_species[0][1]).csv(sep: "\t")
             def tab_intermediate = path(workflow.out.test_intermediate[0][1]).csv(sep: "\t", decompress: true)
             def tab_out = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_intermediate.rowCount == tab_hits_in.rowCount
