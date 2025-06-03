@@ -8,7 +8,7 @@ nextflow_process {
     tag "filterViralSam"
 
 
-    test("Should filter contaminants and apply score threshold correctly") {
+    test("Should filter for contaminants free reads and apply score threshold correctly") {
         tag "expect_success"
         tag "normal_filtering"
         config "tests/configs/run.config"
@@ -17,7 +17,7 @@ nextflow_process {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
-                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-contaminants.fastq")))
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-contaminant-free.fastq")))
                     '''
                 }
             }
@@ -52,10 +52,10 @@ nextflow_process {
             def outputFile = path(process.out.sam[0][1])
             assert outputFile.exists()
             
-            // Count lines in output (should be 4: read1 pair kept, read2 pair filtered, contaminant1 removed)
+            // Count lines in output (should be 2: read1 pair; read2 and contaminant1 removed)
             def outputLines = outputFile.withInputStream { stream -> new GZIPInputStream(stream).readLines()}
             def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
-            assert nonHeaderLines.size() == 2  // Only read1 pair should remain
+            assert nonHeaderLines.size() == 2  // read1 pairs should remain
             
             // Verify no contaminant reads in output
             def hasContaminant = outputLines.any { it.contains('contaminant1') }
@@ -65,7 +65,7 @@ nextflow_process {
             def hasRead1 = outputLines.any { it.contains('read1') }
             assert hasRead1
             
-            // Verify read2 is not present
+            // Verify no read2 in output (below score threshold)
             def hasRead2 = outputLines.any { it.contains('read2') }
             assert !hasRead2
             
@@ -84,11 +84,11 @@ nextflow_process {
         tag "missing_mates"
         config "tests/configs/run.config"
         setup {
-            run("GZIP_FILE_BARE", alias: "GZIP_FILE_EMPTY_FASTQ") {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_UP_READS_FASTQ") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
-                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-up-reads.fastq")))
                     '''
                 }
             }
@@ -108,7 +108,7 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test_sample")
                     | combine(GZIP_FILE_UP_SAM.out)
-                    | combine(GZIP_FILE_EMPTY_FASTQ.out)
+                    | combine(GZIP_FILE_UP_READS_FASTQ.out)
                 input[1] = 1.0
                 '''
             }
@@ -161,11 +161,11 @@ nextflow_process {
         tag "secondary_alignments"
         config "tests/configs/run.config"
         setup {
-            run("GZIP_FILE_BARE", alias: "GZIP_FILE_EMPTY2_FASTQ") {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_SECONDARY_FASTQ") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
-                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-secondary.fastq")))
                     '''
                 }
             }
@@ -185,7 +185,7 @@ nextflow_process {
                 '''
                 input[0] = Channel.of("test_sample")
                     | combine(GZIP_FILE_SECONDARY_SAM.out)
-                    | combine(GZIP_FILE_EMPTY2_FASTQ.out)
+                    | combine(GZIP_FILE_SECONDARY_FASTQ.out)
                 input[1] = 10.0
                 '''
             }
@@ -316,20 +316,20 @@ nextflow_process {
         }
     }
 
-    test("Should handle all contaminant reads correctly") {
+    test("Should keep all reads when all are in filter list") {
         tag "expect_success"
-        tag "all_contaminants"
+        tag "keep_all_reads"
         config "tests/configs/run.config"
         setup {
-            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_ALL_CONTAM_FASTQ") {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_ALL_READS_FASTQ") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
-                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-all-contaminants.fastq")))
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-all-contaminant-free.fastq")))
                     '''
                 }
             }
-            run("GZIP_FILE_BARE", alias: "GZIP_FILE_ALL_CONTAM_SAM") {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_ALL_READS_SAM") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
@@ -344,8 +344,61 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test_sample")
-                    | combine(GZIP_FILE_ALL_CONTAM_SAM.out)
-                    | combine(GZIP_FILE_BARE_ALL_CONTAM_FASTQ.out)
+                    | combine(GZIP_FILE_ALL_READS_SAM.out)
+                    | combine(GZIP_FILE_BARE_ALL_READS_FASTQ.out)
+                input[1] = 5.0
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            def outputFile = path(process.out.sam[0][1])
+            def outputLines = outputFile.withInputStream { stream -> new GZIPInputStream(stream).readLines()}
+            def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
+            
+            // Should keep all 6 reads since all are in the filter list
+            assert nonHeaderLines.size() == 6
+            
+            // Verify all read names are present
+            def readNames = nonHeaderLines.collect { it.split('\t')[0] }.unique()
+            assert 'read1' in readNames
+            assert 'read2' in readNames  
+            assert 'contaminant1' in readNames
+        }
+    }
+
+    test("Should filter out all reads when only contaminants in filter list") {
+        tag "expect_success"
+        tag "contaminants_only"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_CONTAM_ONLY_FASTQ") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-contaminants-only.fastq")))
+                    '''
+                }
+            }
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_CONTAM_ONLY_SAM") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-test.sam")))
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test_sample")
+                    | combine(GZIP_FILE_CONTAM_ONLY_SAM.out)
+                    | combine(GZIP_FILE_BARE_CONTAM_ONLY_FASTQ.out)
                 input[1] = 10.0
                 '''
             }
@@ -358,8 +411,13 @@ nextflow_process {
             def outputLines = outputFile.withInputStream { stream -> new GZIPInputStream(stream).readLines()}
             def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
             
-            // Should filter out all reads since they're all contaminants in filter-viral-sam-all-contaminants.fastq
-            assert nonHeaderLines.size() == 0
+            // Should keep only contaminant1 reads (2 lines)
+            assert nonHeaderLines.size() == 2
+            
+            // Verify only contaminant1 reads are present
+            def readNames = nonHeaderLines.collect { it.split('\t')[0] }.unique()
+            assert readNames.size() == 1
+            assert 'contaminant1' in readNames
         }
     }
 
