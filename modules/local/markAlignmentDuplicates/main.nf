@@ -1,5 +1,5 @@
 process MARK_ALIGNMENT_DUPLICATES {
-    label "single"
+    label "single_cpu_16GB_memory"
     label "coreutils"
     input:
         tuple val(sample), path(tsv)
