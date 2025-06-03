@@ -1,7 +1,12 @@
-# v2.9.04
-- Make sure field per_tile_sequence_quality is always present in multiqc output summary file, to allow pipeline to run successfully on a mix of empty and non-empty files
+# v2.9.0.5-dev
+- Further work on post-hoc validation:
+    - Updated VALIDATE_VIRAL_ASSIGNMENTS to concatenate across species before rather than after BLAST_VIRAL, dramatically reducing per-process fixed costs of running BLAST. (Involved updates to PROPAGATE_VALIDATION_INFORMATION as well as new CONCATENATE_FASTA_ACROSS_SPECIES subworkflow and CONCATENATE_FASTN_LABELED process.)
+
+# v2.9.0.4
+- Updated markAlignmentDuplicates module to reduce memory overhead and increase memory allocation (which collectively should avoid out-of-memory errors in DOWNSTREAM on large read groups).
 
 # v2.9.0.3
+- Make sure field per_tile_sequence_quality is always present in multiqc output summary file, to allow pipeline to run successfully on a mix of empty and non-empty files
 - Add set -eou pipefail to all ONT processes with pipes; make MASK_FASTQ_READS robust to empty files; add empty file tests for MASK_FASTQ_READS and MINIMAP2
 
 # v2.9.0.2

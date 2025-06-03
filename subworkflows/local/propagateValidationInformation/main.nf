@@ -17,7 +17,7 @@ include { SORT_TSV as SORT_JOIN_TSV } from "../../../modules/local/sortTsv"
 include { JOIN_TSVS as JOIN_CLUSTER_VALIDATION } from "../../../modules/local/joinTsvs"
 include { JOIN_TSVS as JOIN_HITS_CLUSTER } from "../../../modules/local/joinTsvs"
 include { SELECT_TSV_COLUMNS as DROP_TAXID } from "../../../modules/local/selectTsvColumns"
-include { SELECT_TSV_COLUMNS as DROP_GROUP_SPECIES } from "../../../modules/local/selectTsvColumns"
+include { SELECT_TSV_COLUMNS as DROP_GROUP } from "../../../modules/local/selectTsvColumns"
 
 /***********
 | WORKFLOW |
@@ -42,12 +42,12 @@ workflow PROPAGATE_VALIDATION_INFORMATION {
         sort_join_1_tsv = SORT_JOIN_TSV(join_1_ch, "seq_id").sorted
         // 4. Strict-join intermediate and hits TSVs by seq_id
         // Both tables should contain the same sequences in the same order
-        drop_group_species_ch = DROP_GROUP_SPECIES(sort_join_1_tsv, "group,group_species", "drop").output
-        combine_2_ch = hits_tsv.combine(drop_group_species_ch, by: 0)
+        drop_group_ch = DROP_GROUP(sort_join_1_tsv, "group", "drop").output
+        combine_2_ch = hits_tsv.combine(drop_group_ch, by: 0)
         join_2_ch = JOIN_HITS_CLUSTER(combine_2_ch, "seq_id", "strict", "validation").output
     emit:
         output = join_2_ch
         test_intermediate = join_1_ch
         test_drop_taxid = drop_taxid_ch
-        test_drop_group_species = drop_group_species_ch
+        test_drop_group = drop_group_ch
 }
