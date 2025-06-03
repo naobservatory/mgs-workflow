@@ -37,7 +37,7 @@ process MINIMAP2 {
         tuple val(sample), path("${sample}_${suffix}_minimap2_in.fastq.gz"), emit: input
     shell:
         '''
-        set -euo pipefail
+        set -eou pipefail
         # Prepare inputs
         reads="!{reads}"
         idx="!{index_dir}/mm2_index.mmi"

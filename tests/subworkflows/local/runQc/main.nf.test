@@ -51,7 +51,7 @@ nextflow_workflow {
             // Basic stats TSV should have expected structure and content
             def tsv_basic = path(workflow.out.qc_basic[0]).csv(sep: "\t", decompress: true)
             assert tsv_basic.rowCount == 2
-            assert tsv_basic.columnCount == 17
+            assert tsv_basic.columnCount == 18
             // Other TSVs should have expected structure and content
             def tsv_adapt = path(workflow.out.qc_adapt[0]).csv(sep: "\t", decompress: true)
             assert tsv_adapt.columnCount == 6
@@ -109,7 +109,7 @@ nextflow_workflow {
             // Basic stats TSV should have expected structure and content
             def tsv_basic = path(workflow.out.qc_basic[0]).csv(sep: "\t", decompress: true)
             assert tsv_basic.rowCount == 2
-            assert tsv_basic.columnCount == 17
+            assert tsv_basic.columnCount == 18
             // Other TSVs should have expected structure and content
             def tsv_adapt = path(workflow.out.qc_adapt[0]).csv(sep: "\t", decompress: true)
             assert tsv_adapt.columnCount == 6
@@ -152,7 +152,7 @@ nextflow_workflow {
             // Basic stats TSV should have expected structure and content
             def tsv_basic = path(workflow.out.qc_basic[0]).csv(sep: "\t", decompress: true)
             assert tsv_basic.rowCount == 2
-            assert tsv_basic.columnCount == 17
+            assert tsv_basic.columnCount == 18
             // Lengths TSV should have expected structure and content
             def tsv_lengths = path(workflow.out.qc_lengths[0]).csv(sep: "\t", decompress: true)
             assert tsv_lengths.rowCount == 2

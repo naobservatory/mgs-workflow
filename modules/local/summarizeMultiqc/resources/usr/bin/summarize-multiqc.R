@@ -81,7 +81,7 @@ basic_info_fastqc <- function(fastqc_tsv, multiqc_json, single_end){
   
   # Ensure per_base_sequence_quality and per_sequence_quality_scores are present 
   # (they are missing from multiqc JSON if multiqc was run on empty file, but we always want them)
-  required_columns <- c("per_base_sequence_quality", "per_sequence_quality_scores")
+  required_columns <- c("per_base_sequence_quality", "per_tile_sequence_quality", "per_sequence_quality_scores")
   missing_cols <- setdiff(required_columns, colnames(tab_tsv))
   if (length(missing_cols) > 0) {
     tab_tsv[missing_cols] <- NA

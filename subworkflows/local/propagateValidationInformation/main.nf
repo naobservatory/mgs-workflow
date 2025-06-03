@@ -27,15 +27,16 @@ workflow PROPAGATE_VALIDATION_INFORMATION {
         hits_tsv // Viral hits TSV, including seq_id and original taxid assignment
         cluster_tsv // Cluster TSV, including seq_id and cluster_rep_id
         validation_tsv // Validation TSV, including cluster_rep_id and validation status
+        taxid_column // Column header for taxid in hits TSV
     main:
         // 0. Drop redundant columns from validation TSV
-        select_ch = SELECT_TSV_COLUMNS(validation_tsv, "taxid", "drop").output
+        select_ch = SELECT_TSV_COLUMNS(validation_tsv, taxid_column, "drop").output
         // 1. Sort cluster and validation TSVs by cluster_rep_id
-        sort_cluster_tsv = SORT_CLUSTER_TSV(cluster_tsv, "cluster_rep_id").sorted
-        sort_validation_tsv = SORT_VALIDATION_TSV(select_ch, "cluster_rep_id").sorted
+        sort_cluster_tsv = SORT_CLUSTER_TSV(cluster_tsv, "vsearch_cluster_rep_id").sorted
+        sort_validation_tsv = SORT_VALIDATION_TSV(select_ch, "vsearch_cluster_rep_id").sorted
         // 2. Left-join cluster and validation TSVs by cluster_rep_id
         combine_1_ch = sort_cluster_tsv.combine(sort_validation_tsv, by: 0)
-        join_1_ch = JOIN_CLUSTER_VALIDATION(combine_1_ch, "cluster_rep_id", "left", "representative").output
+        join_1_ch = JOIN_CLUSTER_VALIDATION(combine_1_ch, "vsearch_cluster_rep_id", "left", "representative").output
         // 3. Sort intermediate TSV by seq_id (hits TSV should already be sorted)
         sort_join_1_tsv = SORT_JOIN_TSV(join_1_ch, "seq_id").sorted
         // 4. Strict-join intermediate and hits TSVs by seq_id
