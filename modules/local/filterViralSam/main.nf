@@ -1,18 +1,25 @@
 // Consolidated viral SAM filtering: removes contaminant reads, applies pair-based score threshold filtering, adds missing mates for UP reads, and sorts output
 process FILTER_VIRAL_SAM {
-    label "python"
+    label "pysam_biopython"
     label "single"
     input:
         tuple val(sample), path(sam), path(contaminant_reads)
         val(score_threshold)
     output:
-        tuple val(sample), path("${sample}_viral_filtered.sam"), emit: sam
+        tuple val(sample), path("${sample}_viral_filtered.sam.gz"), emit: sam
     script:
         """
-        # Extract contaminant read IDs from FASTQ
-        zcat ${contaminant_reads} | grep "^@" | cut -d " " -f1 | sed 's/^@//' > contaminant_ids.txt
-        
+        sorted_fastq="${sample}_sorted_contaminant.fastq.gz"
+        sorted_sam="${sample}_sorted_viral_filtered.sam.gz"
+        outf="${sample}_viral_filtered.sam.gz"
+
+        # Make sure fastq file is sorted
+        zcat ${contaminant_reads} | paste - - - - | sort -k1,1 | tr '\\t' '\\n' | gzip -c > \${sorted_fastq}
+
+        # Make sure SAM file is sorted
+        zcat ${sam} | sort -t \$'\\t' -k1,1 | gzip -c > \${sorted_sam}
+
         # Run the consolidated viral SAM filtering
-        filter_viral_sam.py ${sam} contaminant_ids.txt ${sample}_viral_filtered.sam ${score_threshold}
+        filter_viral_sam.py \${sorted_sam} \${sorted_fastq} \${outf} ${score_threshold}
         """
 }

@@ -1,8 +1,7 @@
 # v2.9.0.2-dev
 - Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
     - Implemented VALIDATE_CLUSTER_REPRESENTATIVES subworkflow for comparing Bowtie2 and BLAST-LCA assignments, including new SELECT_TSV_COLUMNS and COMPUTE_TAXID_DISTANCE processes
-- Work in progress:
-  - Added the Nextflow process necessary to take Bowtie2 with multiple alignments and pass it to the script that takes the SAM file with no header and turns it into a tsv.
+- Added FILTER_VIRAL_SAM process for consolidated preprocessing of viral alignments before converting to a TSV to run LCA on.
 
 # v2.9.0.1
 - Modified Github Actions to pull specific Nextflow version (rather than "latest")

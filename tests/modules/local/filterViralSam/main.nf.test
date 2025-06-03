@@ -1,3 +1,4 @@
+import java.util.zip.GZIPInputStream
 nextflow_process {
 
     name "Test process FILTER_VIRAL_SAM"
@@ -12,14 +13,23 @@ nextflow_process {
         tag "normal_filtering"
         config "tests/configs/run.config"
         setup {
-            run("GZIP_FILE_BARE") {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_FASTQ") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
-                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam-contaminants.fastq")))
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-contaminants.fastq")))
                     '''
                 }
             }
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_SAM") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-test.sam")))
+                    '''
+                }
+            }
+
         }
 
         when {
@@ -28,8 +38,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test_sample")
-                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-test.sam")))
-                    | combine(GZIP_FILE_BARE.out)
+                    | combine(GZIP_FILE_BARE_SAM.out)
+                    | combine(GZIP_FILE_BARE_FASTQ.out)
                 input[1] = 10.0
                 '''
             }
@@ -43,7 +53,7 @@ nextflow_process {
             assert outputFile.exists()
             
             // Count lines in output (should be 4: read1 pair kept, read2 pair filtered, contaminant1 removed)
-            def outputLines = outputFile.readLines()
+            def outputLines = outputFile.withInputStream { stream -> new GZIPInputStream(stream).readLines()}
             def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
             assert nonHeaderLines.size() == 2  // Only read1 pair should remain
             
@@ -74,11 +84,19 @@ nextflow_process {
         tag "missing_mates"
         config "tests/configs/run.config"
         setup {
-            run("GZIP_FILE_BARE", alias: "GZIP_FILE_EMPTY") {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_EMPTY_FASTQ") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
                     input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    '''
+                }
+            }
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_UP_SAM") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-up-reads.sam")))
                     '''
                 }
             }
@@ -89,8 +107,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test_sample")
-                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-up-reads.sam")))
-                    | combine(GZIP_FILE_EMPTY.out)
+                    | combine(GZIP_FILE_UP_SAM.out)
+                    | combine(GZIP_FILE_EMPTY_FASTQ.out)
                 input[1] = 1.0
                 '''
             }
@@ -100,7 +118,7 @@ nextflow_process {
             assert process.success
             
             def outputFile = path(process.out.sam[0][1])
-            def outputLines = outputFile.readLines()
+            def outputLines = outputFile.withInputStream { stream -> new GZIPInputStream(stream).readLines()}
             def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
             
             // Should have 4 lines: 2 original UP reads + 2 created mates
@@ -143,11 +161,19 @@ nextflow_process {
         tag "secondary_alignments"
         config "tests/configs/run.config"
         setup {
-            run("GZIP_FILE_BARE", alias: "GZIP_FILE_EMPTY2") {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_EMPTY2_FASTQ") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
                     input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    '''
+                }
+            }
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_SECONDARY_SAM") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-secondary.sam")))
                     '''
                 }
             }
@@ -158,8 +184,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test_sample")
-                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-secondary.sam")))
-                    | combine(GZIP_FILE_EMPTY2.out)
+                    | combine(GZIP_FILE_SECONDARY_SAM.out)
+                    | combine(GZIP_FILE_EMPTY2_FASTQ.out)
                 input[1] = 10.0
                 '''
             }
@@ -169,7 +195,7 @@ nextflow_process {
             assert process.success
             
             def outputFile = path(process.out.sam[0][1])
-            def outputLines = outputFile.readLines()
+            def outputLines = outputFile.withInputStream { stream -> new GZIPInputStream(stream).readLines()}
             def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
             
             // Should have primary (chr1) + secondary chr2 pairs = 4 lines
@@ -209,11 +235,19 @@ nextflow_process {
         tag "high_threshold"
         config "tests/configs/run.config"
         setup {
-            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_EMPTY3") {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_EMPTY3_FASTQ") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
                     input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    '''
+                }
+            }
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_HIGH_THRESH_SAM") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-test.sam")))
                     '''
                 }
             }
@@ -224,8 +258,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test_sample")
-                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-test.sam")))
-                    | combine(GZIP_FILE_BARE_EMPTY3.out)
+                    | combine(GZIP_FILE_HIGH_THRESH_SAM.out)
+                    | combine(GZIP_FILE_BARE_EMPTY3_FASTQ.out)
                 input[1] = 1000.0
                 '''
             }
@@ -235,7 +269,7 @@ nextflow_process {
             assert process.success
             
             def outputFile = path(process.out.sam[0][1])
-            def outputLines = outputFile.readLines()
+            def outputLines = outputFile.withInputStream { stream -> new GZIPInputStream(stream).readLines()}
             def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
             
             // Should be empty - all reads filtered by high threshold
@@ -277,7 +311,7 @@ nextflow_process {
             assert outputFile.exists()
             
             // Should be empty
-            def outputLines = outputFile.readLines()
+            def outputLines = outputFile.withInputStream { stream -> new GZIPInputStream(stream).readLines()}
             assert outputLines.size() == 0
         }
     }
@@ -287,11 +321,19 @@ nextflow_process {
         tag "all_contaminants"
         config "tests/configs/run.config"
         setup {
-            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_ALL_CONTAM") {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_ALL_CONTAM_FASTQ") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
-                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam-all-contaminants.fastq")))
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-all-contaminants.fastq")))
+                    '''
+                }
+            }
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_ALL_CONTAM_SAM") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-test.sam")))
                     '''
                 }
             }
@@ -302,8 +344,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test_sample")
-                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-test.sam")))
-                    | combine(GZIP_FILE_BARE_ALL_CONTAM.out)
+                    | combine(GZIP_FILE_ALL_CONTAM_SAM.out)
+                    | combine(GZIP_FILE_BARE_ALL_CONTAM_FASTQ.out)
                 input[1] = 10.0
                 '''
             }
@@ -313,7 +355,7 @@ nextflow_process {
             assert process.success
             
             def outputFile = path(process.out.sam[0][1])
-            def outputLines = outputFile.readLines()
+            def outputLines = outputFile.withInputStream { stream -> new GZIPInputStream(stream).readLines()}
             def nonHeaderLines = outputLines.findAll { !it.startsWith('@') }
             
             // Should filter out all reads since they're all contaminants in filter-viral-sam-all-contaminants.fastq
@@ -326,11 +368,19 @@ nextflow_process {
         tag "invalid_threshold"
         config "tests/configs/run.config"
         setup {
-            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_FAIL") {
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_BARE_FAIL_FASTQ") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
                     input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/empty_file.txt")))
+                    '''
+                }
+            }
+            run("GZIP_FILE_BARE", alias: "GZIP_FILE_FAIL_SAM") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of(tuple(file("${projectDir}/test-data/toy-data/filter-viral-sam/filter-viral-sam-test.sam")))
                     '''
                 }
             }
@@ -341,8 +391,8 @@ nextflow_process {
             process {
                 '''
                 input[0] = Channel.of("test_sample")
-                    | combine(Channel.of(file("${projectDir}/test-data/toy-data/filter-viral-sam-test.sam")))
-                    | combine(GZIP_FILE_BARE_FAIL.out)
+                    | combine(GZIP_FILE_FAIL_SAM.out)
+                    | combine(GZIP_FILE_BARE_FAIL_FASTQ.out)
                 input[1] = "invalid_threshold"
                 '''
             }
