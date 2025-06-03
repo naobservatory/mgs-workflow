@@ -15,11 +15,11 @@ F. [TODO] Propagate validation information from cluster representatives to other
 
 include { SPLIT_VIRAL_TSV_BY_SPECIES } from "../../../subworkflows/local/splitViralTsvBySpecies"
 include { CLUSTER_VIRAL_ASSIGNMENTS } from "../../../subworkflows/local/clusterViralAssignments"
+include { CONCATENATE_FASTA_ACROSS_SPECIES } from "../../../subworkflows/local/concatenateFastaAcrossSpecies"
+include { CONCATENATE_TSVS_ACROSS_SPECIES } from "../../../subworkflows/local/concatenateTsvsAcrossSpecies"
 include { BLAST_FASTA } from "../../../subworkflows/local/blastFasta"
 include { VALIDATE_CLUSTER_REPRESENTATIVES } from "../../../subworkflows/local/validateClusterRepresentatives"
 include { PROPAGATE_VALIDATION_INFORMATION } from "../../../subworkflows/local/propagateValidationInformation"
-include { CONCATENATE_TSVS_ACROSS_SPECIES as CONCATENATE_CLUSTERING_INFO } from "../../../subworkflows/local/concatenateTsvsAcrossSpecies"
-include { CONCATENATE_TSVS_ACROSS_SPECIES as CONCATENATE_BLAST_RESULTS } from "../../../subworkflows/local/concatenateTsvsAcrossSpecies"
 include { SELECT_TSV_COLUMNS } from "../../../modules/local/selectTsvColumns"
 include { COPY_FILE as COPY_HITS } from "../../../modules/local/copyFile"
 include { COPY_FILE as COPY_BLAST } from "../../../modules/local/copyFile"
@@ -48,25 +48,25 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         // 2. Cluster sequences within species and obtain representatives of largest clusters
         cluster_ch = CLUSTER_VIRAL_ASSIGNMENTS(split_ch.fastq, cluster_identity,
             cluster_min_len, n_clusters, Channel.of(false))
-        // 3. BLAST cluster representatives
-        blast_ch = BLAST_FASTA(cluster_ch.fasta, ref_dir, blast_db_prefix,
+        // 3. Concatenate data across species (prepare for group-level BLAST)
+        concat_fasta_ch = CONCATENATE_FASTA_ACROSS_SPECIES(cluster_ch.fasta, "cluster_reps")
+        concat_cluster_ch = CONCATENATE_TSVS_ACROSS_SPECIES(cluster_ch.tsv, "cluster_info")
+        // 4. Run BLAST on concatenated cluster representatives (single job per group)
+        blast_ch = BLAST_FASTA(concat_fasta_ch.output, ref_dir, blast_db_prefix,
             perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac, taxid_artificial,
             "validation")
-        // 4. Validate hit TSV taxids against BLAST results
-        validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(split_ch.tsv, blast_ch.lca, 
+        // 5. Validate original group hits against concatenated BLAST results
+        validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(groups, blast_ch.lca,
             "bowtie2_taxid_best", // Column header for original taxid in hits TSV
             "validation_staxid_lca_natural", // LCA taxid computed from BLAST results, excluding artificial sequences
             "validation_distance", ref_dir)
-        // 5. Propagate validation information back to individual hits
-        propagate_ch = PROPAGATE_VALIDATION_INFORMATION(split_ch.tsv, cluster_ch.tsv,
+        // 6. Propagate validation information back to individual hits
+        propagate_ch = PROPAGATE_VALIDATION_INFORMATION(groups, concat_cluster_ch.output,
             validate_ch.output, "bowtie2_taxid_best")
-        // 6. Concatenate validation info and BLAST results across species (to regenerate per-group information)
-        regrouped_ch = CONCATENATE_CLUSTERING_INFO(propagate_ch.output, "validation")
-        regrouped_blast_ch = CONCATENATE_BLAST_RESULTS(blast_ch.blast, "validation")
-        // 7. Cleanup
-        regrouped_drop_ch = SELECT_TSV_COLUMNS(regrouped_ch.output, "taxid_species", "drop").output
+        // 7. Cleanup and generate final outputs
+        regrouped_drop_ch = SELECT_TSV_COLUMNS(propagate_ch.output, "taxid_species", "drop").output
         output_hits_ch = COPY_HITS(regrouped_drop_ch, "validation_hits.tsv.gz")
-        output_blast_ch = COPY_BLAST(regrouped_blast_ch.output, "validation_blast.tsv.gz")
+        output_blast_ch = COPY_BLAST(blast_ch.blast, "validation_blast.tsv.gz")
     emit:
         // Main output
         annotated_hits = output_hits_ch
@@ -81,6 +81,8 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         test_cluster_ids = cluster_ch.ids
         test_reps_fastq = cluster_ch.fastq
         test_reps_fasta = cluster_ch.fasta
+        test_concat_fasta = concat_fasta_ch.output
+        test_concat_cluster = concat_cluster_ch.output
         test_blast_db = blast_ch.blast
         test_blast_query = blast_ch.query
         test_blast_lca = blast_ch.lca

@@ -129,13 +129,41 @@ nextflow_workflow {
             for (int i = 0; i < tabs_split.size(); i++) {
                 assert tabs_split[i].rowCount == tabs_clust[i].rowCount
             }
+            // Concatenation should work correctly
+            def cluster_fasta = workflow.out.test_reps_fasta.collect{path(it[1]).fasta}
+            def concat_fasta = workflow.out.test_concat_fasta.collect{path(it[1]).fasta}
+            def cluster_labels = workflow.out.test_reps_fasta.collect{it[0]}
+            def groups_from_species = cluster_labels.collect { label ->
+                def pattern = /^(.*?)_(\d+)$/
+                def matcher = (label =~ pattern)
+                return matcher[0][1]  // Extract group part
+            }.unique()
+            // Concatenated data should have exactly one file per unique group
+            assert concat_fasta.size() == groups_from_species.size()
+            def concat_labels = workflow.out.test_concat_fasta.collect{it[0]}
+            assert concat_labels.toSet() == groups_from_species.toSet()
+            // For each group, verify all species sequences are concatenated
+            groups_from_species.each { group ->
+                // Find all species files for this group
+                def species_files = cluster_fasta.withIndex().findAll { fasta, idx ->
+                    cluster_labels[idx].startsWith("${group}_")
+                }.collect { it[0] }
+                
+                // Find concatenated file for this group
+                def concat_file = concat_fasta[concat_labels.indexOf(group)]
+                
+                // Total sequences should match
+                def species_seq_count = species_files.sum { it.keySet().size() }
+                def concat_seq_count = concat_file.keySet().size()
+                assert species_seq_count == concat_seq_count
+            }
             // Basic BLAST invocation should work as expected
             def blast_db = workflow.out.test_blast_db.collect{path(it[1]).csv(sep: "\t",decompress: true)}
             def blast_query = workflow.out.test_blast_query.collect{path(it[1]).fasta}
             def blast_lca = workflow.out.test_blast_lca.collect{path(it[1]).csv(sep: "\t",decompress: true)}
-            def cluster_fasta = workflow.out.test_reps_fasta.collect{path(it[1]).fasta}
-            assert blast_query == cluster_fasta
+            assert blast_query == concat_fasta
             assert blast_db.size() == blast_query.size()
+            // BLAST now runs on concatenated data, so we have 1 job per group instead of 1 per group/species
             for (int i=0; i < blast_db.size(); i++) {
                 if (blast_db[i].rowCount == 0) {
                     continue
@@ -155,19 +183,21 @@ nextflow_workflow {
                     assert tabs_validate[i].columns["vsearch_cluster_rep_id"].unique().toSorted() == blast_lca[i].columns["qseqid"].unique().toSorted()
                 }
             }
-            // Propagation should work as expected
+            // Propagation should work as expected (now working on group-level data)
             def tabs_propagate = workflow.out.test_propagate.collect{path(it[1]).csv(sep: "\t", decompress: true)}
+            def tabs_in = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t",decompress: true)}
+            def concat_cluster = workflow.out.test_concat_cluster.collect{path(it[1]).csv(sep: "\t", decompress: true)}
             assert tabs_propagate.size() == tabs_validate.size()
             for (int i=0; i < tabs_propagate.size(); i++) {
-                assert tabs_propagate[i].rowCount == tabs_split[i].rowCount
-                assert tabs_propagate[i].columns["seq_id"].toSorted() == tabs_split[i].columns["seq_id"].toSorted()
+                assert tabs_propagate[i].rowCount == tabs_in[i].rowCount
+                assert tabs_propagate[i].columns["seq_id"].toSorted() == tabs_in[i].columns["seq_id"].toSorted()
                 if (tabs_validate[i].rowCount > 0) {
-                    def ncol_exp = tabs_split[i].columnCount + tabs_validate[i].columnCount + tabs_clust[i].columnCount - 3
+                    def col_exp = tabs_in[i].columnNames.toSet() + tabs_validate[i].columnNames.toSet() + concat_cluster[i].columnNames.toSet()
+                    def ncol_exp = col_exp.size() - 1
                     assert tabs_propagate[i].columnCount == ncol_exp
                 }
             }
             // Regrouping should work as expected
-            def tabs_in = workflow.out.test_in.collect{path(it[1]).csv(sep: "\t",decompress: true)}
             def tabs_regrouped = workflow.out.annotated_hits.collect{path(it[1]).csv(sep: "\t",decompress: true)}
             assert tabs_regrouped.size() == tabs_in.size()
             for (int i=0; i < tabs_regrouped.size(); i++) {
