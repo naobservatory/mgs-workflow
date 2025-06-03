@@ -95,11 +95,50 @@ style F fill:#000,color:#fff,stroke:#000
 
 ### Validate viral taxonomic assignments (`VALIDATE_VIRAL_ASSIGNMENTS`)
 
-This subworkflow takes in annotated hits TSVs from `MARK_VIRAL_DUPLICATES` and runs selected sequences through validation with BLAST against the NCBI core_nt database. Alignment results from BLAST are filtered, and the [lowest common ancestor (LCA)](https://en.wikipedia.org/wiki/Lowest_common_ancestor) of remaining BLAST hits is computed for each hit sequence. The BLAST LCA is then compared against the original taxonomic assignment of that hit to evaluate the accuracy of the original assignment.
+This subworkflow takes in annotated hits TSVs from `MARK_VIRAL_DUPLICATES` and runs selected sequences through validation with BLAST against the NCBI core_nt database. Alignment results from BLAST are filtered, and the [lowest common ancestor (LCA)](https://en.wikipedia.org/wiki/Lowest_common_ancestor) of remaining BLAST hits is computed for each hit sequence. The BLAST LCA is then compared against the original taxonomic assignment of that hit to evaluate the accuracy of the original assignment.
 
 This is a complex analysis with a number of steps, which have been grouped into descendent subworkflows for comprehensibility.
 
-[TODO: Workflow diagram for VALIDATE_VIRAL_ASSIGNMENTS]
+```mermaid
+---
+title: VALIDATE_VIRAL_ASSIGNMENTS
+config:
+  layout: horizontal
+---
+flowchart LR
+A("Annotated hits TSVs <br> (MARK_VIRAL_DUPLICATES)") --> B[SPLIT_VIRAL_TSV_BY_SPECIES]
+C("Viral taxonomy DB") --> B
+B --> D[CLUSTER_VIRAL_ASSIGNMENTS]
+D --> E[CONCATENATE_FASTA_ACROSS_SPECIES]
+D --> F[CONCATENATE_TSVS_ACROSS_SPECIES]
+E --> G[BLAST_FASTA]
+G --> H[VALIDATE_CLUSTER_REPRESENTATIVES]
+A --> H
+F --> I[PROPAGATE_VALIDATION_INFORMATION]
+H --> I
+A --> I
+I --> J(Validation hits TSV)
+G --> K(BLAST results TSV)
+subgraph "Partition and cluster by species"
+B
+D
+end
+subgraph "Concatenate across species"
+E
+F
+end
+subgraph "BLAST validation"
+G
+H
+end
+subgraph "Propagate results"
+I
+end
+style A fill:#fff,stroke:#000
+style C fill:#fff,stroke:#000
+style J fill:#000,color:#fff,stroke:#000
+style K fill:#000,color:#fff,stroke:#000
+```
 
 #### Split hits TSVs by assigned species (`SPLIT_VIRAL_TSV_BY_SPECIES`)
 
@@ -122,8 +161,187 @@ G --> H(Partitioned hits TSVs)
 G --> I[Extract read sequences from each hits TSV into interleaved FASTQ]
 I --> J(Partitioned FASTQ)
 style A fill:#fff,stroke:#000
-style B fill:#fff,stroke:#000
+style C fill:#fff,stroke:#000
 style H fill:#000,color:#fff,stroke:#000
+style J fill:#000,color:#fff,stroke:#000
+```
+
+#### Cluster hits within species and obtain representative sequences (`CLUSTER_VIRAL_ASSIGNMENTS`)
+
+This subworkflow takes in partitioned FASTQ sequences from `SPLIT_VIRAL_TSV_BY_SPECIES`, clusters them using [VSEARCH](https://github.com/torognes/vsearch), and returns representative sequences from the largest clusters, along with a TSV mapping each hit to its corresponding cluster representative. By clustering sequences within each species, the subworkflow reduces the computational cost of validation by selecting only representative sequences rather than validating every individual hit.
+
+```mermaid
+---
+title: CLUSTER_VIRAL_ASSIGNMENTS
+config:
+  layout: horizontal
+---
+flowchart LR
+A("Partitioned FASTQ <br> (SPLIT_VIRAL_TSV_BY_SPECIES)") --> B[MERGE_JOIN_READS]
+B --> C[VSEARCH_CLUSTER]
+C --> D[PROCESS_VSEARCH_CLUSTER_OUTPUT]
+D --> E[DOWNSAMPLE_FASTN_BY_ID]
+E --> F[CONVERT_FASTQ_FASTA]
+F --> G(FASTA of representative sequences)
+E --> H(FASTQ of representative sequences)
+D --> I(Clustering information TSV)
+subgraph "Merge paired reads"
+B
+end
+subgraph "Cluster sequences with VSEARCH"
+C
+D
+end
+subgraph "Extract representatives"
+E
+F
+end
+style A fill:#fff,stroke:#000
+style G fill:#000,color:#fff,stroke:#000
+style H fill:#000,color:#fff,stroke:#000
+style I fill:#000,color:#fff,stroke:#000
+```
+
+#### Concatenate data across species (`CONCATENATE_FASTA_ACROSS_SPECIES` and `CONCATENATE_TSVS_ACROSS_SPECIES`)
+
+These two subworkflows take partitioned data from `CLUSTER_VIRAL_ASSIGNMENTS` (FASTA files and clustering TSVs respectively) and reorganize them by sample group rather than by species. Each subworkflow extracts the group identifier from the combined group/species labels, then concatenates all files sharing the same group label. This restructuring allows for group-level BLAST analysis rather than separate BLAST jobs for each species, significantly reducing computational overhead.
+
+```mermaid
+---
+title: CONCATENATE_FASTA_ACROSS_SPECIES
+config:
+  layout: horizontal
+---
+flowchart LR
+A("Representative FASTA files <br> labeled by group & species <br> (CLUSTER_VIRAL_ASSIGNMENTS)") --> B[Extract group labels]
+B --> C[Collate and concatenate by sample group]
+C --> D(Concatenated FASTA files <br> labeled by group)
+style A fill:#fff,stroke:#000
+style D fill:#000,color:#fff,stroke:#000
+```
+
+```mermaid
+---
+title: CONCATENATE_TSVS_ACROSS_SPECIES
+config:
+  layout: horizontal
+---
+flowchart LR
+A("Cluster information TSVs <br> labeled by group_species <br> (CLUSTER_VIRAL_ASSIGNMENTS)") --> B[Add group_species column]
+B --> C[Extract group labels]
+C --> D[Collate and concatenate by sample group]
+D --> E[Add group column]
+E --> F(Concatenated TSVs <br> labeled by group)
+style A fill:#fff,stroke:#000
+style F fill:#000,color:#fff,stroke:#000
+```
+
+#### Perform BLAST validation (`BLAST_FASTA`)
+
+This subworkflow takes concatenated representative sequences from `CONCATENATE_FASTA_ACROSS_SPECIES` and validates them against the NCBI core_nt database using BLAST. The subworkflow then filters BLAST results to retain only high-quality alignments: specifically, it filters to only the best alignment for each query/subject combination, then filters these to only include those whose bitscore is:
+
+1. In the top-N alignments by bitscore for that query (for some N);
+2. At least P% of the bitscore of the best alignment for that query (for some P).
+
+After filtering, the subworkflow computes the lowest common ancestor (LCA) of the retained BLAST hits for each query sequence.
+
+```mermaid
+---
+title: BLAST_FASTA
+config:
+  layout: horizontal
+---
+flowchart LR
+A("Representative FASTA <br> (CONCATENATE_FASTA_ACROSS_SPECIES)") --> B[BLASTN]
+B --> C[Sort by query, subject, bitscore]
+C --> D[Filter to best hit per query/subject]
+D --> E[Sort by query, bitscore]
+E --> F[Filter to top hits per query]
+F --> G[Compute LCA of remaining hits]
+G --> H(TSV of LCA information for each query)
+F --> I(TSV of filtered pre-LCA BLAST output)
+subgraph "BLAST alignment"
+B
+end
+subgraph "Filter alignments"
+C
+D
+E
+F
+end
+subgraph "LCA"
+G
+end
+style A fill:#fff,stroke:#000
+style H fill:#000,color:#fff,stroke:#000
+style I fill:#000,color:#fff,stroke:#000
+```
+
+#### Compare original and BLAST assignments (`VALIDATE_CLUSTER_REPRESENTATIVES`)
+
+This subworkflow takes the original viral hits from `MARK_VIRAL_DUPLICATES` and the LCA results from `BLAST_FASTA`; computes an inner-join on sequence ID to restrict the result to cluster representatives; then compares the initial taxonomic assignments with the LCA assignments from BLAST. The subworkflow computes the taxonomic distance between the original assignment and the BLAST-derived LCA by counting the steps from one to the other, providing a quantitative measure of assignment accuracy.
+
+```mermaid
+---
+title: VALIDATE_CLUSTER_REPRESENTATIVES
+config:
+  layout: horizontal
+---
+flowchart LR
+A("Original hits TSV <br> (MARK_VIRAL_DUPLICATES)") --> B[Select seq_id and taxid columns]
+C("LCA assignments TSV <br> (BLAST_FASTA)") --> D[Rename qseqid to seq_id]
+B --> E[Inner join by seq_id]
+D --> E
+E --> F[Compute taxonomic distance]
+F --> G[Rename seq_id to vsearch_cluster_rep_id]
+G --> H(Validation results TSV)
+subgraph "Prepare for joining"
+B
+D
+end
+subgraph "Compare assignments"
+E
+F
+G
+end
+style A fill:#fff,stroke:#000
+style C fill:#fff,stroke:#000
+style H fill:#000,color:#fff,stroke:#000
+```
+
+#### Propagate validation to individual hits (`PROPAGATE_VALIDATION_INFORMATION`)
+
+This subworkflow takes three inputs: the original hits TSV, the clustering information TSV, and the validation results from `VALIDATE_CLUSTER_REPRESENTATIVES`. It propagates the validation information from cluster representatives back to all individual hits in each cluster, enabling assessment of validation accuracy for every original hit.
+
+```mermaid
+---
+title: PROPAGATE_VALIDATION_INFORMATION
+config:
+  layout: horizontal
+---
+flowchart LR
+A("Original hits TSV <br> (MARK_VIRAL_DUPLICATES)") --> B[Sort by seq_id]
+C("Clustering TSV <br> (concatenated)") --> D[Sort by cluster_rep_id]
+E("Validation TSV <br> (VALIDATE_CLUSTER_REPRESENTATIVES)") --> F[Sort by cluster_rep_id]
+D --> G[Left join cluster + validation]
+F --> G
+G --> H[Sort by seq_id]
+B --> I[Join hits + cluster/validation]
+H --> I
+I --> J(Hits with validation information)
+subgraph "Join cluster and validation data"
+D
+F
+G
+end
+subgraph "Propagate to individual hits"
+B
+H
+I
+end
+style A fill:#fff,stroke:#000
+style C fill:#fff,stroke:#000
+style E fill:#fff,stroke:#000
 style J fill:#000,color:#fff,stroke:#000
 ```
 
