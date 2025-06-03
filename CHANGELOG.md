@@ -1,3 +1,7 @@
+# v2.9.0.3
+- Make sure field per_tile_sequence_quality is always present in multiqc output summary file, to allow pipeline to run successfully on a mix of empty and non-empty files
+- Add set -eou pipefail to all ONT processes with pipes; make MASK_FASTQ_READS robust to empty files; add empty file tests for MASK_FASTQ_READS and MINIMAP2
+
 # v2.9.0.2
 
 - Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
