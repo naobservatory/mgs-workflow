@@ -1,4 +1,4 @@
-# v2.9.0.4-dev
+# v2.9.0.4
 - Updated markAlignmentDuplicates module to reduce memory overhead and increase memory allocation (which collectively should avoid out-of-memory errors in DOWNSTREAM on large read groups).
 
 # v2.9.0.3
