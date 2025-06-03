@@ -193,7 +193,7 @@ nextflow_workflow {
                 assert tabs_propagate[i].columns["seq_id"].toSorted() == tabs_in[i].columns["seq_id"].toSorted()
                 if (tabs_validate[i].rowCount > 0) {
                     def col_exp = tabs_in[i].columnNames.toSet() + tabs_validate[i].columnNames.toSet() + concat_cluster[i].columnNames.toSet()
-                    def ncol_exp = col_exp.size() - 1
+                    def ncol_exp = col_exp.size()
                     assert tabs_propagate[i].columnCount == ncol_exp
                 }
             }

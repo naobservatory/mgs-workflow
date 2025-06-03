@@ -42,7 +42,7 @@ workflow PROPAGATE_VALIDATION_INFORMATION {
         sort_join_1_tsv = SORT_JOIN_TSV(join_1_ch, "seq_id").sorted
         // 4. Strict-join intermediate and hits TSVs by seq_id
         // Both tables should contain the same sequences in the same order
-        drop_group_species_ch = DROP_GROUP_SPECIES(sort_join_1_tsv, "group,group_species", "drop").output
+        drop_group_species_ch = DROP_GROUP_SPECIES(sort_join_1_tsv, "group", "drop").output
         combine_2_ch = hits_tsv.combine(drop_group_species_ch, by: 0)
         join_2_ch = JOIN_HITS_CLUSTER(combine_2_ch, "seq_id", "strict", "validation").output
     emit:
