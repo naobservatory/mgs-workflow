@@ -1,0 +1,213 @@
+nextflow_process {
+
+    name "Test process CONCATENATE_FASTN_LABELED"
+    script "modules/local/concatenateFastn/main.nf"
+    process "CONCATENATE_FASTN_LABELED"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "concatenate_fastn"
+
+    setup {
+        run("COPY_FILE_BARE", alias: "COPY_FASTA_1") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/toy-data/test-random.fasta"
+                input[1] = "input_fasta_1.fasta"
+                """
+            }
+        }
+        run("COPY_FILE_BARE", alias: "COPY_FASTA_2") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/toy-data/test-random.fasta"
+                input[1] = "input_fasta_2.fasta"
+                """
+            }
+        }
+        run("COPY_FILE_BARE", alias: "COPY_FASTQ_1") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/toy-data/test-random.fastq"
+                input[1] = "input_fastq_1.fastq"
+                """
+            }
+        }
+        run("COPY_FILE_BARE", alias: "COPY_FASTQ_2") {
+            script "modules/local/copyFile/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/toy-data/test-random.fastq"
+                input[1] = "input_fastq_2.fastq"
+                """
+            }
+        }
+        run("GZIP_FILE_BARE", alias: "GZIP_FASTA_1") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/toy-data/test-random.fasta"
+                """
+            }
+        }
+    }
+
+    /* FAILURE TESTS */
+
+    test("Should fail when input file has no extension") {
+        tag "expect_failed"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_no_extension"))
+                input[1] = "test"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport =~ /Input file .* has no extension --/
+        }
+    }
+
+    /* SINGLE-FILE TESTS */
+
+    test("Should run without failures on a single plaintext FASTA file") {
+        tag "expect_success"
+        tag "single"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(COPY_FASTA_1.out)
+                input[1] = "single"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should be a FASTA file
+            assert process.out.output[0][1].endsWith('.fasta')
+            assert path(process.out.output[0][1]).getFileName().toString() == 'test_single.fasta'
+            // Check file exactly matches using MD5
+            assert path(process.out.input[0][1]).md5 == path(process.out.output[0][1]).md5
+        }
+    }
+
+    test("Should run without failures on a single plaintext FASTQ file") {
+        tag "expect_success"
+        tag "single"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(COPY_FASTQ_1.out)
+                input[1] = "single"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should be a FASTA file
+            assert process.out.output[0][1].endsWith('.fastq')
+            assert path(process.out.output[0][1]).getFileName().toString() == 'test_single.fastq'
+            // Check file exactly matches using MD5
+            assert path(process.out.input[0][1]).md5 == path(process.out.output[0][1]).md5
+        }
+    }
+
+    test("Should run without failures on a single compressed FASTA file") {
+        tag "expect_success"
+        tag "single"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(GZIP_FASTA_1.out)
+                input[1] = "single"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should be a FASTA file
+            assert process.out.output[0][1].endsWith('.fasta.gz')
+            assert path(process.out.output[0][1]).getFileName().toString() == 'test_single.fasta.gz'
+            // Check file exactly matches using MD5
+            assert path(process.out.input[0][1]).md5 == path(process.out.output[0][1]).md5
+        }
+    }
+
+    /* DOUBLE-FILE TESTS */
+
+    test("Should run without failures on two FASTA files") {
+        tag "expect_success"
+        tag "double"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(COPY_FASTA_1.out)
+                    | concat(Channel.of("test").combine(COPY_FASTA_2.out))
+                    | groupTuple()
+                input[1] = "double"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should be a FASTA file
+            assert process.out.output[0][1].endsWith('.fasta')
+            assert path(process.out.output[0][1]).getFileName().toString() == 'test_double.fasta'
+            // Check concatenation worked using fasta parsing
+            def file_in = path(process.out.input[0][1]).text.split("\n")
+            def file_out = path(process.out.output[0][1]).text.split("\n")
+            assert file_out.size() == file_in.size() * 2
+            assert file_out == file_in + file_in
+        }
+    }
+
+    test("Should run without failures on two FASTQ files") {
+        tag "expect_success"
+        tag "double"
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = Channel.of("test").combine(COPY_FASTQ_1.out)
+                    | concat(Channel.of("test").combine(COPY_FASTQ_2.out))
+                    | groupTuple()
+                input[1] = "double"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should be a FASTA file
+            assert process.out.output[0][1].endsWith('.fastq')
+            assert path(process.out.output[0][1]).getFileName().toString() == 'test_double.fastq'
+            // Check concatenation worked using fastq parsing
+            def file_in = path(process.out.input[0][1]).text.split("\n")
+            def file_out = path(process.out.output[0][1]).text.split("\n")
+            assert file_out.size() == file_in.size() * 2
+            assert file_out == file_in + file_in
+        }
+    }
+
+}

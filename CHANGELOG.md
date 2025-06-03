@@ -1,7 +1,18 @@
-# v2.9.0.2-dev
+# v2.9.04
+- Make sure field per_tile_sequence_quality is always present in multiqc output summary file, to allow pipeline to run successfully on a mix of empty and non-empty files
+
+# v2.9.0.3
+- Add set -eou pipefail to all ONT processes with pipes; make MASK_FASTQ_READS robust to empty files; add empty file tests for MASK_FASTQ_READS and MINIMAP2
+
+# v2.9.0.2
 
 - Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
     - Implemented VALIDATE_CLUSTER_REPRESENTATIVES subworkflow for comparing Bowtie2 and BLAST-LCA assignments, including new SELECT_TSV_COLUMNS and COMPUTE_TAXID_DISTANCE processes
+    - Implemented PROPAGATE_VALIDATION_INFORMATION subworkflow to merge cluster-representative validation information back into raw hits TSV
+    - Implemented CHECK_TSV_DUPLICATES process and added to SPLIT_VIRAL_TSV_BY_SPECIES to prevent many-to-many joins during post-hoc validation
+    - Implemented CONCATENATE_TSVS_ACROSS_SPECIES subworkflow for reconstructing grouped viral hits TSV from species-specific TSVs
+- Modified SORT_TSV behavior to avoid out-of-memory errors.
+- Updated trace path for DOWNSTREAM workflow to avoid overwriting RUN workflow trace.
 
 # v2.9.0.1
 
