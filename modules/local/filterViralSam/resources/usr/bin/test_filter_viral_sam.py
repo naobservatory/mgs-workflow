@@ -381,5 +381,69 @@ IIIIIIIIIIIIIIII"""
         assert len(primary_flags) == 2
         assert len(secondary_flags) == 2
 
+    def test_secondary_up_read_synthetic_mate_creation(self):
+        # Test that synthetic mates are properly created and saved for secondary UP reads
+        # This test specifically catches the bug where synthetic mates were created but not saved
+        sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:UP
+read1\t355\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:45\tYT:Z:UP"""
+        
+        filtered_content = """@read1/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read1/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII"""        
+        
+        sam_file = self.create_temp_file(sam_content, '.sam')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
+        output_file = os.path.join(self.temp_dir, 'output.sam')
+        
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
+        
+        with open(output_file, 'r') as f:
+            output_lines = f.readlines()
+        
+        # Should have primary UP + synthetic mate (2) + secondary UP + synthetic mate (2) = 4 lines
+        assert len(output_lines) == 4
+        
+        # Parse all alignments
+        alignments = [SamAlignment.from_sam_line(line.strip()) for line in output_lines]
+        
+        # Check that we have both primary and secondary alignments
+        primary_alignments = [a for a in alignments if a.flag < 256]
+        secondary_alignments = [a for a in alignments if a.flag >= 256]
+        
+        assert len(primary_alignments) == 2  # Primary UP + synthetic mate
+        assert len(secondary_alignments) == 2  # Secondary UP + synthetic mate
+        
+        # Check that secondary alignments include both mapped and unmapped
+        secondary_chr2 = [a for a in secondary_alignments if a.rname == 'chr2']
+        assert len(secondary_chr2) == 2
+        
+        # One should be mapped (original UP), one should be unmapped (synthetic mate)
+        mapped_secondary = [a for a in secondary_chr2 if not (a.flag & 4)]
+        unmapped_secondary = [a for a in secondary_chr2 if a.flag & 4]
+        
+        assert len(mapped_secondary) == 1
+        assert len(unmapped_secondary) == 1
+        
+        # The unmapped one should have CIGAR '*'
+        assert unmapped_secondary[0].cigar == '*'
+        
+        # Verify the synthetic mate has the correct flag structure
+        # Original UP read was flag 355 (read1), synthetic mate should be read2 + unmapped
+        original_up = mapped_secondary[0]
+        synthetic_mate = unmapped_secondary[0]
+        
+        # Original should be read1 (flag & 64), synthetic should be read2 (flag & 128)
+        if original_up.flag & 64:  # Original is read1
+            assert synthetic_mate.flag & 128  # Synthetic is read2
+            assert not (synthetic_mate.flag & 64)
+        else:  # Original is read2
+            assert synthetic_mate.flag & 64  # Synthetic is read1
+            assert not (synthetic_mate.flag & 128)
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
