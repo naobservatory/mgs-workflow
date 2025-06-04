@@ -9,8 +9,6 @@ import time
 import datetime
 import gzip
 import bz2
-import json
-import functools
 import math
 
 # Utility functions
@@ -50,6 +48,7 @@ def check_flag(flag_sum, flag_dict, flag_name, flag_value):
 def process_sam_flags(flag_sum):
     """Extract individual flags from flag sum."""
     flag_dict = {}
+    flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_secondary", 256)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_mate_2", 128)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_mate_1", 64)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "mate_aligned_reverse", 32)

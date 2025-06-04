@@ -1,18 +1,18 @@
-seq_id	kraken_classified	kraken_assigned_host_virus	bowtie2_length_normalized_score_max
-XX	FALSE	1	20
-A0	TRUE	0	10
-B0	TRUE	0	15
-C0	TRUE	0	20
-D0	TRUE	0	25
-A1	TRUE	1	10
-B1	TRUE	1	15
-C1	TRUE	1	20
-D1	TRUE	1	25
-A2	TRUE	2	10
-B2	TRUE	2	15
-C2	TRUE	2	20
-D2	TRUE	2	25
-A3	FALSE	0	10
-B3	FALSE	0	15
-C3	FALSE	0	20
-D3	FALSE	0	25
+seq_id	kraken_classified	kraken_assigned_host_virus
+XX	FALSE	1
+A0	TRUE	0
+B0	TRUE	0
+C0	TRUE	0
+D0	TRUE	0
+A1	TRUE	1
+B1	TRUE	1
+C1	TRUE	1
+D1	TRUE	1
+A2	TRUE	2
+B2	TRUE	2
+C2	TRUE	2
+D2	TRUE	2
+A3	FALSE	0
+B3	FALSE	0
+C3	FALSE	0
+D3	FALSE	0
