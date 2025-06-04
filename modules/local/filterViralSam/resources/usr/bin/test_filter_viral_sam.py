@@ -96,35 +96,43 @@ class TestFilterViralSam:
             f.write(content)
         return path
     
-    def test_contaminant_filtering(self):
-        # SAM content with one contaminant read
-        sam_content = """contaminant\t99\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:45\tYT:Z:CP
-contaminant\t147\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:43\tYT:Z:CP
+    def test_filtered_read_keeping(self):
+        # SAM content with one filtered read that should be kept
+        sam_content = """filtered_read\t99\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:45\tYT:Z:CP
+filtered_read\t147\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:43\tYT:Z:CP
 read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:CP
 read1\t147\tchr1\t200\t60\t50M\t=\t100\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:48\tYT:Z:CP"""
         
-        contaminant_content = """@contaminant/1
+        filtered_content = """@filtered_read/1
 ACGTACGTACGTACGT
 +
 IIIIIIIIIIIIIIII
-@contaminant/2
+@filtered_read/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII
+@read1/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read1/2
 TGCATGCATGCATGCA
 +
 IIIIIIIIIIIIIIII"""
         
         sam_file = self.create_temp_file(sam_content, '.sam')
-        contaminant_file = self.create_temp_file(contaminant_content, '.fastq')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, contaminant_file, output_file, 0.1)
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 0.1)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
         
-        # Should only have read1 pair, not contaminant
-        assert len(output_lines) == 2
-        assert all('read1' in line for line in output_lines)
-        assert not any('contaminant' in line for line in output_lines)
+        # Should have both pairs: filtered_read (kept) and read1 (passed score threshold)
+        assert len(output_lines) == 4
+        assert any('filtered_read' in line for line in output_lines)
+        assert any('read1' in line for line in output_lines)
     
     def test_score_threshold_pair_logic(self):
         
@@ -134,14 +142,29 @@ read1\t147\tchr1\t200\t60\t50M\t=\t100\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII
 read2\t99\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:15\tYT:Z:CP
 read2\t147\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:18\tYT:Z:CP"""
         
-        contaminant_content = ""
+        filtered_content = """@read1/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read1/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII
+@read2/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read2/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII"""
         
         sam_file = self.create_temp_file(sam_content, '.sam')
-        contaminant_file = self.create_temp_file(contaminant_content, '.fastq')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
         # Threshold 10 - read1 pair should pass, read2 pair should fail
-        filter_viral_sam_memory_efficient(sam_file, contaminant_file, output_file, 10.0)
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -155,13 +178,20 @@ read2\t147\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII
         # Single read above threshold should be kept
         sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:CP"""
         
-        contaminant_content = ""
+        filtered_content = """@read1/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read1/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII"""
         
         sam_file = self.create_temp_file(sam_content, '.sam')
-        contaminant_file = self.create_temp_file(contaminant_content, '.fastq')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, contaminant_file, output_file, 10.0)
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -173,13 +203,20 @@ read2\t147\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII
         # Single read below threshold should be filtered out
         sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:10\tYT:Z:CP"""
         
-        contaminant_content = ""
+        filtered_content = """@read1/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read1/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII"""
         
         sam_file = self.create_temp_file(sam_content, '.sam')
-        contaminant_file = self.create_temp_file(contaminant_content, '.fastq')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, contaminant_file, output_file, 10.0)
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -190,13 +227,20 @@ read2\t147\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII
         # UP read without mate should get an unmapped mate added
         sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:UP"""
         
-        contaminant_content = ""
+        filtered_content = """@read1/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read1/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII"""
         
         sam_file = self.create_temp_file(sam_content, '.sam')
-        contaminant_file = self.create_temp_file(contaminant_content, '.fastq')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, contaminant_file, output_file, 1.0)
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 1.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -221,14 +265,21 @@ read1\t147\tchr1\t200\t60\t50M\t=\t100\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII
 read1\t355\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:45\tYT:Z:CP
 read1\t403\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:15\tYT:Z:CP"""
         
-        contaminant_content = ""
+        filtered_content = """@read1/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read1/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII"""
         
         sam_file = self.create_temp_file(sam_content, '.sam')
-        contaminant_file = self.create_temp_file(contaminant_content, '.fastq')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
         # Threshold that allows primary but not secondary chr2
-        filter_viral_sam_memory_efficient(sam_file, contaminant_file, output_file, 17.0)
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 17.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -240,13 +291,13 @@ read1\t403\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII
     
     def test_empty_input(self):
         sam_content = ""
-        contaminant_content = ""
+        filtered_content = ""
         
         sam_file = self.create_temp_file(sam_content, '.sam')
-        contaminant_file = self.create_temp_file(contaminant_content, '.fastq')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, contaminant_file, output_file, 1.0)
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 1.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -259,13 +310,20 @@ read1\t403\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII
 @SQ\tSN:chr1\tLN:248956422
 read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:CP"""
         
-        contaminant_content = ""
-        
+        filtered_content = """@read1/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read1/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII"""        
+
         sam_file = self.create_temp_file(sam_content, '.sam')
-        contaminant_file = self.create_temp_file(contaminant_content, '.fastq')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, contaminant_file, output_file, 1.0)
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 1.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -285,17 +343,24 @@ read1\t403\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII
 read1\t355\tchr3\t500\t60\t50M\t=\t600\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:25\tYT:Z:CP
 read1\t403\tchr3\t600\t60\t50M\t=\t500\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:20\tYT:Z:CP"""
         
-        contaminant_content = ""
+        filtered_content = """@read1/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read1/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII"""        
         
         sam_file = self.create_temp_file(sam_content, '.sam')
-        contaminant_file = self.create_temp_file(contaminant_content, '.fastq')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
         # Threshold 15.0: 
         # - Primary (chr1): scores ~18.0 and ~17.3 - both pass
         # - Secondary chr2: scores ~16.2 and ~15.1 - chr2 pair passes (max > 15)
         # - Secondary chr3: scores ~9.0 and ~7.2 - chr3 pair fails (max < 15)
-        filter_viral_sam_memory_efficient(sam_file, contaminant_file, output_file, 15.0)
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 15.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()

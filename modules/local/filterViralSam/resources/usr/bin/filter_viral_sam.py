@@ -27,9 +27,9 @@ logger.addHandler(handler)
 
 def parse_args() -> argparse.Namespace:
 
-    desc = "Given a sorted (by read ID) fastq file of contaminant reads, a sorted (by read ID) SAM file with no header, " \
+    desc = "Given a sorted (by read ID) fastq file of filtered reads, a sorted (by read ID) SAM file with no header, " \
            "and a minimum normalized alignment score threshold, filter the SAM file by the following steps:" \
-           "Remove all contaminant reads from the SAM file, then apply score thresholding on the remaining reads, and finally" \
+           "Keep only the filtered reads from the SAM file, then apply score thresholding on those reads, and finally" \
            "add missing mates for unpaired reads."
 
     parser = argparse.ArgumentParser(
@@ -40,8 +40,8 @@ def parse_args() -> argparse.Namespace:
         help='Input SAM file to filter'
     )
     parser.add_argument(
-        'contaminant_fastq',
-        help='FASTQ file containing contaminant reads to filter out'
+        'filtered_fastq',
+        help='FASTQ file containing filtered reads to keep'
     )
     parser.add_argument(
         'output_sam',
@@ -174,9 +174,9 @@ class SamAlignment:
         
         return mate
 
-def stream_contaminant_ids(fastq_file: str) -> Iterator[str]:
+def stream_filtered_ids(fastq_file: str) -> Iterator[str]:
     """
-    Stream contaminant IDs one at a time from sorted FASTQ file.
+    Stream filtered IDs one at a time from sorted FASTQ file.
     Assumes FASTQ is sorted by read ID and handles paired reads correctly.
     
     For paired reads (read1/read2), yields the base read ID only once to avoid
@@ -346,37 +346,37 @@ def stream_sam_by_qname(sam_file: str) -> Iterator[Tuple[str, List[SamAlignment]
         if current_qname is not None:
             yield current_qname, current_alignments
 
-def filter_viral_sam_memory_efficient(input_sam: str, contaminant_fastq: str, output_sam: str, score_threshold: float) -> None:
+def filter_viral_sam_memory_efficient(input_sam: str, filtered_fastq: str, output_sam: str, score_threshold: float) -> None:
     """
     Filter viral SAM file using a memory-efficient streaming approach.
     
     Processing steps:
-    1. Stream contaminant read IDs and SAM alignments simultaneously
-    2. Use two-pointer merge to filter out contaminant reads
+    1. Stream filtered read IDs and SAM alignments simultaneously
+    2. Use two-pointer merge to keep only filtered reads
     3. Apply score threshold filtering (keep pair if either read exceeds threshold)
     4. Add missing mates for UP reads
     5. Write output immediately without accumulation
     
-    Assumes both contaminant FASTQ and SAM files are sorted by query ID.
+    Assumes both filtered FASTQ and SAM files are sorted by query ID.
     
     Args:
         input_sam: Input SAM file path (sorted by query name)
-        contaminant_fastq: FASTQ file containing contaminant reads (sorted by read ID)
+        filtered_fastq: FASTQ file containing filtered reads to keep (sorted by read ID)
         output_sam: Output filtered SAM file path
         score_threshold: Minimum normalized alignment score threshold
     """
     logger.info("Starting memory-efficient viral SAM filtering")
     
     # Create iterators for streaming processing
-    contaminant_iter = stream_contaminant_ids(contaminant_fastq)
+    filtered_iter = stream_filtered_ids(filtered_fastq)
     sam_iter = stream_sam_by_qname(input_sam)
     
     # Two-pointer merge algorithm
-    current_contaminant = next(contaminant_iter, None)
+    current_filtered = next(filtered_iter, None)
     alignments_processed = 0
     alignments_kept = 0
     groups_processed = 0
-    contaminants_skipped = 0
+    non_filtered_skipped = 0
     
     logger.info(f"Processing SAM file with score threshold {score_threshold}")
     
@@ -385,15 +385,15 @@ def filter_viral_sam_memory_efficient(input_sam: str, contaminant_fastq: str, ou
             alignments_processed += len(alignments)
             groups_processed += 1
             
-            # Advance contaminant iterator until >= qname
-            while current_contaminant is not None and current_contaminant < qname:
-                logger.debug(f"Advancing past contaminant: {current_contaminant}")
-                current_contaminant = next(contaminant_iter, None)
+            # Advance filtered iterator until >= qname
+            while current_filtered is not None and current_filtered < qname:
+                logger.debug(f"Advancing past filtered ID: {current_filtered}")
+                current_filtered = next(filtered_iter, None)
             
-            # Skip if this qname is a contaminant
-            if current_contaminant == qname:
-                logger.debug(f"Skipping contaminant read: {qname}")
-                contaminants_skipped += 1
+            # Skip if this qname is not in filtered reads
+            if current_filtered != qname:
+                logger.debug(f"Skipping non-filtered read: {qname}")
+                non_filtered_skipped += 1
                 continue
                 
             # Process and write immediately
@@ -410,7 +410,7 @@ def filter_viral_sam_memory_efficient(input_sam: str, contaminant_fastq: str, ou
                     outf.write('\n')
     
     logger.info(f"Processed {groups_processed} read groups, {alignments_processed} alignments")
-    logger.info(f"Skipped {contaminants_skipped} contaminant groups, kept {alignments_kept} alignments")
+    logger.info(f"Skipped {non_filtered_skipped} non-filtered groups, kept {alignments_kept} alignments")
 
 def main() -> None:
     logger.info("Initializing script.")
@@ -418,7 +418,7 @@ def main() -> None:
     args = parse_args()
     filter_viral_sam_memory_efficient(
         args.input_sam,
-        args.contaminant_fastq,
+        args.filtered_fastq,
         args.output_sam,
         args.score_threshold
     )

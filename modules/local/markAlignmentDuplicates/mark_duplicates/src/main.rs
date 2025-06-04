@@ -37,7 +37,7 @@ fn open_writer(filename: &str) -> std::io::Result<Box<dyn Write>> {
     }
 }
 
-// Define a ReadEntry struct to store the read information
+// Minimal ReadEntry struct storing only essential data for duplicate detection
 #[derive(Debug, Clone)]
 struct ReadEntry {
     query_name: String,
@@ -45,8 +45,19 @@ struct ReadEntry {
     aln_start: Option<i32>,
     aln_end: Option<i32>,
     avg_quality: f64,
-    fields: Vec<String>,
 }
+
+// Structure to store duplicate group information without storing full read data
+#[derive(Debug, Clone)]
+struct DuplicateGroup {
+    genome_id: String,
+    exemplar_name: String,
+    group_size: usize,
+    pairwise_match_frac: f64,
+}
+
+// Map from query_name to (genome_id, exemplar_name) for efficient lookup during second pass
+type ExemplarMap = HashMap<String, (String, String)>;
 
 // Implement a custom match function for comparing ReadEntries
 // (Not a valid equality relation as not transitive)
@@ -121,14 +132,15 @@ fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, u
     Ok((headers, indices, header_count))
 }
 
-fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadEntry {
-    // Extract required fields
-    let query_name = fields[indices["seq_id"]].to_string();
-    let genome_id = fields[indices["bowtie2_genome_id_all"]].to_string();
+// Efficient function that creates ReadEntry with minimal memory allocation
+fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEntry {
+    // Extract required fields using references to avoid cloning unnecessarily
+    let query_name = fields[indices["seq_id"]].clone();
+    let genome_id = &fields[indices["bowtie2_genome_id_all"]];
     let ref_start_fwd = parse_int_or_na(&fields[indices["bowtie2_ref_start_fwd"]]);
     let ref_start_rev = parse_int_or_na(&fields[indices["bowtie2_ref_start_rev"]]);
-    let quality_fwd = fields[indices["query_qual_fwd"]].to_string();
-    let quality_rev = fields[indices["query_qual_rev"]].to_string();
+    let quality_fwd = &fields[indices["query_qual_fwd"]];
+    let quality_rev = &fields[indices["query_qual_rev"]];
     // Handle split assignments
     let genome_id_sorted: String;
     let aln_start: Option<i32>;
@@ -149,21 +161,25 @@ fn make_read_entry(fields: Vec<String>, indices: &HashMap<&str, usize>) -> ReadE
         };
     } else {
         // If only one genome ID, use it directly
-        genome_id_sorted = genome_id;
+        genome_id_sorted = genome_id.to_string();
         // Normalize coordinates: if values are present, use the minimum and maximum
         (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
             (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
             _ => (ref_start_fwd, ref_start_rev),
         };
     };
-    let avg_quality = average_quality_score(&quality_fwd, &quality_rev);
-    // Return the ReadEntry
-    ReadEntry { query_name, genome_id: genome_id_sorted, aln_start, aln_end, avg_quality, fields }
+    let avg_quality = average_quality_score(quality_fwd, quality_rev);
+    // Return the ReadEntry with minimal memory footprint
+    ReadEntry { 
+        query_name, 
+        genome_id: genome_id_sorted, 
+        aln_start, 
+        aln_end, 
+        avg_quality 
+    }
 }
 
-// TODO: Handle split-ID read pairs
-
-fn extract_read_groups(input_path: &str) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>), Box<dyn Error>> {
+fn extract_read_groups(input_path: &str) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>, usize), Box<dyn Error>> {
     // Open the input file
     let reader = open_reader(input_path)?;
     // Create a HashMap to store duplicate information
@@ -176,6 +192,8 @@ fn extract_read_groups(input_path: &str) -> Result<(String, HashMap<String, Vec<
     let mut headers_out = headers.clone();
     headers_out.push("bowtie2_dup_exemplar");
     let header_out = headers_out.join("\t");
+    // Get the seq_id column index for later use
+    let seq_id_index = indices["seq_id"];
     // Read and process the input file
     for (index, line) in lines.enumerate() {
         // Extract fields and verify count
@@ -189,27 +207,24 @@ fn extract_read_groups(input_path: &str) -> Result<(String, HashMap<String, Vec<
             ).into());
         }
         // Create a ReadEntry from the fields
-        let read_entry = make_read_entry(fields.clone(), &indices);
+        let read_entry = make_read_entry(&fields, &indices);
         // Add the read to the groups HashMap
         groups = add_read_to_groups(groups, read_entry);
     }
-    Ok((header_out, groups))
+    Ok((header_out, groups, seq_id_index))
 }
 
-fn process_read_groups(header_out: &str, groups: HashMap<String, Vec<Vec<ReadEntry>>>,
-    output_path_db: &str, output_path_meta: &str) -> Result<(), Box<dyn Error>> {
-    // Open the output files
-    let mut writer_db = open_writer(output_path_db)?;
-    let mut writer_meta = open_writer(output_path_meta)?;
-    // Write the header line to the output files
-    let header_meta = "bowtie2_genome_id_all\tbowtie2_dup_exemplar\tbowtie2_dup_count\tbowtie2_dup_pairwise_match_frac";
-    writeln!(writer_db, "{}", header_out)?;
-    writeln!(writer_meta, "{}", header_meta)?;
-    // Process each group of reads
-    for (id, id_group) in groups {
+// Process duplicate groups to create exemplar mapping and metadata (focused on group processing)
+fn process_read_groups(
+    groups: HashMap<String, Vec<Vec<ReadEntry>>>
+) -> Result<(ExemplarMap, Vec<DuplicateGroup>), Box<dyn Error>> {
+    let mut exemplar_map = ExemplarMap::new();
+    let mut duplicate_groups = Vec::new();
+    for (genome_id, id_group) in groups {
         for dup_group in id_group {
             // Find the exemplar using compare_reads
-            let exemplar = dup_group.iter().max_by(|a, b| compare_reads(a, b)).unwrap().query_name.clone();
+            let exemplar = dup_group.iter().max_by(|a, b| compare_reads(a, b)).unwrap();
+            let exemplar_name = exemplar.query_name.clone();
             // Calculate size of duplicate group
             let dup_count = dup_group.len();
             // Calculate fraction of pairwise matches (as a QC metric for the group as a whole)
@@ -224,7 +239,6 @@ fn process_read_groups(header_out: &str, groups: HashMap<String, Vec<Vec<ReadEnt
                     for j in (i + 1)..dup_count {
                         let read_i = &dup_group[i];
                         let read_j = &dup_group[j];
-                        // Match using ReadEntry PartialEq implementation
                         if match_reads(read_i, read_j) {
                             pairwise_match_count += 1.0;
                         }
@@ -232,12 +246,69 @@ fn process_read_groups(header_out: &str, groups: HashMap<String, Vec<Vec<ReadEnt
                 }
                 pairwise_match_frac = pairwise_match_count / n_pairs;
             }
-            // Write duplicate group entry to metadata file
-            writeln!(writer_meta, "{}\t{}\t{}\t{}", id, exemplar, dup_count, pairwise_match_frac)?;
-            // Write individual entries to main output file
+            // Store duplicate group information
+            duplicate_groups.push(DuplicateGroup {
+                genome_id: genome_id.clone(),
+                exemplar_name: exemplar_name.clone(),
+                group_size: dup_count,
+                pairwise_match_frac,
+            });
+            // Map each read in the group to its exemplar
             for read_entry in dup_group {
-                writeln!(writer_db, "{}\t{}", read_entry.fields.join("\t"), exemplar)?;
+                exemplar_map.insert(read_entry.query_name, (genome_id.clone(), exemplar_name.clone()));
             }
+        }
+    }
+    Ok((exemplar_map, duplicate_groups))
+}
+
+// Write duplicate group metadata file (no file streaming required)
+fn write_metadata_file(
+    duplicate_groups: &Vec<DuplicateGroup>,
+    output_path_meta: &str,
+) -> Result<(), Box<dyn Error>> {
+    // Open the metadata output file
+    let mut writer_meta = open_writer(output_path_meta)?;
+    // Write header
+    let header_meta = "bowtie2_genome_id_all\tbowtie2_dup_exemplar\tbowtie2_dup_count\tbowtie2_dup_pairwise_match_frac";
+    writeln!(writer_meta, "{}", header_meta)?;
+    // Write duplicate group metadata (once per group)
+    for dup_group in duplicate_groups {
+        writeln!(writer_meta, "{}\t{}\t{}\t{}", 
+                dup_group.genome_id, dup_group.exemplar_name, dup_group.group_size, dup_group.pairwise_match_frac)?;
+    }
+    Ok(())
+}
+
+// Stream through file and add exemplar information
+fn write_database_file(
+    input_path: &str,
+    header_out: &str,
+    exemplar_map: &ExemplarMap,
+    seq_id_index: usize,
+    output_path_db: &str,
+) -> Result<(), Box<dyn Error>> {
+    // Open input file for second pass
+    let reader = open_reader(input_path)?;
+    // Open the database output file
+    let mut writer_db = open_writer(output_path_db)?;
+    // Write header
+    writeln!(writer_db, "{}", header_out)?;
+    // Process input file line by line for output generation
+    let mut lines = reader.lines();
+    let _header_line = lines.next(); // Skip header
+    for line in lines {
+        let line = line?;
+        let fields: Vec<&str> = line.split('\t').collect();
+        let query_name = fields[seq_id_index];
+        // Look up exemplar for this read
+        if let Some((_genome_id, exemplar_name)) = exemplar_map.get(query_name) {
+            writeln!(writer_db, "{}\t{}", line, exemplar_name)?;
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Could not find exemplar for read: {}", query_name)
+            ).into());
         }
     }
     Ok(())
@@ -291,11 +362,16 @@ fn add_read_to_groups(
     groups
 }
 
+// Two-pass processing for improved memory efficiency
 fn process_tsv(input_path: &str, output_path_db: &str, output_path_meta: &str) -> Result<(), Box<dyn Error>> {
     // Extract read groups from the input file
-    let (header_out, groups) = extract_read_groups(input_path)?;
-    // Process read groups and write output
-    process_read_groups(&header_out, groups, output_path_db, output_path_meta)?;
+    let (header_out, groups, seq_id_index) = extract_read_groups(input_path)?;
+    // Process duplicate groups to create exemplar mapping and metadata
+    let (exemplar_map, duplicate_groups) = process_read_groups(groups)?;
+    // Write metadata file
+    write_metadata_file(&duplicate_groups, output_path_meta)?;
+    // Write database file
+    write_database_file(input_path, &header_out, &exemplar_map, seq_id_index, output_path_db)?;
     Ok(())
 }
 
