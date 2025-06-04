@@ -258,6 +258,11 @@ def add_missing_mates(alignments: List[SamAlignment], group_by_ref: bool = False
         for ref_alignments in by_ref.values():
             _add_mates_to_group(ref_alignments, 
                               lambda other, mate_flag, rname: other.flag & mate_flag and other.rname == rname)
+        
+        # Propagate changes back to main alignments list
+        alignments.clear()
+        for ref_alignments in by_ref.values():
+            alignments.extend(ref_alignments)
     else:
         _add_mates_to_group(alignments, 
                            lambda other, mate_flag, rname: other.flag & mate_flag and other.flag < 256)
@@ -404,7 +409,7 @@ def filter_viral_sam_memory_efficient(input_sam: str, filtered_fastq: str, outpu
                 logger.debug(f"Score filtering: {qname} kept {len(kept_alignments)}/{len(alignments)} alignments")
             
             # Write alignments sorted by flag
-            for alignment in sorted(kept_alignments, key=lambda x: x.flag):
+            for alignment in sorted(kept_alignments, key=lambda x: (x.rname, x.flag)):
                 outf.write(alignment.line)
                 if not alignment.line.endswith('\n'):
                     outf.write('\n')
