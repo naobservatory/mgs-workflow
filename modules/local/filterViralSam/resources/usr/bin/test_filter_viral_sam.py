@@ -559,5 +559,73 @@ IIIIIIIIIIIIIIII"""
         # All reads should have the same qname
         assert all(a.qname == 'read1' for a in alignments)
 
+    def test_unpaired_read_secondary_alignments_same_rname(self):
+        # Test unpaired read with one read mapped, other not mapped, but two secondary alignments with same rname and flag
+        # Both secondary reads are forward reads (same flag), so synthetic mates should be created for both
+        sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:UP
+read1\t355\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:45\tYT:Z:UP
+read1\t355\tchr2\t500\t60\t50M\t=\t600\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:40\tYT:Z:UP"""
+        
+        filtered_content = """@read1/1
+ACGTACGTACGTACGT
++
+IIIIIIIIIIIIIIII
+@read1/2
+TGCATGCATGCATGCA
++
+IIIIIIIIIIIIIIII"""        
+        
+        sam_file = self.create_temp_file(sam_content, '.sam')
+        filtered_file = self.create_temp_file(filtered_content, '.fastq')
+        output_file = os.path.join(self.temp_dir, 'output.sam')
+        
+        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
+        
+        with open(output_file, 'r') as f:
+            output_lines = f.readlines()
+        
+        # Should have 6 lines: 1 primary + 1 synthetic mate + 2 secondary + 2 synthetic mates for secondary
+        assert len(output_lines) == 6
+        
+        # Parse all alignments
+        alignments = [SamAlignment.from_sam_line(line.strip()) for line in output_lines]
+        
+        # Separate primary and secondary alignments
+        primary_alignments = [a for a in alignments if a.flag < 256]
+        secondary_alignments = [a for a in alignments if a.flag >= 256]
+        
+        # Should have 2 primary (original + synthetic mate) and 4 secondary (2 original + 2 synthetic mates)
+        assert len(primary_alignments) == 2
+        assert len(secondary_alignments) == 4
+        
+        # Primary alignments: one mapped to chr1, one synthetic unmapped mate
+        primary_mapped = [a for a in primary_alignments if not (a.flag & 4)]
+        primary_unmapped = [a for a in primary_alignments if a.flag & 4]
+        
+        assert len(primary_mapped) == 1
+        assert len(primary_unmapped) == 1
+        assert primary_mapped[0].rname == 'chr1'
+        assert primary_unmapped[0].cigar == '*'
+        
+        # Secondary alignments: should all map to chr2
+        assert all(a.rname == 'chr2' for a in secondary_alignments)
+        
+        # Should have 2 mapped (original reads) and 2 unmapped (synthetic mates)
+        secondary_mapped = [a for a in secondary_alignments if not (a.flag & 4)]
+        secondary_unmapped = [a for a in secondary_alignments if a.flag & 4]
+        
+        assert len(secondary_mapped) == 2  # Both original secondary reads
+        assert len(secondary_unmapped) == 2  # Two synthetic mates
+        
+        # Both original secondary reads should be UP reads with flag 355
+        assert all(a.pair_status == 'UP' for a in secondary_mapped)
+        assert all(a.flag == 355 for a in secondary_mapped)
+        
+        # Both synthetic mates should have CIGAR '*' and be unmapped
+        assert all(a.cigar == '*' for a in secondary_unmapped)
+        
+        # All reads should have the same qname
+        assert all(a.qname == 'read1' for a in alignments)
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

@@ -245,10 +245,21 @@ def apply_score_filter(alignments: List[SamAlignment], threshold: float, group_b
 def add_missing_mates(alignments: List[SamAlignment], group_by_ref: bool = False) -> None:
     """
     Add missing mates for UP (unpaired) reads.
+
+    For UP (unpaired) reads:
+      Scenario 1: Only one read from the pair mapped
+      - Primary: 1 UP alignment (for the mapped read)
+      - Secondary: Multiple UP alignments for that same read (some could have same rname)
+      - Action: Create synthetic mate for ALL UP alignments (primary + all secondaries)
+      
+      Scenario 2: Both reads from the pair mapped
+      - Primary: 2 UP alignments (read1 and read2 both mapped but marked UP)
+      - Secondary: Multiple UP alignments for both reads
+      - Action: No synthetic mates needed (both mates already present)
     
     Args:
         alignments: List of alignments to process (modified in place)
-        group_by_ref: If True, only consider mates within the same reference group
+        group_by_ref: If True, check for missing mates within each reference group
     """
     if group_by_ref:
         by_ref: Dict[str, List[SamAlignment]] = defaultdict(list)
@@ -256,29 +267,31 @@ def add_missing_mates(alignments: List[SamAlignment], group_by_ref: bool = False
             by_ref[alignment.rname].append(alignment)
         
         for ref_alignments in by_ref.values():
-            _add_mates_to_group(ref_alignments, 
-                              lambda other, mate_flag, rname: other.flag & mate_flag and other.rname == rname)
+            # Check if we have both read1 and read2 for this reference
+            has_read1 = any(a.flag & 64 for a in ref_alignments)  # bit 64 = read1
+            has_read2 = any(a.flag & 128 for a in ref_alignments)  # bit 128 = read2
+            
+            # Only create synthetic mates if we're missing either read1 or read2
+            if not (has_read1 and has_read2):
+                for alignment in ref_alignments[:]:
+                    if alignment.pair_status == 'UP':
+                        unmapped_mate = alignment.create_unmapped_mate()
+                        ref_alignments.append(unmapped_mate)
         
         # Propagate changes back to main alignments list
         alignments.clear()
         for ref_alignments in by_ref.values():
             alignments.extend(ref_alignments)
     else:
-        _add_mates_to_group(alignments, 
-                           lambda other, mate_flag, rname: other.flag & mate_flag and other.flag < 256)
-
-def _add_mates_to_group(alignments: List[SamAlignment], mate_check_fn) -> None:
-    """Helper to add mates to a group of alignments."""
-    for alignment in alignments[:]:  # Use slice copy to avoid modifying list during iteration
-        if alignment.pair_status == 'UP':
-            # Determine which mate flag to look for (read1 vs read2)
-            mate_flag = 128 if (alignment.flag & 64) else 64
-            has_mate = any(mate_check_fn(other, mate_flag, alignment.rname) 
-                          for other in alignments)
-            
-            if not has_mate:
-                unmapped_mate = alignment.create_unmapped_mate()
-                alignments.append(unmapped_mate)
+        # For primary alignments, same logic
+        has_read1 = any(a.flag & 64 for a in alignments)
+        has_read2 = any(a.flag & 128 for a in alignments)
+        
+        if not (has_read1 and has_read2):
+            for alignment in alignments[:]:
+                if alignment.pair_status == 'UP':
+                    unmapped_mate = alignment.create_unmapped_mate()
+                    alignments.append(unmapped_mate)
 
 def process_alignment_group(alignments: List[SamAlignment], score_threshold: float) -> List[SamAlignment]:
     """
@@ -309,7 +322,7 @@ def process_alignment_group(alignments: List[SamAlignment], score_threshold: flo
     
     # Sort and combine results
     primary_sorted = sorted(primary_kept, key=lambda x: x.flag)
-    secondary_sorted = sorted(secondary_kept, key=lambda x: (x.rname, x.flag))
+    secondary_sorted = sorted(secondary_kept, key=lambda x: (x.rname, x.pos, x.flag))
     
     return primary_sorted + secondary_sorted
 
