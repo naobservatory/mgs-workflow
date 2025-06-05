@@ -409,7 +409,7 @@ def filter_viral_sam_memory_efficient(input_sam: str, filtered_fastq: str, outpu
                 logger.debug(f"Score filtering: {qname} kept {len(kept_alignments)}/{len(alignments)} alignments")
             
             # Write alignments sorted by flag
-            for alignment in sorted(kept_alignments, key=lambda x: (x.rname, x.flag)):
+            for alignment in kept_alignments:
                 outf.write(alignment.line)
                 if not alignment.line.endswith('\n'):
                     outf.write('\n')
