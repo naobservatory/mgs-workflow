@@ -74,12 +74,8 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         blast_results = output_blast_ch
         // Extra outputs for testing
         test_in   = groups
-        test_db   = db
         test_split_tsv = split_ch.tsv
-        test_split_fastq = split_ch.fastq
         test_cluster_tab = cluster_ch.tsv
-        test_cluster_ids = cluster_ch.ids
-        test_reps_fastq = cluster_ch.fastq
         test_reps_fasta = cluster_ch.fasta
         test_concat_fasta = concat_fasta_ch.output
         test_concat_cluster = concat_cluster_ch.output
