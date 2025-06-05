@@ -15,7 +15,7 @@ F. [TODO] Propagate validation information from cluster representatives to other
 
 include { SPLIT_VIRAL_TSV_BY_SPECIES } from "../../../subworkflows/local/splitViralTsvBySpecies"
 include { CLUSTER_VIRAL_ASSIGNMENTS } from "../../../subworkflows/local/clusterViralAssignments"
-include { CONCATENATE_FASTA_ACROSS_SPECIES } from "../../../subworkflows/local/concatenateFastaAcrossSpecies"
+include { CONCATENATE_FILES_ACROSS_SPECIES } from "../../../subworkflows/local/concatenateFilesAcrossSpecies"
 include { CONCATENATE_TSVS_ACROSS_SPECIES } from "../../../subworkflows/local/concatenateTsvsAcrossSpecies"
 include { BLAST_FASTA } from "../../../subworkflows/local/blastFasta"
 include { VALIDATE_CLUSTER_REPRESENTATIVES } from "../../../subworkflows/local/validateClusterRepresentatives"
@@ -49,7 +49,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         cluster_ch = CLUSTER_VIRAL_ASSIGNMENTS(split_ch.fastq, cluster_identity,
             cluster_min_len, n_clusters, Channel.of(false))
         // 3. Concatenate data across species (prepare for group-level BLAST)
-        concat_fasta_ch = CONCATENATE_FASTA_ACROSS_SPECIES(cluster_ch.fasta, "cluster_reps")
+        concat_fasta_ch = CONCATENATE_FILES_ACROSS_SPECIES(cluster_ch.fasta, "cluster_reps")
         concat_cluster_ch = CONCATENATE_TSVS_ACROSS_SPECIES(cluster_ch.tsv, "cluster_info")
         // 4. Run BLAST on concatenated cluster representatives (single job per group)
         blast_ch = BLAST_FASTA(concat_fasta_ch.output, ref_dir, blast_db_prefix,

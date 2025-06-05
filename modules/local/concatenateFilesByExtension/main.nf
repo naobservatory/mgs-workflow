@@ -1,5 +1,9 @@
-// Labeled version - concatenate FASTA/FASTQ files preserving extension
-process CONCATENATE_FASTN_LABELED {
+/*
+Given a list of files, first check that they have matching extensions,
+then concatenate them into a single file with the same extension.
+*/
+
+process CONCATENATE_FILES_BY_EXTENSION {
     label "single"
     label "coreutils"
     input:
@@ -15,6 +19,13 @@ process CONCATENATE_FASTN_LABELED {
             throw new Exception("Input file ${first_file} has no extension")
         }
         def extension = first_file.substring(first_file.indexOf('.') + 1)
+        // Check that all files end with the identified extension
+        def check_str = ".${extension}"
+        for (file in files) {
+            if (!file.toString().endsWith(check_str)) {
+                throw new Exception("Input file ${file} does not end with .${extension}")
+            }
+        }
         """
         cat ${files} > ${label}_${name}.${extension}
         ln -s ${files[0]} ${label}_input_${files[0]} # Link input to output for testing

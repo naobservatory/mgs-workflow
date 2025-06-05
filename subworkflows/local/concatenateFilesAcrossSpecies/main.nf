@@ -1,30 +1,30 @@
 /*
 Given a channel of 2-tuples, each containing a combined group/species label and
-a FASTA path, carry out the following operations:
+a file path, carry out the following operations:
 - Replace the group/species label in each tuple with a group label only
-- Group all FASTA files sharing a group label 
-- Concatenate all FASTA files within each group into a single FASTA file
+- Group all files sharing a group label
+- Concatenate all files within each group into a single file
 The result is a restructured channel of 2-tuples, each containing a group label and
-a concatenated FASTA path.
+a concatenated file path.
 */
 
 /***************************
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { CONCATENATE_FASTN_LABELED } from "../../../modules/local/concatenateFastn"
+include { CONCATENATE_FILES_BY_EXTENSION } from "../../../modules/local/concatenateFilesByExtension"
 
 /***********
 | WORKFLOW |
 ***********/
 
-workflow CONCATENATE_FASTA_ACROSS_SPECIES {
+workflow CONCATENATE_FILES_ACROSS_SPECIES {
     take:
-        fastas // Channel of 2-tuples, each containing a combined group/species label and a FASTA path
+        files // Channel of 2-tuples, each containing a combined group/species label and a file path
         filename_suffix // Suffix for output filenames
     main:
         // 1. Restructure channel to replace group/species label with group label only
-        split_label_ch = fastas.map{
+        split_label_ch = files.map{
             label, path ->
                 def pattern = /^(.*?)_(\d+)$/
                 def matcher = (label =~ pattern)
@@ -36,8 +36,8 @@ workflow CONCATENATE_FASTA_ACROSS_SPECIES {
         }
         // 2. Group elements by group label and concatenate
         regrouped_label_ch = split_label_ch.groupTuple()
-        regrouped_concat_ch = CONCATENATE_FASTN_LABELED(regrouped_label_ch, filename_suffix).output
+        regrouped_concat_ch = CONCATENATE_FILES_BY_EXTENSION(regrouped_label_ch, filename_suffix).output
     emit:
         output = regrouped_concat_ch
-        test_input = fastas
+        test_input = files
 }
