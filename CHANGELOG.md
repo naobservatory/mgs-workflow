@@ -4,6 +4,7 @@
 
 # v2.9.0.4
 - Updated markAlignmentDuplicates module to reduce memory overhead and increase memory allocation (which collectively should avoid out-of-memory errors in DOWNSTREAM on large read groups).
+- Added FILTER_VIRAL_SAM process for consolidated preprocessing of viral alignments before converting to a TSV to run LCA on.
 
 # v2.9.0.3
 - Make sure field per_tile_sequence_quality is always present in multiqc output summary file, to allow pipeline to run successfully on a mix of empty and non-empty files
@@ -20,7 +21,6 @@
 - Updated trace path for DOWNSTREAM workflow to avoid overwriting RUN workflow trace.
 
 # v2.9.0.1
-
 - Modified Github Actions to pull specific Nextflow version (rather than "latest")
 - Fixed missing-columns bug for empty files in SUMMARIZE_MULTIQC
 - Restructured SORT_TSV process to improve memory efficiency
