@@ -1,4 +1,31 @@
 #!/usr/bin/env python3
+"""
+Comprehensive test suite for filter_viral_sam.py module.
+
+This file contains pytest-based unit and integration tests for the viral SAM filtering
+functionality. Unlike other modules in this pipeline which use nf-test for testing,
+the filter_viral_sam.py script contains complex Python logic that benefits from 
+detailed unit testing of individual components.
+
+When to run:
+- During development of filter_viral_sam.py to verify correctness
+- After making changes to SAM alignment parsing or filtering logic
+- As part of debugging SAM filtering issues
+- Before committing changes to the filterViralSam module
+
+Run with: pytest test_filter_viral_sam.py -v
+
+Test coverage includes:
+- SAM alignment parsing and score calculation
+- Score threshold filtering for paired and unpaired reads
+- Secondary alignment handling across different reference genomes
+- Synthetic mate creation for unpaired reads (UP status)
+- Edge cases like empty inputs, missing tags, and header lines
+
+The filter_viral_sam.py module implements memory-efficient filtering of viral
+SAM alignments based on normalized alignment scores, with special handling for
+paired reads and secondary alignments to different viral references.
+"""
 
 import pytest
 import tempfile
@@ -6,11 +33,11 @@ import os
 import sys
 from pathlib import Path
 
+from filter_viral_sam import filter_viral_sam, SamAlignment
+
 # Add the script directory to path so we can import the module
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
-
-from filter_viral_sam import filter_viral_sam_memory_efficient, SamAlignment
 
 class TestSamAlignment:
     def test_parse_basic_sam_line(self):
@@ -44,6 +71,8 @@ class TestCalculateNormalizedScore:
         alignment = SamAlignment.from_sam_line(line)
         alignment.calculate_normalized_score()
         expected = 50 / math.log(100)
+        assert alignment.normalized_score is not None, "normalized_score should not be None"
+        assert expected is not None, "expected should not be None"
         assert abs(alignment.normalized_score - expected) < 1e-10
     
     def test_none_score(self):
@@ -124,7 +153,7 @@ IIIIIIIIIIIIIIII"""
         filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 0.1)
+        filter_viral_sam(sam_file, filtered_file, output_file, 0.1)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -164,7 +193,7 @@ IIIIIIIIIIIIIIII"""
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
         # Threshold 10 - read1 pair should pass, read2 pair should fail
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 10.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -191,7 +220,7 @@ IIIIIIIIIIIIIIII"""
         filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 10.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -216,7 +245,7 @@ IIIIIIIIIIIIIIII"""
         filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 10.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -240,7 +269,7 @@ IIIIIIIIIIIIIIII"""
         filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 1.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 1.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -253,7 +282,11 @@ IIIIIIIIIIIIIIII"""
         # Parse both lines
         read1_line = [line for line in output_lines if '\t99\t' in line][0]
         read2_line = [line for line in output_lines if '\t167\t' in line][0]
-        
+
+        read1_parsed = SamAlignment.from_sam_line(read1_line.strip())
+        assert not (read1_parsed.flag & 4)            # should be mapped
+        assert read1_parsed.cigar != '*'              # should not be unmapped
+
         read2_parsed = SamAlignment.from_sam_line(read2_line.strip())
         assert read2_parsed.flag & 4  # unmapped
         assert read2_parsed.cigar == '*'
@@ -279,7 +312,7 @@ IIIIIIIIIIIIIIII"""
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
         # Threshold that allows primary but not secondary chr2
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 17.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 17.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -297,7 +330,7 @@ IIIIIIIIIIIIIIII"""
         filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 1.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 1.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -323,7 +356,7 @@ IIIIIIIIIIIIIIII"""
         filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 1.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 1.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -360,7 +393,7 @@ IIIIIIIIIIIIIIII"""
         # - Primary (chr1): scores ~18.0 and ~17.3 - both pass
         # - Secondary chr2: scores ~16.2 and ~15.1 - chr2 pair passes (max > 15)
         # - Secondary chr3: scores ~9.0 and ~7.2 - chr3 pair fails (max < 15)
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 15.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 15.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -400,7 +433,7 @@ IIIIIIIIIIIIIIII"""
         filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 10.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -464,7 +497,7 @@ IIIIIIIIIIIIIIII"""
         filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 10.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -518,7 +551,7 @@ IIIIIIIIIIIIIIII"""
         filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 10.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
@@ -579,7 +612,7 @@ IIIIIIIIIIIIIIII"""
         filtered_file = self.create_temp_file(filtered_content, '.fastq')
         output_file = os.path.join(self.temp_dir, 'output.sam')
         
-        filter_viral_sam_memory_efficient(sam_file, filtered_file, output_file, 10.0)
+        filter_viral_sam(sam_file, filtered_file, output_file, 10.0)
         
         with open(output_file, 'r') as f:
             output_lines = f.readlines()

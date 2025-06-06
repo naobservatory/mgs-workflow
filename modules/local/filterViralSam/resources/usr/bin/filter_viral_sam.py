@@ -3,64 +3,90 @@
 import math
 import logging
 import gzip
+import bz2
 import argparse
 import datetime
 from datetime import datetime, timezone
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Iterator
+from typing import Dict, Optional, Tuple, Iterator
 from collections import defaultdict
 from Bio import SeqIO
 
+
 # Configure logging
 class UTCFormatter(logging.Formatter):
+    """
+    Custom logging formatter that displays timestamps in UTC.
+    
+    Returns:
+        Formatted log timestamps in UTC timezone
+    """
     def formatTime(self, record, datefmt=None):
+        """
+        Format log timestamps in UTC timezone.
+        
+        Args:
+            record: LogRecord object containing timestamp data
+            datefmt: Optional date format string (unused)
+            
+        Returns:
+            Formatted timestamp string in UTC
+        """
         dt = datetime.fromtimestamp(record.created, timezone.utc)
-        return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+        return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 handler = logging.StreamHandler()
-formatter = UTCFormatter('[%(asctime)s] %(message)s')
+formatter = UTCFormatter("[%(asctime)s] %(message)s")
 handler.setFormatter(formatter)
 logger.handlers.clear()
 logger.addHandler(handler)
 
 
 def parse_args() -> argparse.Namespace:
-
-    desc = "Given a sorted (by read ID) fastq file of filtered reads, a sorted (by read ID) SAM file with no header, " \
-           "and a minimum normalized alignment score threshold, filter the SAM file by the following steps:" \
-           "Keep only the filtered reads from the SAM file, then apply score thresholding on those reads, and finally" \
-           "add missing mates for unpaired reads."
-
-    parser = argparse.ArgumentParser(
-        description=desc
-    )
-    parser.add_argument(
-        'input_sam',
-        help='Input SAM file to filter'
-    )
-    parser.add_argument(
-        'filtered_fastq',
-        help='FASTQ file containing filtered reads to keep'
-    )
-    parser.add_argument(
-        'output_sam',
-        help='Output filtered SAM file'
-    )
-    parser.add_argument(
-        'score_threshold',
-        type=float,
-        help='Minimum normalized alignment score threshold'
-    )
+    """
+    Parse command-line arguments for viral SAM filtering.
     
+    Returns:
+        Parsed arguments containing input_sam, filtered_fastq, output_sam, and score_threshold
+    """
+    desc = (
+        "Given a sorted (by read ID) fastq file of filtered reads, a sorted (by read ID) SAM file with no header, "
+        "and a minimum normalized alignment score threshold, filter the SAM file by the following steps:"
+        "Keep only the filtered reads from the SAM file, then apply score thresholding on those reads, and finally"
+        "add missing mates for unpaired reads."
+    )
+    parser = argparse.ArgumentParser(description=desc)
+    parser.add_argument("input_sam", help="Input SAM file to filter")
+    parser.add_argument(
+        "filtered_fastq", help="FASTQ file containing filtered reads to keep"
+    )
+    parser.add_argument("output_sam", help="Output filtered SAM file")
+    parser.add_argument(
+        "score_threshold",
+        type=float,
+        help="Minimum normalized alignment score threshold",
+    )
     return parser.parse_args()
 
-def open_by_suffix(filename, mode="r", debug=False):
-    """Parse the suffix of a filename to determine the right open method
-    to use, then open the file. Can handle .gz, .bz2, and uncompressed files."""
-    if filename.endswith('.gz'):
-        return gzip.open(filename, mode + 't')
-    elif filename.endswith('.bz2'):
+
+def open_by_suffix(filename: str, mode: str = "r"):
+    """
+    Parse the suffix of a filename to determine the right open method
+    to use, then open the file. Can handle .gz, .bz2, and uncompressed files.
+    
+    Args:
+        filename: Path to file to open
+        mode: File open mode (default "r")
+        
+    Returns:
+        File handle appropriate for the file compression type
+    """
+    if filename.endswith(".gz"):
+        return gzip.open(filename, mode + "t")
+    elif filename.endswith(".bz2"):
         return bz2.BZ2File(filename, mode)
     else:
         return open(filename, mode)
@@ -71,38 +97,44 @@ class SamAlignment:
     """
     Represents a single SAM alignment record with parsed fields and metadata.
     """
-    qname: str
-    flag: int
-    rname: str
-    pos: int
-    mapq: int
-    cigar: str
-    rnext: str
-    pnext: int
-    tlen: int
-    seq: str
-    qual: str
-    pair_status: Optional[str]
-    alignment_score: Optional[int]
-    normalized_score: float
-    line: str
-    fields: List[str]
+
+    qname: str  # query name/read id
+    flag: int  # bitwise FLAG
+    rname: str  # reference genome name
+    pos: int  # alignment position
+    mapq: int  # mapping quality
+    cigar: str  # CIGAR string
+    rnext: str  # reference genome name of the mate
+    pnext: int  # alignment position of the mate
+    tlen: int  # insert size
+    seq: str  # sequence
+    qual: str  # quality score for sequence
+    pair_status: Optional[str]  # pair status
+    alignment_score: Optional[int]  # alignment score
+    normalized_score: float | None  # normalized alignment score
+    line: str  # original SAM line
+    fields: list[str]
 
     @classmethod
-    def from_sam_line(cls, line: str) -> 'SamAlignment':
-        """Parse a SAM line and create a SamAlignment object."""
-        fields = line.strip().split('\t')
+    def from_sam_line(cls, line: str) -> "SamAlignment":
+        """
+        Parse a SAM line and create a SamAlignment object.
         
+        Args:
+            line: Raw SAM format line
+            
+        Returns:
+            SamAlignment object with parsed fields and metadata
+        """
+        fields = line.strip().split("\t")
         pair_status = None
         alignment_score = None
-        
         # Extract YT (pair status) and AS (alignment score) tags
         for field in fields[11:]:
-            if field.startswith('YT:Z:'):
-                pair_status = field.split(':')[2]
-            elif field.startswith('AS:i:'):
-                alignment_score = int(field.split(':')[2])
-        
+            if field.startswith("YT:Z:"):
+                pair_status = field.split(":")[2]
+            elif field.startswith("AS:i:"):
+                alignment_score = int(field.split(":")[2])
         return cls(
             qname=fields[0],
             flag=int(fields[1]),
@@ -117,19 +149,27 @@ class SamAlignment:
             qual=fields[10],
             pair_status=pair_status,
             alignment_score=alignment_score,
-            normalized_score=0.0,  # Will be calculated later
+            normalized_score=None,  # Will be calculated later
             line=line,
-            fields=fields
+            fields=fields,
         )
 
     def calculate_normalized_score(self) -> None:
-        """Calculate and set the normalized alignment score."""
+        """
+        Calculate and set the normalized alignment score.
+        
+        Normalizes the alignment score by dividing by the log of sequence length.
+        Sets normalized_score to 0.0 if alignment_score is None or sequence is empty.
+        
+        Returns:
+            None (modifies self.normalized_score in place)
+        """
         if self.alignment_score is None or len(self.seq) == 0:
             self.normalized_score = 0.0
         else:
             self.normalized_score = self.alignment_score / math.log(len(self.seq))
 
-    def create_unmapped_mate(self) -> 'SamAlignment':
+    def create_unmapped_mate(self) -> "SamAlignment":
         """
         Create a synthetic unmapped mate for a read in a SAM file.
 
@@ -140,20 +180,22 @@ class SamAlignment:
         To address this, we generate a synthetic unmapped mate entry whenever its absence would create metadata conflicts for entries with the same `read_id`. This synthesized entry uses information from the mapped mate, but key fields—most importantly the FLAG—are updated to accurately indicate an unmapped status. This ensures that every set of consecutive reads with the same `read_id` has consistent metadata, allowing the downstream script to operate without errors.
 
         Those interested in learning more about SAM format can refer to this, https://samtools.github.io/hts-specs/SAMv1.pdf.
-        
+
         This is used for UP (unpaired) reads that need synthetic unmapped mates.
         The SAM flag manipulation:
         - XOR with 192 (0b11000000) flips read1/read2 bits (64|128)
         - OR with 4 (0b100) sets the unmapped flag
-        - AND with ~8 (NOT 0b1000) clears the mate mapped flag
+        - AND with ~8 (NOT 0b1000) clears the mate unmapped flag
+
+        Returns:
+            SamAlignment object representing the synthetic unmapped mate
+
         """
         fields = self.fields[:]
         old_flag = self.flag
-        
-        # SAM flag manipulation to create synthetic unmapped mate records
         # Note: The FLAG column in the SAM file uses bits to indicate information about the alignment.
         # SAM flag bits 0x40 (64) and 0x80 (128) indicate read position within the template:
-        # 0x40: first segment in template (typically read1 in paired-end)  
+        # 0x40: first segment in template (typically read1 in paired-end)
         # 0x80: last segment in template (typically read2 in paired-end)
         # To create a synthetic unmapped mate, we flip these bits so the mate appears
         # as the complementary read in the pair (read1 ↔ read2).
@@ -161,41 +203,197 @@ class SamAlignment:
         # to indicate this read is unmapped while its mate has a valid alignment.
         new_flag = (old_flag ^ 192) | 4  # XOR flips bits 6&7 (64|128), OR adds unmapped
         new_flag &= ~8  # Ensure mate unmapped flag is clear
-        
         # Update fields for unmapped mate
         fields[1] = str(new_flag)
-        fields[5] = '*'      # CIGAR = * (unmapped)
-        fields[6] = '='      # RNEXT = same chromosome as mate
+        fields[5] = "*"  # CIGAR = * (unmapped)
+        fields[6] = "="  # RNEXT = same chromosome as mate
         fields[7] = self.fields[3]  # PNEXT = mate's position
-        
-        mate_line = '\t'.join(fields)
+        mate_line = "\t".join(fields)
         mate = SamAlignment.from_sam_line(mate_line)
-        mate.normalized_score = 0.0
-        
         return mate
 
-def stream_filtered_ids(fastq_file: str) -> Iterator[str]:
+
+def group_alignments_by_mates(
+    alignments: list[SamAlignment],
+) -> Dict[int, list[SamAlignment]]:
+    """
+    Group alignments by mate pairs.
+    
+    Groups alignments that represent mate pairs based on their position information.
+    Alignments with the same mate position are grouped together.
+    
+    Args:
+        alignments: List of SamAlignment objects to group
+        
+    Returns:
+        Dictionary mapping group IDs to lists of alignments in each group
+    """
+    all_pos = set(a.pos for a in alignments)
+    mate_groups = {}  # pos -> group_id
+    by_group: Dict[int, list[SamAlignment]] = defaultdict(list)
+    group_idx = 0
+
+    for alignment in alignments:
+        if alignment.pos == alignment.pnext or alignment.pnext not in all_pos:
+            # Cases 1&2: standalone processing
+            by_group[group_idx].append(alignment)
+            group_idx += 1
+        else:
+            # Case 3: check if mate already grouped
+            if alignment.pnext in mate_groups:
+                existing_group = mate_groups[alignment.pnext]
+                by_group[existing_group].append(alignment)
+            else:
+                mate_groups[alignment.pos] = group_idx
+                by_group[group_idx].append(alignment)
+                group_idx += 1
+
+    return dict(by_group)
+
+
+def apply_score_filter(
+    alignments: list[SamAlignment], threshold: float, secondary: bool = False
+) -> Dict[int, list[SamAlignment]]:
+    """
+    Filter alignment groups based on normalized score threshold.
+    
+    For secondary alignments, groups alignments by mates and keeps groups where
+    at least one alignment exceeds the threshold. For primary alignments,
+    keeps all alignments if any exceeds the threshold.
+    
+    Args:
+        alignments: List of SamAlignment objects to filter
+        threshold: Minimum normalized score threshold
+        secondary: Whether these are secondary alignments (affects grouping logic)
+        
+    Returns:
+        Dictionary of group IDs to alignment lists that pass the threshold
+    """
+    if secondary:
+        groups = group_alignments_by_mates(alignments)
+        kept_groups = {}
+
+        for group_id, group_alignments in groups.items():
+            max_score = max(
+                a.normalized_score
+                for a in group_alignments
+                if a.normalized_score is not None
+            )
+            if max_score >= threshold:
+                kept_groups[group_id] = group_alignments
+            else:
+                logger.info("Filtering group %s", group_id)
+
+        return kept_groups
+    else:
+        max_score = max(
+            a.normalized_score for a in alignments if a.normalized_score is not None
+        )
+        if max_score >= threshold:
+            return {0: alignments}  # Single group for primary
+        else:
+            return {}
+
+
+def add_missing_mates_by_groups(
+    groups: Dict[int, list[SamAlignment]],
+) -> list[SamAlignment]:
+    """
+    Add missing mate reads based on provided alignment groups.
+    
+    For each group, checks if both read1 and read2 are present. If either is missing
+    and the existing alignment has pair_status "UP" (unpaired), creates a synthetic
+    unmapped mate to complete the pair.
+    
+    Args:
+        groups: Dictionary mapping group IDs to lists of alignments
+        
+    Returns:
+        List of all alignments including original and synthetic mates
+    """
+    result = []
+
+    for group_alignments in groups.values():
+        # Check if we have both read1 and read2 in this group
+        has_read1 = any(a.flag & 64 for a in group_alignments)
+        has_read2 = any(a.flag & 128 for a in group_alignments)
+
+        # Add existing alignments
+        result.extend(group_alignments)
+
+        # Only create synthetic mates if we're missing either read1 or read2
+        if not (has_read1 and has_read2):
+            for alignment in group_alignments:
+                if alignment.pair_status == "UP":
+                    unmapped_mate = alignment.create_unmapped_mate()
+                    result.append(unmapped_mate)
+
+    return result
+
+
+def process_alignment_group(
+    alignments: list[SamAlignment], score_threshold: float
+) -> list[SamAlignment]:
+    """
+    Process all alignments for a single read name.
+
+    Args:
+        alignments: All alignments for one read name
+        score_threshold: Minimum normalized score threshold
+
+    Returns:
+        Filtered and processed alignments
+    """
+    # Separate primary and secondary alignments (flag < 256 vs >= 256)
+    primary = [a for a in alignments if a.flag < 256]
+    assert len(primary) <= 2
+    secondary = [a for a in alignments if a.flag >= 256]
+    # Calculate normalized scores for all alignments
+    for alignment in primary + secondary:
+        alignment.calculate_normalized_score()
+
+    # Get groups that pass score threshold
+    primary_groups = apply_score_filter(primary, score_threshold)
+
+    if primary_groups == {}:
+        logger.info("Filtering primary group")
+        return []
+
+    secondary_groups = apply_score_filter(secondary, score_threshold, secondary=True)
+
+    # Add missing mates using the groups
+    primary_with_mates = add_missing_mates_by_groups(primary_groups)
+    secondary_with_mates = add_missing_mates_by_groups(secondary_groups)
+
+    # Sort and combine
+    primary_sorted = sorted(primary_with_mates, key=lambda x: x.flag)
+    secondary_sorted = sorted(
+        secondary_with_mates, key=lambda x: (x.rname, x.pos, x.flag)
+    )
+    return primary_sorted + secondary_sorted
+
+
+def stream_filtered_fastq(fastq_file: str) -> Iterator[str]:
     """
     Stream filtered IDs one at a time from sorted FASTQ file.
     Assumes FASTQ is sorted by read ID and handles paired reads correctly.
-    
-    For paired reads (read1/read2), yields the base read ID only once to avoid
+
+    For interleaved reads (read1/read2), yields the base read ID only once to avoid
     duplicates when comparing with SAM query names.
-    
+
     Args:
         fastq_file: Path to FASTQ file (can be gzipped)
-        
+
     Yields:
         Read IDs (without @ prefix and /1, /2 suffixes) in sorted order
     """
     previous_read_id = None
-    
     try:
         with open_by_suffix(fastq_file) as handle:
             for record in SeqIO.parse(handle, "fastq"):
                 # Remove /1, /2 suffixes and space-separated parts if present
-                read_id = record.id.split()[0].split('/')[0]
-                
+                read_id = record.id.split()[0].split("/")[0]
+
                 # Only yield if this is a new read ID (handles paired reads)
                 if read_id != previous_read_id:
                     yield read_id
@@ -204,151 +402,29 @@ def stream_filtered_ids(fastq_file: str) -> Iterator[str]:
         logger.error(f"Error reading FASTQ file {fastq_file}: {e}")
         raise
 
-def apply_score_filter(alignments: List[SamAlignment], threshold: float, group_by_ref: bool = False) -> List[SamAlignment]:
-    """
-    Apply score threshold filtering to alignments.
-    
-    Args:
-        alignments: List of alignments to filter
-        threshold: Minimum normalized score threshold
-        group_by_ref: If True, group alignments by reference sequence (rname) and apply 
-                     threshold per group. If False, apply threshold to the entire group.
-                     
-    Reference grouping is used for secondary alignments where each reference 
-    represents a different viral genome that the read mapped to.
-    """
-    if group_by_ref:
-        # Group by reference sequence and apply threshold per group
-        by_ref: Dict[str, List[SamAlignment]] = defaultdict(list)
-        for alignment in alignments:
-            by_ref[alignment.rname].append(alignment)
-        
-        kept = []
-        for ref_alignments in by_ref.values():
-            if len(ref_alignments) == 2:
-                max_score = max(a.normalized_score for a in ref_alignments)
-                if max_score >= threshold:
-                    kept.extend(ref_alignments)
-            elif len(ref_alignments) == 1:
-                if ref_alignments[0].normalized_score >= threshold:
-                    kept.extend(ref_alignments)
-        return kept
-    else:
-        # Apply threshold to group as whole
-        if len(alignments) == 2:
-            max_score = max(a.normalized_score for a in alignments)
-            return alignments if max_score >= threshold else []
-        elif len(alignments) == 1:
-            return alignments if alignments[0].normalized_score >= threshold else []
-        return []
 
-def add_missing_mates(alignments: List[SamAlignment], group_by_ref: bool = False) -> None:
-    """
-    Add missing mates for UP (unpaired) reads.
-
-    For UP (unpaired) reads:
-      Scenario 1: Only one read from the pair mapped
-      - Primary: 1 UP alignment (for the mapped read)
-      - Secondary: Multiple UP alignments for that same read (some could have same rname)
-      - Action: Create synthetic mate for ALL UP alignments (primary + all secondaries)
-      
-      Scenario 2: Both reads from the pair mapped
-      - Primary: 2 UP alignments (read1 and read2 both mapped but marked UP)
-      - Secondary: Multiple UP alignments for both reads
-      - Action: No synthetic mates needed (both mates already present)
-    
-    Args:
-        alignments: List of alignments to process (modified in place)
-        group_by_ref: If True, check for missing mates within each reference group
-    """
-    if group_by_ref:
-        by_ref: Dict[str, List[SamAlignment]] = defaultdict(list)
-        for alignment in alignments:
-            by_ref[alignment.rname].append(alignment)
-        
-        for ref_alignments in by_ref.values():
-            # Check if we have both read1 and read2 for this reference
-            has_read1 = any(a.flag & 64 for a in ref_alignments)  # bit 64 = read1
-            has_read2 = any(a.flag & 128 for a in ref_alignments)  # bit 128 = read2
-            
-            # Only create synthetic mates if we're missing either read1 or read2
-            if not (has_read1 and has_read2):
-                for alignment in ref_alignments[:]:
-                    if alignment.pair_status == 'UP':
-                        unmapped_mate = alignment.create_unmapped_mate()
-                        ref_alignments.append(unmapped_mate)
-        
-        # Propagate changes back to main alignments list
-        alignments.clear()
-        for ref_alignments in by_ref.values():
-            alignments.extend(ref_alignments)
-    else:
-        # For primary alignments, same logic
-        has_read1 = any(a.flag & 64 for a in alignments)
-        has_read2 = any(a.flag & 128 for a in alignments)
-        
-        if not (has_read1 and has_read2):
-            for alignment in alignments[:]:
-                if alignment.pair_status == 'UP':
-                    unmapped_mate = alignment.create_unmapped_mate()
-                    alignments.append(unmapped_mate)
-
-def process_alignment_group(alignments: List[SamAlignment], score_threshold: float) -> List[SamAlignment]:
-    """
-    Process all alignments for a single read name.
-    
-    Args:
-        alignments: All alignments for one read name
-        score_threshold: Minimum normalized score threshold
-        
-    Returns:
-        Filtered and processed alignments
-    """
-    # Separate primary and secondary alignments (flag < 256 vs >= 256)
-    primary = [a for a in alignments if a.flag < 256]
-    secondary = [a for a in alignments if a.flag >= 256]
-    
-    # Calculate normalized scores for all alignments
-    for alignment in primary + secondary:
-        alignment.calculate_normalized_score()
-    
-    # Apply score filtering
-    primary_kept = apply_score_filter(primary, score_threshold)
-    secondary_kept = apply_score_filter(secondary, score_threshold, group_by_ref=True)
-    
-    # Add missing mates
-    add_missing_mates(primary_kept)
-    add_missing_mates(secondary_kept, group_by_ref=True)
-    
-    # Sort and combine results
-    primary_sorted = sorted(primary_kept, key=lambda x: x.flag)
-    secondary_sorted = sorted(secondary_kept, key=lambda x: (x.rname, x.pos, x.flag))
-    
-    return primary_sorted + secondary_sorted
-
-def stream_sam_by_qname(sam_file: str) -> Iterator[Tuple[str, List[SamAlignment]]]:
+def stream_sam_by_qname(sam_file: str) -> Iterator[Tuple[str, list[SamAlignment]]]:
     """
     Stream SAM file and yield groups of alignments by query name.
-    
+
     This memory-efficient approach assumes the SAM file is sorted by query name,
     which is typically the case for Bowtie2 output.
-    
+
     Args:
         sam_file: Path to SAM file
-        
+
     Yields:
         Tuples of (qname, list_of_alignments)
     """
     current_qname = None
     current_alignments = []
-    
     with open_by_suffix(sam_file) as f:
         for line in f:
-            if line.startswith('@'):
+            if isinstance(line, bytes):
+                line = line.decode()
+            if line.startswith("@"):
                 continue  # Skip header lines
-                
             alignment = SamAlignment.from_sam_line(line)
-            
             if current_qname is None:
                 current_qname = alignment.qname
                 current_alignments = [alignment]
@@ -359,24 +435,26 @@ def stream_sam_by_qname(sam_file: str) -> Iterator[Tuple[str, List[SamAlignment]
                 yield current_qname, current_alignments
                 current_qname = alignment.qname
                 current_alignments = [alignment]
-        
         # Yield final group
         if current_qname is not None:
             yield current_qname, current_alignments
 
-def filter_viral_sam_memory_efficient(input_sam: str, filtered_fastq: str, output_sam: str, score_threshold: float) -> None:
+
+def filter_viral_sam(
+    input_sam: str, filtered_fastq: str, output_sam: str, score_threshold: float
+) -> None:
     """
     Filter viral SAM file using a memory-efficient streaming approach.
-    
+
     Processing steps:
     1. Stream filtered read IDs and SAM alignments simultaneously
     2. Use two-pointer merge to keep only filtered reads
     3. Apply score threshold filtering (keep pair if either read exceeds threshold)
     4. Add missing mates for UP reads
     5. Write output immediately without accumulation
-    
+
     Assumes both filtered FASTQ and SAM files are sorted by query ID.
-    
+
     Args:
         input_sam: Input SAM file path (sorted by query name)
         filtered_fastq: FASTQ file containing filtered reads to keep (sorted by read ID)
@@ -384,62 +462,87 @@ def filter_viral_sam_memory_efficient(input_sam: str, filtered_fastq: str, outpu
         score_threshold: Minimum normalized alignment score threshold
     """
     logger.info("Starting memory-efficient viral SAM filtering")
-    
     # Create iterators for streaming processing
-    filtered_iter = stream_filtered_ids(filtered_fastq)
+    filtered_read_ids_iter = stream_filtered_fastq(filtered_fastq)
     sam_iter = stream_sam_by_qname(input_sam)
-    
     # Two-pointer merge algorithm
-    current_filtered = next(filtered_iter, None)
+    curr_read_id = next(filtered_read_ids_iter, None)
     alignments_processed = 0
     alignments_kept = 0
     groups_processed = 0
     non_filtered_skipped = 0
-    
+    filt_bool = False
     logger.info(f"Processing SAM file with score threshold {score_threshold}")
-    
-    with open_by_suffix(output_sam, 'w') as outf:
-        for qname, alignments in sam_iter:
+    with open_by_suffix(output_sam, "w") as outf:
+        last_curr_align_read_id = None
+        for curr_align_read_id, alignments in sam_iter:
+            # Check if SAM file is sorted
+            if (
+                last_curr_align_read_id is not None
+                and curr_align_read_id < last_curr_align_read_id
+            ):
+                logger.error(
+                    f"SAM file not sorted! {curr_align_read_id} appeared after {last_curr_align_read_id}"
+                )
+                raise ValueError(
+                    f"SAM file not sorted by curr_align_read_id at {curr_align_read_id}, after {last_curr_align_read_id}"
+                )
+            last_curr_align_read_id = curr_align_read_id
             alignments_processed += len(alignments)
             groups_processed += 1
-            
-            # Advance filtered iterator until >= qname
-            while current_filtered is not None and current_filtered < qname:
-                logger.debug(f"Advancing past filtered ID: {current_filtered}")
-                current_filtered = next(filtered_iter, None)
-            
-            # Skip if this qname is not in filtered reads
-            if current_filtered != qname:
-                logger.debug(f"Skipping non-filtered read: {qname}")
-                non_filtered_skipped += 1
-                continue
-                
+            # Advance filtered iterator until >= curr_align_read_id
+            while curr_read_id is not None and curr_read_id < curr_align_read_id:
+                logger.debug(f"Advancing past filtered ID: {curr_read_id}")
+                curr_read_id = next(filtered_read_ids_iter, None)
+            # Skip if this curr_align_read_id is not in filtered reads
+            if curr_read_id is not None and curr_read_id > curr_align_read_id:
+                if filt_bool:
+                    logger.debug(
+                        f"Skipping alignment that is not found in fastq file: {curr_align_read_id}"
+                    )
+                    non_filtered_skipped += 1
+                    filt_bool = False
+                    continue
+                else:
+                    logger.error(
+                        f"Skipping alignment that is not found in fastq file: {curr_align_read_id}"
+                    )
+                    raise ValueError(
+                        f"SAM file not sorted by curr_align_read_id at {curr_align_read_id}, after {last_curr_align_read_id}"
+                    )
+            filt_bool = True
             # Process and write immediately
             kept_alignments = process_alignment_group(alignments, score_threshold)
             alignments_kept += len(kept_alignments)
-            
-            if len(kept_alignments) != len(alignments):
-                logger.debug(f"Score filtering: {qname} kept {len(kept_alignments)}/{len(alignments)} alignments")
-            
             # Write alignments sorted by flag
             for alignment in kept_alignments:
                 outf.write(alignment.line)
-                if not alignment.line.endswith('\n'):
-                    outf.write('\n')
-    
-    logger.info(f"Processed {groups_processed} read groups, {alignments_processed} alignments")
-    logger.info(f"Skipped {non_filtered_skipped} non-filtered groups, kept {alignments_kept} alignments")
+                if not alignment.line.endswith("\n"):
+                    outf.write("\n")
+    logger.info(
+        f"Processed {groups_processed} read groups, {alignments_processed} alignments"
+    )
+    logger.info(
+        f"Skipped {non_filtered_skipped} non-filtered groups, kept {alignments_kept} alignments"
+    )
+
 
 def main() -> None:
+    """
+    Main entry point for viral SAM filtering script.
+    
+    Parses command-line arguments and executes the filtering pipeline.
+    
+    Returns:
+        None
+    """
     logger.info("Initializing script.")
     logger.info("Parsing arguments.")
     args = parse_args()
-    filter_viral_sam_memory_efficient(
-        args.input_sam,
-        args.filtered_fastq,
-        args.output_sam,
-        args.score_threshold
+    filter_viral_sam(
+        args.input_sam, args.filtered_fastq, args.output_sam, args.score_threshold
     )
+
 
 if __name__ == "__main__":
     main()
