@@ -387,7 +387,7 @@ def get_line_from_single(read_dict: dict[str, str|int|bool],
             out_dict["query_rc_by_aligner"], out_dict["query_rc_by_aligner_rev"] = read_dict["query_rc_by_aligner"], "NA"
             out_dict["query_qual"], out_dict["query_qual_rev"] = read_dict["query_qual"], "NA"
             out_dict["aligner_length_normalized_score_fwd"], out_dict["aligner_length_normalized_score_rev"] = adj_score, "NA"
-        else:
+        else: # Is mate 2
             out_dict["aligner_genome_id_fwd"], out_dict["aligner_genome_id_rev"] = "NA", read_dict["genome_id"]
             out_dict["aligner_taxid_fwd"], out_dict["aligner_taxid_rev"] = "NA", read_dict["taxid"]
             out_dict["aligner_best_alignment_score"], out_dict["aligner_best_alignment_score_rev"] = "NA", read_dict["alignment_score"]
@@ -401,7 +401,7 @@ def get_line_from_single(read_dict: dict[str, str|int|bool],
             out_dict["query_rc_by_aligner"], out_dict["query_rc_by_aligner_rev"] = "NA", read_dict["query_rc_by_aligner"]
             out_dict["query_qual"], out_dict["query_qual_rev"] = "NA", read_dict["query_qual"]
             out_dict["aligner_length_normalized_score_fwd"], out_dict["aligner_length_normalized_score_rev"] = "NA", adj_score
-    else:
+    else: # Is unpaired
         out_dict["aligner_best_alignment_score"] = read_dict["alignment_score"]
         out_dict["aligner_next_alignment_score"] = read_dict["next_best_alignment"]
         out_dict["aligner_edit_distance"] = read_dict["edit_distance"]
