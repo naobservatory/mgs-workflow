@@ -58,6 +58,7 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record
     out["aligner_cigar"] = read.cigarstring
     out["aligner_edit_distance"] = read.get_tag("NM")
     out["aligner_best_alignment_score"] = read.get_tag("AS")
+    out["aligner_next_alignment_score"] = "NA"
     out["aligner_length_normalized_score"] = out["aligner_best_alignment_score"] / math.log(read.query_length)
 
     out["query_seq"] = query_seq_clean
@@ -95,6 +96,7 @@ def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_d
             "aligner_cigar\t"
             "aligner_edit_distance\t"
             "aligner_best_alignment_score\t"
+            "aligner_next_alignment_score\t"
             "aligner_length_normalized_score\t"
             "query_seq\t"
             "query_rc_by_aligner\t"

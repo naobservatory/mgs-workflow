@@ -5,6 +5,7 @@
 - `aligner_genome_id`: GenBank ID for best viral genome match to read, as identified by our aligner (bowtie2 or minimap2). "Best" means having the highest length normalized alignment score. For paired-end data, this is the highest-scoring match across forward and reverse reads. 
 - `aligner_taxid`: NCBI taxon ID for taxon best matching read, as identified by our aligner (bowtie2 or minimap2). For paired-end data, this is the highest-scoring match across forward and reverse reads. 
 - `aligner_best_alignment_score`: Alignment score (directly from aligner) of best-scoring alignment (for paired-end data, score for forward read's best alignment). 
+- `aligner_next_alignment_score`: Alignment score of second-best alignment (for paired-end data, score for forward read's second-best alignment; NA for minimap2)
 - `aligner_edit_distance`: Edit distance between read and aligned genome (for paired-end data, edit distance for forward read)
 - `aligner_ref_start`: Location of start of alignment on reference (for paired-end data, location of forward read alignment on reference)
 - `aligner_map_qual`: Mapping quality (MAPQ) as returned by bowtie2/minimap2 (for paired-end data, mapping quality of forward read)
@@ -25,7 +26,6 @@
 - `aligner_taxid_fwd`: NCBI taxon ID for taxon matching forward read 
 - `aligner_taxid_rev`: NCBI taxon ID for taxon matching reverse read
 - `aligner_best_alignment_score_rev`: Alignment score of best-scoring alignment of reverse read 
-- `aligner_next_alignment_score`: Score of second-best alignment of forward read (currently absent for single-end data as we do not have minimap2 return multiple alignments)
 - `aligner_next_alignment_score_rev`: Score of second-best alignment of reverse read
 - `aligner_edit_distance_rev`: Edit distance between reverse read and aligned genome
 - `aligner_ref_start_rev`: Location of start of alignment of reverse read on reference 

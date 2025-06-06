@@ -31,12 +31,12 @@
             "subset_qc_length_stats.tsv.gz:md5,a8bf085fd6baddac8583f424f72ce94e",
             "subset_qc_quality_base_stats.tsv.gz:md5,b5d5c45af7fedbf52dee84bdc25fb9b0",
             "subset_qc_quality_sequence_stats.tsv.gz:md5,f07808095a7926593aa2400e88a61fad",
-            "virus_hits_final.tsv.gz:md5,c4b8d128b72d75586667325cc2aab834"
+            "virus_hits_final.tsv.gz:md5,7db90385902ad84657e7f49ff1ee130e"
         ],
         "meta": {
             "nf-test": "0.9.2",
-            "nextflow": "24.10.6"
+            "nextflow": "24.10.5"
         },
-        "timestamp": "2025-05-13T15:39:00.977542291"
+        "timestamp": "2025-06-04T22:57:16.091655459"
     }
 }
