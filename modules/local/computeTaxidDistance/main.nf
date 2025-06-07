@@ -12,7 +12,8 @@ process COMPUTE_TAXID_DISTANCE {
         tuple val(sample), path(tsv) // Sorted TSV with two taxid columns
         val(taxid_field_1) // Column header for first taxid field
         val(taxid_field_2) // Column header for second taxid field
-        val(distance_field) // Column header for new distance field
+        val(distance_field_1) // Column header for first new distance field
+        val(distance_field_2) // Column header for second new distance field
         path(nodes_db) // TSV containing taxonomic structure (mapping taxids to parent taxids)
     output:
         tuple val(sample), path("distance_${tsv}"), emit: output // Distance-computed TSV
@@ -21,7 +22,7 @@ process COMPUTE_TAXID_DISTANCE {
         '''
         # Set up and run Python script
         io="-i !{tsv} -o distance_!{tsv} -n !{nodes_db}"
-        par="-t1 !{taxid_field_1} -t2 !{taxid_field_2} -d !{distance_field}"
+        par="-t1 !{taxid_field_1} -t2 !{taxid_field_2} -d1 !{distance_field_1} -d2 !{distance_field_2}"
         compute_taxid_distance.py ${io} ${par}
         # Link input file to output for testing
         ln -s !{tsv} input_!{tsv}
