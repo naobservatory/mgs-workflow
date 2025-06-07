@@ -291,7 +291,7 @@ style I fill:#000,color:#fff,stroke:#000
 
 #### Compare original and BLAST assignments (`VALIDATE_CLUSTER_REPRESENTATIVES`)
 
-This subworkflow takes the original viral hits from `MARK_VIRAL_DUPLICATES` and the LCA results from `BLAST_FASTA`; computes an inner-join on sequence ID to restrict the result to cluster representatives; then compares the initial taxonomic assignments with the LCA assignments from BLAST. The subworkflow computes the taxonomic distance between the original assignment and the BLAST-derived LCA by counting the steps from one to the other, providing a quantitative measure of assignment accuracy.
+This subworkflow takes the original viral hits from `MARK_VIRAL_DUPLICATES` and the LCA results from `BLAST_FASTA`; computes an inner-join on sequence ID to restrict the result to cluster representatives; then compares the initial taxonomic assignments with the LCA assignments from BLAST. The subworkflow computes the taxonomic distance between the original assignment and the BLAST-derived LCA by counting the steps from each taxid assignment to their lowest common ancestor, providing a quantitative measure of assignment accuracy.
 
 ```mermaid
 ---
