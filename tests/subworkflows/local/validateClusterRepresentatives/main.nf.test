@@ -16,7 +16,8 @@ nextflow_workflow {
                 lca_tsv = "${projectDir}/test-data/toy-data/validate-cluster-reps/test-lca.tsv"
                 hits_taxid_column = "taxid"
                 lca_taxid_column = "lca_taxid"
-                tax_dist_column = "tax_dist"
+                tax_dist_column_1 = "tax_dist_1"
+                tax_dist_column_2 = "tax_dist_2"
                 ref_dir = "${projectDir}/test-data/toy-data/validate-cluster-reps/"
             }
             workflow {
@@ -25,8 +26,9 @@ nextflow_workflow {
                 input[1] = Channel.of("test").combine(Channel.of(params.lca_tsv)) // lca_tsv
                 input[2] = params.hits_taxid_column // hits_taxid_column
                 input[3] = params.lca_taxid_column // lca_taxid_column
-                input[4] = params.tax_dist_column // tax_dist_column
-                input[5] = params.ref_dir // ref_dir
+                input[4] = params.tax_dist_column_1 // tax_dist_column_1
+                input[5] = params.tax_dist_column_2 // tax_dist_column_2
+                input[6] = params.ref_dir // ref_dir
                 '''
             }
         }
@@ -59,8 +61,9 @@ nextflow_workflow {
             // Distance computation should work as expected
             def tab_dist = path(workflow.out.test_dist[0][1]).csv(sep: "\t", decompress: true)
             assert tab_dist.rowCount == tab_join.rowCount
-            assert tab_dist.columnCount == tab_join.columnCount + 1
-            assert tab_dist.columns[params.tax_dist_column] == tab_dist.columns["exp_distance"]
+            assert tab_dist.columnCount == tab_join.columnCount + 2
+            assert tab_dist.columns[params.tax_dist_column_1] == tab_dist.columns["exp_distance_1"]
+            assert tab_dist.columns[params.tax_dist_column_2] == tab_dist.columns["exp_distance_2"]
             // Final column renaming should work as expected
             def tab_out = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_out.rowCount == tab_dist.rowCount

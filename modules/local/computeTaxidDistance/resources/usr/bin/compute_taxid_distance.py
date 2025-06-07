@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
-"""
+DESC = """
 Given a TSV with two taxid columns, compute the vertical taxonomic distance
-(number of parent-child steps) between the two taxids for each row. Rows
-for which the two taxids are the same are given a distance of 0; rows for which
-one taxid is not an ancestor of the other are given a distance of NA.
+between the two taxids for each row. Distance is calculated as the number of
+parent-child steps between each taxid and their lowest common ancestor. Rows
+for which the two taxids are the same are given a distance of 0 in both
+distance columns; rows for which one taxid is an ancestor of the other will be
+given a distance of 0 in the corresponding distance column.
 """
 
 #=======================================================================
@@ -50,20 +52,14 @@ TAXID_ROOT = 1
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     # Create parser
-    desc = (
-        "Given a TSV with two taxid columns, compute the vertical taxonomic "
-        "distance (number of parent-child steps) between the two taxids for "
-        "each row. Rows for which the two taxids are the same are given a "
-        "distance of 0; rows for which one taxid is not an ancestor of the "
-        "other are given a distance of NA."
-    )
-    parser = argparse.ArgumentParser(description=desc)
+    parser = argparse.ArgumentParser(description=DESC)
     # Add arguments
     parser.add_argument("--input", "-i", help="Path to input TSV.")
     parser.add_argument("--output", "-o", help="Path to output TSV.")
-    parser.add_argument("--taxid-field-1", "-t1", help="Column header for first taxid field.")
-    parser.add_argument("--taxid-field-2", "-t2", help="Column header for second taxid field.")
-    parser.add_argument("--distance-field", "-d", help="Column header for new distance field.")
+    parser.add_argument("--taxid-field-1", "-t1", help="Column header for first input taxid field.")
+    parser.add_argument("--taxid-field-2", "-t2", help="Column header for second input taxid field.")
+    parser.add_argument("--distance-field-1", "-d1", help="Column header for first output distance field.")
+    parser.add_argument("--distance-field-2", "-d2", help="Column header for second output distance field.")
     parser.add_argument("--nodes-db", "-n", help="Path to taxonomy nodes DB (raw NCBI nodes.dmp file).")
     # Return parsed arguments
     return parser.parse_args()
@@ -217,47 +213,66 @@ def path_to_root(
     logger.debug(f"Path to root for target taxid {taxid}: {path}")
     return path, path_cache
 
+def compute_lca(
+        path_1: list[int],
+        path_2: list[int],
+        ) -> int | None:
+    """
+    Given paths to root for two taxids, compute the lowest common ancestor.
+    Args:
+        path_1 (list[int]): Path to root for taxid_1.
+        path_2 (list[int]): Path to root for taxid_2.
+    Returns:
+        int: The lowest common ancestor, or None if no common ancestor is found.
+    """
+    # First find the first taxid that is in both paths
+    for taxid in path_1:
+        if taxid in path_2:
+            return taxid
+    else:
+        return None
+
 def compute_taxonomic_distance(
         taxid_1: int,
         taxid_2: int,
         child_to_parent: dict[int, int],
         path_cache: dict[int, list[int]],
-        ) -> tuple[int|None, dict[int, list[int]]]:
+        ) -> tuple[int|None, int|None, dict[int, list[int]]]:
     """
-    Compute the taxonomic distance between two taxids as the number of
-    parent-child steps between them. Distance is negative if taxid_1 is an
-    ancestor of taxid_2 and positive if taxid_2 is an ancestor of taxid_1.
+    Compute the taxonomic distance between two taxids as a pair of integers
+    specifying the distance between each taxid and their lowest common ancestor.
     Args:
         taxid_1 (int): The first taxid.
         taxid_2 (int): The second taxid.
         child_to_parent (dict[int, int]): Dictionary mapping each taxid to its parent.
         path_cache (dict[int, list[int]]): Cache of precomputed paths to the root.
     Returns:
-        tuple[int, dict[int, list[int]]]: Tuple containing the taxonomic distance
-            and the updated path cache.
+        tuple[int|None, int|None, dict[int, list[int]]]: Tuple containing the
+            taxonomic distance between taxid_1 and and the LCA, the taxonomic
+            distance between taxid_2 and the LCA, and the updated path cache.
     """
     # If taxids are the same, return 0
     if taxid_1 == taxid_2:
-        return 0, path_cache
+        return 0, 0, path_cache
     if taxid_1 is None or taxid_2 is None:
-        return None, path_cache
+        return None, None, path_cache
     # Get paths to root for both taxids (starting from taxid itself)
     path_1, path_cache = path_to_root(taxid_1, child_to_parent, path_cache)
     logger.debug(f"Path to root for taxid {taxid_1}: {path_1}")
     path_2, path_cache = path_to_root(taxid_2, child_to_parent, path_cache)
     logger.debug(f"Path to root for taxid {taxid_2}: {path_2}")
-    # Compute taxonomic distance
-    # Distance = d1 - d2, where dN is the number of steps from taxid N to the root
-    # Therefore, if taxid_1 is an ancestor of taxid_2, the distance is negative
-    if taxid_1 in path_2:
-        distance = -path_2.index(taxid_1)
-    elif taxid_2 in path_1:
-        distance = path_1.index(taxid_2)
-    else:
-        distance = None
-    logger.debug(f"Taxonomic distance between taxids {taxid_1} and {taxid_2}: {distance}")
-    # Return distance and path cache
-    return distance, path_cache
+    # Compute LCA
+    lca = compute_lca(path_1, path_2)
+    if lca is None:
+        return None, None, path_cache
+    logger.debug(f"LCA of taxids {taxid_1} and {taxid_2}: {lca}")
+    # Compute taxonomic distance to LCA
+    distance_1 = path_1.index(lca)
+    logger.debug(f"Taxonomic distance between taxid {taxid_1} and LCA {lca}: {distance_1}")
+    distance_2 = path_2.index(lca)
+    logger.debug(f"Taxonomic distance between taxid {taxid_2} and LCA {lca}: {distance_2}")
+    # Return distances and path cache
+    return distance_1, distance_2, path_cache
 
 #=======================================================================
 # Functions for processing input and output
@@ -286,16 +301,23 @@ def process_input_to_output(
         header_line = inf.readline().strip()
         header_fields, indices = parse_header(header_line, fields_to_check)
         logger.info(f"Parsed input header: {header_fields}")
-        if field_names["distance"] in header_fields:
+        if field_names["distance_1"] in header_fields:
             msg = (
                 "Distance field already present in input header: "
-                f"{field_names['distance']}. "
+                f"{field_names['distance_1']}. "
             )
             raise ValueError(msg)
-        indices[field_names["distance"]] = len(header_fields)
+        if field_names["distance_2"] in header_fields:
+            msg = (
+                "Distance field already present in input header: "
+                f"{field_names['distance_2']}. "
+            )
+            raise ValueError(msg)
+        indices[field_names["distance_1"]] = len(header_fields)
+        indices[field_names["distance_2"]] = len(header_fields) + 1
         logger.info(f"Indices of target fields: {indices}")
         # Write output header
-        header_fields_out = header_fields + [field_names["distance"]]
+        header_fields_out = header_fields + [field_names["distance_1"], field_names["distance_2"]]
         outf.write(join_line(header_fields_out))
         # Process rest of input file
         path_cache = {}
@@ -309,11 +331,12 @@ def process_input_to_output(
             taxid_1 = parse_taxid(fields[indices[field_names["taxid_1"]]])
             taxid_2 = parse_taxid(fields[indices[field_names["taxid_2"]]])
             # Compute taxonomic distance
-            distance, path_cache = compute_taxonomic_distance(taxid_1, taxid_2,
-                                                              child_to_parent,
-                                                              path_cache)
+            distance_1, distance_2, path_cache = compute_taxonomic_distance(
+                taxid_1, taxid_2, child_to_parent, path_cache)
             # Write output line
-            distance_out = [str(distance)] if distance is not None else ["NA"]
+            distance_out_1 = str(distance_1) if distance_1 is not None else "NA"
+            distance_out_2 = str(distance_2) if distance_2 is not None else "NA"
+            distance_out = [distance_out_1, distance_out_2]
             fields_out = fields + distance_out
             outf.write(join_line(fields_out))
             n_entries += 1
@@ -338,7 +361,9 @@ def main() -> None:
     # Prepare fields dict
     fields = {"taxid_1": args.taxid_field_1,
               "taxid_2": args.taxid_field_2,
-              "distance": args.distance_field}
+              "distance_1": args.distance_field_1,
+              "distance_2": args.distance_field_2}
+    logger.info(f"Fields: {fields}")
     # Parse input TSV and compute taxonomic distances
     logger.info("Parsing input TSV and computing taxonomic distances.")
     process_input_to_output(args.input, args.output, fields, child_to_parent)

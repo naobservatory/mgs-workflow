@@ -15,7 +15,7 @@ F. [TODO] Propagate validation information from cluster representatives to other
 
 include { SPLIT_VIRAL_TSV_BY_SPECIES } from "../../../subworkflows/local/splitViralTsvBySpecies"
 include { CLUSTER_VIRAL_ASSIGNMENTS } from "../../../subworkflows/local/clusterViralAssignments"
-include { CONCATENATE_FASTA_ACROSS_SPECIES } from "../../../subworkflows/local/concatenateFastaAcrossSpecies"
+include { CONCATENATE_FILES_ACROSS_SPECIES } from "../../../subworkflows/local/concatenateFilesAcrossSpecies"
 include { CONCATENATE_TSVS_ACROSS_SPECIES } from "../../../subworkflows/local/concatenateTsvsAcrossSpecies"
 include { BLAST_FASTA } from "../../../subworkflows/local/blastFasta"
 include { VALIDATE_CLUSTER_REPRESENTATIVES } from "../../../subworkflows/local/validateClusterRepresentatives"
@@ -49,7 +49,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         cluster_ch = CLUSTER_VIRAL_ASSIGNMENTS(split_ch.fastq, cluster_identity,
             cluster_min_len, n_clusters, Channel.of(false))
         // 3. Concatenate data across species (prepare for group-level BLAST)
-        concat_fasta_ch = CONCATENATE_FASTA_ACROSS_SPECIES(cluster_ch.fasta, "cluster_reps")
+        concat_fasta_ch = CONCATENATE_FILES_ACROSS_SPECIES(cluster_ch.fasta, "cluster_reps")
         concat_cluster_ch = CONCATENATE_TSVS_ACROSS_SPECIES(cluster_ch.tsv, "cluster_info")
         // 4. Run BLAST on concatenated cluster representatives (single job per group)
         blast_ch = BLAST_FASTA(concat_fasta_ch.output, ref_dir, blast_db_prefix,
@@ -59,7 +59,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(groups, blast_ch.lca,
             "bowtie2_taxid_best", // Column header for original taxid in hits TSV
             "validation_staxid_lca_natural", // LCA taxid computed from BLAST results, excluding artificial sequences
-            "validation_distance", ref_dir)
+            "validation_distance_bowtie2", "validation_distance_validation", ref_dir)
         // 6. Propagate validation information back to individual hits
         propagate_ch = PROPAGATE_VALIDATION_INFORMATION(groups, concat_cluster_ch.output,
             validate_ch.output, "bowtie2_taxid_best")
@@ -74,12 +74,8 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         blast_results = output_blast_ch
         // Extra outputs for testing
         test_in   = groups
-        test_db   = db
         test_split_tsv = split_ch.tsv
-        test_split_fastq = split_ch.fastq
         test_cluster_tab = cluster_ch.tsv
-        test_cluster_ids = cluster_ch.ids
-        test_reps_fastq = cluster_ch.fastq
         test_reps_fasta = cluster_ch.fasta
         test_concat_fasta = concat_fasta_ch.output
         test_concat_cluster = concat_cluster_ch.output
