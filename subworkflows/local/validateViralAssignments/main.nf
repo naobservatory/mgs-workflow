@@ -59,7 +59,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(groups, blast_ch.lca,
             "bowtie2_taxid_best", // Column header for original taxid in hits TSV
             "validation_staxid_lca_natural", // LCA taxid computed from BLAST results, excluding artificial sequences
-            "validation_distance", ref_dir)
+            "validation_distance_bowtie2", "validation_distance_validation", ref_dir)
         // 6. Propagate validation information back to individual hits
         propagate_ch = PROPAGATE_VALIDATION_INFORMATION(groups, concat_cluster_ch.output,
             validate_ch.output, "bowtie2_taxid_best")
