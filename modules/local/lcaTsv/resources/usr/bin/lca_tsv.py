@@ -337,15 +337,27 @@ def output_subgroup(
     """
     assert subgroup.summary is not None, "Subgroup has not yet been summarized."
     return [
-        str(subgroup.summary["lca"]),
-        str(subgroup.summary["n_entries"]),
-        str(subgroup.summary["n_classified"]),
-        str(subgroup.summary["top_taxid"]),
-        str(subgroup.summary["top_taxid_classified"]),
-        str(subgroup.summary["min_score"]),
-        str(subgroup.summary["max_score"]),
-        str(subgroup.summary["mean_score"]),
+        output_subgroup_element(subgroup.summary["lca"]),
+        output_subgroup_element(subgroup.summary["n_entries"]),
+        output_subgroup_element(subgroup.summary["n_classified"]),
+        output_subgroup_element(subgroup.summary["top_taxid"]),
+        output_subgroup_element(subgroup.summary["top_taxid_classified"]),
+        output_subgroup_element(subgroup.summary["min_score"]),
+        output_subgroup_element(subgroup.summary["max_score"]),
+        output_subgroup_element(subgroup.summary["mean_score"]),
     ]
+
+def output_subgroup_element(
+        element: int | float | str | None,
+) -> str:
+    """
+    Convert an element to a string, replacing None with "NA".
+    Args:
+        element (int | float | str | None): Element to convert to string.
+    Returns:
+        str: String representation of element, or "NA" if None.
+    """
+    return str(element) if element is not None else "NA"
 
 #=======================================================================
 # Group class and functions

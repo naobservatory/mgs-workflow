@@ -82,6 +82,12 @@ nextflow_process {
                 assert tab_out_filtered.columns[params.prefix + "_n_assignments_total_artificial"][0] == 0
                 assert tab_out_filtered.columns[params.prefix + "_" + params.taxid_field + "_lca_natural"][0] == exp_lca
                 assert tab_out_filtered.columns[params.prefix + "_" + params.taxid_field + "_top_natural"][0] == exp_top_taxid
+                // Artificial entries should be NA (parsed as empty string)
+                assert tab_out_filtered.columns[params.prefix + "_" + params.taxid_field + "_lca_artificial"][0] == ""
+                assert tab_out_filtered.columns[params.prefix + "_" + params.taxid_field + "_top_artificial"][0] == ""
+                assert tab_out_filtered.columns[params.prefix + "_" + params.score_field + "_min_artificial"][0] == ""
+                assert tab_out_filtered.columns[params.prefix + "_" + params.score_field + "_max_artificial"][0] == ""
+                assert tab_out_filtered.columns[params.prefix + "_" + params.score_field + "_mean_artificial"][0] == ""
             }
         }
     }
