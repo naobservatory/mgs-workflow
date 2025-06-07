@@ -25,7 +25,8 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
         lca_tsv // LCA TSV from validation against core_nt
         hits_taxid_column // Column header for original taxid in hits TSV
         lca_taxid_column // Column header for LCA taxid in LCA TSV
-        tax_dist_column // Column header for taxonomic distance in hits TSV
+        tax_dist_column_1 // Column header for taxonomic distance in hits TSV
+        tax_dist_column_2 // Column header for taxonomic distance in hits TSV
         ref_dir // Path to reference directory containing taxonomy information
     main:
         // 0. Get reference paths
@@ -43,7 +44,7 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
         join_ch = JOIN_TSVS(combine_ch, "seq_id", "inner", "representative").output
         // 3. Compute taxonomic distance between original and validated taxids
         dist_ch = COMPUTE_TAXID_DISTANCE(join_ch, hits_taxid_column, lca_taxid_column,
-            tax_dist_column, nodes_db).output
+            tax_dist_column_1, tax_dist_column_2, nodes_db).output
         // NB: As implemented, this will produce a negative distance if the original
         // taxid is too high (ancestor of LCA taxid), and a positive distance if the
         // original taxid is too low (descendant of LCA taxid).
