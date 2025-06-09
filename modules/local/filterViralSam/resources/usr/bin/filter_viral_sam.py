@@ -492,24 +492,24 @@ def filter_viral_sam(
             groups_processed += 1
             # Advance filtered iterator until >= curr_align_read_id
             while curr_read_id is not None and curr_read_id < curr_align_read_id:
-                logger.debug(f"Advancing past filtered ID: {curr_read_id}")
-                curr_read_id = next(filtered_read_ids_iter, None)
-            # Skip if this curr_align_read_id is not in filtered reads
-            if curr_read_id is not None and curr_read_id > curr_align_read_id:
                 if filt_bool:
-                    logger.debug(
-                        f"Skipping alignment that is not found in fastq file: {curr_align_read_id}"
-                    )
-                    non_filtered_skipped += 1
-                    filt_bool = False
-                    continue
+                  logger.debug(f"Advancing past filtered ID: {curr_read_id}")
+                  curr_read_id = next(filtered_read_ids_iter, None)
+                  filt_bool = False
                 else:
-                    logger.error(
-                        f"Skipping alignment that is not found in fastq file: {curr_align_read_id}"
-                    )
-                    raise ValueError(
+                  raise ValueError(
                         f"SAM file not sorted by curr_align_read_id at {curr_align_read_id}, after {last_curr_align_read_id}"
                     )
+
+            # Skip if this curr_align_read_id is not in filtered reads
+            if curr_read_id is not None and curr_read_id > curr_align_read_id:
+                  logger.debug(
+                      f"Skipping alignment that is not found in fastq file: {curr_align_read_id}"
+                  )
+                  non_filtered_skipped += 1
+                  filt_bool = False
+                  continue
+
             filt_bool = True
             # Process and write immediately
             kept_alignments = process_alignment_group(alignments, score_threshold)
