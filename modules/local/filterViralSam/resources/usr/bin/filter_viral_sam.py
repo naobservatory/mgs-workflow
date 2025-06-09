@@ -256,13 +256,12 @@ def group_alignments_by_mates(
                     mate_groups[alignment.pos] = group_idx
                     by_group[group_idx].append(alignment)
                     group_idx += 1
-    
     elif pair_status == "CP":
-        # Handle CP reads by grouping by (pos, rname)
-        cp_groups = {}  # (pos, rname) -> group_id
+        # Handle CP reads by grouping by rname
+        cp_groups = {}  # rname -> group_id
         
         for alignment in alignments:
-            key = (alignment.pos, alignment.rname)
+            key = alignment.rname
             if key in cp_groups:
                 existing_group = cp_groups[key]
                 by_group[existing_group].append(alignment)
@@ -270,7 +269,6 @@ def group_alignments_by_mates(
                 cp_groups[key] = group_idx
                 by_group[group_idx].append(alignment)
                 group_idx += 1
-    
     else:
         # For other pair statuses, use original logic as fallback
         all_pos = set(a.pos for a in alignments)
@@ -290,7 +288,6 @@ def group_alignments_by_mates(
                     mate_groups[alignment.pos] = group_idx
                     by_group[group_idx].append(alignment)
                     group_idx += 1
-
     return dict(by_group)
 
 
@@ -560,6 +557,7 @@ def filter_viral_sam(
 
             filt_bool = True
             # Process and write immediately
+            logger.info(f"Starting {curr_align_read_id}")
             kept_alignments = process_alignment_group(alignments, score_threshold)
             alignments_kept += len(kept_alignments)
             # Write alignments sorted by flag
