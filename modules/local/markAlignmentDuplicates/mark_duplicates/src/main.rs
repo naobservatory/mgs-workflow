@@ -364,18 +364,21 @@ fn process_read_groups(
             if dup_count == 1 {
                 pairwise_match_frac = 1.0;
             } else {
-                let mut pairwise_match_count: f64 = 0.0;
+                // Stage 2 Multithreading: Parallel pairwise matching
+                // Generate all pairs (i,j) where i < j and process them in parallel
                 let dup_count_float: f64 = dup_count as f64;
                 let n_pairs: f64 = dup_count_float * (dup_count_float - 1.0) / 2.0;
-                for i in 0..dup_count {
-                    for j in (i + 1)..dup_count {
+                // Use rayon to parallelize pairwise comparisons
+                let pairwise_match_count: f64 = (0..dup_count)
+                    .into_par_iter()  // Parallel iterator
+                    .flat_map(|i| (i + 1..dup_count).into_par_iter().map(move |j| (i, j)))
+                    .map(|(i, j)| {
                         let read_i = &dup_group[i];
                         let read_j = &dup_group[j];
-                        if match_reads(read_i, read_j) {
-                            pairwise_match_count += 1.0;
-                        }
-                    }
-                }
+                        if match_reads(read_i, read_j) { 1.0 } else { 0.0 }
+                    })
+                    .sum();  // Rayon's parallel sum reduction
+                
                 pairwise_match_frac = pairwise_match_count / n_pairs;
             }
             // Store duplicate group information
