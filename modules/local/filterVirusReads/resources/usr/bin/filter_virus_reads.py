@@ -6,7 +6,6 @@ import time
 import datetime
 import gzip
 import bz2
-import os
 
 def print_log(message):
     print("[", datetime.datetime.now(), "]  ", message, sep="")
@@ -24,7 +23,7 @@ def open_by_suffix(filename, mode="r", debug=False):
     else:
         return open(filename, mode)
 
-def filter_virus_reads(input_path, score_threshold, out_path):
+def filter_virus_reads(input_path, out_path):
     """Filter putative virus reads based on Kraken and Bowtie2 results."""
     with open_by_suffix(input_path) as inf, open_by_suffix(out_path, "w") as outf:
         # Read and handle header line
@@ -42,8 +41,6 @@ def filter_virus_reads(input_path, score_threshold, out_path):
             raise ValueError("Missing column in input TSV: 'kraken_classified'")
         if "kraken_assigned_host_virus" not in headers:
             raise ValueError("Missing column in input TSV: 'kraken_assigned_host_virus'")
-        if "bowtie2_length_normalized_score_max" not in headers:
-            raise ValueError("Missing column in input TSV: 'bowtie2_length_normalized_score_max'")
         outf.write("\t".join(headers) + "\n")
         # Read in lines and filter based on Kraken assignment and score
         for line in inf:
@@ -52,21 +49,9 @@ def filter_virus_reads(input_path, score_threshold, out_path):
             kraken_assigned_host_virus = int(fields[idx["kraken_assigned_host_virus"]]) # 4-state: 0, 1, 2, 3
             if (not kraken_classified) and kraken_assigned_host_virus > 0:
                 raise ValueError("Inconsistent Kraken fields: 'kraken_classified' is False, but 'kraken_assigned_host_virus' is not 0: {}".format(fields[idx["seq_id"]]))
-            adj_score = float(fields[idx["bowtie2_length_normalized_score_max"]])
-            # Only write reads that:
-            # 1. Are classified by Kraken as host-infecting viruses; or
-            # 2. Are classified by Kraken as potentially host-infecting viruses, and have a normalized Bowtie2 score above the threshold
-            # 3. Are unclassified by Kraken, but have a normalized Bowtie2 score above the threshold; or
-            msg = f"{kraken_classified}\t{kraken_assigned_host_virus}\t{adj_score}/{score_threshold}"
-            if kraken_assigned_host_virus == 1:
-                msg = msg+"\tKEEP"
-                print_log(msg)
-                outf.write("\t".join(fields) + "\n")
-            elif adj_score >= score_threshold and kraken_assigned_host_virus > 1:
-                msg = msg+"\tKEEP"
-                print_log(msg)
-                outf.write("\t".join(fields) + "\n")
-            elif adj_score >= score_threshold and not kraken_classified:
+            # Only write reads that are classified by our group of interest (e.g. kraken_assigned_host_virus != 0)
+            msg = f"{kraken_classified}\t{kraken_assigned_host_virus}"
+            if kraken_assigned_host_virus != 0:
                 msg = msg+"\tKEEP"
                 print_log(msg)
                 outf.write("\t".join(fields) + "\n")
@@ -78,22 +63,19 @@ def main():
     # Parse arguments
     parser = argparse.ArgumentParser(description="Filter putative virus reads based on Kraken and Bowtie2 results.")
     parser.add_argument("input_path", help="Path to input TSV file.")
-    parser.add_argument("score_threshold", help="Length-normalized alignment score threshold for filtering.")
     parser.add_argument("output_file", help="Path to output TSV.")
     args = parser.parse_args()
     input_path = args.input_path
-    score_threshold = float(args.score_threshold)
     out_path = args.output_file
     # Start time tracking
     print_log("Starting process.")
     start_time = time.time()
     # Print parameters
     print_log("Input TSV file: {}".format(input_path))
-    print_log("Score threshold: {}".format(score_threshold))
     print_log("Output TSV file: {}".format(out_path))
     # Run labeling function
     print_log("Filtering putative virus reads...")
-    filter_virus_reads(input_path, score_threshold, out_path)
+    filter_virus_reads(input_path, out_path)
     print_log("...done.")
     # Finish time tracking
     end_time = time.time()

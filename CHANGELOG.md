@@ -1,6 +1,7 @@
 # v2.9.0.4
 - Updated markAlignmentDuplicates module to reduce memory overhead and increase memory allocation (which collectively should avoid out-of-memory errors in DOWNSTREAM on large read groups).
 - Added FILTER_VIRAL_SAM process for consolidated preprocessing of viral alignments before converting to a TSV to run LCA on.
+- Update EXTRACT_VIRAL_READS_SHORT to use new implementation of identifying viral reads using Bowtie2 with multiple alignments and LCA on those alignments.
 
 # v2.9.0.3
 - Make sure field per_tile_sequence_quality is always present in multiqc output summary file, to allow pipeline to run successfully on a mix of empty and non-empty files
