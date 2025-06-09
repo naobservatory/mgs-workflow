@@ -282,34 +282,16 @@ def group_alignments_by_mates(
                     mate_groups[alignment.pos].append(group_idx)
                     group_idx += 1
     elif pair_status == "CP":
-        # Handle CP reads by grouping by rname with fixed logic to prevent group_id overwrites
-        # Map each rname to all group_ids that have alignments for that reference
-        cp_groups: Dict[str, list[int]] = defaultdict(list)
+        # Handle CP reads by grouping by rname
+        cp_groups = {}  # rname -> group_id
         
         for alignment in alignments:
             key = alignment.rname
-            found_compatible = False
-            
             if key in cp_groups:
-                # Check all groups that have alignments for this rname
-                for candidate_group_id in cp_groups[key]:
-                    existing_alignments = by_group[candidate_group_id]
-                    if len(existing_alignments) > 0:
-                        existing = existing_alignments[0]
-                        # Check compatibility: existing.pnext = alignment.pos and existing.pos = alignment.pnext, or if rnext = "="
-                        if existing.pnext == alignment.pos:
-                            # Compatible! Add to this group
-                            by_group[candidate_group_id].append(alignment)
-                            found_compatible = True
-                            break
-                    else:
-                        by_group[candidate_group_id].append(alignment)
-                        found_compatible = True
-                        break
-            
-            if not found_compatible:
-                # No compatible group found, create new group
-                cp_groups[key].append(group_idx)
+                existing_group = cp_groups[key]
+                by_group[existing_group].append(alignment)
+            else:
+                cp_groups[key] = group_idx
                 by_group[group_idx].append(alignment)
                 group_idx += 1
     else:
@@ -445,6 +427,8 @@ def process_alignment_group(
     primary = [a for a in alignments if a.flag < 256]
     assert len(primary) <= 2
     secondary = [a for a in alignments if a.flag >= 256]
+
+    pair_status = primary[0].pair_status
     # Calculate normalized scores for all alignments
     for alignment in primary + secondary:
         alignment.calculate_normalized_score()
@@ -464,10 +448,21 @@ def process_alignment_group(
 
     # Combine all groups into final result
     result = []
-    for group_alignments in primary_with_mates.values():
-        result.extend(group_alignments)
-    for group_alignments in secondary_with_mates.values():
-        result.extend(group_alignments)
+
+    if pair_status == "CP":
+      for group_alignments in primary_with_mates.values():
+          # Sort by rname, then flag
+          group_sorted = sorted(group_alignments, key=lambda aln: (aln.rname, aln.flag))
+          result.extend(group_sorted)
+      for group_alignments in secondary_with_mates.values():
+          # Sort by rname, then flag, then pos
+          group_sorted = sorted(group_alignments, key=lambda aln: (aln.rname, aln.flag, aln.pos))
+          result.extend(group_sorted)
+    else:
+      for group_alignments in primary_with_mates.values():
+          result.extend(group_alignments)
+      for group_alignments in secondary_with_mates.values():
+          result.extend(group_alignments)
     
     return result
 
