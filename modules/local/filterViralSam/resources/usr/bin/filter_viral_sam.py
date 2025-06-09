@@ -282,16 +282,34 @@ def group_alignments_by_mates(
                     mate_groups[alignment.pos].append(group_idx)
                     group_idx += 1
     elif pair_status == "CP":
-        # Handle CP reads by grouping by rname
-        cp_groups = {}  # rname -> group_id
+        # Handle CP reads by grouping by rname with fixed logic to prevent group_id overwrites
+        # Map each rname to all group_ids that have alignments for that reference
+        cp_groups: Dict[str, list[int]] = defaultdict(list)
         
         for alignment in alignments:
             key = alignment.rname
+            found_compatible = False
+            
             if key in cp_groups:
-                existing_group = cp_groups[key]
-                by_group[existing_group].append(alignment)
-            else:
-                cp_groups[key] = group_idx
+                # Check all groups that have alignments for this rname
+                for candidate_group_id in cp_groups[key]:
+                    existing_alignments = by_group[candidate_group_id]
+                    if len(existing_alignments) > 0:
+                        existing = existing_alignments[0]
+                        # Check compatibility: existing.pnext = alignment.pos and existing.pos = alignment.pnext, or if rnext = "="
+                        if existing.pnext == alignment.pos:
+                            # Compatible! Add to this group
+                            by_group[candidate_group_id].append(alignment)
+                            found_compatible = True
+                            break
+                    else:
+                        by_group[candidate_group_id].append(alignment)
+                        found_compatible = True
+                        break
+            
+            if not found_compatible:
+                # No compatible group found, create new group
+                cp_groups[key].append(group_idx)
                 by_group[group_idx].append(alignment)
                 group_idx += 1
     else:
