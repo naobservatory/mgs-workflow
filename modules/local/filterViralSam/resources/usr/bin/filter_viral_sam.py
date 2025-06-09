@@ -238,35 +238,48 @@ def group_alignments_by_mates(
     group_idx = 0
     
     if pair_status == "UP":
-        # Handle UP reads with original logic
+        # Handle UP reads with fixed logic to prevent group_id overwrites
         all_pos = set(a.pos for a in alignments)
-        mate_groups = {}  # pos -> group_id
+        # Map each position to all group_ids that have alignments at that position
+        mate_groups: Dict[int, list[int]] = defaultdict(list)
 
         for alignment in alignments:
             if alignment.pos == alignment.pnext or alignment.pnext not in all_pos:
                 # Cases 1&2: standalone processing
                 by_group[group_idx].append(alignment)
+                mate_groups[alignment.pos].append(group_idx)
                 group_idx += 1
             else:
                 # Case 3: check if mate already grouped
+                found_compatible = False
+                
                 if alignment.pnext in mate_groups:
-                    existing_group = mate_groups[alignment.pnext]
-                    # Check if adding this alignment would create a conflict
-                    existing_alignments = by_group[existing_group]
-                    if len(existing_alignments) > 0:
-                        existing = existing_alignments[0]
-                        if existing.pnext != alignment.rname or existing.rnext != alignment.pos:
-                            # Create new group due to conflict
-                            mate_groups[alignment.pos] = group_idx
-                            by_group[group_idx].append(alignment)
-                            group_idx += 1
+                    # Check all groups that have alignments at alignment.pnext
+                    for candidate_group_id in mate_groups[alignment.pnext]:
+                        existing_alignments = by_group[candidate_group_id]
+                        if len(existing_alignments) > 0:
+                            existing = existing_alignments[0]
+                            # Check if adding this alignment would create a conflict
+                            if not (existing.pnext != alignment.rname or existing.rnext != alignment.pos):
+                                # Compatible! Add to this group
+                                by_group[candidate_group_id].append(alignment)
+                                # Track that this group now also has alignments at alignment.pos
+                                if candidate_group_id not in mate_groups[alignment.pos]:
+                                    mate_groups[alignment.pos].append(candidate_group_id)
+                                found_compatible = True
+                                break
                         else:
-                            by_group[existing_group].append(alignment)
-                    else:
-                        by_group[existing_group].append(alignment)
-                else:
-                    mate_groups[alignment.pos] = group_idx
+                            # Empty group (shouldn't happen, but handle gracefully)
+                            by_group[candidate_group_id].append(alignment)
+                            if candidate_group_id not in mate_groups[alignment.pos]:
+                                mate_groups[alignment.pos].append(candidate_group_id)
+                            found_compatible = True
+                            break
+                
+                if not found_compatible:
+                    # No compatible group found, create new group
                     by_group[group_idx].append(alignment)
+                    mate_groups[alignment.pos].append(group_idx)
                     group_idx += 1
     elif pair_status == "CP":
         # Handle CP reads by grouping by rname
@@ -282,23 +295,34 @@ def group_alignments_by_mates(
                 by_group[group_idx].append(alignment)
                 group_idx += 1
     else:
-        # For other pair statuses, use original logic as fallback
+        # For other pair statuses, use fixed logic to prevent group_id overwrites
         all_pos = set(a.pos for a in alignments)
-        mate_groups = {}  # pos -> group_id
+        # Map each position to all group_ids that have alignments at that position
+        mate_groups: Dict[int, list[int]] = defaultdict(list)
 
         for alignment in alignments:
             if alignment.pos == alignment.pnext or alignment.pnext not in all_pos:
                 # Cases 1&2: standalone processing
                 by_group[group_idx].append(alignment)
+                mate_groups[alignment.pos].append(group_idx)
                 group_idx += 1
             else:
                 # Case 3: check if mate already grouped
+                found_compatible = False
+                
                 if alignment.pnext in mate_groups:
-                    existing_group = mate_groups[alignment.pnext]
-                    by_group[existing_group].append(alignment)
-                else:
-                    mate_groups[alignment.pos] = group_idx
+                    # Check all groups that have alignments at alignment.pnext
+                    # For non-UP case, no conflict checking, so first group is compatible
+                    candidate_group_id = mate_groups[alignment.pnext][0]
+                    by_group[candidate_group_id].append(alignment)
+                    if candidate_group_id not in mate_groups[alignment.pos]:
+                        mate_groups[alignment.pos].append(candidate_group_id)
+                    found_compatible = True
+                
+                if not found_compatible:
+                    # No existing group, create new one
                     by_group[group_idx].append(alignment)
+                    mate_groups[alignment.pos].append(group_idx)
                     group_idx += 1
     return dict(by_group)
 
