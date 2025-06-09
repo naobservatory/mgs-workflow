@@ -1,6 +1,9 @@
 # v2.9.0.5-dev
 - Further work on post-hoc validation:
     - Updated VALIDATE_VIRAL_ASSIGNMENTS to concatenate across species before rather than after BLAST_VIRAL, dramatically reducing per-process fixed costs of running BLAST. (Involved updates to PROPAGATE_VALIDATION_INFORMATION as well as new CONCATENATE_FASTA_ACROSS_SPECIES subworkflow and CONCATENATE_FASTN_LABELED process.)
+- Overhauled MARK_ALIGNMENT_DUPLICATES to increase computational efficiency:
+    - Added multithreaded processing of easily parallelizable steps
+    - Reworked assignment of reads to duplicate groups to avoid slow all-vs-all comparisons
 
 # v2.9.0.4
 - Updated markAlignmentDuplicates module to reduce memory overhead and increase memory allocation (which collectively should avoid out-of-memory errors in DOWNSTREAM on large read groups).
