@@ -219,8 +219,8 @@ def group_alignments_by_mates(
     """
     Group alignments by mate pairs.
     
-    Groups alignments that represent mate pairs based on their position information.
-    Alignments with the same mate position are grouped together.
+    For UP (unpaired) reads, groups alignments by position/mate information.
+    For CP (concordant pair) reads, groups by position and reference name since both pairs must be present.
     
     Args:
         alignments: List of SamAlignment objects to group
@@ -228,25 +228,68 @@ def group_alignments_by_mates(
     Returns:
         Dictionary mapping group IDs to lists of alignments in each group
     """
-    all_pos = set(a.pos for a in alignments)
-    mate_groups = {}  # pos -> group_id
+    if not alignments:
+        return {}
+    
+    # Check pair status - all alignments in a group should have the same pair_status
+    pair_status = alignments[0].pair_status
+    
     by_group: Dict[int, list[SamAlignment]] = defaultdict(list)
     group_idx = 0
+    
+    if pair_status == "UP":
+        # Handle UP reads with original logic
+        all_pos = set(a.pos for a in alignments)
+        mate_groups = {}  # pos -> group_id
 
-    for alignment in alignments:
-        if alignment.pos == alignment.pnext or alignment.pnext not in all_pos:
-            # Cases 1&2: standalone processing
-            by_group[group_idx].append(alignment)
-            group_idx += 1
-        else:
-            # Case 3: check if mate already grouped
-            if alignment.pnext in mate_groups:
-                existing_group = mate_groups[alignment.pnext]
-                by_group[existing_group].append(alignment)
-            else:
-                mate_groups[alignment.pos] = group_idx
+        for alignment in alignments:
+            if alignment.pos == alignment.pnext or alignment.pnext not in all_pos:
+                # Cases 1&2: standalone processing
                 by_group[group_idx].append(alignment)
                 group_idx += 1
+            else:
+                # Case 3: check if mate already grouped
+                if alignment.pnext in mate_groups:
+                    existing_group = mate_groups[alignment.pnext]
+                    by_group[existing_group].append(alignment)
+                else:
+                    mate_groups[alignment.pos] = group_idx
+                    by_group[group_idx].append(alignment)
+                    group_idx += 1
+    
+    elif pair_status == "CP":
+        # Handle CP reads by grouping by (pos, rname)
+        cp_groups = {}  # (pos, rname) -> group_id
+        
+        for alignment in alignments:
+            key = (alignment.pos, alignment.rname)
+            if key in cp_groups:
+                existing_group = cp_groups[key]
+                by_group[existing_group].append(alignment)
+            else:
+                cp_groups[key] = group_idx
+                by_group[group_idx].append(alignment)
+                group_idx += 1
+    
+    else:
+        # For other pair statuses, use original logic as fallback
+        all_pos = set(a.pos for a in alignments)
+        mate_groups = {}  # pos -> group_id
+
+        for alignment in alignments:
+            if alignment.pos == alignment.pnext or alignment.pnext not in all_pos:
+                # Cases 1&2: standalone processing
+                by_group[group_idx].append(alignment)
+                group_idx += 1
+            else:
+                # Case 3: check if mate already grouped
+                if alignment.pnext in mate_groups:
+                    existing_group = mate_groups[alignment.pnext]
+                    by_group[existing_group].append(alignment)
+                else:
+                    mate_groups[alignment.pos] = group_idx
+                    by_group[group_idx].append(alignment)
+                    group_idx += 1
 
     return dict(by_group)
 
