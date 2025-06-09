@@ -288,6 +288,7 @@ def group_alignments_by_mates(
         for alignment in alignments:
             pos_min = min(alignment.pos, alignment.pnext)
             pos_max = max(alignment.pos, alignment.pnext)
+            abs_tlen = abs(alignment.tlen)
             
             pair_key = (
                 alignment.qname,
@@ -295,6 +296,7 @@ def group_alignments_by_mates(
                 alignment.rnext,
                 pos_min,
                 pos_max,
+                abs_tlen
             )
             
             # Get or create group_idx for this pair_key
