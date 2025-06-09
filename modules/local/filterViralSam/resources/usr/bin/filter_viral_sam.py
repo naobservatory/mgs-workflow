@@ -456,7 +456,7 @@ def process_alignment_group(
           result.extend(group_sorted)
       for group_alignments in secondary_with_mates.values():
           # Sort by rname, then flag, then pos
-          group_sorted = sorted(group_alignments, key=lambda aln: (aln.rname, aln.flag, aln.pos))
+          group_sorted = sorted(group_alignments, key=lambda aln: (aln.rname, aln.pos, aln.flag))
           result.extend(group_sorted)
     else:
       for group_alignments in primary_with_mates.values():
