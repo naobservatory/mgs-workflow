@@ -297,7 +297,7 @@ def apply_score_filter(
 
 def add_missing_mates_by_groups(
     groups: Dict[int, list[SamAlignment]],
-) -> list[SamAlignment]:
+) -> Dict[int, list[SamAlignment]]:
     """
     Add missing mate reads based on provided alignment groups.
     
@@ -309,24 +309,27 @@ def add_missing_mates_by_groups(
         groups: Dictionary mapping group IDs to lists of alignments
         
     Returns:
-        List of all alignments including original and synthetic mates
+        Dictionary mapping group IDs to lists of alignments including synthetic mates
     """
-    result = []
+    result = {}
 
-    for group_alignments in groups.values():
+    for group_id, group_alignments in groups.items():
         # Check if we have both read1 and read2 in this group
         has_read1 = any(a.flag & 64 for a in group_alignments)
         has_read2 = any(a.flag & 128 for a in group_alignments)
 
-        # Add existing alignments
-        result.extend(group_alignments)
+        # Start with existing alignments
+        group_result = group_alignments[:]
 
         # Only create synthetic mates if we're missing either read1 or read2
         if not (has_read1 and has_read2):
             for alignment in group_alignments:
                 if alignment.pair_status == "UP":
                     unmapped_mate = alignment.create_unmapped_mate()
-                    result.append(unmapped_mate)
+                    group_result.append(unmapped_mate)
+
+        # Sort this group by flag
+        result[group_id] = sorted(group_result, key=lambda x: x.flag)
 
     return result
 
@@ -361,16 +364,18 @@ def process_alignment_group(
 
     secondary_groups = apply_score_filter(secondary, score_threshold, secondary=True)
 
-    # Add missing mates using the groups
+    # Add missing mates using the groups (returns sorted groups)
     primary_with_mates = add_missing_mates_by_groups(primary_groups)
     secondary_with_mates = add_missing_mates_by_groups(secondary_groups)
 
-    # Sort and combine
-    primary_sorted = sorted(primary_with_mates, key=lambda x: x.flag)
-    secondary_sorted = sorted(
-        secondary_with_mates, key=lambda x: (x.rname, x.pos, x.flag)
-    )
-    return primary_sorted + secondary_sorted
+    # Combine all groups into final result
+    result = []
+    for group_alignments in primary_with_mates.values():
+        result.extend(group_alignments)
+    for group_alignments in secondary_with_mates.values():
+        result.extend(group_alignments)
+    
+    return result
 
 
 def stream_filtered_fastq(fastq_file: str) -> Iterator[str]:
