@@ -1,5 +1,5 @@
 process MARK_ALIGNMENT_DUPLICATES {
-    label "single_cpu_16GB_memory"
+    label "large"
     label "coreutils"
     input:
         tuple val(sample), path(tsv)
@@ -9,10 +9,11 @@ process MARK_ALIGNMENT_DUPLICATES {
         tuple val(sample), path("input_${tsv}"), emit: input
     shell:
     '''
-    mark_duplicates "!{tsv}" \\
-        "!{sample}_duplicate_reads.tsv.gz" \\
-        "!{sample}_duplicate_stats.tsv.gz" \\
-        !{fuzzy_match}
+    mark_duplicates -i "!{tsv}" \\
+        -o "!{sample}_duplicate_reads.tsv.gz" \\
+        -m "!{sample}_duplicate_stats.tsv.gz" \\
+        -d !{fuzzy_match} \\
+        -n !{task.cpus}
     ln -s !{tsv} input_!{tsv} # Link output to input for testing
     '''
 }

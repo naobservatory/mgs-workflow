@@ -1,11 +1,74 @@
+// ------------------------------------------------------------------------------------------------
+// IMPORTS
+// ------------------------------------------------------------------------------------------------
+
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::collections::HashMap;
-use std::env;
 use std::error::Error;
 use std::cmp::Ordering;
 use flate2::{Compression as GzCompression, write::GzEncoder, read::GzDecoder};
 use bzip2::{Compression as BzCompression, write::BzEncoder, read::BzDecoder};
+use rayon::prelude::*;
+use clap::Parser;
+
+// ------------------------------------------------------------------------------------------------
+// STRUCTS AND TYPES
+// ------------------------------------------------------------------------------------------------
+
+// Minimal ReadEntry struct storing only essential data for duplicate detection
+#[derive(Debug, Clone)]
+struct ReadEntry {
+    query_name: String,
+    genome_id: String,
+    aln_start: Option<i32>,
+    aln_end: Option<i32>,
+    avg_quality: f64,
+}
+
+// Structure to store duplicate group information without storing full read data
+#[derive(Debug, Clone)]
+struct DuplicateGroup {
+    genome_id: String,
+    exemplar_name: String,
+    group_size: usize,
+    pairwise_match_frac: f64,
+}
+
+// Map from query_name to (genome_id, exemplar_name) for efficient lookup during second pass
+type ExemplarMap = HashMap<String, (String, String)>;
+
+// ------------------------------------------------------------------------------------------------
+// ARGUMENT PARSING
+// ------------------------------------------------------------------------------------------------
+
+/// Mark duplicate reads in alignment data
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Input TSV file path
+    #[arg(short, long)]
+    input: String,
+    /// Output database file path
+    #[arg(short = 'o', long)]
+    output_db: String,
+    /// Output metadata file path
+    #[arg(short = 'm', long)]
+    output_meta: String,
+    /// Position deviation tolerance (0, 1, or 2)
+    #[arg(short, long, default_value_t = 0, value_parser = clap::value_parser!(u8).range(0..=2))]
+    deviation: u8,
+    /// Chunk size for parallel processing
+    #[arg(short, long, default_value_t = 2000, value_parser = clap::value_parser!(u32).range(1..))]
+    chunk_size: u32,
+    /// Number of threads to use
+    #[arg(short, long, default_value_t = 4, value_parser = clap::value_parser!(u8).range(1..))]
+    num_threads: u8,
+}
+
+// ------------------------------------------------------------------------------------------------
+// HELPER FUNCTIONS
+// ------------------------------------------------------------------------------------------------
 
 // Define a reader based on the file extension
 fn open_reader(filename: &str) -> std::io::Result<Box<dyn BufRead>> {
@@ -37,28 +100,6 @@ fn open_writer(filename: &str) -> std::io::Result<Box<dyn Write>> {
     }
 }
 
-// Minimal ReadEntry struct storing only essential data for duplicate detection
-#[derive(Debug, Clone)]
-struct ReadEntry {
-    query_name: String,
-    genome_id: String,
-    aln_start: Option<i32>,
-    aln_end: Option<i32>,
-    avg_quality: f64,
-}
-
-// Structure to store duplicate group information without storing full read data
-#[derive(Debug, Clone)]
-struct DuplicateGroup {
-    genome_id: String,
-    exemplar_name: String,
-    group_size: usize,
-    pairwise_match_frac: f64,
-}
-
-// Map from query_name to (genome_id, exemplar_name) for efficient lookup during second pass
-type ExemplarMap = HashMap<String, (String, String)>;
-
 // Implement a custom match function for comparing ReadEntries
 // (Not a valid equality relation as not transitive)
 fn match_reads(a: &ReadEntry, b: &ReadEntry) -> bool {
@@ -68,9 +109,9 @@ fn match_reads(a: &ReadEntry, b: &ReadEntry) -> bool {
 }
 
 // Compare the positions with a deviation
-fn compare_positions(a: Option<i32>, b: Option<i32>, deviation: i32) -> bool {
+fn compare_positions(a: Option<i32>, b: Option<i32>, deviation: u8) -> bool {
     match (a, b) {
-        (Some(x), Some(y)) => (x - y).abs() <= deviation,
+        (Some(x), Some(y)) => (x - y).abs() <= deviation as i32,
         _ => false,
     }
 }
@@ -96,11 +137,11 @@ fn parse_int_or_na(s: &str) -> Option<i32> {
     }
 }
 
-// Convert the ASCII quality score to a quality score
+// Convert the ASCII quality score to a quality score (optimized for speed)
 fn ascii_to_quality_score(ascii_score: &str) -> f64 {
-    ascii_score.chars()
-        .map(|c| c as u8 as f64 - 33.0)
-        .sum::<f64>() / ascii_score.len() as f64
+    let bytes = ascii_score.as_bytes();
+    let sum: u32 = bytes.iter().map(|&b| (b - 33) as u32).sum();
+    sum as f64 / bytes.len() as f64
 }
 
 // Calculate the average quality score of the forward and reverse reads
@@ -109,6 +150,10 @@ fn average_quality_score(quality_fwd: &str, quality_rev: &str) -> f64 {
     let rev_score = ascii_to_quality_score(quality_rev);
     (fwd_score + rev_score) / 2.0
 }
+
+// ------------------------------------------------------------------------------------------------
+// EXTRACTION FUNCTIONS
+// ------------------------------------------------------------------------------------------------
 
 fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, usize), Box<dyn Error>> {
     // Split the line by tabs and collect the headers
@@ -179,7 +224,83 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEnt
     }
 }
 
-fn extract_read_groups(input_path: &str) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>, usize), Box<dyn Error>> {
+// Process a chunk of lines in parallel to create ReadEntry objects
+fn process_chunk_parallel(
+    lines: &[String], 
+    indices: &HashMap<&str, usize>,
+    header_count: usize
+) -> Result<Vec<ReadEntry>, Box<dyn Error>> {
+    // Parse lines in parallel using rayon
+    let read_entries: Result<Vec<ReadEntry>, String> = lines
+        .par_iter()  // Parallel iterator from rayon
+        .map(|line| {
+            // Split line into fields
+            let fields: Vec<String> = line.split('\t').map(|s| s.to_string()).collect();
+            // Validate field count
+            if fields.len() != header_count {
+                return Err(format!("Invalid field count: {} (expected {})", fields.len(), header_count));
+            }
+            // Create ReadEntry from fields
+            Ok(make_read_entry(&fields, indices))
+        })
+        .collect();
+    // Convert String errors to Box<dyn Error>
+    read_entries.map_err(|e| -> Box<dyn Error> { 
+        std::io::Error::new(std::io::ErrorKind::InvalidData, e).into() 
+    })
+}
+
+fn add_read_to_groups(
+    mut groups: HashMap<String, Vec<Vec<ReadEntry>>>,
+    read_entry: ReadEntry,
+) -> HashMap<String, Vec<Vec<ReadEntry>>> {
+    // Check if the genome_id is already present
+    if !groups.contains_key(&read_entry.genome_id) {
+        // If not, create a new ID entry and add the read entry to it as a new group
+        groups.insert(read_entry.genome_id.clone(), Vec::new());
+        groups.get_mut(&read_entry.genome_id).unwrap().push(vec![read_entry]);
+    } else {
+        // Otherwise, compare the read entry with each group in the ID entry
+        let mut groups_match = Vec::new();
+        for i in 0.. groups[&read_entry.genome_id].len() {
+            for j in 0..groups[&read_entry.genome_id][i].len() {
+                if match_reads(&read_entry, &groups[&read_entry.genome_id][i][j]) {
+                    groups_match.push(i);
+                    break;
+                }
+            }
+        }
+        // If no matches, create a new group in the ID entry and add the read entry to it
+        if groups_match.is_empty() {
+            groups.get_mut(&read_entry.genome_id).unwrap().push(vec![read_entry]);
+        // If exactly one match, add the read entry to that group
+        } else if groups_match.len() == 1 {
+            groups.get_mut(&read_entry.genome_id).unwrap()[groups_match[0]].push(read_entry);
+        // If multiple matches, combine them into a new group, add the read entry, then
+        // delete the old groups
+        } else {
+            // Combine the groups into a new group
+            let mut combined_group = Vec::new();
+            for i in groups_match.iter() {
+                combined_group.extend(groups[&read_entry.genome_id][*i].clone());
+            }
+            // Add the read entry to the combined group
+            combined_group.push(read_entry.clone());
+            // Add the combined group to the ID entry
+            groups.get_mut(&read_entry.genome_id).unwrap().push(combined_group);
+            // Remove the old groups in reverse order (to avoid index shifting)
+            for i in groups_match.iter().rev() {
+                groups.get_mut(&read_entry.genome_id).unwrap().remove(*i);
+            }
+        }
+    }
+    // Return the updated groups
+    groups
+}
+
+fn extract_read_groups(input_path: &str,
+    chunk_size: u32
+) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>, usize), Box<dyn Error>> {
     // Open the input file
     let reader = open_reader(input_path)?;
     // Create a HashMap to store duplicate information
@@ -194,25 +315,36 @@ fn extract_read_groups(input_path: &str) -> Result<(String, HashMap<String, Vec<
     let header_out = headers_out.join("\t");
     // Get the seq_id column index for later use
     let seq_id_index = indices["seq_id"];
-    // Read and process the input file
-    for (index, line) in lines.enumerate() {
-        // Extract fields and verify count
+    // Read and process the input file in chunks
+    let mut line_buffer = Vec::new();
+    for line in lines {
         let line = line?;
-        let fields: Vec<String> = line.split('\t').map(|s| s.to_string()).collect();
-        if fields.len() != header_count {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Incorrect field count in line {}: {} (observed) vs {} (expected)", 
-                    index + 1, fields.len(), header_count),
-            ).into());
+        line_buffer.push(line);
+        // Process chunk when buffer is full
+        if line_buffer.len() >= chunk_size as usize {
+            // Process this chunk in parallel
+            let read_entries = process_chunk_parallel(&line_buffer, &indices, header_count)?;
+            // Add to groups sequentially (to avoid race conditions)
+            for read_entry in read_entries {
+                groups = add_read_to_groups(groups, read_entry);
+            }
+            // Clear the buffer
+            line_buffer.clear();
         }
-        // Create a ReadEntry from the fields
-        let read_entry = make_read_entry(&fields, &indices);
-        // Add the read to the groups HashMap
-        groups = add_read_to_groups(groups, read_entry);
+    }
+    // Process remaining lines in the buffer
+    if !line_buffer.is_empty() {
+        let read_entries = process_chunk_parallel(&line_buffer, &indices, header_count)?;
+        for read_entry in read_entries {
+            groups = add_read_to_groups(groups, read_entry);
+        }
     }
     Ok((header_out, groups, seq_id_index))
 }
+
+// ------------------------------------------------------------------------------------------------
+// PROCESSING FUNCTIONS
+// ------------------------------------------------------------------------------------------------
 
 // Process duplicate groups to create exemplar mapping and metadata (focused on group processing)
 fn process_read_groups(
@@ -261,6 +393,10 @@ fn process_read_groups(
     }
     Ok((exemplar_map, duplicate_groups))
 }
+
+// ------------------------------------------------------------------------------------------------
+// WRITING FUNCTIONS
+// ------------------------------------------------------------------------------------------------
 
 // Write duplicate group metadata file (no file streaming required)
 fn write_metadata_file(
@@ -314,58 +450,20 @@ fn write_database_file(
     Ok(())
 }
 
-fn add_read_to_groups(
-    mut groups: HashMap<String, Vec<Vec<ReadEntry>>>,
-    read_entry: ReadEntry,
-) -> HashMap<String, Vec<Vec<ReadEntry>>> {
-    // Check if the genome_id is already present
-    if !groups.contains_key(&read_entry.genome_id) {
-        // If not, create a new ID entry and add the read entry to it as a new group
-        groups.insert(read_entry.genome_id.clone(), Vec::new());
-        groups.get_mut(&read_entry.genome_id).unwrap().push(vec![read_entry]);
-    } else {
-        // Otherwise, compare the read entry with each group in the ID entry
-        let mut groups_match = Vec::new();
-        for i in 0.. groups[&read_entry.genome_id].len() {
-            for j in 0..groups[&read_entry.genome_id][i].len() {
-                if match_reads(&read_entry, &groups[&read_entry.genome_id][i][j]) {
-                    groups_match.push(i);
-                    break;
-                }
-            }
-        }
-        // If no matches, create a new group in the ID entry and add the read entry to it
-        if groups_match.is_empty() {
-            groups.get_mut(&read_entry.genome_id).unwrap().push(vec![read_entry]);
-        // If exactly one match, add the read entry to that group
-        } else if groups_match.len() == 1 {
-            groups.get_mut(&read_entry.genome_id).unwrap()[groups_match[0]].push(read_entry);
-        // If multiple matches, combine them into a new group, add the read entry, then
-        // delete the old groups
-        } else {
-            // Combine the groups into a new group
-            let mut combined_group = Vec::new();
-            for i in groups_match.iter() {
-                combined_group.extend(groups[&read_entry.genome_id][*i].clone());
-            }
-            // Add the read entry to the combined group
-            combined_group.push(read_entry.clone());
-            // Add the combined group to the ID entry
-            groups.get_mut(&read_entry.genome_id).unwrap().push(combined_group);
-            // Remove the old groups in reverse order (to avoid index shifting)
-            for i in groups_match.iter().rev() {
-                groups.get_mut(&read_entry.genome_id).unwrap().remove(*i);
-            }
-        }
-    }
-    // Return the updated groups
-    groups
-}
+// ------------------------------------------------------------------------------------------------
+// TOP-LEVEL FUNCTIONS
+// ------------------------------------------------------------------------------------------------
+
+// Define the deviation value
+static mut DEVIATION: u8 = 0;
 
 // Two-pass processing for improved memory efficiency
-fn process_tsv(input_path: &str, output_path_db: &str, output_path_meta: &str) -> Result<(), Box<dyn Error>> {
+fn process_tsv(input_path: &str,
+    output_path_db: &str,
+    output_path_meta: &str,
+    chunk_size: u32) -> Result<(), Box<dyn Error>> {
     // Extract read groups from the input file
-    let (header_out, groups, seq_id_index) = extract_read_groups(input_path)?;
+    let (header_out, groups, seq_id_index) = extract_read_groups(input_path, chunk_size)?;
     // Process duplicate groups to create exemplar mapping and metadata
     let (exemplar_map, duplicate_groups) = process_read_groups(groups)?;
     // Write metadata file
@@ -375,35 +473,19 @@ fn process_tsv(input_path: &str, output_path_db: &str, output_path_meta: &str) -
     Ok(())
 }
 
-// Define the deviation value
-static mut DEVIATION: i32 = 0;
-
 fn main() -> Result<(), Box<dyn Error>> {
-    let args: Vec<String> = env::args().collect();
-    // Check if the correct number of arguments are provided
-    if args.len() != 5 {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!(
-            "Usage: {} <input_file> <output_file_db> <output_file_meta> <deviation>", args[0]
-        )).into());
-    }
-    // Parse the input and output file paths
-    let input_path = &args[1];
-    let output_path_db = &args[2];
-    let output_path_meta = &args[3];
-    // Parse the deviation value
-    let deviation: i32 = args[4].parse().map_err(|_| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, "Deviation must be an integer")
-    })?;
-    // Check if the deviation value is valid
-    if deviation != 0 && deviation != 1 && deviation != 2 {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!(
-            "Deviation must be at most 2"
-        )).into());
-    }
+    // Parse command line arguments
+    let args = Args::parse();
+    // Configure rayon thread pool
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(args.num_threads as usize)
+        .build_global()
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, 
+            format!("Failed to configure thread pool: {}", e)))?;
     // Set the deviation value
     unsafe {
-        DEVIATION = deviation;
+        DEVIATION = args.deviation;
     }
     // Run the main processing function
-    return process_tsv(input_path, output_path_db, output_path_meta);
+    return process_tsv(&args.input, &args.output_db, &args.output_meta, args.chunk_size);
 }
