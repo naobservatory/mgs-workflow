@@ -281,49 +281,30 @@ def group_alignments_by_mates(
                     by_group[group_idx].append(alignment)
                     mate_groups[alignment.pos].append(group_idx)
                     group_idx += 1
-    elif pair_status == "CP":
-        # Handle CP reads by grouping by rname
-        cp_groups = {}  # rname -> group_id
+    else:
+        # For non-UP reads, map tuple keys to int keys
+        pair_key_to_group: Dict[tuple, int] = {}
         
         for alignment in alignments:
-            key = alignment.rname
-            if key in cp_groups:
-                existing_group = cp_groups[key]
-                by_group[existing_group].append(alignment)
-            else:
-                cp_groups[key] = group_idx
-                by_group[group_idx].append(alignment)
+            pos_min = min(alignment.pos, alignment.pnext)
+            pos_max = max(alignment.pos, alignment.pnext)
+            
+            pair_key = (
+                alignment.qname,
+                alignment.rname,
+                alignment.rnext,
+                pos_min,
+                pos_max,
+            )
+            
+            # Get or create group_idx for this pair_key
+            if pair_key not in pair_key_to_group:
+                pair_key_to_group[pair_key] = group_idx
                 group_idx += 1
-    else:
-        # For other pair statuses, use fixed logic to prevent group_id overwrites
-        all_pos = set(a.pos for a in alignments)
-        # Map each position to all group_ids that have alignments at that position
-        mate_groups: Dict[int, list[int]] = defaultdict(list)
+            
+            group_id = pair_key_to_group[pair_key]
+            by_group[group_id].append(alignment)
 
-        for alignment in alignments:
-            if alignment.pos == alignment.pnext or alignment.pnext not in all_pos:
-                # Cases 1&2: standalone processing
-                by_group[group_idx].append(alignment)
-                mate_groups[alignment.pos].append(group_idx)
-                group_idx += 1
-            else:
-                # Case 3: check if mate already grouped
-                found_compatible = False
-                
-                if alignment.pnext in mate_groups:
-                    # Check all groups that have alignments at alignment.pnext
-                    # For non-UP case, no conflict checking, so first group is compatible
-                    candidate_group_id = mate_groups[alignment.pnext][0]
-                    by_group[candidate_group_id].append(alignment)
-                    if candidate_group_id not in mate_groups[alignment.pos]:
-                        mate_groups[alignment.pos].append(candidate_group_id)
-                    found_compatible = True
-                
-                if not found_compatible:
-                    # No existing group, create new one
-                    by_group[group_idx].append(alignment)
-                    mate_groups[alignment.pos].append(group_idx)
-                    group_idx += 1
     return dict(by_group)
 
 
@@ -428,7 +409,6 @@ def process_alignment_group(
     assert len(primary) <= 2
     secondary = [a for a in alignments if a.flag >= 256]
 
-    pair_status = primary[0].pair_status
     # Calculate normalized scores for all alignments
     for alignment in primary + secondary:
         alignment.calculate_normalized_score()
@@ -448,21 +428,10 @@ def process_alignment_group(
 
     # Combine all groups into final result
     result = []
-
-    if pair_status == "CP":
-      for group_alignments in primary_with_mates.values():
-          # Sort by rname, then flag
-          group_sorted = sorted(group_alignments, key=lambda aln: (aln.rname, aln.flag))
-          result.extend(group_sorted)
-      for group_alignments in secondary_with_mates.values():
-          # Sort by rname, then flag, then pos
-          group_sorted = sorted(group_alignments, key=lambda aln: (aln.rname, aln.pos, aln.flag))
-          result.extend(group_sorted)
-    else:
-      for group_alignments in primary_with_mates.values():
-          result.extend(group_alignments)
-      for group_alignments in secondary_with_mates.values():
-          result.extend(group_alignments)
+    for group_alignments in primary_with_mates.values():
+        result.extend(group_alignments)
+    for group_alignments in secondary_with_mates.values():
+        result.extend(group_alignments)
     
     return result
 
