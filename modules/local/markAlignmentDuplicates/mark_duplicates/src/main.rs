@@ -350,10 +350,17 @@ fn extract_read_groups(input_path: &str,
 fn process_read_groups(
     groups: HashMap<String, Vec<Vec<ReadEntry>>>
 ) -> Result<(ExemplarMap, Vec<DuplicateGroup>), Box<dyn Error>> {
-    let mut exemplar_map = ExemplarMap::new();
-    let mut duplicate_groups = Vec::new();
-    for (genome_id, id_group) in groups {
-        for dup_group in id_group {
+    // Flatten all duplicate groups with their genome_id for parallel processing
+    let all_groups: Vec<(String, Vec<ReadEntry>)> = groups
+        .into_iter()
+        .flat_map(|(genome_id, id_groups)| {
+            id_groups.into_iter().map(move |dup_group| (genome_id.clone(), dup_group))
+        })
+        .collect();
+    // Process all groups in parallel
+    let group_results: Vec<(DuplicateGroup, Vec<(String, String, String)>)> = all_groups
+        .par_iter()  // Parallel iterator
+        .map(|(genome_id, dup_group)| {
             // Find the exemplar using compare_reads
             let exemplar = dup_group.iter().max_by(|a, b| compare_reads(a, b)).unwrap();
             let exemplar_name = exemplar.query_name.clone();
@@ -378,20 +385,34 @@ fn process_read_groups(
                         if match_reads(read_i, read_j) { 1.0 } else { 0.0 }
                     })
                     .sum();  // Rayon's parallel sum reduction
-                
                 pairwise_match_frac = pairwise_match_count / n_pairs;
             }
-            // Store duplicate group information
-            duplicate_groups.push(DuplicateGroup {
+            // Create duplicate group metadata
+            let dup_group_info = DuplicateGroup {
                 genome_id: genome_id.clone(),
                 exemplar_name: exemplar_name.clone(),
                 group_size: dup_count,
                 pairwise_match_frac,
-            });
-            // Map each read in the group to its exemplar
-            for read_entry in dup_group {
-                exemplar_map.insert(read_entry.query_name, (genome_id.clone(), exemplar_name.clone()));
-            }
+            };
+            // Create exemplar mappings for this group
+            let exemplar_mappings: Vec<(String, String, String)> = dup_group
+                .iter()
+                .map(|read_entry| {
+                    (read_entry.query_name.clone(), genome_id.clone(), exemplar_name.clone())
+                })
+                .collect();
+            
+            (dup_group_info, exemplar_mappings)
+        })
+        .collect();
+    
+    // Collect results into final data structures
+    let mut exemplar_map = ExemplarMap::new();
+    let mut duplicate_groups = Vec::new();
+    for (dup_group_info, exemplar_mappings) in group_results {
+        duplicate_groups.push(dup_group_info);
+        for (query_name, genome_id, exemplar_name) in exemplar_mappings {
+            exemplar_map.insert(query_name, (genome_id, exemplar_name));
         }
     }
     Ok((exemplar_map, duplicate_groups))
