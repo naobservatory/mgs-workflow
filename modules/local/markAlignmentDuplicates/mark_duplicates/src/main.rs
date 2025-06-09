@@ -250,48 +250,41 @@ fn process_chunk_parallel(
     })
 }
 
-fn add_read_to_groups(
-    mut groups: HashMap<String, Vec<Vec<ReadEntry>>>,
+fn add_read_to_groups_within_genome_id(
+    mut groups: Vec<Vec<ReadEntry>>,
     read_entry: ReadEntry,
-) -> HashMap<String, Vec<Vec<ReadEntry>>> {
-    // Check if the genome_id is already present
-    if !groups.contains_key(&read_entry.genome_id) {
-        // If not, create a new ID entry and add the read entry to it as a new group
-        groups.insert(read_entry.genome_id.clone(), Vec::new());
-        groups.get_mut(&read_entry.genome_id).unwrap().push(vec![read_entry]);
-    } else {
-        // Otherwise, compare the read entry with each group in the ID entry
-        let mut groups_match = Vec::new();
-        for i in 0.. groups[&read_entry.genome_id].len() {
-            for j in 0..groups[&read_entry.genome_id][i].len() {
-                if match_reads(&read_entry, &groups[&read_entry.genome_id][i][j]) {
-                    groups_match.push(i);
-                    break;
-                }
+) -> Vec<Vec<ReadEntry>> {
+    // Compare the read entry with each existing group
+    let mut groups_match = Vec::new();
+    for i in 0..groups.len() {
+        for j in 0..groups[i].len() {
+            if match_reads(&read_entry, &groups[i][j]) {
+                groups_match.push(i);
+                break;
             }
         }
-        // If no matches, create a new group in the ID entry and add the read entry to it
-        if groups_match.is_empty() {
-            groups.get_mut(&read_entry.genome_id).unwrap().push(vec![read_entry]);
-        // If exactly one match, add the read entry to that group
-        } else if groups_match.len() == 1 {
-            groups.get_mut(&read_entry.genome_id).unwrap()[groups_match[0]].push(read_entry);
-        // If multiple matches, combine them into a new group, add the read entry, then
-        // delete the old groups
-        } else {
-            // Combine the groups into a new group
-            let mut combined_group = Vec::new();
-            for i in groups_match.iter() {
-                combined_group.extend(groups[&read_entry.genome_id][*i].clone());
-            }
-            // Add the read entry to the combined group
-            combined_group.push(read_entry.clone());
-            // Add the combined group to the ID entry
-            groups.get_mut(&read_entry.genome_id).unwrap().push(combined_group);
-            // Remove the old groups in reverse order (to avoid index shifting)
-            for i in groups_match.iter().rev() {
-                groups.get_mut(&read_entry.genome_id).unwrap().remove(*i);
-            }
+    }
+    // If no matches, create a new group and add the read entry to it
+    if groups_match.is_empty() {
+        groups.push(vec![read_entry]);
+    // If exactly one match, add the read entry to that group
+    } else if groups_match.len() == 1 {
+        groups[groups_match[0]].push(read_entry);
+    // If multiple matches, combine them into a new group, add the read entry, then
+    // delete the old groups
+    } else {
+        // Combine the groups into a new group
+        let mut combined_group = Vec::new();
+        for i in groups_match.iter() {
+            combined_group.extend(groups[*i].clone());
+        }
+        // Add the read entry to the combined group
+        combined_group.push(read_entry);
+        // Add the combined group
+        groups.push(combined_group);
+        // Remove the old groups in reverse order (to avoid index shifting)
+        for i in groups_match.iter().rev() {
+            groups.remove(*i);
         }
     }
     // Return the updated groups
@@ -303,8 +296,6 @@ fn extract_read_groups(input_path: &str,
 ) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>, usize), Box<dyn Error>> {
     // Open the input file
     let reader = open_reader(input_path)?;
-    // Create a HashMap to store duplicate information
-    let mut groups: HashMap<String, Vec<Vec<ReadEntry>>> = HashMap::new();
     // Process the header line and derive the required fields
     let mut lines = reader.lines();
     let header_line = lines.next().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Empty input file"))??;
@@ -315,6 +306,8 @@ fn extract_read_groups(input_path: &str,
     let header_out = headers_out.join("\t");
     // Get the seq_id column index for later use
     let seq_id_index = indices["seq_id"];
+    // Collect reads by genome_id
+    let mut genome_accumulators: HashMap<String, Vec<ReadEntry>> = HashMap::new();
     // Read and process the input file in chunks
     let mut line_buffer = Vec::new();
     for line in lines {
@@ -324,9 +317,11 @@ fn extract_read_groups(input_path: &str,
         if line_buffer.len() >= chunk_size as usize {
             // Process this chunk in parallel
             let read_entries = process_chunk_parallel(&line_buffer, &indices, header_count)?;
-            // Add to groups sequentially (to avoid race conditions)
+            // Partition reads by genome_id
             for read_entry in read_entries {
-                groups = add_read_to_groups(groups, read_entry);
+                genome_accumulators.entry(read_entry.genome_id.clone())
+                    .or_insert_with(Vec::new)
+                    .push(read_entry);
             }
             // Clear the buffer
             line_buffer.clear();
@@ -336,10 +331,29 @@ fn extract_read_groups(input_path: &str,
     if !line_buffer.is_empty() {
         let read_entries = process_chunk_parallel(&line_buffer, &indices, header_count)?;
         for read_entry in read_entries {
-            groups = add_read_to_groups(groups, read_entry);
+            genome_accumulators.entry(read_entry.genome_id.clone())
+                .or_insert_with(Vec::new)
+                .push(read_entry);
         }
     }
-    Ok((header_out, groups, seq_id_index))
+    // Process reads for each genome_id into read groups
+    let genome_results: Vec<(String, Vec<Vec<ReadEntry>>)> = genome_accumulators
+        .into_par_iter()
+        .map(|(genome_id, reads)| {
+            // Use the simplified add_read_to_groups function for each genome's reads
+            let mut groups = Vec::new();
+            for read_entry in reads {
+                groups = add_read_to_groups_within_genome_id(groups, read_entry);
+            }
+            (genome_id, groups)
+        })
+        .collect();
+    // Collect results back into the main groups HashMap
+    let mut final_groups = HashMap::new();
+    for (genome_id, genome_group_list) in genome_results {
+        final_groups.insert(genome_id, genome_group_list);
+    }
+    Ok((header_out, final_groups, seq_id_index))
 }
 
 // ------------------------------------------------------------------------------------------------
