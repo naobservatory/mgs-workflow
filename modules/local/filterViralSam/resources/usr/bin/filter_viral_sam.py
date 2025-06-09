@@ -240,11 +240,10 @@ def group_alignments_by_mates(
     if pair_status == "UP":
         # Handle UP reads with original logic
         all_pos = set(a.pos for a in alignments)
-        all_rname = set(a.rname for a in alignments)
         mate_groups = {}  # pos -> group_id
 
         for alignment in alignments:
-            if alignment.pos == alignment.pnext or alignment.pnext not in all_pos or (alignment.pnext in all_pos and alignment.rnext not in all_rname):
+            if alignment.pos == alignment.pnext or alignment.pnext not in all_pos:
                 # Cases 1&2: standalone processing
                 by_group[group_idx].append(alignment)
                 group_idx += 1
@@ -252,7 +251,19 @@ def group_alignments_by_mates(
                 # Case 3: check if mate already grouped
                 if alignment.pnext in mate_groups:
                     existing_group = mate_groups[alignment.pnext]
-                    by_group[existing_group].append(alignment)
+                    # Check if adding this alignment would create a conflict
+                    existing_alignments = by_group[existing_group]
+                    if len(existing_alignments) > 0:
+                        existing = existing_alignments[0]
+                        if existing.pnext != alignment.rname or existing.rnext != alignment.pos:
+                            # Create new group due to conflict
+                            mate_groups[alignment.pos] = group_idx
+                            by_group[group_idx].append(alignment)
+                            group_idx += 1
+                        else:
+                            by_group[existing_group].append(alignment)
+                    else:
+                        by_group[existing_group].append(alignment)
                 else:
                     mate_groups[alignment.pos] = group_idx
                     by_group[group_idx].append(alignment)
