@@ -4,7 +4,7 @@
 
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::cmp::Ordering;
 use flate2::{Compression as GzCompression, write::GzEncoder, read::GzDecoder};
@@ -69,6 +69,26 @@ struct Args {
 // ------------------------------------------------------------------------------------------------
 // HELPER FUNCTIONS
 // ------------------------------------------------------------------------------------------------
+
+// Compare two Option<i32> positions, treating None as larger than any Some value
+// This puts None values at the end of the sorted list
+fn order_positions(a: Option<i32>, b: Option<i32>) -> Ordering {
+    match (a, b) {
+        (Some(a_pos), Some(b_pos)) => a_pos.cmp(&b_pos),
+        (Some(_), None) => Ordering::Less,     // Some < None
+        (None, Some(_)) => Ordering::Greater,  // None > Some
+        (None, None) => Ordering::Equal,       // None == None
+    }
+}
+
+// Sort ReadEntries by coordinates: first by aln_start, then by aln_end
+// None values are treated as larger than any Some value (sorted to the end)
+fn compare_read_coordinates(a: &ReadEntry, b: &ReadEntry) -> Ordering {
+    match order_positions(a.aln_start, b.aln_start) {
+        Ordering::Equal => order_positions(a.aln_end, b.aln_end),
+        other => other,
+    }
+}
 
 // Define a reader based on the file extension
 fn open_reader(filename: &str) -> std::io::Result<Box<dyn BufRead>> {
@@ -154,6 +174,99 @@ fn average_quality_score(quality_fwd: &str, quality_rev: &str) -> f64 {
 // ------------------------------------------------------------------------------------------------
 // EXTRACTION FUNCTIONS
 // ------------------------------------------------------------------------------------------------
+
+// Optimized group building using sorted sliding window approach
+fn build_groups_from_sorted_reads(mut reads: Vec<ReadEntry>) -> Vec<Vec<ReadEntry>> {
+    if reads.is_empty() {
+        return Vec::new();
+    }
+    // Sort reads by coordinates for sliding window optimization
+    reads.sort_by(compare_read_coordinates);
+    // Track group assignment for each read (parallel arrays)
+    let mut group_assignments: Vec<usize> = vec![0; reads.len()];
+    let mut next_group_id = 0;
+    // Track which groups need to be merged: representative_group -> set of all groups to merge
+    let mut group_merges: HashMap<usize, HashSet<usize>> = HashMap::new();
+    // Process reads in sorted order using sliding window
+    for i in 0..reads.len() {
+        let current_read = &reads[i];
+        let mut matching_groups: HashSet<usize> = HashSet::new();
+        // Sliding window: look backwards until more matches are impossible
+        for j in (0..i).rev() {
+            let prev_read = &reads[j];
+            // If both reads have Some coordinates, break if the difference is greater than DEVIATION
+            if let (Some(curr_start), Some(prev_start)) = (current_read.aln_start, prev_read.aln_start) {
+                if curr_start - prev_start > unsafe { DEVIATION } as i32 {
+                    break;
+                }
+            }
+            // If current_read coordinate is None, break if previous read has Some coordinate
+            if current_read.aln_start.is_none() && prev_read.aln_start.is_some() {
+                break;
+            }
+            // Otherwise, compare fully and add to matching_groups if they match
+            if match_reads(current_read, prev_read) {
+                matching_groups.insert(group_assignments[j]);
+            }
+        }
+        // Assign group based on matches found
+        if matching_groups.is_empty() {
+            // No matches: create new group
+            group_assignments[i] = next_group_id;
+            next_group_id += 1;
+        } else if matching_groups.len() == 1 {
+            // Single match: assign to that group
+            group_assignments[i] = *matching_groups.iter().next().unwrap();
+        } else {
+            // Multiple matches: assign to max group and record merge for later
+            let max_group = *matching_groups.iter().max().unwrap();
+            group_assignments[i] = max_group;
+            // Record that all matching groups should be merged with max_group
+            group_merges.entry(max_group)
+                .or_insert_with(|| {
+                    let mut set = HashSet::new();
+                    set.insert(max_group);
+                    set
+                })
+                .extend(matching_groups);
+        }
+    }
+    // Resolve all merges to create final group mapping
+    let final_group_mapping = resolve_group_merges(group_merges);
+    // Replace each group ID with its final representative group ID (resolving transitive merges)
+    let final_group_assignments = group_assignments.iter()
+        .map(|&group_id| *final_group_mapping.get(&group_id).unwrap_or(&group_id))
+        .collect::<Vec<_>>();
+    // Convert to Vec<Vec<ReadEntry>> output format
+    let mut final_groups: HashMap<usize, Vec<ReadEntry>> = HashMap::new();
+    for (read, &group_id) in reads.into_iter().zip(final_group_assignments.iter()) {
+        final_groups.entry(group_id).or_insert_with(Vec::new).push(read);
+    }
+    // Return groups as Vec<Vec<ReadEntry>>
+    final_groups.into_values().collect()
+}
+
+// Resolve group merges by processing in descending order of group IDs
+// Assigns each group ID to the largest group ID in its merge set
+fn resolve_group_merges(group_merges: HashMap<usize, HashSet<usize>>) -> HashMap<usize, usize> {
+    let mut final_mapping: HashMap<usize, usize> = HashMap::new();
+    // Get all group IDs that appear as keys and sort in descending order (largest first)
+    let mut group_ids: Vec<usize> = group_merges.keys().copied().collect();
+    group_ids.sort_by(|a, b| b.cmp(a)); // Descending order
+    // Process each group ID in descending order
+    for &id in &group_ids {
+        // If this group ID has already been mapped to a larger group ID, use that as representative
+        // Otherwise, use the group ID itself as its own representative
+        let final_representative = *final_mapping.get(&id).unwrap_or(&id);
+        // Map every group ID in this ID's merge set to the representative
+        if let Some(groups_to_merge) = group_merges.get(&id) {
+            for &group_id in groups_to_merge {
+                final_mapping.insert(group_id, final_representative);
+            }
+        }
+    }
+    final_mapping
+}
 
 fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, usize), Box<dyn Error>> {
     // Split the line by tabs and collect the headers
@@ -250,47 +363,6 @@ fn process_chunk_parallel(
     })
 }
 
-fn add_read_to_groups_within_genome_id(
-    mut groups: Vec<Vec<ReadEntry>>,
-    read_entry: ReadEntry,
-) -> Vec<Vec<ReadEntry>> {
-    // Compare the read entry with each existing group
-    let mut groups_match = Vec::new();
-    for i in 0..groups.len() {
-        for j in 0..groups[i].len() {
-            if match_reads(&read_entry, &groups[i][j]) {
-                groups_match.push(i);
-                break;
-            }
-        }
-    }
-    // If no matches, create a new group and add the read entry to it
-    if groups_match.is_empty() {
-        groups.push(vec![read_entry]);
-    // If exactly one match, add the read entry to that group
-    } else if groups_match.len() == 1 {
-        groups[groups_match[0]].push(read_entry);
-    // If multiple matches, combine them into a new group, add the read entry, then
-    // delete the old groups
-    } else {
-        // Combine the groups into a new group
-        let mut combined_group = Vec::new();
-        for i in groups_match.iter() {
-            combined_group.extend(groups[*i].clone());
-        }
-        // Add the read entry to the combined group
-        combined_group.push(read_entry);
-        // Add the combined group
-        groups.push(combined_group);
-        // Remove the old groups in reverse order (to avoid index shifting)
-        for i in groups_match.iter().rev() {
-            groups.remove(*i);
-        }
-    }
-    // Return the updated groups
-    groups
-}
-
 fn extract_read_groups(input_path: &str,
     chunk_size: u32
 ) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>, usize), Box<dyn Error>> {
@@ -336,15 +408,12 @@ fn extract_read_groups(input_path: &str,
                 .push(read_entry);
         }
     }
-    // Process reads for each genome_id into read groups
+    // Process reads for each genome_id into read groups using optimized sorting approach
     let genome_results: Vec<(String, Vec<Vec<ReadEntry>>)> = genome_accumulators
         .into_par_iter()
         .map(|(genome_id, reads)| {
-            // Use the simplified add_read_to_groups function for each genome's reads
-            let mut groups = Vec::new();
-            for read_entry in reads {
-                groups = add_read_to_groups_within_genome_id(groups, read_entry);
-            }
+            // Use optimized sorted sliding window approach
+            let groups = build_groups_from_sorted_reads(reads);
             (genome_id, groups)
         })
         .collect();
