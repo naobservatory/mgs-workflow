@@ -101,13 +101,13 @@ Here are some guidelines:
 
 Organization of test data 
 - Small (uncompressed) test data files are in `test-data/`; larger test datasets are in S3:
-    - Currently there is no set organization of the `test-data/` directory. It will be organized in the future; see issue [#349](https://github.com/naobservatory/mgs-workflow/issues/349)
+    - Currently there is no set organization of the `test-data/` directory. It will be organized in the future; see issue [#349](https://github.com/naobservatory/mgs-workflow/issues/349).
 - Larger public test datasets are stored in `s3://nao-testing` (publicly available). 
     - These are the "gold standard test dataset" and the "ONT wastewater test dataset", described below.
 - Results of workflow runs on the test datasets from S3 are in the repo in `test-data/<dataset>-results-<workflow>`. 
 
 #### Gold standard test dataset (`s3://nao-testing/gold-standard-test/`)
-This is the default test dataset that we use for testing the `RUN` and `DOWNSTREAM` workflows on short-read data. It is a small dataset that contains 165 reads from the [Yang 2020](https://www.sciencedirect.com/science/article/abs/pii/S0048969720358514?via%3Dihub) study. The code to generate this data can be found [here](https://github.com/naobservatory/generate-test-dataset/blob/main/).
+This is the default test dataset that we use for testing the `RUN` and `DOWNSTREAM` workflows on short-read data. It is a small dataset that contains 165 reads from the [Yang 2020](https://www.sciencedirect.com/science/article/abs/pii/S0048969720358514?via%3Dihub) study. 
 
 #### ONT wastewater test dataset (`s3://nao-testing/ont-ww-test/`)
 This is the default, small test dataset that we use for testing the `RUN` workflow on ONT (long-read) data.
