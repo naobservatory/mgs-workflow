@@ -42,6 +42,7 @@ nextflow_process {
                 '''
                 input[0] = VSEARCH_CLUSTER.out.summary
                 input[1] = params.n_clusters
+                input[2] = ""
                 '''
             }
         }
@@ -75,6 +76,36 @@ nextflow_process {
             ).sortOn("-cluster_size", "seq_id"))
             def cluster_id_obs = path(process.out.ids[0][1]).csv(sep: "\t", header: false)
             assert cluster_id_obs.columns["C0"] == cluster_id_exp.columns["seq_id"].take(params.n_clusters)
+        }
+    }
+
+    test("Should correctly handle output prefix"){
+        tag "expect_success"
+        tag "single_end"
+        when {
+            params {
+                n_clusters = 5
+                output_prefix = "test"
+            }
+            process {
+                '''
+                input[0] = VSEARCH_CLUSTER.out.summary
+                input[1] = params.n_clusters
+                input[2] = params.output_prefix
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output should have expected column headers
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            def exp_col_names_base = ["seq_id", "cluster_id", "cluster_rep_id",
+                "seq_length", "is_cluster_rep", "percent_identity",
+                "orientation", "cigar", "cluster_size"]
+            def exp_col_names = exp_col_names_base.collect{params.output_prefix + "_" + it}
+            exp_col_names[0] = "seq_id"
+            assert tab_out.columnNames == exp_col_names
         }
     }
 }

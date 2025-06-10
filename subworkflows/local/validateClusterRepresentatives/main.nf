@@ -23,6 +23,7 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
     take:
         hits_tsv // Viral hits TSV, including seq_id and original taxid assignment
         lca_tsv // LCA TSV from validation against core_nt
+        hits_taxid_column // Column header for original taxid in hits TSV
         lca_taxid_column // Column header for LCA taxid in LCA TSV
         tax_dist_column // Column header for taxonomic distance in hits TSV
         ref_dir // Path to reference directory containing taxonomy information
@@ -31,7 +32,8 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
         nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
         // 1. Prepare inputs for joining
         // Subset hits TSV to only seq_id and taxid columns
-        select_ch = SELECT_TSV_COLUMNS(hits_tsv, "seq_id,taxid").output
+        def hits_taxid_column_str = "seq_id,${hits_taxid_column}"
+        select_ch = SELECT_TSV_COLUMNS(hits_tsv, hits_taxid_column_str, "keep").output
         // Rename qseqid to seq_id in LCA TSV
         rehead_ch = REHEAD_QSEQID(lca_tsv, "qseqid", "seq_id").output
         // Combine channels for joining
@@ -40,13 +42,13 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
         // Inner join subsets hits TSV to sequences in LCA TSV (i.e. cluster representatives)
         join_ch = JOIN_TSVS(combine_ch, "seq_id", "inner", "representative").output
         // 3. Compute taxonomic distance between original and validated taxids
-        dist_ch = COMPUTE_TAXID_DISTANCE(join_ch, "taxid", lca_taxid_column,
+        dist_ch = COMPUTE_TAXID_DISTANCE(join_ch, hits_taxid_column, lca_taxid_column,
             tax_dist_column, nodes_db).output
         // NB: As implemented, this will produce a negative distance if the original
         // taxid is too high (ancestor of LCA taxid), and a positive distance if the
         // original taxid is too low (descendant of LCA taxid).
         // 4. Rename seq_id to cluster_rep_id for downstream processing
-        rename_ch = REHEAD_SEQ_ID(dist_ch, "seq_id", "cluster_rep_id").output
+        rename_ch = REHEAD_SEQ_ID(dist_ch, "seq_id", "vsearch_cluster_rep_id").output
     emit:
         output = rename_ch
         test_dist = dist_ch
