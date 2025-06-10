@@ -2,11 +2,10 @@
 
 DESC = """
 Given a TSV with two taxid columns, compute the vertical taxonomic distance
-between the two taxids for each row. Distance is calculated as the number of
-parent-child steps between each taxid and their lowest common ancestor. Rows
-for which the two taxids are the same are given a distance of 0 in both
-distance columns; rows for which one taxid is an ancestor of the other will be
-given a distance of 0 in the corresponding distance column.
+between each taxid and their lowest common ancestor. Rows for which the two
+taxids are the same are given a distance of 0 in both distance columns; rows
+for which one taxid is an ancestor of the other will be given a distance of 0
+in the corresponding distance column.
 """
 
 #=======================================================================
@@ -171,7 +170,8 @@ def path_to_root(
         path_cache (dict[int, list[int]]): Cache of precomputed paths to the root.
     Returns:
         tuple[list[int], dict[int, list[int]]]: Tuple containing the path to the root
-            and the updated path cache.
+            and the updated path cache. Path is a list of taxids starting with the
+            target taxid and ending with the root taxid.
     """
     logger.debug(f"Finding path to root for taxid: {taxid}")
     # Check input type
@@ -219,6 +219,8 @@ def compute_lca(
         ) -> int | None:
     """
     Given paths to root for two taxids, compute the lowest common ancestor.
+    Paths are lists of taxids starting with the target taxid and ending with
+    the root taxid.
     Args:
         path_1 (list[int]): Path to root for taxid_1.
         path_2 (list[int]): Path to root for taxid_2.
@@ -264,6 +266,7 @@ def compute_taxonomic_distance(
     # Compute LCA
     lca = compute_lca(path_1, path_2)
     if lca is None:
+        logger.debug(f"No LCA found for taxids {taxid_1} and {taxid_2}; returning None.")
         return None, None, path_cache
     logger.debug(f"LCA of taxids {taxid_1} and {taxid_2}: {lca}")
     # Compute taxonomic distance to LCA
