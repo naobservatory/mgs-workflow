@@ -1,7 +1,7 @@
 {
     "run_output_shortread": {
         "content": [
-            "bracken_reports_merged.tsv.gz:md5,6c504fa837ef97ef2096f2569d8c6902",
+            "bracken_reports_merged.tsv.gz:md5,aabf52a8f4b32316b8f3de81d1a82644",
             "kraken_reports_merged.tsv.gz:md5,84f070b42b948d36ae38eaee4a61982e",
             "merged_blast_filtered.tsv.gz:md5,72bf159dac45375739901445727fc1c9",
             "merged_blast_input_subset.fasta.gz:md5,6868948847f1fa6a3278c6fc89f37b53",
@@ -11,7 +11,7 @@
             "subset_qc_length_stats.tsv.gz:md5,deb6f5182ed916986640d4668459ddae",
             "subset_qc_quality_base_stats.tsv.gz:md5,a5492c9c3b986d99848b95328b32ea7b",
             "subset_qc_quality_sequence_stats.tsv.gz:md5,94c11e0dbcf2b58d685ab8701c04cf9b",
-            "virus_hits_final.tsv.gz:md5,7b8ab89a1b552b56d378f5f04c27c023"
+            "virus_hits_final.tsv.gz:md5,698f9473ee99687cbbb1a0d075b12a65"
         ],
         "meta": {
             "nf-test": "0.9.2",
@@ -21,7 +21,7 @@
     },
     "run_output_ont": {
         "content": [
-            "bracken_reports_merged.tsv.gz:md5,1d456bff9c1e632fa7b85a9a00b48a7a",
+            "bracken_reports_merged.tsv.gz:md5,b888f3fcfab0e718155b5f9f5ed16115",
             "kraken_reports_merged.tsv.gz:md5,c088506d5e8bd2857e24d7180592b3aa",
             "merged_blast_filtered.tsv.gz:md5,109fc1f2ed21882a2c2107dde1b21a89",
             "merged_blast_input_subset.fasta.gz:md5,a15f75708e60de9e9471b946cd15e5f0",
@@ -31,7 +31,7 @@
             "subset_qc_length_stats.tsv.gz:md5,a8bf085fd6baddac8583f424f72ce94e",
             "subset_qc_quality_base_stats.tsv.gz:md5,b5d5c45af7fedbf52dee84bdc25fb9b0",
             "subset_qc_quality_sequence_stats.tsv.gz:md5,f07808095a7926593aa2400e88a61fad",
-            "virus_hits_final.tsv.gz:md5,ee352cb0786204c1d889e77600ca3a6e"
+            "virus_hits_final.tsv.gz:md5,c4b8d128b72d75586667325cc2aab834"
         ],
         "meta": {
             "nf-test": "0.9.2",

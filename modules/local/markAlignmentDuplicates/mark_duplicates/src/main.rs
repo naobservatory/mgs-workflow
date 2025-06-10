@@ -68,9 +68,11 @@ fn match_reads(a: &ReadEntry, b: &ReadEntry) -> bool {
 }
 
 // Compare the positions with a deviation
+// If both positions are None, they are considered equal
 fn compare_positions(a: Option<i32>, b: Option<i32>, deviation: i32) -> bool {
     match (a, b) {
         (Some(x), Some(y)) => (x - y).abs() <= deviation,
+        (None, None) => true,
         _ => false,
     }
 }
@@ -98,6 +100,9 @@ fn parse_int_or_na(s: &str) -> Option<i32> {
 
 // Convert the ASCII quality score to a quality score
 fn ascii_to_quality_score(ascii_score: &str) -> f64 {
+    if ascii_score == "NA" {
+        return 0.0;
+    }
     ascii_score.chars()
         .map(|c| c as u8 as f64 - 33.0)
         .sum::<f64>() / ascii_score.len() as f64
@@ -118,8 +123,8 @@ fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, u
     let header_indices: HashMap<_, _> = headers.iter().enumerate().map(|(i, &s)| (s, i)).collect();
     // Define required header fields
     let required_headers = vec![
-        "seq_id", "bowtie2_genome_id_all", "bowtie2_ref_start_fwd", "bowtie2_ref_start_rev",
-        "query_qual_fwd", "query_qual_rev"
+        "seq_id", "aligner_genome_id_all", "aligner_ref_start", "aligner_ref_start_rev",
+        "query_qual", "query_qual_rev"
     ];
     // Build a lookup for required headers
     let mut indices = HashMap::new();
@@ -136,10 +141,10 @@ fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, u
 fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEntry {
     // Extract required fields using references to avoid cloning unnecessarily
     let query_name = fields[indices["seq_id"]].clone();
-    let genome_id = &fields[indices["bowtie2_genome_id_all"]];
-    let ref_start_fwd = parse_int_or_na(&fields[indices["bowtie2_ref_start_fwd"]]);
-    let ref_start_rev = parse_int_or_na(&fields[indices["bowtie2_ref_start_rev"]]);
-    let quality_fwd = &fields[indices["query_qual_fwd"]];
+    let genome_id = &fields[indices["aligner_genome_id_all"]];
+    let ref_start_fwd = parse_int_or_na(&fields[indices["aligner_ref_start"]]);
+    let ref_start_rev = parse_int_or_na(&fields[indices["aligner_ref_start_rev"]]);
+    let quality_fwd = &fields[indices["query_qual"]];
     let quality_rev = &fields[indices["query_qual_rev"]];
     // Handle split assignments
     let genome_id_sorted: String;
@@ -154,6 +159,7 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEnt
         // Get the index of the first genome ID in the sorted list
         let genome_id_index = sorted_parts.iter().position(|&s| s == parts[0]).unwrap();
         // Arrange start coordinates to correspond to sorted genome IDs
+        // Note: this doesn't need to handle the case where one value is None because then you could never get multiple genome_ids
         (aln_start, aln_end) = if genome_id_index == 0 {
             (ref_start_fwd, ref_start_rev)
         } else {
@@ -162,13 +168,15 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEnt
     } else {
         // If only one genome ID, use it directly
         genome_id_sorted = genome_id.to_string();
-        // Normalize coordinates: if values are present, use the minimum and maximum
+        // Normalize coordinates: if values are present, use the minimum and maximum; handle cases where one value is None
         (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
             (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
-            _ => (ref_start_fwd, ref_start_rev),
+            (Some(fwd), None) => (Some(fwd), None),
+            (None, Some(rev)) => (Some(rev), None),
+            (None, None) => (None, None),
         };
     };
-    let avg_quality = average_quality_score(quality_fwd, quality_rev);
+    let avg_quality = average_quality_score(&quality_fwd, &quality_rev);
     // Return the ReadEntry with minimal memory footprint
     ReadEntry { 
         query_name, 
@@ -178,6 +186,8 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEnt
         avg_quality 
     }
 }
+
+// TODO: Handle split-ID read pairs
 
 fn extract_read_groups(input_path: &str) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>, usize), Box<dyn Error>> {
     // Open the input file
@@ -270,7 +280,7 @@ fn write_metadata_file(
     // Open the metadata output file
     let mut writer_meta = open_writer(output_path_meta)?;
     // Write header
-    let header_meta = "bowtie2_genome_id_all\tbowtie2_dup_exemplar\tbowtie2_dup_count\tbowtie2_dup_pairwise_match_frac";
+    let header_meta = "aligner_genome_id_all\tbowtie2_dup_exemplar\tbowtie2_dup_count\tbowtie2_dup_pairwise_match_frac";
     writeln!(writer_meta, "{}", header_meta)?;
     // Write duplicate group metadata (once per group)
     for dup_group in duplicate_groups {
