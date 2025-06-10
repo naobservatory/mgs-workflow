@@ -40,7 +40,7 @@ workflow SPLIT_VIRAL_TSV_BY_SPECIES {
         db_sorted_ch = SORT_DB_TAXID(db_rehead_ch, "aligner_taxid").sorted
         db_raw_ch = db_sorted_ch.map{ group, db -> db }
         // 2. Join hits TSVs to prepared taxonomy DB
-        sorted_ch = SORT_GROUP_TAXID(check_ch, "aligner_taxidt").sorted
+        sorted_ch = SORT_GROUP_TAXID(check_ch, "aligner_taxid").sorted
         join_prep_ch = sorted_ch.combine(db_raw_ch)
         join_ch = JOIN_TSVS(join_prep_ch, "aligner_taxid", "left", "taxonomy").output
         // 3. Partition on species taxid        
@@ -54,7 +54,7 @@ workflow SPLIT_VIRAL_TSV_BY_SPECIES {
                 pathlist.collect { path ->
                     // Define regex pattern for extracting species taxid
                     def filename = path.last()
-                    def pattern = /^partition_(.*?)_sorted_taxid_species_${group}_taxonomy_left_joined_bowtie2_taxid_best\.tsv\.gz$/
+                    def pattern = /^partition_(.*?)_sorted_taxid_species_${group}_taxonomy_left_joined_aligner_taxid\.tsv\.gz$/
                     def matcher = (filename =~ pattern)
                     if (!matcher) {
                         def msg = "Filename doesn't match required pattern: ${group}, ${path}, ${path.last()}"
