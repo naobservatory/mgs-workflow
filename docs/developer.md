@@ -19,7 +19,7 @@ These guidelines represent best practices to implement in new code, though some 
     - Avoid creating duplicate processes. If you need a slight variation on existing behavior, parameterize or otherwise tweak an existing process.
 - Documentation
     - Extensive comments are encouraged. 
-    - Each workflow or process should begin with a descriptive comment explaining what it does.
+    - Each workflow, subworkflow, or process should begin with a descriptive comment explaining what it does.
     - Each workflow should have a `<workflow_name>.md` document in `docs/`.
 - Process conventions (see `modules/local/vsearch/main.nf` for an example of a well-written process that follows these conventions):
     - All processes should have a label specifying needed resources (e.g. `label "small"`). Resources are then specified in `configs/resources.config`.
@@ -31,7 +31,7 @@ These guidelines represent best practices to implement in new code, though some 
 - Containers: We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
 - Naming:
     - Use `lower_snake_case` for variable and channel names.
-    - Use `UPPER_SNAKE_CASE` for process and workflow names.
+    - Use `UPPER_SNAKE_CASE` for process, subworkflow, and workflow names.
     - Use `camelCase` for module and subworkflow directory names.
     - Use lowercase with hyphens for other file names (config and test data files).
 - Performance conventions:
@@ -81,12 +81,7 @@ Config files for tests are organized as follows:
 - `tests/config/` has config files used by each workflow test.
 - `configs/index-for-run-test.config` (NOT in the `tests/` directory) is used to run the `INDEX` workflow (in non-test mode) to generate the index used for `RUN` workflow tests.
 
-Small (uncompressed) test data files are in `test-data/`; larger test datasets are in S3:
-- We have some small "toy" test data files in `test-data/toy-data`.
-- Larger public test datasets are stored in `s3://nao-testing`. 
-- Results of workflow runs on the test datasets from S3 are in the repo in `test-data/<dataset>-results-<workflow>`. 
-   
-Test datasets are described in more detail in the "Test datasets" section below.
+The `test-data/` directory (and organization of test data in general) is described in the "Test datasets" section below.
 
 ### Writing tests
 
@@ -104,9 +99,14 @@ Here are some guidelines:
 
 ### Test datasets 
 
-Large test datasets are in s3://nao-testing (publicly available). 
+Organization of test data 
+- Small (uncompressed) test data files are in `test-data/`; larger test datasets are in S3:
+    - Currently there is no set organization of the `test-data/` directory. It will be organized in the future; see issue [#349](https://github.com/naobservatory/mgs-workflow/issues/349)
+- Larger public test datasets are stored in `s3://nao-testing` (publicly available). 
+    - These are the "gold standard test dataset" and the "ONT wastewater test dataset", described below.
+- Results of workflow runs on the test datasets from S3 are in the repo in `test-data/<dataset>-results-<workflow>`. 
 
-#### Gold standard test (`s3://nao-testing/gold-standard-test/`)
+#### Gold standard test dataset (`s3://nao-testing/gold-standard-test/`)
 This is the default test dataset that we use for testing the `RUN` and `DOWNSTREAM` workflows on short-read data. It is a small dataset that contains 165 reads from the [Yang 2020](https://www.sciencedirect.com/science/article/abs/pii/S0048969720358514?via%3Dihub) study. The code to generate this data can be found [here](https://github.com/naobservatory/generate-test-dataset/blob/main/).
 
 #### ONT wastewater test dataset (`s3://nao-testing/ont-ww-test/`)
@@ -211,64 +211,16 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
     - In comments, feel free to flag any open questions or places where you need careful review. 
 6. **Request review** from a maintainer on your changes. Current maintainers are jeffkaufman, willbradshaw, katherine-stansifer, and harmonbhasin. 
     - Make sure to assign the PR to the desired reviewer so that they see your PR (put them in the "Assignees" section on GitHub as well as in the "Reviewers" section).
+        - If the reviewer is not satisfied and requests changes, they should then change the "Assignee" to be the person who originally submitted the code. This may result in a few loops of "Assignee" being switched between the reviewer and the author.
 7. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch! 
 
-
-### Reviewing PRs
-
-Reviewers should carefully read through all changes to code and tests, and make sure they understand them. Reviewers are not required to run/test code themselves.
-
-Reviewers should make sure:
-- The PR solves the desired issue in a logical and performant way.
-- The code is clear, well-structured, and maintainable. 
-- Tests and documentation have been updated appropriately. 
-- The PR is a reasonable size and represents a coherent set of changes.
-- The "before sending a PR" steps above have been followed.
-- The guidelines in "Coding style guide" have been followed.
-
-Make it clear whether your comments are:
-- Items that must be addressed before submission
-- Clarifying questions (you want a response to your comment but code changes are not required)
-- Suggestions (author can take it or leave it)
-- Issues that should be addressed, but could be in a later PR
-    - Reviewer or author should create a GitHub issue to track anything in this category.
-
-If you can't understand the code or the PR is overwhelmingly large, feel empowered to:
-- Ask for the PR to be split into multiple smaller PRs. 
-- Request more detailed comments and documentation.
-- Make comments on the PR with clarifying questions ("Why do you need this function? What does this process do?")
-- Request a meeting to walk through the PR in person.
-
-When you are done with your review, assign the PR back to the author. 
-
-As we require a review of final changes before merging, expect multiple rounds of review (with later rounds generally being very quick). After your final approving review, feel free to merge it and delete the branch!
 
 ## New releases
 
 By default, all changes are made on individual branches, and merged into `dev`. Periodically, a collection of `dev` changes are merged to `master` as a new release. New releases are fairly frequent (historically, we have made a new release every 2-4 weeks).
 
-Only a pipeline maintainer/member of the Nucleic Acid Observatory should go through the process below to author a new release. 
+Only a pipeline maintainer/member of the Nucleic Acid Observatory should author a new release. The process for going through a new release can be found in NAO private documentation. 
 
-Process for a new release:
-1. Merge `dev` into `staging`. (This does not require a PR or review.)
-2. Update `CHANGELOG.md` and `pipeline-version.txt`.
-    - See [versioning.md](./versioning.md) for information on our schematic versioning system.
-    - Version numbers should increment by one with every new release (if `dev` has changes since the last release broken out into multiple smaller version bumps, combine them).
-    - Remove any "-dev" suffix from version numbers. 
-3. Double check that all documentation and tests are appropriately updated. 
-4. Run *all* tests locally (see "Testing" section above).
-5. Run the NAO's private test dataset through the `RUN` and `DOWNSTREAM` workflows.
-    - Dataset can be found at `s3://nao-private-testing/300M-composite-dataset/`.
-    - Check that it runs without errors; no need for additional validation of the output.
-6. If the `INDEX` workflow is affected by the update, generate a new index from staging via the `INDEX` workflow and store it in `s3://nao-mgs-index` (private NAO bucket).
-7. Make a PR to merge `staging` into `master`. Send it to a maintainer for review.
-    - All changes should already have been reviewed as smaller PRs to `dev`; this review is a skim to make sure there are no unexpected changes, plus a careful review of the changelog and versioning. 
-8. If any of the above surface any issues, fix them in `dev` and go back to step 1.
-9. Once the PR to `master` is merged, create a new release (through the GitHub UI).
-    - Title the release with the new version number.
-    - For the release description, use the changelog entry for that version.
-    - Tag the new release with the new version number (without any prepending "v").
-10. Once the PR to `master` is merged, merge `staging` back into `dev`.
 
 
 
