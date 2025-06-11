@@ -175,8 +175,20 @@ fn average_quality_score(quality_fwd: &str, quality_rev: &str) -> f64 {
 // EXTRACTION FUNCTIONS
 // ------------------------------------------------------------------------------------------------
 
-// Optimized group building using sorted sliding window approach
-fn build_groups_from_sorted_reads(mut reads: Vec<ReadEntry>) -> Vec<Vec<ReadEntry>> {
+/// Optimized group building using sorted sliding window approach
+/// Takes in a vector of ReadEntry objects sharing a genome_id assignment,
+/// sorted by start coordinate, then iterates over the vector in order,
+/// checking for position matches with previous reads whose start coordinate
+/// is within DEVIATION of the current read's start coordinate.
+/// If a match is found, the current read is assigned to the same group as the previous read.
+/// If no match is found, a new group is created.
+/// Finally, all overlapping groups (those for which a single read is assigned to both groups)
+/// are merged.
+fn build_groups_from_sorted_reads(
+    /// Sorted vector of ReadEntry objects sharing a genome_id assignment
+    mut reads: Vec<ReadEntry>
+    /// Vector of ReadEntry vectors, each representing a duplicate group
+) -> Vec<Vec<ReadEntry>> {
     if reads.is_empty() {
         return Vec::new();
     }
