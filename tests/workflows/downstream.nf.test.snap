@@ -1,15 +1,15 @@
 {
     "downstream_output": {
         "content": [
-            "gs1_duplicate_reads.tsv.gz:md5,d34cc0fd85399328092686d27229c257",
-            "gs1_duplicate_stats.tsv.gz:md5,669a3521fb281e42b0fd75f5fec588c9",
-            "gs2_duplicate_reads.tsv.gz:md5,adbb57ccf40c8fc71cbf91aa1ec10e0c",
-            "gs2_duplicate_stats.tsv.gz:md5,7732e3a166693c40a7ea9993c4238772"
+            "gs1_duplicate_reads.tsv.gz:md5,b71cf2cc6c0bf018c770b473160e7685",
+            "gs1_duplicate_stats.tsv.gz:md5,f66005f935e9dc6f9826946aab415915",
+            "gs2_duplicate_reads.tsv.gz:md5,4c4520d118a5c208ad60fb12f8dfd928",
+            "gs2_duplicate_stats.tsv.gz:md5,fbd3c5828c84826a0beb625f860d62b4"
         ],
         "meta": {
             "nf-test": "0.9.2",
-            "nextflow": "24.10.4"
+            "nextflow": "24.10.6"
         },
-        "timestamp": "2025-02-18T16:08:57.3232304"
+        "timestamp": "2025-05-09T18:40:31.666025715"
     }
 }
