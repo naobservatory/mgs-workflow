@@ -17,6 +17,8 @@ These guidelines represent best practices to implement in new code, though some 
     - We use a workflow of workflows organization (`main.nf` -> workflow -> subworkflow -> process). 
     - Aim for one process per module, in a `main.nf` file.
     - Avoid creating duplicate processes. If you need a slight variation on existing behavior, parameterize or otherwise tweak an existing process.
+    - Avoid very large `script` or `shell` blocks in Nextflow processes where possible.
+        - If the block gets bigger than about 20 lines, we probably want to split it into multiple processes, or move functionality into a Rust or Python script. 
 - Documentation
     - Extensive comments are encouraged. 
     - Each workflow, subworkflow, or process should begin with a descriptive comment explaining what it does.
@@ -40,16 +42,18 @@ These guidelines represent best practices to implement in new code, though some 
 
 ### Other languages (Python, Rust, R)
 - Add non-Nextflow scripts only when necessary; when possible, use existing bioinformatics tools and shell commands rather than creating custom scripts.
+    - Though, as noted above, if a process's `script`/`shell` block is getting longer than about 20 lines, it may make sense to move the functionality to a script.
 - New scripts should be in Rust (preferred) or Python (acceptable if performance is not critical).  We have a few legacy scripts in R but discourage adding new R scripts.
 - Organization:
     - Python and R scripts for a module go in `resources/usr/bin/`
     - Rust source code for a module goes in `src` and the binary (compiled with `cargo build --release`) goes in `resources/usr/bin`
         - Note that additional files created by Cargo (`Cargo.lock`, `Cargo.toml`) are not stored in the repo.
+        - Note that in the future we will remove binaries from the repo and implement a build process instead; see Issue [#164](https://github.com/naobservatory/mgs-workflow/issues/164). Feel free to recompile existing binaries as source code is updated, but please check with a maintainer before adding new binaries to the repo.
 - Rely on the standard library as much as possible. (E.g. for Python, avoid use of third-party libraries like `pandas`.)
 - Include proper error handling and logging
 - Performance conventions:
-    - Always process large files line-by-line.
-    - Support compressed file formats (.gz, .bz2). 
+    - Always process large files line-by-line or in manageable chunks.
+    - Support compressed file formats (.gz, .bz2, .zst). 
 - Python style: 
     - Loosely follow PEP 8 conventions.
     - Type hints are encouraged but not currently required.
@@ -172,6 +176,7 @@ Test [7677da69] 'RUN workflow output should match snapshot'
     - Once you are happy with the changes to the output:
         - Update output files in `test-data` by copying changed output files from the `.nf-test` directory to the appropriate location in `test-data`, uncompressing the files, and committing the changes.
         - Update `nf-test` snapshots by running `nf-test test <path to test that failed> --update-snapshot`; this will update the appropriate `*.snapshot` file in `tests/workflows`. Commit the changed snapshot file.
+        - Flag in PR comments that the snapshot has changed, and explain why. (Without such a comment, it's easy for reviewers to miss the updated snapshot.)
 
 
 ## GitHub issues
@@ -205,7 +210,7 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
     - **Note which tests were run in your PR description.**
     - If you make any changes that affect the output of the pipeline, list/describe the changes that occurred in the pull request. 
 3. **Update the `CHANGELOG.md` file** with the changes that you are making, and update the `pipeline-version.txt` file with the new version number.
-    - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `master`, version numbers should have the `-dev` suffix.
+    - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `master`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions both in `CHANGELOG.md` and in `pipeline-version.txt`, and should only be removed when preparing to merge to `master`.
 4. **Pass automated tests on GitHub Actions**. These run automatically when you open a pull request.
 5. **Write a meaningful description** of your changes in the PR description and give it a meaningful title. 
     - In comments, feel free to flag any open questions or places where you need careful review. 
