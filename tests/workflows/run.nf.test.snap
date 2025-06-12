@@ -1,0 +1,42 @@
+{
+    "run_output_shortread": {
+        "content": [
+            "bracken_reports_merged.tsv.gz:md5,aabf52a8f4b32316b8f3de81d1a82644",
+            "kraken_reports_merged.tsv.gz:md5,84f070b42b948d36ae38eaee4a61982e",
+            "merged_blast_filtered.tsv.gz:md5,72bf159dac45375739901445727fc1c9",
+            "merged_blast_input_subset.fasta.gz:md5,6868948847f1fa6a3278c6fc89f37b53",
+            "read_counts.tsv.gz:md5,8dc2e3ad82f42202262a5e67a9d91e1b",
+            "subset_qc_adapter_stats.tsv.gz:md5,43a90fc81f11a57e191f10176d3b7caf",
+            "subset_qc_basic_stats.tsv.gz:md5,5d3a44e97e249f63bdeede15cce47604",
+            "subset_qc_length_stats.tsv.gz:md5,deb6f5182ed916986640d4668459ddae",
+            "subset_qc_quality_base_stats.tsv.gz:md5,a5492c9c3b986d99848b95328b32ea7b",
+            "subset_qc_quality_sequence_stats.tsv.gz:md5,94c11e0dbcf2b58d685ab8701c04cf9b",
+            "virus_hits_final.tsv.gz:md5,698f9473ee99687cbbb1a0d075b12a65"
+        ],
+        "meta": {
+            "nf-test": "0.9.2",
+            "nextflow": "24.10.5"
+        },
+        "timestamp": "2025-06-12T16:36:17.950910074"
+    },
+    "run_output_ont": {
+        "content": [
+            "bracken_reports_merged.tsv.gz:md5,b888f3fcfab0e718155b5f9f5ed16115",
+            "kraken_reports_merged.tsv.gz:md5,c088506d5e8bd2857e24d7180592b3aa",
+            "merged_blast_filtered.tsv.gz:md5,109fc1f2ed21882a2c2107dde1b21a89",
+            "merged_blast_input_subset.fasta.gz:md5,a15f75708e60de9e9471b946cd15e5f0",
+            "read_counts.tsv.gz:md5,29d77e5c18c62be929e3734a23d0f5c4",
+            "subset_qc_adapter_stats.tsv.gz:md5,007fb204c7f8453a11bde076a744b064",
+            "subset_qc_basic_stats.tsv.gz:md5,4cbfba11d2c4baf78d7fa2962136dde2",
+            "subset_qc_length_stats.tsv.gz:md5,a8bf085fd6baddac8583f424f72ce94e",
+            "subset_qc_quality_base_stats.tsv.gz:md5,b5d5c45af7fedbf52dee84bdc25fb9b0",
+            "subset_qc_quality_sequence_stats.tsv.gz:md5,f07808095a7926593aa2400e88a61fad",
+            "virus_hits_final.tsv.gz:md5,7db90385902ad84657e7f49ff1ee130e"
+        ],
+        "meta": {
+            "nf-test": "0.9.2",
+            "nextflow": "24.10.5"
+        },
+        "timestamp": "2025-06-12T16:31:49.407810385"
+    }
+}
