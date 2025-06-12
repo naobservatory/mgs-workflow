@@ -22,3 +22,6 @@ pipeline_report.txt
 node_modules/*
 package-lock.json
 package.json
+
+test-data/gold-standard-results-old/*
+test-data/ont-ww-test-results-old/*
