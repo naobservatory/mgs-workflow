@@ -12,20 +12,19 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
-                taxid_field_1 = "x"
-                taxid_field_2 = "a"
-                distance_field_1 = "distance_1"
-                distance_field_2 = "distance_2"
+                process_params = [
+                    taxid_field_1: "x",
+                    taxid_field_2: "a",
+                    distance_field_1: "distance_1",
+                    distance_field_2: "distance_2"
+                ]
                 nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
-                input[1] = params.taxid_field_1
-                input[2] = params.taxid_field_2
-                input[3] = params.distance_field_1
-                input[4] = params.distance_field_2
-                input[5] = params.nodes_db_path
+                input[1] = params.process_params
+                input[2] = params.nodes_db_path
                 '''
             }
         }
@@ -43,20 +42,19 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
-                taxid_field_1 = "x"
-                taxid_field_2 = "y"
-                distance_field_1 = "z"
-                distance_field_2 = "w"
+                process_params = [
+                    taxid_field_1: "x",
+                    taxid_field_2: "y",
+                    distance_field_1: "z",
+                    distance_field_2: "w"
+                ]
                 nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
-                input[1] = params.taxid_field_1
-                input[2] = params.taxid_field_2
-                input[3] = params.distance_field_1
-                input[4] = params.distance_field_2
-                input[5] = params.nodes_db_path
+                input[1] = params.process_params
+                input[2] = params.nodes_db_path
                 '''
             }
         }
@@ -74,20 +72,19 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
-                taxid_field_1 = "x"
-                taxid_field_2 = "y"
-                distance_field_1 = "w"
-                distance_field_2 = "z"
+                process_params = [
+                    taxid_field_1: "x",
+                    taxid_field_2: "y",
+                    distance_field_1: "w",
+                    distance_field_2: "z"
+                ]
                 nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
-                input[1] = params.taxid_field_1
-                input[2] = params.taxid_field_2
-                input[3] = params.distance_field_1
-                input[4] = params.distance_field_2
-                input[5] = params.nodes_db_path
+                input[1] = params.process_params
+                input[2] = params.nodes_db_path
                 '''
             }
         }
@@ -104,20 +101,19 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/test_tab_sorted.tsv"
-                taxid_field_1 = "x"
-                taxid_field_2 = "y"
-                distance_field_1 = "distance_1"
-                distance_field_2 = "distance_2"
+                process_params = [
+                    taxid_field_1: "x",
+                    taxid_field_2: "y",
+                    distance_field_1: "distance_1",
+                    distance_field_2: "distance_2"
+                ]
                 nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes-truncated.dmp"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
-                input[1] = params.taxid_field_1
-                input[2] = params.taxid_field_2
-                input[3] = params.distance_field_1
-                input[4] = params.distance_field_2
-                input[5] = params.nodes_db_path
+                input[1] = params.process_params
+                input[2] = params.nodes_db_path
                 '''
             }
         }
@@ -135,20 +131,19 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/empty_file.txt"
-                taxid_field_1 = "x"
-                taxid_field_2 = "a"
-                distance_field_1 = "distance_1"
-                distance_field_2 = "distance_2"
+                process_params = [
+                    taxid_field_1: "x",
+                    taxid_field_2: "a",
+                    distance_field_1: "distance_1",
+                    distance_field_2: "distance_2"
+                ]
                 nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
-                input[1] = params.taxid_field_1
-                input[2] = params.taxid_field_2
-                input[3] = params.distance_field_1
-                input[4] = params.distance_field_2
-                input[5] = params.nodes_db_path
+                input[1] = params.process_params
+                input[2] = params.nodes_db_path
                 '''
             }
         }
@@ -166,20 +161,19 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/test_tab_empty.tsv"
-                taxid_field_1 = "x"
-                taxid_field_2 = "y"
-                distance_field_1 = "distance_1"
-                distance_field_2 = "distance_2"
+                process_params = [
+                    taxid_field_1: "x",
+                    taxid_field_2: "y",
+                    distance_field_1: "distance_1",
+                    distance_field_2: "distance_2"
+                ]
                 nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
-                input[1] = params.taxid_field_1
-                input[2] = params.taxid_field_2
-                input[3] = params.distance_field_1
-                input[4] = params.distance_field_2
-                input[5] = params.nodes_db_path
+                input[1] = params.process_params
+                input[2] = params.nodes_db_path
                 '''
             }
         }
@@ -199,8 +193,8 @@ nextflow_process {
             assert outputHeaders.size() == inputHeaders.size() + 2
             // Output header should be the same as input header, plus the new distance field
             assert outputHeaders[0..-3] == inputHeaders
-            assert outputHeaders[-2] == params.distance_field_1
-            assert outputHeaders[-1] == params.distance_field_2
+            assert outputHeaders[-2] == params.process_params.distance_field_1
+            assert outputHeaders[-1] == params.process_params.distance_field_2
         }
     }
 
@@ -210,20 +204,19 @@ nextflow_process {
         when {
             params {
                 input_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-input.tsv"
-                taxid_field_1 = "taxid1"
-                taxid_field_2 = "taxid2"
-                distance_field_1 = "distance_1"
-                distance_field_2 = "distance_2"
+                process_params = [
+                    taxid_field_1: "taxid1",
+                    taxid_field_2: "taxid2",
+                    distance_field_1: "distance_1",
+                    distance_field_2: "distance_2"
+                ]
                 nodes_db_path = "${projectDir}/test-data/toy-data/taxonomy-distance/test-nodes.dmp"
             }
             process {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.input_path))
-                input[1] = params.taxid_field_1
-                input[2] = params.taxid_field_2
-                input[3] = params.distance_field_1
-                input[4] = params.distance_field_2
-                input[5] = params.nodes_db_path
+                input[1] = params.process_params
+                input[2] = params.nodes_db_path
                 '''
             }
         }
@@ -235,10 +228,10 @@ nextflow_process {
             def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
             assert tab_out.rowCount == tab_in.rowCount
             // Column names should be identical except for the new distance column
-            assert tab_out.columnNames == tab_in.columnNames + [params.distance_field_1, params.distance_field_2]
+            assert tab_out.columnNames == tab_in.columnNames + [params.process_params.distance_field_1, params.process_params.distance_field_2]
             // Taxid columns should be present
-            assert params.taxid_field_1 in tab_out.columnNames
-            assert params.taxid_field_2 in tab_out.columnNames
+            assert params.process_params.taxid_field_1 in tab_out.columnNames
+            assert params.process_params.taxid_field_2 in tab_out.columnNames
             // Pre-existing columns should be unmodified
             for (c in tab_in.columnNames) {
                 assert tab_out.columns[c] == tab_in.columns[c]
@@ -247,8 +240,8 @@ nextflow_process {
             for (int r = 0; r < tab_out.rowCount; r++) {
                 def exp_dist_1 = tab_out.columns["exp_distance_1"][r]
                 def exp_dist_2 = tab_out.columns["exp_distance_2"][r]
-                def obs_dist_1 = tab_out.columns[params.distance_field_1][r]
-                def obs_dist_2 = tab_out.columns[params.distance_field_2][r]
+                def obs_dist_1 = tab_out.columns[params.process_params.distance_field_1][r]
+                def obs_dist_2 = tab_out.columns[params.process_params.distance_field_2][r]
                 assert exp_dist_1 == obs_dist_1
                 assert exp_dist_2 == obs_dist_2
             }
