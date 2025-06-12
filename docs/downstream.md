@@ -25,7 +25,7 @@ G(Viral taxonomy DB) --> F
 F --> H(Validation hits TSV)
 F --> I(BLAST results TSV)
 E --> J(Annotated hits TSVs)
-E --> K(Duplication summary TSVs)
+E --> K(Summary TSVs)
 subgraph "Data preparation"
 C
 D
@@ -84,7 +84,7 @@ style H fill:#000,color:#fff,stroke:#000
 
 ### Annotate alignment duplicates (`MARK_VIRAL_DUPLICATES`)
 
-This subworkflow takes in partitioned hits tables from `PREPARE_GROUP_TSVS`, then identifies duplicate reads on the basis of their assigned genome ID and alignment coordinates, as determined by Bowtie2 in the `RUN` workflow. In order to be considered duplicates, two read pairs must be mapped to the same genome ID by Bowtie2[^gid], with terminal alignment coordinates that are within a user-specified distance of each other (default 1 nt) at both ends. This fuzzy matching allows for the identification of duplicate reads in the presence of small read errors, alignment errors or overzealous adapter trimming.
+This subworkflow takes in partitioned hits tables from `PREPARE_GROUP_TSVS`, then identifies duplicate reads on the basis of their assigned genome ID and alignment coordinates, as determined by Bowtie2 in the `RUN` workflow. In order to be considered duplicates, two read pairs must be mapped to the same genome ID by Bowtie2, with terminal alignment coordinates that are within a user-specified distance of each other (default 1 nt) at both ends. This fuzzy matching allows for the identification of duplicate reads in the presence of small read errors, alignment errors or overzealous adapter trimming.
 
 For each group of reads identified as duplicates, the algorithm selects the read pair with the highest average quality score to act as the "exemplar" of the group. Each read in the group is annotated with this examplar to identify its duplicate group[^exemplar], enabling downstream deduplication or other duplicate analyses if needed. In addition to an annotated hits TSV containing an additional column for exemplar IDs, the subworkflow also returns a summary TSV giving the number of reads mapped to a given exemplar ID, as well as the fraction of read pairs in the group that are pairwise duplicates[^pairwise].
 
@@ -110,9 +110,17 @@ style F fill:#000,color:#fff,stroke:#000
 
 ### Validate viral taxonomic assignments (`VALIDATE_VIRAL_ASSIGNMENTS`)
 
-This subworkflow takes in annotated hits TSVs from `MARK_VIRAL_DUPLICATES` and runs selected sequences through validation with BLAST against the NCBI core_nt database. Alignment results from BLAST are filtered, and the [lowest common ancestor (LCA)](https://en.wikipedia.org/wiki/Lowest_common_ancestor) of remaining BLAST hits is computed for each hit sequence. The BLAST LCA is then compared against the original taxonomic assignment of that hit to evaluate the accuracy of the original assignment.
+This subworkflow uses BLAST to validate the taxonomic assignments given to putative viral reads by the RUN workflow. Specifically, it:
 
-This is a complex analysis with a number of steps, which have been grouped into descendent subworkflows for comprehensibility.
+- Takes in annotated hits TSVs from `MARK_VIRAL_DUPLICATES`
+- Splits them by assigned taxid at the species level
+- Clusters reads within each species using VSEARCH to identify cluster representatives
+- Aligns cluster representatives against the NCBI core_nt database with BLAST
+- Filters BLAST hits by bitscore and calculates the [lowest common ancestor (LCA)](https://en.wikipedia.org/wiki/Lowest_common_ancestor) of remaining hits
+- Calculates the taxonomic distance between each BLAST LCA assignment and the corresponding raw assignment from the RUN workflow
+- Propagates this information back from cluster representatives to other sequences in each cluster.
+
+This is a complex analysis with a number of steps, which have been grouped into descendent subworkflows for comprehensibility. 
 
 ```mermaid
 ---
@@ -154,6 +162,66 @@ style C fill:#fff,stroke:#000
 style J fill:#000,color:#fff,stroke:#000
 style K fill:#000,color:#fff,stroke:#000
 ```
+
+## Usage
+
+> [!IMPORTANT]
+> As with the [`RUN` workflow](./usage.md), before following the instructions in this section, make sure you have followed the [installation and setup instructions](./installation.md).
+
+To run the `DOWNSTREAM` workflow, you need:
+
+1. One or more accessible **viral hits tables** produced by the `RUN` workflow. These are [typically saved](./output.md#viral-identification)  in the `RUN` workflow's output directory under `results/virus_hits_final.tsv.gz`.
+2. For each hit table, an accessible **grouping TSV**, containing the following columns in the specified order:
+    - `sample`: Sample ID (must include one row for every value of this column in the viral hits table)
+    - `group`: Group IDs to use for duplicate annotatation
+3. An accessible **input file CSV** mapping viral hits tables to grouping TSVs, containing the following columns in the specified order:
+    - `label`: Arbitrary string label to use for each viral hits table
+    - `hits_tsv`: Path to the viral hits table
+    - `groups_tsv`: Path to the corresponding grouping TSV
+4. A **reference directory** containing the databases and indices generated by the [`INDEX` workflow](./index.md), including[^ref_dir]:
+    - The viral taxonomy database (`total-virus-db-annotated.tsv.gz`)
+    - The BLAST database for validation (e.g., `core_nt/`)
+    - NCBI taxonomy files (`taxonomy-nodes.dmp`, `taxonomy-names.dmp`)
+5. A **config file** in a clean launch directory, pointing to:
+    - The pipeline mode (`params.mode = "downstream"`);
+    - The input file (`params.input_file`);
+    - The base directory in which to put the working and output directories (`params.base_dir`);
+    - The reference directory containing databases and indices (`params.ref_dir`);
+    - The permitted deviation when identifying alignment duplicates (`params.aln_dup_deviation`);
+    - Parameters for sequence clustering during validation:
+        - `params.validation_cluster_identity`: Minimum sequence identity for cluster formation (default 0.95)
+        - `params.validation_n_clusters`: Maximum clusters per species to validate (default 20)
+    - Parameters for BLAST validation:
+        - `params.blast_db_prefix`: Prefix for BLAST database (e.g., "core_nt")
+        - `params.blast_perc_id`: Percentage identity threshold for BLAST hits (default 60)
+        - `params.blast_qcov_hsp_perc`: Query coverage threshold for BLAST hits (default 30)
+        - `params.blast_max_rank`: Maximum rank for BLAST hits by bitscore (default 10)
+        - `params.blast_min_frac`: Minimum fraction of best bitscore to retain hits (default 0.9)
+        - `params.taxid_artificial`: Parent taxid for artificial sequences (default 81077)
+
+> [!NOTE]
+> Currently, the input file and grouping TSV must be generated manually. We intend to implement programmatic generation of these files in the future.
+
+> [!TIP]
+> We recommend starting each pipeline run in a clean launch directory, containing only your input file and config file.
+
+Given these input files, you must choose a run profile as described [here](./usage.md#2-choosing-a-profile). You can then run the pipeline as follows:
+
+```
+nextflow run -resume -profile <PROFILE> <PATH/TO/PIPELINE/DIR>
+```
+
+where `<PATH/TO/PIPELINE/DIR>` specifies the path to the directory containing the pipeline files from this repository (in particular, `main.nf`) from the launch directory.
+
+Once the pipeline has finished, output and logging files will be available in the `output` subdirectory of the base directory specified in the config file.
+
+> [!IMPORTANT]
+> As with the `RUN` workflow, it's highly recommended to clean up your Nextflow working directory after run completion. You can do this manually or with the `nextflow clean` command.
+
+[^ref_dir]: This can be the same reference directory used by the `RUN` workflow - you do not need to run the `INDEX` workflow separately for the `DOWNSTREAM` workflow.
+
+## Appendix: Detailed breakdown of post-hoc validation subworkflows
+
 
 #### Split hits TSVs by assigned species (`SPLIT_VIRAL_TSV_BY_SPECIES`)
 
@@ -356,60 +424,3 @@ style C fill:#fff,stroke:#000
 style E fill:#fff,stroke:#000
 style J fill:#000,color:#fff,stroke:#000
 ```
-
-## Usage
-
-> [!IMPORTANT]
-> As with the [`RUN` workflow](./usage.md), before following the instructions in this section, make sure you have followed the [installation and setup instructions](./installation.md).
-
-To run the `DOWNSTREAM` workflow, you need:
-
-1. One or more accessible **viral hits tables** produced by the `RUN` workflow. These are [typically saved](./output.md#viral-identification)  in the `RUN` workflow's output directory under `results/virus_hits_final.tsv.gz`.
-2. For each hit table, an accessible **grouping TSV**, containing the following columns in the specified order:
-    - `sample`: Sample ID (must include one row for every value of this column in the viral hits table)
-    - `group`: Group IDs to use for duplicate annotatation
-3. An accessible **input file CSV** mapping viral hits tables to grouping TSVs, containing the following columns in the specified order:
-    - `label`: Arbitrary string label to use for each viral hits table
-    - `hits_tsv`: Path to the viral hits table
-    - `groups_tsv`: Path to the corresponding grouping TSV
-4. A **reference directory** containing the databases and indices generated by the [`INDEX` workflow](./index.md), including[^ref_dir]:
-    - The viral taxonomy database (`total-virus-db-annotated.tsv.gz`)
-    - The BLAST database for validation (e.g., `core_nt/`)
-    - NCBI taxonomy files (`taxonomy-nodes.dmp`, `taxonomy-names.dmp`)
-5. A **config file** in a clean launch directory, pointing to:
-    - The pipeline mode (`params.mode = "downstream"`);
-    - The input file (`params.input_file`);
-    - The base directory in which to put the working and output directories (`params.base_dir`);
-    - The reference directory containing databases and indices (`params.ref_dir`);
-    - The permitted deviation when identifying alignment duplicates (`params.aln_dup_deviation`);
-    - Parameters for sequence clustering during validation:
-        - `params.validation_cluster_identity`: Minimum sequence identity for cluster formation (default 0.95)
-        - `params.validation_n_clusters`: Maximum clusters per species to validate (default 20)
-    - Parameters for BLAST validation:
-        - `params.blast_db_prefix`: Prefix for BLAST database (e.g., "core_nt")
-        - `params.blast_perc_id`: Percentage identity threshold for BLAST hits (default 60)
-        - `params.blast_qcov_hsp_perc`: Query coverage threshold for BLAST hits (default 30)
-        - `params.blast_max_rank`: Maximum rank for BLAST hits by bitscore (default 10)
-        - `params.blast_min_frac`: Minimum fraction of best bitscore to retain hits (default 0.9)
-        - `params.taxid_artificial`: Parent taxid for artificial sequences (default 81077)
-
-> [!NOTE]
-> Currently, the input file and grouping TSV must be generated manually. We intend to implement programmatic generation of these files in the future.
-
-> [!TIP]
-> We recommend starting each pipeline run in a clean launch directory, containing only your input file and config file.
-
-Given these input files, you must choose a run profile as described [here](./usage.md#2-choosing-a-profile). You can then run the pipeline as follows:
-
-```
-nextflow run -resume -profile <PROFILE> <PATH/TO/PIPELINE/DIR>
-```
-
-where `<PATH/TO/PIPELINE/DIR>` specifies the path to the directory containing the pipeline files from this repository (in particular, `main.nf`) from the launch directory.
-
-Once the pipeline has finished, output and logging files will be available in the `output` subdirectory of the base directory specified in the config file.
-
-> [!IMPORTANT]
-> As with the `RUN` workflow, it's highly recommended to clean up your Nextflow working directory after run completion. You can do this manually or with the `nextflow clean` command.
-
-[^ref_dir]: This can be the same reference directory used by the `RUN` workflow - you do not need to run the `INDEX` workflow separately for the `DOWNSTREAM` workflow.
