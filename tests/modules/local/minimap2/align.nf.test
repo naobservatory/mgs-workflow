@@ -168,5 +168,48 @@ nextflow_process {
             assert input_reads == fastq_read_ids_mapped + fastq_read_ids_unmapped
         }
     }
+
+    test("Should run correctly on empty input file against viral index") {
+        tag "expect_success"
+        tag "empty_file"
+
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+        }
+
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_FILE.out
+                input[1] = "${params.ref_dir}/results/mm2-virus-index"
+                input[2] = "test"
+                input[3] = false
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+
+            // Check all expected output files exist
+            assert path(process.out.sam[0][1]).exists()
+            assert path(process.out.reads_mapped[0][1]).exists()
+            assert path(process.out.reads_unmapped[0][1]).exists()
+            assert path(process.out.input[0][1]).exists()
+
+            // All output files should be empty or contain only headers
+            assert path(process.out.reads_mapped[0][1]).fastq.readNames.size() == 0
+            assert path(process.out.reads_unmapped[0][1]).fastq.readNames.size() == 0
+        }
+    }
 }
 
