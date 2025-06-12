@@ -3,6 +3,13 @@ Given a viral hits TSV containing representative sequences,
 and tabular validation information for each representative,
 merge the two tables together on sequence ID, then compare
 the two taxids to evaluate validation status.
+
+The input map distance_params should specify the following fields
+for computing taxonomic distance between the original and validated taxids:
+- taxid_field_1: Column header for original taxid
+- taxid_field_2: Column header for validated taxid
+- distance_field_1: Column header for original taxid distance
+- distance_field_2: Column header for validated taxid distance
 */
 
 /***************************
@@ -23,16 +30,14 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
     take:
         hits_tsv // Viral hits TSV, including seq_id and original taxid assignment
         lca_tsv // LCA TSV from validation against core_nt
-        hits_taxid_column // Column header for original taxid in hits TSV
-        lca_taxid_column // Column header for LCA taxid in LCA TSV
-        tax_dist_column // Column header for taxonomic distance in hits TSV
         ref_dir // Path to reference directory containing taxonomy information
+        distance_params // Map specifying input taxid fields and output distance fields
     main:
         // 0. Get reference paths
         nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
         // 1. Prepare inputs for joining
         // Subset hits TSV to only seq_id and taxid columns
-        def hits_taxid_column_str = "seq_id,${hits_taxid_column}"
+        def hits_taxid_column_str = "seq_id,${distance_params.taxid_field_1}"
         select_ch = SELECT_TSV_COLUMNS(hits_tsv, hits_taxid_column_str, "keep").output
         // Rename qseqid to seq_id in LCA TSV
         rehead_ch = REHEAD_QSEQID(lca_tsv, "qseqid", "seq_id").output
@@ -42,8 +47,7 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
         // Inner join subsets hits TSV to sequences in LCA TSV (i.e. cluster representatives)
         join_ch = JOIN_TSVS(combine_ch, "seq_id", "inner", "representative").output
         // 3. Compute taxonomic distance between original and validated taxids
-        dist_ch = COMPUTE_TAXID_DISTANCE(join_ch, hits_taxid_column, lca_taxid_column,
-            tax_dist_column, nodes_db).output
+        dist_ch = COMPUTE_TAXID_DISTANCE(join_ch, distance_params, nodes_db).output
         // NB: As implemented, this will produce a negative distance if the original
         // taxid is too high (ancestor of LCA taxid), and a positive distance if the
         // original taxid is too low (descendant of LCA taxid).
