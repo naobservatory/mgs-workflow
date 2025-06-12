@@ -161,7 +161,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -214,7 +214,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -258,7 +258,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -308,7 +308,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -358,7 +358,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -409,7 +409,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -469,7 +469,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -529,7 +529,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -589,7 +589,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -639,7 +639,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -689,7 +689,7 @@ nextflow_process {
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
             assert tab_out.columnNames == tab_in.columnNames + ["bowtie2_dup_exemplar"]
-            assert tab_meta.columnNames == ["bowtie2_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
+            assert tab_meta.columnNames == ["aligner_genome_id_all", "bowtie2_dup_exemplar", "bowtie2_dup_count", "bowtie2_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }

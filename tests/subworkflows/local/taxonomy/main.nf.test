@@ -64,7 +64,7 @@ nextflow_workflow {
             assert kraken_report_tab.columnNames == kraken_headers_exp
             // Bracken output should have expected fields
             def bracken_tab = path(workflow.out.bracken[0]).csv(sep: "\t", decompress: true)
-            def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample"]
+            def bracken_headers_exp = ["name", "taxid", "rank", "kraken2_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample"]
             assert bracken_tab.columnCount == 8
             assert bracken_tab.columnNames == bracken_headers_exp
             // BBMerge summary output should have expected fields
@@ -136,7 +136,7 @@ nextflow_workflow {
             assert kraken_report_tab.columnNames == kraken_headers_exp
             // Bracken output should have expected fields
             def bracken_tab = path(workflow.out.bracken[0]).csv(sep: "\t", decompress: true)
-            def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample"]
+            def bracken_headers_exp = ["name", "taxid", "rank", "kraken2_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample"]
             assert bracken_tab.columnCount == 8
             assert bracken_tab.columnNames == bracken_headers_exp
             // BBMerge summary output should be empty
