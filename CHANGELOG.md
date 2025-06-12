@@ -1,6 +1,22 @@
-# v2.9.0.5-dev
+# v2.10.0.0-dev
+- Changed column names in `virus_hits_final.tsv` for consistency between Illumina and ONT output
+    - added `docs/virus_hits_final.md` with full documentation of column names
+    - prefixes `bowtie2_` and `minimap2_` changed to `aligner_`
+    - Removed columns `bowtie2_fragment_length_fwd/rev`, `minimap2_query_sequence`, `minimap2_read_length`, `minimap2_ref_start/end`,`minimap2_alignment_start/end`
+    - Added boolean columns `query_rc_by_aligner` and `query_rc_by_aligner_rev` to keep track of when the aligner reverse-complements a read; updated `query_seq` to undo the reverse complement operation  
+    - Changed prefixes from `kraken_` to `kraken2_`
+- `run_validation` workflow now runs on ONT/other single-end data
+    - To make this happen, updated `EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED` to infer endedness based on input file and to work correctly on both single-end and paired-end data. 
+- Made `MARK_ALIGNMENT_DUPLICATES` explicitly handle NAs. Now if forward reads match and reverse read alignments are NA, reads will be marked as duplicates.
+    - This is more conservative (will tend to mark more duplicates) than our previous approach (previously, if either read alignment was NA, a read couldn't be part of a duplicate group). 
+- Updated BOWTIE2 and PROCESS_VIRAL_BOWTIE2_SAM to handle unpaired input data.
+- Overhauled MARK_ALIGNMENT_DUPLICATES to increase computational efficiency:
+    - Added multithreaded processing of easily parallelizable steps
+    - Reworked assignment of reads to duplicate groups to avoid slow all-vs-all comparisons
 - Further work on post-hoc validation:
     - Updated VALIDATE_VIRAL_ASSIGNMENTS to concatenate across species before rather than after BLAST_VIRAL, dramatically reducing per-process fixed costs of running BLAST. (Involved updates to PROPAGATE_VALIDATION_INFORMATION as well as new CONCATENATE_FASTA_ACROSS_SPECIES subworkflow and CONCATENATE_FASTN_LABELED process.)
+    - Updated COMPUTE_TAXID_DISTANCE to compute distance from each taxid to their LCA rather than a single relative distance
+    - Modified COMPUTE_TAXID_DISTANCE and VALIDATE_CLUSTER_REPRESENTATIVES to use parameter maps
 
 # v2.9.0.4
 - Updated markAlignmentDuplicates module to reduce memory overhead and increase memory allocation (which collectively should avoid out-of-memory errors in DOWNSTREAM on large read groups).

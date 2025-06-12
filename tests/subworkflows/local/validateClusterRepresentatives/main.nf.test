@@ -14,21 +14,20 @@ nextflow_workflow {
             params {
                 hits_tsv = "${projectDir}/test-data/toy-data/validate-cluster-reps/test-hits.tsv"
                 lca_tsv = "${projectDir}/test-data/toy-data/validate-cluster-reps/test-lca.tsv"
-                hits_taxid_column = "taxid"
-                lca_taxid_column = "lca_taxid"
-                tax_dist_column_1 = "tax_dist_1"
-                tax_dist_column_2 = "tax_dist_2"
                 ref_dir = "${projectDir}/test-data/toy-data/validate-cluster-reps/"
+                distance_params = [
+                    taxid_field_1: "taxid",
+                    taxid_field_2: "lca_taxid",
+                    distance_field_1: "tax_dist_1",
+                    distance_field_2: "tax_dist_2"
+                ]
             }
             workflow {
                 '''
                 input[0] = Channel.of("test").combine(Channel.of(params.hits_tsv)) // hits_tsv
                 input[1] = Channel.of("test").combine(Channel.of(params.lca_tsv)) // lca_tsv
-                input[2] = params.hits_taxid_column // hits_taxid_column
-                input[3] = params.lca_taxid_column // lca_taxid_column
-                input[4] = params.tax_dist_column_1 // tax_dist_column_1
-                input[5] = params.tax_dist_column_2 // tax_dist_column_2
-                input[6] = params.ref_dir // ref_dir
+                input[2] = params.ref_dir // ref_dir
+                input[3] = params.distance_params // distance_params
                 '''
             }
         }
@@ -62,8 +61,8 @@ nextflow_workflow {
             def tab_dist = path(workflow.out.test_dist[0][1]).csv(sep: "\t", decompress: true)
             assert tab_dist.rowCount == tab_join.rowCount
             assert tab_dist.columnCount == tab_join.columnCount + 2
-            assert tab_dist.columns[params.tax_dist_column_1] == tab_dist.columns["exp_distance_1"]
-            assert tab_dist.columns[params.tax_dist_column_2] == tab_dist.columns["exp_distance_2"]
+            assert tab_dist.columns[params.distance_params.distance_field_1] == tab_dist.columns["exp_distance_1"]
+            assert tab_dist.columns[params.distance_params.distance_field_2] == tab_dist.columns["exp_distance_2"]
             // Final column renaming should work as expected
             def tab_out = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
             assert tab_out.rowCount == tab_dist.rowCount

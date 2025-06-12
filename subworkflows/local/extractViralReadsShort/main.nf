@@ -16,7 +16,6 @@ include { PROCESS_KRAKEN_VIRAL } from "../../../modules/local/processKrakenViral
 include { SORT_TSV as SORT_KRAKEN_VIRAL } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_BOWTIE_VIRAL } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_BBMERGE } from "../../../modules/local/sortTsv"
-include { REHEAD_TSV as REHEAD_BOWTIE_VIRAL } from "../../../modules/local/reheadTsv"
 include { JOIN_TSVS as JOIN_KRAKEN_BOWTIE } from "../../../modules/local/joinTsvs"
 include { JOIN_TSVS as JOIN_BBMERGE } from "../../../modules/local/joinTsvs"
 include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
@@ -58,20 +57,19 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         // 3. Run Bowtie2 against a viral database and process output
         par_virus = "--local --very-sensitive-local --score-min G,0.1,19"
         bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path,
-            par_virus, "virus", true, false)
+            par_virus, "virus", true, false, true)
         // 4. Filter contaminants
         par_contaminants = "--local --very-sensitive-local"
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path,
-            par_contaminants, "human", false, false)
+            par_contaminants, "human", false, false, true)
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path,
-            par_contaminants, "other", false, false)
+            par_contaminants, "other", false, false, true)
         // 5. Run Kraken on filtered viral candidates (via taxonomy subworkflow)
         tax_ch = TAXONOMY(other_bt2_ch.reads_unmapped, kraken_db_ch, "F", bracken_threshold, channel.value(false))
         // 6. Process and combine Kraken and Bowtie2 output
-        bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path)
+        bowtie2_sam_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_ch.sam, genome_meta_path, virus_db_path, true)
         kraken_output_ch = PROCESS_KRAKEN_VIRAL(tax_ch.kraken_output, virus_db_path, host_taxon)
-        bowtie2_sam_rehead_ch = REHEAD_BOWTIE_VIRAL(bowtie2_sam_ch.output, "query_name", "seq_id")
-        bowtie2_sam_sorted_ch = SORT_BOWTIE_VIRAL(bowtie2_sam_rehead_ch.output, "seq_id")
+        bowtie2_sam_sorted_ch = SORT_BOWTIE_VIRAL(bowtie2_sam_ch.output, "seq_id")
         kraken_sorted_ch = SORT_KRAKEN_VIRAL(kraken_output_ch.output, "seq_id")
         out_combined_ch = bowtie2_sam_sorted_ch.sorted.combine(kraken_sorted_ch.sorted, by: 0)
         out_joined_ch = JOIN_KRAKEN_BOWTIE(out_combined_ch, "seq_id", "inner", "bowtie2_kraken_viral")
