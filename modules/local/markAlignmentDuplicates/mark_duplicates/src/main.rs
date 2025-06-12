@@ -1,11 +1,94 @@
+// ------------------------------------------------------------------------------------------------
+// IMPORTS
+// ------------------------------------------------------------------------------------------------
+
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::collections::HashMap;
-use std::env;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::cmp::Ordering;
 use flate2::{Compression as GzCompression, write::GzEncoder, read::GzDecoder};
 use bzip2::{Compression as BzCompression, write::BzEncoder, read::BzDecoder};
+use rayon::prelude::*;
+use clap::Parser;
+
+// ------------------------------------------------------------------------------------------------
+// STRUCTS AND TYPES
+// ------------------------------------------------------------------------------------------------
+
+// Minimal ReadEntry struct storing only essential data for duplicate detection
+#[derive(Debug, Clone)]
+struct ReadEntry {
+    query_name: String,
+    genome_id: String,
+    aln_start: Option<i32>,
+    aln_end: Option<i32>,
+    avg_quality: f64,
+}
+
+// Structure to store duplicate group information without storing full read data
+#[derive(Debug, Clone)]
+struct DuplicateGroup {
+    genome_id: String,
+    exemplar_name: String,
+    group_size: usize,
+    pairwise_match_frac: f64,
+}
+
+// Map from query_name to (genome_id, exemplar_name) for efficient lookup during second pass
+type ExemplarMap = HashMap<String, (String, String)>;
+
+// ------------------------------------------------------------------------------------------------
+// ARGUMENT PARSING
+// ------------------------------------------------------------------------------------------------
+
+/// Mark duplicate reads in alignment data
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Input TSV file path
+    #[arg(short, long)]
+    input: String,
+    /// Output database file path
+    #[arg(short = 'o', long)]
+    output_db: String,
+    /// Output metadata file path
+    #[arg(short = 'm', long)]
+    output_meta: String,
+    /// Position deviation tolerance (0, 1, or 2)
+    #[arg(short, long, default_value_t = 0, value_parser = clap::value_parser!(u8).range(0..=2))]
+    deviation: u8,
+    /// Chunk size for parallel processing
+    #[arg(short, long, default_value_t = 2000, value_parser = clap::value_parser!(u32).range(1..))]
+    chunk_size: u32,
+    /// Number of threads to use
+    #[arg(short, long, default_value_t = 4, value_parser = clap::value_parser!(u8).range(1..))]
+    num_threads: u8,
+}
+
+// ------------------------------------------------------------------------------------------------
+// HELPER FUNCTIONS
+// ------------------------------------------------------------------------------------------------
+
+// Compare two Option<i32> positions, treating None as larger than any Some value
+// This puts None values at the end of the sorted list
+fn order_positions(a: Option<i32>, b: Option<i32>) -> Ordering {
+    match (a, b) {
+        (Some(a_pos), Some(b_pos)) => a_pos.cmp(&b_pos),
+        (Some(_), None) => Ordering::Less,     // Some < None
+        (None, Some(_)) => Ordering::Greater,  // None > Some
+        (None, None) => Ordering::Equal,       // None == None
+    }
+}
+
+// Sort ReadEntries by coordinates: first by aln_start, then by aln_end
+// None values are treated as larger than any Some value (sorted to the end)
+fn compare_read_coordinates(a: &ReadEntry, b: &ReadEntry) -> Ordering {
+    match order_positions(a.aln_start, b.aln_start) {
+        Ordering::Equal => order_positions(a.aln_end, b.aln_end),
+        other => other,
+    }
+}
 
 // Define a reader based on the file extension
 fn open_reader(filename: &str) -> std::io::Result<Box<dyn BufRead>> {
@@ -37,28 +120,6 @@ fn open_writer(filename: &str) -> std::io::Result<Box<dyn Write>> {
     }
 }
 
-// Minimal ReadEntry struct storing only essential data for duplicate detection
-#[derive(Debug, Clone)]
-struct ReadEntry {
-    query_name: String,
-    genome_id: String,
-    aln_start: Option<i32>,
-    aln_end: Option<i32>,
-    avg_quality: f64,
-}
-
-// Structure to store duplicate group information without storing full read data
-#[derive(Debug, Clone)]
-struct DuplicateGroup {
-    genome_id: String,
-    exemplar_name: String,
-    group_size: usize,
-    pairwise_match_frac: f64,
-}
-
-// Map from query_name to (genome_id, exemplar_name) for efficient lookup during second pass
-type ExemplarMap = HashMap<String, (String, String)>;
-
 // Implement a custom match function for comparing ReadEntries
 // (Not a valid equality relation as not transitive)
 fn match_reads(a: &ReadEntry, b: &ReadEntry) -> bool {
@@ -68,10 +129,9 @@ fn match_reads(a: &ReadEntry, b: &ReadEntry) -> bool {
 }
 
 // Compare the positions with a deviation
-// If both positions are None, they are considered equal
-fn compare_positions(a: Option<i32>, b: Option<i32>, deviation: i32) -> bool {
+fn compare_positions(a: Option<i32>, b: Option<i32>, deviation: u8) -> bool {
     match (a, b) {
-        (Some(x), Some(y)) => (x - y).abs() <= deviation,
+        (Some(x), Some(y)) => (x - y).abs() <= deviation as i32,
         (None, None) => true,
         _ => false,
     }
@@ -98,14 +158,14 @@ fn parse_int_or_na(s: &str) -> Option<i32> {
     }
 }
 
-// Convert the ASCII quality score to a quality score
+// Convert the ASCII quality score to a quality score (optimized for speed)
 fn ascii_to_quality_score(ascii_score: &str) -> f64 {
     if ascii_score == "NA" {
         return 0.0;
     }
-    ascii_score.chars()
-        .map(|c| c as u8 as f64 - 33.0)
-        .sum::<f64>() / ascii_score.len() as f64
+    let bytes = ascii_score.as_bytes();
+    let sum: u32 = bytes.iter().map(|&b| (b - 33) as u32).sum();
+    sum as f64 / bytes.len() as f64
 }
 
 // Calculate the average quality score of the forward and reverse reads
@@ -113,6 +173,113 @@ fn average_quality_score(quality_fwd: &str, quality_rev: &str) -> f64 {
     let fwd_score = ascii_to_quality_score(quality_fwd);
     let rev_score = ascii_to_quality_score(quality_rev);
     (fwd_score + rev_score) / 2.0
+}
+
+// ------------------------------------------------------------------------------------------------
+// EXTRACTION FUNCTIONS
+// ------------------------------------------------------------------------------------------------
+
+/// Optimized group building using sorted sliding window approach
+/// Takes in a vector of ReadEntry objects sharing a genome_id assignment,
+/// sorted by start coordinate, then iterates over the vector in order,
+/// checking for position matches with previous reads whose start coordinate
+/// is within DEVIATION of the current read's start coordinate.
+/// If a match is found, the current read is assigned to the same group as the previous read.
+/// If no match is found, a new group is created.
+/// Finally, all overlapping groups (those for which a single read is assigned to both groups)
+/// are merged.
+fn build_groups_from_sorted_reads(
+    mut reads: Vec<ReadEntry>
+) -> Vec<Vec<ReadEntry>> {
+    if reads.is_empty() {
+        return Vec::new();
+    }
+    // Sort reads by coordinates for sliding window optimization
+    reads.sort_by(compare_read_coordinates);
+    // Track group assignment for each read (parallel arrays)
+    let mut group_assignments: Vec<usize> = vec![0; reads.len()];
+    let mut next_group_id = 0;
+    // Track which groups need to be merged: representative_group -> set of all groups to merge
+    let mut group_merges: HashMap<usize, HashSet<usize>> = HashMap::new();
+    // Process reads in sorted order using sliding window
+    for i in 0..reads.len() {
+        let current_read = &reads[i];
+        let mut matching_groups: HashSet<usize> = HashSet::new();
+        // Sliding window: look backwards until more matches are impossible
+        for j in (0..i).rev() {
+            let prev_read = &reads[j];
+            // If both reads have Some coordinates, break if the difference is greater than DEVIATION
+            if let (Some(curr_start), Some(prev_start)) = (current_read.aln_start, prev_read.aln_start) {
+                if curr_start - prev_start > unsafe { DEVIATION } as i32 {
+                    break;
+                }
+            }
+            // If current_read coordinate is None, break if previous read has Some coordinate
+            if current_read.aln_start.is_none() && prev_read.aln_start.is_some() {
+                break;
+            }
+            // Otherwise, compare fully and add to matching_groups if they match
+            if match_reads(current_read, prev_read) {
+                matching_groups.insert(group_assignments[j]);
+            }
+        }
+        // Assign group based on matches found
+        if matching_groups.is_empty() {
+            // No matches: create new group
+            group_assignments[i] = next_group_id;
+            next_group_id += 1;
+        } else if matching_groups.len() == 1 {
+            // Single match: assign to that group
+            group_assignments[i] = *matching_groups.iter().next().unwrap();
+        } else {
+            // Multiple matches: assign to max group and record merge for later
+            let max_group = *matching_groups.iter().max().unwrap();
+            group_assignments[i] = max_group;
+            // Record that all matching groups should be merged with max_group
+            group_merges.entry(max_group)
+                .or_insert_with(|| {
+                    let mut set = HashSet::new();
+                    set.insert(max_group);
+                    set
+                })
+                .extend(matching_groups);
+        }
+    }
+    // Resolve all merges to create final group mapping
+    let final_group_mapping = resolve_group_merges(group_merges);
+    // Replace each group ID with its final representative group ID (resolving transitive merges)
+    let final_group_assignments = group_assignments.iter()
+        .map(|&group_id| *final_group_mapping.get(&group_id).unwrap_or(&group_id))
+        .collect::<Vec<_>>();
+    // Convert to Vec<Vec<ReadEntry>> output format
+    let mut final_groups: HashMap<usize, Vec<ReadEntry>> = HashMap::new();
+    for (read, &group_id) in reads.into_iter().zip(final_group_assignments.iter()) {
+        final_groups.entry(group_id).or_insert_with(Vec::new).push(read);
+    }
+    // Return groups as Vec<Vec<ReadEntry>>
+    final_groups.into_values().collect()
+}
+
+// Resolve group merges by processing in descending order of group IDs
+// Assigns each group ID to the largest group ID in its merge set
+fn resolve_group_merges(group_merges: HashMap<usize, HashSet<usize>>) -> HashMap<usize, usize> {
+    let mut final_mapping: HashMap<usize, usize> = HashMap::new();
+    // Get all group IDs that appear as keys and sort in descending order (largest first)
+    let mut group_ids: Vec<usize> = group_merges.keys().copied().collect();
+    group_ids.sort_by(|a, b| b.cmp(a)); // Descending order
+    // Process each group ID in descending order
+    for &id in &group_ids {
+        // If this group ID has already been mapped to a larger group ID, use that as representative
+        // Otherwise, use the group ID itself as its own representative
+        let final_representative = *final_mapping.get(&id).unwrap_or(&id);
+        // Map every group ID in this ID's merge set to the representative
+        if let Some(groups_to_merge) = group_merges.get(&id) {
+            for &group_id in groups_to_merge {
+                final_mapping.insert(group_id, final_representative);
+            }
+        }
+    }
+    final_mapping
 }
 
 fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, usize), Box<dyn Error>> {
@@ -159,7 +326,8 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEnt
         // Get the index of the first genome ID in the sorted list
         let genome_id_index = sorted_parts.iter().position(|&s| s == parts[0]).unwrap();
         // Arrange start coordinates to correspond to sorted genome IDs
-        // Note: this doesn't need to handle the case where one value is None because then you could never get multiple genome_ids
+        // Note: this doesn't need to handle the case where one value is None
+        // because then you could never get multiple genome_ids
         (aln_start, aln_end) = if genome_id_index == 0 {
             (ref_start_fwd, ref_start_rev)
         } else {
@@ -168,7 +336,8 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEnt
     } else {
         // If only one genome ID, use it directly
         genome_id_sorted = genome_id.to_string();
-        // Normalize coordinates: if values are present, use the minimum and maximum; handle cases where one value is None
+        // Normalize coordinates: if values are present, use the minimum and maximum
+        // Handle cases where one value is None
         (aln_start, aln_end) = match (ref_start_fwd, ref_start_rev) {
             (Some(fwd), Some(rev)) => (Some(fwd.min(rev)), Some(fwd.max(rev))),
             (Some(fwd), None) => (Some(fwd), None),
@@ -176,7 +345,7 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEnt
             (None, None) => (None, None),
         };
     };
-    let avg_quality = average_quality_score(&quality_fwd, &quality_rev);
+    let avg_quality = average_quality_score(quality_fwd, quality_rev);
     // Return the ReadEntry with minimal memory footprint
     ReadEntry { 
         query_name, 
@@ -187,51 +356,113 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEnt
     }
 }
 
-// TODO: Handle split-ID read pairs
+// Process a chunk of lines in parallel to create ReadEntry objects
+fn process_chunk_parallel(
+    lines: &[String], 
+    indices: &HashMap<&str, usize>,
+    header_count: usize
+) -> Result<Vec<ReadEntry>, Box<dyn Error>> {
+    // Parse lines in parallel using rayon
+    let read_entries: Result<Vec<ReadEntry>, String> = lines
+        .par_iter()  // Parallel iterator from rayon
+        .map(|line| {
+            // Split line into fields
+            let fields: Vec<String> = line.split('\t').map(|s| s.to_string()).collect();
+            // Validate field count
+            if fields.len() != header_count {
+                return Err(format!("Invalid field count: {} (expected {})", fields.len(), header_count));
+            }
+            // Create ReadEntry from fields
+            Ok(make_read_entry(&fields, indices))
+        })
+        .collect();
+    // Convert String errors to Box<dyn Error>
+    read_entries.map_err(|e| -> Box<dyn Error> { 
+        std::io::Error::new(std::io::ErrorKind::InvalidData, e).into() 
+    })
+}
 
-fn extract_read_groups(input_path: &str) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>, usize), Box<dyn Error>> {
+fn extract_read_groups(input_path: &str,
+    chunk_size: u32
+) -> Result<(String, HashMap<String, Vec<Vec<ReadEntry>>>, usize), Box<dyn Error>> {
     // Open the input file
     let reader = open_reader(input_path)?;
-    // Create a HashMap to store duplicate information
-    let mut groups: HashMap<String, Vec<Vec<ReadEntry>>> = HashMap::new();
     // Process the header line and derive the required fields
     let mut lines = reader.lines();
     let header_line = lines.next().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Empty input file"))??;
     let (headers, indices, header_count) = process_header_line(&header_line)?;
     // Create the output header line
     let mut headers_out = headers.clone();
-    headers_out.push("bowtie2_dup_exemplar");
+    headers_out.push("aligner_dup_exemplar");
     let header_out = headers_out.join("\t");
     // Get the seq_id column index for later use
     let seq_id_index = indices["seq_id"];
-    // Read and process the input file
-    for (index, line) in lines.enumerate() {
-        // Extract fields and verify count
+    // Collect reads by genome_id
+    let mut genome_accumulators: HashMap<String, Vec<ReadEntry>> = HashMap::new();
+    // Read and process the input file in chunks
+    let mut line_buffer = Vec::new();
+    for line in lines {
         let line = line?;
-        let fields: Vec<String> = line.split('\t').map(|s| s.to_string()).collect();
-        if fields.len() != header_count {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Incorrect field count in line {}: {} (observed) vs {} (expected)", 
-                    index + 1, fields.len(), header_count),
-            ).into());
+        line_buffer.push(line);
+        // Process chunk when buffer is full
+        if line_buffer.len() >= chunk_size as usize {
+            // Process this chunk in parallel
+            let read_entries = process_chunk_parallel(&line_buffer, &indices, header_count)?;
+            // Partition reads by genome_id
+            for read_entry in read_entries {
+                genome_accumulators.entry(read_entry.genome_id.clone())
+                    .or_insert_with(Vec::new)
+                    .push(read_entry);
+            }
+            // Clear the buffer
+            line_buffer.clear();
         }
-        // Create a ReadEntry from the fields
-        let read_entry = make_read_entry(&fields, &indices);
-        // Add the read to the groups HashMap
-        groups = add_read_to_groups(groups, read_entry);
     }
-    Ok((header_out, groups, seq_id_index))
+    // Process remaining lines in the buffer
+    if !line_buffer.is_empty() {
+        let read_entries = process_chunk_parallel(&line_buffer, &indices, header_count)?;
+        for read_entry in read_entries {
+            genome_accumulators.entry(read_entry.genome_id.clone())
+                .or_insert_with(Vec::new)
+                .push(read_entry);
+        }
+    }
+    // Process reads for each genome_id into read groups using optimized sorting approach
+    let genome_results: Vec<(String, Vec<Vec<ReadEntry>>)> = genome_accumulators
+        .into_par_iter()
+        .map(|(genome_id, reads)| {
+            // Use optimized sorted sliding window approach
+            let groups = build_groups_from_sorted_reads(reads);
+            (genome_id, groups)
+        })
+        .collect();
+    // Collect results back into the main groups HashMap
+    let mut final_groups = HashMap::new();
+    for (genome_id, genome_group_list) in genome_results {
+        final_groups.insert(genome_id, genome_group_list);
+    }
+    Ok((header_out, final_groups, seq_id_index))
 }
+
+// ------------------------------------------------------------------------------------------------
+// PROCESSING FUNCTIONS
+// ------------------------------------------------------------------------------------------------
 
 // Process duplicate groups to create exemplar mapping and metadata (focused on group processing)
 fn process_read_groups(
     groups: HashMap<String, Vec<Vec<ReadEntry>>>
 ) -> Result<(ExemplarMap, Vec<DuplicateGroup>), Box<dyn Error>> {
-    let mut exemplar_map = ExemplarMap::new();
-    let mut duplicate_groups = Vec::new();
-    for (genome_id, id_group) in groups {
-        for dup_group in id_group {
+    // Flatten all duplicate groups with their genome_id for parallel processing
+    let all_groups: Vec<(String, Vec<ReadEntry>)> = groups
+        .into_iter()
+        .flat_map(|(genome_id, id_groups)| {
+            id_groups.into_iter().map(move |dup_group| (genome_id.clone(), dup_group))
+        })
+        .collect();
+    // Process all groups in parallel
+    let group_results: Vec<(DuplicateGroup, Vec<(String, String, String)>)> = all_groups
+        .par_iter()  // Parallel iterator
+        .map(|(genome_id, dup_group)| {
             // Find the exemplar using compare_reads
             let exemplar = dup_group.iter().max_by(|a, b| compare_reads(a, b)).unwrap();
             let exemplar_name = exemplar.query_name.clone();
@@ -242,35 +473,56 @@ fn process_read_groups(
             if dup_count == 1 {
                 pairwise_match_frac = 1.0;
             } else {
-                let mut pairwise_match_count: f64 = 0.0;
+                // Stage 2 Multithreading: Parallel pairwise matching
+                // Generate all pairs (i,j) where i < j and process them in parallel
                 let dup_count_float: f64 = dup_count as f64;
                 let n_pairs: f64 = dup_count_float * (dup_count_float - 1.0) / 2.0;
-                for i in 0..dup_count {
-                    for j in (i + 1)..dup_count {
+                // Use rayon to parallelize pairwise comparisons
+                let pairwise_match_count: f64 = (0..dup_count)
+                    .into_par_iter()  // Parallel iterator
+                    .flat_map(|i| (i + 1..dup_count).into_par_iter().map(move |j| (i, j)))
+                    .map(|(i, j)| {
                         let read_i = &dup_group[i];
                         let read_j = &dup_group[j];
-                        if match_reads(read_i, read_j) {
-                            pairwise_match_count += 1.0;
-                        }
-                    }
-                }
+                        if match_reads(read_i, read_j) { 1.0 } else { 0.0 }
+                    })
+                    .sum();  // Rayon's parallel sum reduction
                 pairwise_match_frac = pairwise_match_count / n_pairs;
             }
-            // Store duplicate group information
-            duplicate_groups.push(DuplicateGroup {
+            // Create duplicate group metadata
+            let dup_group_info = DuplicateGroup {
                 genome_id: genome_id.clone(),
                 exemplar_name: exemplar_name.clone(),
                 group_size: dup_count,
                 pairwise_match_frac,
-            });
-            // Map each read in the group to its exemplar
-            for read_entry in dup_group {
-                exemplar_map.insert(read_entry.query_name, (genome_id.clone(), exemplar_name.clone()));
-            }
+            };
+            // Create exemplar mappings for this group
+            let exemplar_mappings: Vec<(String, String, String)> = dup_group
+                .iter()
+                .map(|read_entry| {
+                    (read_entry.query_name.clone(), genome_id.clone(), exemplar_name.clone())
+                })
+                .collect();
+            
+            (dup_group_info, exemplar_mappings)
+        })
+        .collect();
+    
+    // Collect results into final data structures
+    let mut exemplar_map = ExemplarMap::new();
+    let mut duplicate_groups = Vec::new();
+    for (dup_group_info, exemplar_mappings) in group_results {
+        duplicate_groups.push(dup_group_info);
+        for (query_name, genome_id, exemplar_name) in exemplar_mappings {
+            exemplar_map.insert(query_name, (genome_id, exemplar_name));
         }
     }
     Ok((exemplar_map, duplicate_groups))
 }
+
+// ------------------------------------------------------------------------------------------------
+// WRITING FUNCTIONS
+// ------------------------------------------------------------------------------------------------
 
 // Write duplicate group metadata file (no file streaming required)
 fn write_metadata_file(
@@ -280,7 +532,7 @@ fn write_metadata_file(
     // Open the metadata output file
     let mut writer_meta = open_writer(output_path_meta)?;
     // Write header
-    let header_meta = "aligner_genome_id_all\tbowtie2_dup_exemplar\tbowtie2_dup_count\tbowtie2_dup_pairwise_match_frac";
+    let header_meta = "aligner_genome_id_all\taligner_dup_exemplar\taligner_dup_count\taligner_dup_pairwise_match_frac";
     writeln!(writer_meta, "{}", header_meta)?;
     // Write duplicate group metadata (once per group)
     for dup_group in duplicate_groups {
@@ -324,58 +576,20 @@ fn write_database_file(
     Ok(())
 }
 
-fn add_read_to_groups(
-    mut groups: HashMap<String, Vec<Vec<ReadEntry>>>,
-    read_entry: ReadEntry,
-) -> HashMap<String, Vec<Vec<ReadEntry>>> {
-    // Check if the genome_id is already present
-    if !groups.contains_key(&read_entry.genome_id) {
-        // If not, create a new ID entry and add the read entry to it as a new group
-        groups.insert(read_entry.genome_id.clone(), Vec::new());
-        groups.get_mut(&read_entry.genome_id).unwrap().push(vec![read_entry]);
-    } else {
-        // Otherwise, compare the read entry with each group in the ID entry
-        let mut groups_match = Vec::new();
-        for i in 0.. groups[&read_entry.genome_id].len() {
-            for j in 0..groups[&read_entry.genome_id][i].len() {
-                if match_reads(&read_entry, &groups[&read_entry.genome_id][i][j]) {
-                    groups_match.push(i);
-                    break;
-                }
-            }
-        }
-        // If no matches, create a new group in the ID entry and add the read entry to it
-        if groups_match.is_empty() {
-            groups.get_mut(&read_entry.genome_id).unwrap().push(vec![read_entry]);
-        // If exactly one match, add the read entry to that group
-        } else if groups_match.len() == 1 {
-            groups.get_mut(&read_entry.genome_id).unwrap()[groups_match[0]].push(read_entry);
-        // If multiple matches, combine them into a new group, add the read entry, then
-        // delete the old groups
-        } else {
-            // Combine the groups into a new group
-            let mut combined_group = Vec::new();
-            for i in groups_match.iter() {
-                combined_group.extend(groups[&read_entry.genome_id][*i].clone());
-            }
-            // Add the read entry to the combined group
-            combined_group.push(read_entry.clone());
-            // Add the combined group to the ID entry
-            groups.get_mut(&read_entry.genome_id).unwrap().push(combined_group);
-            // Remove the old groups in reverse order (to avoid index shifting)
-            for i in groups_match.iter().rev() {
-                groups.get_mut(&read_entry.genome_id).unwrap().remove(*i);
-            }
-        }
-    }
-    // Return the updated groups
-    groups
-}
+// ------------------------------------------------------------------------------------------------
+// TOP-LEVEL FUNCTIONS
+// ------------------------------------------------------------------------------------------------
+
+// Define the deviation value
+static mut DEVIATION: u8 = 0;
 
 // Two-pass processing for improved memory efficiency
-fn process_tsv(input_path: &str, output_path_db: &str, output_path_meta: &str) -> Result<(), Box<dyn Error>> {
+fn process_tsv(input_path: &str,
+    output_path_db: &str,
+    output_path_meta: &str,
+    chunk_size: u32) -> Result<(), Box<dyn Error>> {
     // Extract read groups from the input file
-    let (header_out, groups, seq_id_index) = extract_read_groups(input_path)?;
+    let (header_out, groups, seq_id_index) = extract_read_groups(input_path, chunk_size)?;
     // Process duplicate groups to create exemplar mapping and metadata
     let (exemplar_map, duplicate_groups) = process_read_groups(groups)?;
     // Write metadata file
@@ -385,35 +599,19 @@ fn process_tsv(input_path: &str, output_path_db: &str, output_path_meta: &str) -
     Ok(())
 }
 
-// Define the deviation value
-static mut DEVIATION: i32 = 0;
-
 fn main() -> Result<(), Box<dyn Error>> {
-    let args: Vec<String> = env::args().collect();
-    // Check if the correct number of arguments are provided
-    if args.len() != 5 {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!(
-            "Usage: {} <input_file> <output_file_db> <output_file_meta> <deviation>", args[0]
-        )).into());
-    }
-    // Parse the input and output file paths
-    let input_path = &args[1];
-    let output_path_db = &args[2];
-    let output_path_meta = &args[3];
-    // Parse the deviation value
-    let deviation: i32 = args[4].parse().map_err(|_| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, "Deviation must be an integer")
-    })?;
-    // Check if the deviation value is valid
-    if deviation != 0 && deviation != 1 && deviation != 2 {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!(
-            "Deviation must be at most 2"
-        )).into());
-    }
+    // Parse command line arguments
+    let args = Args::parse();
+    // Configure rayon thread pool
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(args.num_threads as usize)
+        .build_global()
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, 
+            format!("Failed to configure thread pool: {}", e)))?;
     // Set the deviation value
     unsafe {
-        DEVIATION = deviation;
+        DEVIATION = args.deviation;
     }
     // Run the main processing function
-    return process_tsv(input_path, output_path_db, output_path_meta);
+    return process_tsv(&args.input, &args.output_db, &args.output_meta, args.chunk_size);
 }
