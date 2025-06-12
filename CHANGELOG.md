@@ -9,6 +9,7 @@
     - To make this happen, updated `EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED` to infer endedness based on input file and to work correctly on both single-end and paired-end data. 
 - Made `MARK_ALIGNMENT_DUPLICATES` explicitly handle NAs. Now if forward reads match and reverse read alignments are NA, reads will be marked as duplicates.
     - This is more conservative (will tend to mark more duplicates) than our previous approach (previously, if either read alignment was NA, a read couldn't be part of a duplicate group). 
+- Updated BOWTIE2 and PROCESS_VIRAL_BOWTIE2_SAM to handle unpaired input data.
 
 # v2.9.0.5-dev
 - Further work on post-hoc validation:
