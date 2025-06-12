@@ -120,7 +120,7 @@ This subworkflow uses BLAST to validate the taxonomic assignments given to putat
 - Calculates the taxonomic distance between each BLAST LCA assignment and the corresponding raw assignment from the RUN workflow
 - Propagates this information back from cluster representatives to other sequences in each cluster.
 
-This is a complex analysis with a number of steps, which have been grouped into descendent subworkflows for comprehensibility. 
+This is a complex analysis with a number of steps, which have been grouped into component subworkflows for comprehensibility. See the [appendix](./downstream.md#appendix-detailed-breakdown-of-post-hoc-validation-subworkflows) for more detailed information on each component.
 
 ```mermaid
 ---
