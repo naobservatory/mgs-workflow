@@ -56,10 +56,14 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac, taxid_artificial,
             "validation")
         // 5. Validate original group hits against concatenated BLAST results
+        distance_params = [
+            taxid_field_1: "bowtie2_taxid_best",
+            taxid_field_2: "validation_staxid_lca_natural",
+            distance_field_1: "validation_distance_bowtie2",
+            distance_field_2: "validation_distance_validation"
+        ]
         validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(groups, blast_ch.lca,
-            "bowtie2_taxid_best", // Column header for original taxid in hits TSV
-            "validation_staxid_lca_natural", // LCA taxid computed from BLAST results, excluding artificial sequences
-            "validation_distance_bowtie2", "validation_distance_validation", ref_dir)
+            ref_dir, distance_params)
         // 6. Propagate validation information back to individual hits
         propagate_ch = PROPAGATE_VALIDATION_INFORMATION(groups, concat_cluster_ch.output,
             validate_ch.output, "bowtie2_taxid_best")
