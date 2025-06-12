@@ -238,49 +238,39 @@ def group_alignments_by_mates(
     group_idx = 0
     
     if pair_status == "UP":
-        # Handle UP reads with fixed logic to prevent group_id overwrites
-        all_pos = set(a.pos for a in alignments)
-        # Map each position to all group_ids that have alignments at that position
-        mate_groups: Dict[int, list[int]] = defaultdict(list)
-
+        # Group by unique key: (rname, rnext, min(pos, pnext), max(pos, pnext))
+        pair_key_to_group = {}
+        
         for alignment in alignments:
-            if alignment.pos == alignment.pnext or alignment.pnext not in all_pos:
-                # Cases 1&2: standalone processing
+            # Skip unmapped or self-referential
+            if alignment.pnext == 0 or alignment.pos == alignment.pnext:
                 by_group[group_idx].append(alignment)
-                mate_groups[alignment.pos].append(group_idx)
                 group_idx += 1
-            else:
-                # Case 3: check if mate already grouped
-                found_compatible = False
-                
-                if alignment.pnext in mate_groups:
-                    # Check all groups that have alignments at alignment.pnext
-                    for candidate_group_id in mate_groups[alignment.pnext]:
-                        existing_alignments = by_group[candidate_group_id]
-                        if len(existing_alignments) > 0:
-                            existing = existing_alignments[0]
-                            # Check if adding this alignment would create a conflict
-                            if not (existing.pnext != alignment.rname or existing.rnext != alignment.pos):
-                                # Compatible! Add to this group
-                                by_group[candidate_group_id].append(alignment)
-                                # Track that this group now also has alignments at alignment.pos
-                                if candidate_group_id not in mate_groups[alignment.pos]:
-                                    mate_groups[alignment.pos].append(candidate_group_id)
-                                found_compatible = True
-                                break
-                        else:
-                            # Empty group (shouldn't happen, but handle gracefully)
-                            by_group[candidate_group_id].append(alignment)
-                            if candidate_group_id not in mate_groups[alignment.pos]:
-                                mate_groups[alignment.pos].append(candidate_group_id)
-                            found_compatible = True
-                            break
-                
-                if not found_compatible:
-                    # No compatible group found, create new group
-                    by_group[group_idx].append(alignment)
-                    mate_groups[alignment.pos].append(group_idx)
-                    group_idx += 1
+                continue
+            
+            # Skip cross-reference genome mappings
+            if alignment.rnext != "=" and alignment.rname != alignment.rnext:
+                by_group[group_idx].append(alignment)
+                group_idx += 1
+                continue
+            
+            # Create key for same-reference mappings
+            pos_min = min(alignment.pos, alignment.pnext)
+            pos_max = max(alignment.pos, alignment.pnext)
+            
+            pair_key = (
+                alignment.qname,
+                alignment.rname,
+                pos_min,
+                pos_max
+            )
+            
+            if pair_key not in pair_key_to_group:
+                pair_key_to_group[pair_key] = group_idx
+                group_idx += 1
+            
+            group_id = pair_key_to_group[pair_key]
+            by_group[group_id].append(alignment)
     else:
         # For non-UP reads, map tuple keys to int keys
         pair_key_to_group: Dict[tuple, int] = {}
