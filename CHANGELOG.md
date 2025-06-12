@@ -9,6 +9,10 @@
     - To make this happen, updated `EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED` to infer endedness based on input file and to work correctly on both single-end and paired-end data. 
 - Made `MARK_ALIGNMENT_DUPLICATES` explicitly handle NAs. Now if forward reads match and reverse read alignments are NA, reads will be marked as duplicates.
     - This is more conservative (will tend to mark more duplicates) than our previous approach (previously, if either read alignment was NA, a read couldn't be part of a duplicate group). 
+- Updated BOWTIE2 and PROCESS_VIRAL_BOWTIE2_SAM to handle unpaired input data.
+- Overhauled MARK_ALIGNMENT_DUPLICATES to increase computational efficiency:
+    - Added multithreaded processing of easily parallelizable steps
+    - Reworked assignment of reads to duplicate groups to avoid slow all-vs-all comparisons
 - Further work on post-hoc validation:
     - Updated VALIDATE_VIRAL_ASSIGNMENTS to concatenate across species before rather than after BLAST_VIRAL, dramatically reducing per-process fixed costs of running BLAST. (Involved updates to PROPAGATE_VALIDATION_INFORMATION as well as new CONCATENATE_FASTA_ACROSS_SPECIES subworkflow and CONCATENATE_FASTN_LABELED process.)
     - Updated COMPUTE_TAXID_DISTANCE to compute distance from each taxid to their LCA rather than a single relative distance
