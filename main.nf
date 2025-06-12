@@ -52,4 +52,8 @@ output {
         path "results_downstream"
         tags nextflow_file_class: "publish", "nextflow.io/temporary": "false"
     }
+    intermediates_downstream {
+        path "intermediates_downstream"
+        tags nextflow_file_class: "intermediate", "nextflow.io/temporary": "false"
+    }
 }
