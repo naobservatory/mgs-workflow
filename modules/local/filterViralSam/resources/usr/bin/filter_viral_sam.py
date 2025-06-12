@@ -238,7 +238,7 @@ def group_alignments_by_mates(
     group_idx = 0
     
     if pair_status == "UP":
-        # Group by unique key: (rname, rnext, min(pos, pnext), max(pos, pnext))
+        # Group by unique key: (qname, rname, min(pos, pnext), max(pos, pnext))
         pair_key_to_group = {}
         
         for alignment in alignments:
@@ -494,7 +494,6 @@ def stream_sam_by_qname(sam_file: str) -> Iterator[Tuple[str, list[SamAlignment]
         if current_qname is not None:
             yield current_qname, current_alignments
 
-
 def filter_viral_sam(
     input_sam: str, filtered_fastq: str, output_sam: str, score_threshold: float
 ) -> None:
@@ -558,12 +557,19 @@ def filter_viral_sam(
 
             # Skip if this curr_align_read_id is not in filtered reads
             if curr_read_id is not None and curr_read_id > curr_align_read_id:
-                  logger.debug(
-                      f"Skipping alignment that is not found in fastq file: {curr_align_read_id}"
-                  )
-                  non_filtered_skipped += 1
-                  filt_bool = False
-                  continue
+                logger.debug(
+                    f"Skipping alignment that is not found in fastq file: {curr_align_read_id}"
+                )
+                non_filtered_skipped += 1
+                filt_bool = False
+                continue
+            # If we go through all the filtered reads, skip the remaining alignments.
+            if curr_read_id is None:
+                logger.info(
+                    "All filtered reads processed, skipping the remaining alignments"
+                )
+
+                break
 
             filt_bool = True
             # Process and write immediately

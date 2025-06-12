@@ -7,6 +7,7 @@ process FILTER_VIRAL_SAM {
         val(score_threshold)
     output:
         tuple val(sample), path("${sample}_viral_filtered.sam.gz"), emit: sam
+        tuple val(sample), path("input_${sam}"), emit: input
     script:
         """
         sorted_fastq="${sample}_sorted_contaminant_free.fastq.gz"
@@ -21,5 +22,7 @@ process FILTER_VIRAL_SAM {
 
         # Run the consolidated viral SAM filtering
         filter_viral_sam.py \${sorted_sam} \${sorted_fastq} \${outf} ${score_threshold}
+        # Link input to output for testing
+        ln -s ${sam} input_${sam}
         """
 }
