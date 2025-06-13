@@ -23,7 +23,7 @@ workflow MARK_VIRAL_DUPLICATES {
         reads_ch = dup_ch.map{ id, reads, stats -> tuple(id, reads) }
         stats_ch = dup_ch.map{ id, reads, stats -> tuple(id, stats) }
         reads_sorted_ch = SORT_READS(reads_ch, "seq_id").sorted
-        stats_sorted_ch = SORT_STATS(stats_ch, "bowtie2_genome_id_all").sorted
+        stats_sorted_ch = SORT_STATS(stats_ch, "aligner_genome_id_all").sorted
         // 3. Rename and prepare files for output
         reads_out_ch = COPY_READS(reads_sorted_ch, "duplicate_reads.tsv.gz")
         stats_out_ch = COPY_STATS(stats_sorted_ch, "duplicate_stats.tsv.gz")
