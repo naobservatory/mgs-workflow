@@ -1,3 +1,8 @@
+# v2.9.0.5
+- Overhauled MARK_ALIGNMENT_DUPLICATES to increase computational efficiency (backported from v2.10.0.0):
+    - Added multithreaded processing of easily parallelizable steps
+    - Reworked assignment of reads to duplicate groups to avoid slow all-vs-all comparisons
+
 # v2.9.0.4
 - Updated markAlignmentDuplicates module to reduce memory overhead and increase memory allocation (which collectively should avoid out-of-memory errors in DOWNSTREAM on large read groups).
 
