@@ -39,11 +39,11 @@ workflow DOWNSTREAM {
         params_ch = Channel.of(params_str).collectFile(name: "params-downstream.json")
         time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
         version_path = file("${projectDir}/pipeline-version.txt")
-        version_ch = Channel.fromPath(version_path).collectFile(name: version_path.getFileName()  
+        version_ch = Channel.fromPath(version_path).collectFile(name: version_path.getFileName())  
         input_file_ch = Channel.fromPath(params.input_file).collectFile(name: params.input_file.getFileName())
 
     emit:
-       input_downstream = params_ch.min(input_file_ch))
+       input_downstream = params_ch.mix(input_file_ch)
        logging_downstream = time_ch.mix(version_ch)
        intermediates_downstream = VALIDATE_VIRAL_ASSIGNMENTS.out.blast_results
        results_downstream = MARK_VIRAL_DUPLICATES.out.dup.mix(VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits)
