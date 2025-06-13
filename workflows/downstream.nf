@@ -40,7 +40,7 @@ workflow DOWNSTREAM {
         time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
         version_path = file("${projectDir}/pipeline-version.txt")
         version_ch = Channel.fromPath(version_path).collectFile(name: version_path.getFileName())  
-        input_file_ch = Channel.fromPath(params.input_file).collectFile(name: params.input_file.getFileName())
+        input_file_ch = Channel.fromPath(params.input_file).collectFile(name: file(params.input_file).getFileName())
 
     emit:
        input_downstream = params_ch.mix(input_file_ch)
