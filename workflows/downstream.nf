@@ -34,17 +34,17 @@ workflow DOWNSTREAM {
         dup_ch = MARK_VIRAL_DUPLICATES.out.dup.map{ label, tab, stats -> [label, tab] }
         //VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db,
         //    params.validation_cluster_identity, 15, params.validation_n_clusters)
-        // Publish results
+        // Prepare results for publishing and make output channels
         params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
         params_ch = Channel.of(params_str).collectFile(name: "params-downstream.json")
         time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
-        version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
-    publish:
-        // Saved inputs
-        Channel.fromPath(params.input_file) >> "input_downstream"
-        params_ch >> "input_downstream"
-        time_ch >> "logging_downstream"
-        version_ch >> "logging_downstream"
-        // Duplicate results
-        MARK_VIRAL_DUPLICATES.out.dup >> "results_downstream"
-}
+        version_path = file("${projectDir}/pipeline-version.txt")
+        version_ch = Channel.fromPath(version_path).collectFile(name: version_path.getFileName()  
+        input_file_ch = Channel.fromPath(params.input_file).collectFile(name: params.input_file.getFileName())
+
+    emit:
+       input_downstream = params_ch.min(input_file_ch))
+       logging_downstream = time_ch.mix(version_ch)
+       intermediates_downstream = VALIDATE_VIRAL_ASSIGNMENTS.out.blast_results
+       results_downstream = MARK_VIRAL_DUPLICATES.out.dup.mix(VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits)
+}    
