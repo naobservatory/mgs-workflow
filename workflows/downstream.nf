@@ -32,9 +32,13 @@ workflow DOWNSTREAM {
         viral_db_path = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
         viral_db = Channel.of(viral_db_path)
         dup_ch = MARK_VIRAL_DUPLICATES.out.dup.map{ label, tab, stats -> [label, tab] }
-        //VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db,
-        //    params.validation_cluster_identity, 15, params.validation_n_clusters)
-        // Prepare results for publishing and make output channels
+        VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db,
+            params.validation_cluster_identity, 15, params.validation_n_clusters,
+            params.ref_dir, params.blast_db_prefix,
+            params.blast_perc_id, params.blast_qcov_hsp_perc,
+            params.blast_max_rank, params.blast_min_frac,
+            params.taxid_artificial)
+        // Publish results
         params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
         params_ch = Channel.of(params_str).collectFile(name: "params-downstream.json")
         time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
