@@ -165,7 +165,7 @@ IIIIIIIIIIIIIIII"""
     
     def test_score_threshold_pair_logic(self):
         
-        # Should keep both because read2 exceeds threshold
+        # Should keep read1 but not read2
         sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:20\tYT:Z:CP
 read1\t147\tchr1\t200\t60\t50M\t=\t100\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:35\tYT:Z:CP
 read2\t99\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:15\tYT:Z:CP
@@ -570,12 +570,12 @@ IIIIIIIIIIIIIIII"""
         assert len(primary_alignments) == 2
         assert len(secondary_alignments) == 2
         
-        # Primary alignments should map to chr1 and chr2
+        # Primary alignments should map to chr1 and chr3
         primary_refs = [a.rname for a in primary_alignments]
         assert 'chr1' in primary_refs
         assert 'chr3' in primary_refs
         
-        # Secondary alignments should map to chr3
+        # Secondary alignments should map to chr2
         secondary_refs = [a.rname for a in secondary_alignments]
         assert all(ref == 'chr2' for ref in secondary_refs)
         

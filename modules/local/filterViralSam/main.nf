@@ -10,18 +10,10 @@ process FILTER_VIRAL_SAM {
         tuple val(sample), path("input_${sam}"), emit: input
     script:
         """
-        sorted_fastq="${sample}_sorted_contaminant_free.fastq.gz"
-        sorted_sam="${sample}_sorted_viral_filtered.sam.gz"
         outf="${sample}_viral_filtered.sam.gz"
 
-        # Make sure fastq file is sorted
-        zcat ${contaminant_free_reads} | paste - - - - | sort -k1,1 | tr '\\t' '\\n' | gzip -c > \${sorted_fastq}
-
-        # Make sure SAM file is sorted
-        zcat ${sam} | sort -t \$'\\t' -k1,1 | gzip -c > \${sorted_sam}
-
         # Run the consolidated viral SAM filtering
-        filter_viral_sam.py \${sorted_sam} \${sorted_fastq} \${outf} ${score_threshold}
+        filter_viral_sam.py ${sam} ${contaminant_free_reads} \${outf} ${score_threshold}
         # Link input to output for testing
         ln -s ${sam} input_${sam}
         """
