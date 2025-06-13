@@ -28,9 +28,8 @@ nextflow_process {
             assert process.exitStatus == 1
             assert process.errorReport.contains("Empty input file")
             assert !process.errorReport.contains("Missing required header")
-            assert !process.errorReport.contains("Incorrect field count in line")
-            assert !process.errorReport.contains("Deviation must be an integer")
-            assert !process.errorReport.contains("Deviation must be at most 2")
+            assert !process.errorReport.contains("Invalid field count")
+            assert !process.errorReport.contains("invalid value for one of the arguments")
         }
     }
 
@@ -53,9 +52,8 @@ nextflow_process {
             assert process.exitStatus == 1
             assert !process.errorReport.contains("Empty input file")
             assert !process.errorReport.contains("Missing required header")
-            assert process.errorReport.contains("Incorrect field count in line")
-            assert !process.errorReport.contains("Deviation must be an integer")
-            assert !process.errorReport.contains("Deviation must be at most 2")
+            assert process.errorReport.contains("Invalid field count")
+            assert !process.errorReport.contains("invalid value for one of the arguments")
         }
     }
 
@@ -78,9 +76,8 @@ nextflow_process {
             assert process.exitStatus == 1
             assert !process.errorReport.contains("Empty input file")
             assert process.errorReport.contains("Missing required header")
-            assert !process.errorReport.contains("Incorrect field count in line")
-            assert !process.errorReport.contains("Deviation must be an integer")
-            assert !process.errorReport.contains("Deviation must be at most 2")
+            assert !process.errorReport.contains("Invalid field count")
+            assert !process.errorReport.contains("invalid value for one of the arguments")
         }
     }
 
@@ -103,9 +100,8 @@ nextflow_process {
             assert process.exitStatus == 1
             assert !process.errorReport.contains("Empty input file")
             assert !process.errorReport.contains("Missing required header")
-            assert !process.errorReport.contains("Incorrect field count in line")
-            assert process.errorReport.contains("Deviation must be an integer")
-            assert !process.errorReport.contains("Deviation must be at most 2")
+            assert !process.errorReport.contains("Invalid field count")
+            assert process.errorReport.contains("invalid value for one of the arguments")
         }
     }
 
@@ -128,9 +124,8 @@ nextflow_process {
             assert process.exitStatus == 1
             assert !process.errorReport.contains("Empty input file")
             assert !process.errorReport.contains("Missing required header")
-            assert !process.errorReport.contains("Incorrect field count in line")
-            assert !process.errorReport.contains("Deviation must be an integer")
-            assert process.errorReport.contains("Deviation must be at most 2")
+            assert !process.errorReport.contains("Invalid field count")
+            assert process.errorReport.contains("invalid value for one of the arguments")
         }
     }
 
