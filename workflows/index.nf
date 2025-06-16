@@ -18,6 +18,8 @@ include { MAKE_CONTAMINANT_INDEX } from "../subworkflows/local/makeContaminantIn
 include { MAKE_VIRUS_INDEX } from "../subworkflows/local/makeVirusIndex"
 include { MAKE_RIBO_INDEX } from "../subworkflows/local/makeRiboIndex"
 include { GET_TARBALL as GET_KRAKEN_DB } from "../modules/local/getTarball"
+include { COPY_FILE_BARE as COPY_VERSION } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_COMPAT } from "../modules/local/copyFile"
 
 /****************
 | MAIN WORKFLOW |
@@ -47,8 +49,14 @@ workflow INDEX {
         params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
         params_ch = Channel.of(params_str).collectFile(name: "index-params.json")
         time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
-        version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
-        compatibility_ch = Channel.fromPath("${projectDir}/index-min-pipeline-version.txt")
+        version_path = file("${projectDir}/pipeline-version.txt")
+        version_newpath = version_path.getFileName().toString()
+        version_ch = COPY_VERSION(Channel.fromPath(version_path), version_newpath)
+        version_path = file("${projectDir}/pipeline-version.txt")
+        version_newpath = version_path.getFileName().toString()
+        compat_ch = file("${projectDir}/index-min-pipeline-version.txt")
+        compat_newpath = compat_ch.getFileName().toString()
+        compatibility_ch = COPY_COMPAT(Channel.fromPath(compat_ch), compat_newpath)
 
     emit:
         input_index = params_ch
