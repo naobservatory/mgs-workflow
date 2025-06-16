@@ -49,7 +49,9 @@ These guidelines represent best practices to implement in new code, though some 
     - Rust source code for a module goes in `src` and the binary (compiled with `cargo build --release`) goes in `resources/usr/bin`
         - Note that additional files created by Cargo (`Cargo.lock`, `Cargo.toml`) are not stored in the repo.
         - Note that in the future we will remove binaries from the repo and implement a build process instead; see Issue [#164](https://github.com/naobservatory/mgs-workflow/issues/164). Feel free to recompile existing binaries as source code is updated, but please check with a maintainer before adding new binaries to the repo.
-- Rely on the standard library as much as possible. (E.g. for Python, avoid use of third-party libraries like `pandas`.)
+- Rely on the standard library as much as possible. 
+    - Widely used 3rd-party libraries (e.g. `pandas` or `boto3`) are OK on a case-by-case basis if they allow for much cleaner or more performant code. Please flag use of these libraries in PR comments so the reviewer can assess.
+    - Avoid third-party libraries that are not widely used, or that bring in a ton of dependencies of their own.
 - Include proper error handling and logging
 - Performance conventions:
     - Always process large files line-by-line or in manageable chunks.
