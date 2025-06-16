@@ -205,7 +205,7 @@ IIIIIIIIIIIIIIII"""
     
     def test_single_read_above_threshold(self):
         # Single read above threshold should be kept
-        sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:CP"""
+        sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:UP"""
         
         filtered_content = """@read1/1
 ACGTACGTACGTACGT
@@ -225,7 +225,7 @@ IIIIIIIIIIIIIIII"""
         with open(output_file, 'r') as f:
             output_lines = f.readlines()
         
-        assert len(output_lines) == 1
+        assert len(output_lines) == 2
         assert 'read1' in output_lines[0]
     
     def test_single_read_below_threshold(self):
@@ -341,7 +341,7 @@ IIIIIIIIIIIIIIII"""
         # Headers should be skipped (though they shouldn't be present based on workflow)
         sam_content = """@HD\tVN:1.6\tSO:coordinate
 @SQ\tSN:chr1\tLN:248956422
-read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:CP"""
+read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:UP"""
         
         filtered_content = """@read1/1
 ACGTACGTACGTACGT
@@ -362,7 +362,7 @@ IIIIIIIIIIIIIIII"""
             output_lines = f.readlines()
         
         # Should only have the read line, headers ignored
-        assert len(output_lines) == 1
+        assert len(output_lines) == 2
         assert 'read1' in output_lines[0]
         assert all("@" not in line for line in output_lines)
 

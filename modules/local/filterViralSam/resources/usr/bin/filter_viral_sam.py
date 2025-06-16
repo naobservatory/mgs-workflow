@@ -352,6 +352,11 @@ def group_secondary_alignments(
         return {}
     # Check pair status - all secondary alignments within a read id must have the same pair status
     pair_status = alignments[0].pair_status
+    # Check that all secondary alignments have the same pair status
+    assert all(a.pair_status == pair_status for a in alignments), (
+        "All secondary alignments for a single read ID must share the same "
+        f"pair_status. Found: {set(a.pair_status for a in alignments)}"
+    )
     if pair_status == "UP":
         return group_unpaired_alignments(alignments)
     else:
@@ -436,6 +441,8 @@ def add_synthetic_mates_by_groups(
         # Only create synthetic mates if we're missing either read1 or read2
         if not (has_read1 and has_read2):
             for alignment in group_alignments:
+                # Only create synthetic mates for unpaired alignments
+                assert alignment.pair_status == "UP" 
                 if alignment.pair_status == "UP":
                     unmapped_mate = alignment.create_unmapped_mate()
                     group_result.append(unmapped_mate)
@@ -533,12 +540,9 @@ def stream_filtered_fastq(fastq_file: str) -> Iterator[str]:
                 if read_id != previous_read_id:
                     # Check if FASTQ file is sorted before yielding
                     if last_read_id is not None and read_id < last_read_id:
-                        logger.error(
-                            f"FASTQ file not sorted! {read_id} appeared after {last_read_id}"
-                        )
-                        raise ValueError(
-                            f"FASTQ file not sorted by read ID at {read_id}, after {last_read_id}"
-                        )
+                        msg = f"FASTQ file not sorted by read ID at {read_id}, after {last_read_id}" 
+                        logger.error(msg)
+                        raise ValueError(msg)
                     yield read_id
                     last_read_id = read_id
                     previous_read_id = read_id
@@ -581,12 +585,9 @@ def stream_sam_by_qname(sam_file: str) -> Iterator[Tuple[str, list[SamAlignment]
             else:
                 # Check if SAM file is sorted before yielding
                 if last_qname is not None and current_qname < last_qname:
-                    logger.error(
-                        f"SAM file not sorted! {current_qname} appeared after {last_qname}"
-                    )
-                    raise ValueError(
-                        f"SAM file not sorted by query name at {current_qname}, after {last_qname}"
-                    )
+                    msg = f"SAM file not sorted! {current_qname} appeared after {last_qname}"
+                    logger.error(msg)
+                    raise ValueError(msg)
                 # New query name, yield previous group
                 yield current_qname, current_alignments
                 last_qname = current_qname
@@ -595,12 +596,9 @@ def stream_sam_by_qname(sam_file: str) -> Iterator[Tuple[str, list[SamAlignment]
         # Yield final group with final sort check
         if current_qname is not None:
             if last_qname is not None and current_qname < last_qname:
-                logger.error(
-                    f"SAM file not sorted! {current_qname} appeared after {last_qname}"
-                )
-                raise ValueError(
-                    f"SAM file not sorted by query name at {current_qname}, after {last_qname}"
-                )
+                msg = f"SAM file not sorted by query name at {current_qname}, after {last_qname}"
+                logger.error(msg)
+                raise ValueError(msg)
             yield current_qname, current_alignments
 
 
@@ -662,12 +660,10 @@ def filter_viral_sam(
                     fastq_read_id_in_sam = False
                 # If the read id in the FASTQ file does not exist in the SAM file, throw an error
                 else:
-                    logger.error(
-                        f"The read id {curr_read_id} from the FASTQ file does not exist in the SAM file, but should given that the read ids in the FASTQ file are a subset of the read ids in the SAM file"
-                    )
-                    raise ValueError(
-                        f"The read id {curr_read_id} from the FASTQ file does not exist in the SAM file, but should given that the read ids in the FASTQ file are a subset of the read ids in the SAM file"
-                    )
+                    msg = f"The read id {curr_read_id} from the FASTQ file does not exist in the SAM file, but should given that the read ids in the FASTQ file are a subset of the read ids in the SAM file"
+
+                    logger.error(msg)
+                    raise ValueError(msg)
             # If the read id from the FASTQ file is alphabetically greater than the read id from the SAM file, then
             # the read id from the SAM file is not in the FASTQ file and we should move onto the next read id in the SAM file
             if curr_read_id is not None and curr_read_id > curr_align_read_id:
