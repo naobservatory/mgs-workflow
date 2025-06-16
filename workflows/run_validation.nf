@@ -11,6 +11,11 @@ import java.time.LocalDateTime
 
 include { EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED as EXTRACT_FASTQ } from "../modules/local/extractViralHitsToFastqNoref"
 include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
+include { COPY_FILE_BARE as COPY_VERSION } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_INDEX_PARAMS } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_INDEX_PIPELINE_VERSION } from "../modules/local/copyFile"
+
+
 nextflow.preview.output = true
 
 /****************
@@ -45,14 +50,14 @@ workflow RUN_VALIDATION {
         params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
         params_ch = Channel.of(params_str).collectFile(name: "params-run.json")
         time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
-        version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
-        index_params_ch = Channel.fromPath("${params.ref_dir}/input/index-params.json")
-            | map { file -> file.copyTo("${params.base_dir}/work/params-index.json") }
-        index_pipeline_version_ch = Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt")
-            | map { file -> file.copyTo("${params.base_dir}/work/pipeline-version-index.txt") }
+        pipeline_version_path = file("${projectDir}/pipeline-version.txt")
+        pipeline_version_newpath = pipeline_version_path.getFileName().toString()
+        version_ch = COPY_VERSION(Channel.fromPath(pipeline_version_path), pipeline_version_newpath)
+        index_params_ch = COPY_INDEX_PARAMS(Channel.fromPath("${params.ref_dir}/input/index-params.json"), "params-index.json")
+        index_pipeline_version_ch = COPY_INDEX_PIPELINE_VERSION(Channel.fromPath("${params.ref_dir}/logging/pipeline-version.txt"), "pipeline-version-index.txt")
 
     emit:
-        input_validation = [index_params_ch, params_ch]
-        logging_validation = [index_pipeline_version_ch, time_ch, version_ch]
-        output_validation = [BLAST_VIRAL.out.blast_subset, BLAST_VIRAL.out.subset_reads]
+        input_validation = index_params_ch.mix(params_ch)
+        logging_validation = index_pipeline_version_ch.mix(time_ch, version_ch)
+        results_validation = BLAST_VIRAL.out.blast_subset.mix(BLAST_VIRAL.out.subset_reads)
 }

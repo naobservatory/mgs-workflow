@@ -18,7 +18,13 @@ include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE} from "../subworkflows/local/profile"
 include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 include { CHECK_VERSION_COMPATIBILITY } from "../subworkflows/local/checkVersionCompatibility"
-nextflow.preview.output = true
+include { COPY_FILE_BARE as COPY_INDEX_PARAMS } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_INDEX_PIPELINE_VERSION } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_INDEX_COMPAT } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_VERSION } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_PIPELINE_COMPAT } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_SAMPLESHEET } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_ADAPTERS } from "../modules/local/copyFile"
 
 /*****************
 | MAIN WORKFLOWS |
@@ -91,18 +97,24 @@ workflow RUN {
 
     // Get index files for publishing
     index_params_path = file("${params.ref_dir}/input/index-params.json")
-    index_params_ch = Channel.fromPath(index_params_path).collectFile(name: index_params_path.getFileName())
-    index_pipeline_version_ch = Channel.fromPath(index_version_path).collectFile(name: "pipeline-version-index.txt")
-    index_compatibility_ch = Channel.fromPath(index_min_pipeline_version_path).collectFile(name: index_min_pipeline_version_path.getFileName())
+    index_params_ch = COPY_INDEX_PARAMS(Channel.fromPath(index_params_path), "params-index.json")
+    index_pipeline_version_ch = COPY_INDEX_PIPELINE_VERSION(Channel.fromPath(index_version_path), "pipeline-version-index.txt")
+    index_min_pipeline_version_newpath = index_min_pipeline_version_path.getFileName().toString()
+    index_compatibility_ch = COPY_INDEX_COMPAT(Channel.fromPath(index_min_pipeline_version_path), index_min_pipeline_version_newpath)
 
     // Prepare other publishing variables
     params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "params-run.json")
     time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
-    version_ch = Channel.fromPath(pipeline_version_path).collectFile(name: pipeline_version_path.getFileName())
-    pipeline_compatibility_ch = Channel.fromPath(pipeline_min_index_version_path).collectFile(name: pipeline_min_index_version_path.getFileName())
-    samplesheet_ch = Channel.fromPath(params.sample_sheet).collectFile(name: "samplesheet.csv")
-    adapters_ch = Channel.fromPath(params.adapters).collectFile(name: "adapters.fasta")
+    pipeline_version_newpath = pipeline_version_path.getFileName().toString()
+    // Note: we send these input/logging files through a COPY_FILE_BASE process
+    // because nextflow 25.04 now only publishes files that have passed through the working directory.
+    // We first tried collectFile() as an alternative; however it intermittantly gives serialization errors.
+    version_ch = COPY_VERSION(Channel.fromPath(pipeline_version_path), pipeline_version_newpath)
+    pipeline_min_index_version_newpath = pipeline_min_index_version_path.getFileName().toString()
+    pipeline_compatibility_ch = COPY_PIPELINE_COMPAT(Channel.fromPath(pipeline_min_index_version_path), pipeline_min_index_version_newpath)
+    samplesheet_ch = COPY_SAMPLESHEET(Channel.fromPath(params.sample_sheet), "samplesheet.csv")
+    adapters_ch = COPY_ADAPTERS(Channel.fromPath(params.adapters), "adapters.fasta")
 
     emit:
         input_run = index_params_ch.mix(samplesheet_ch, adapters_ch, params_ch)

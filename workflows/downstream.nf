@@ -10,8 +10,8 @@ include { LOAD_DOWNSTREAM_DATA } from "../subworkflows/local/loadDownstreamData"
 include { PREPARE_GROUP_TSVS } from "../subworkflows/local/prepareGroupTsvs"
 include { MARK_VIRAL_DUPLICATES } from "../subworkflows/local/markViralDuplicates"
 include { VALIDATE_VIRAL_ASSIGNMENTS } from "../subworkflows/local/validateViralAssignments"
-
-nextflow.preview.output = true
+include { COPY_FILE_BARE as COPY_VERSION } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_INPUT } from "../modules/local/copyFile"
 
 /*****************
 | MAIN WORKFLOWS |
@@ -43,8 +43,10 @@ workflow DOWNSTREAM {
         params_ch = Channel.of(params_str).collectFile(name: "params-downstream.json")
         time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
         version_path = file("${projectDir}/pipeline-version.txt")
-        version_ch = Channel.fromPath(version_path).collectFile(name: version_path.getFileName())  
-        input_file_ch = Channel.fromPath(params.input_file).collectFile(name: file(params.input_file).getFileName())
+        version_newpath = version_path.getFileName().toString()
+        version_ch = COPY_VERSION(Channel.fromPath(version_path), version_newpath)
+        input_newpath = file(params.input_file).getFileName().toString()
+        input_file_ch = COPY_INPUT(Channel.fromPath(params.input_file), input_newpath)
 
     emit:
        input_downstream = params_ch.mix(input_file_ch)
