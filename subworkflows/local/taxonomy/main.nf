@@ -41,7 +41,7 @@ workflow TAXONOMY {
         kraken_merge_ch = CONCATENATE_KRAKEN_REPORTS(kraken_combined_ch, "kraken_reports")
         // Run Bracken and munge reports
         bracken_ch = BRACKEN(kraken_ch.report, kraken_db_ch, classification_level, bracken_threshold) // NB: Not streamed
-        bracken_rehead_ch = REHEAD_BRACKEN(bracken_ch, "taxonomy_id,taxonomy_lvl", "taxid,rank")
+        bracken_rehead_ch = REHEAD_BRACKEN(bracken_ch, "taxonomy_id,taxonomy_lvl,kraken_assigned_reads", "taxid,rank,kraken2_assigned_reads")
         bracken_label_ch = LABEL_BRACKEN(bracken_rehead_ch.output, "sample", "bracken")
         bracken_combined_ch = bracken_label_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
         bracken_merge_ch = CONCATENATE_BRACKEN(bracken_combined_ch, "bracken")
