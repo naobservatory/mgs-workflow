@@ -1,0 +1,7 @@
+seq_id	is_secondary
+read1	True
+read2	False
+read3	1
+read4	0
+read5	true
+read6	false

@@ -1,0 +1,177 @@
+nextflow_process {
+
+    name "Test process FILTER_PRIMARY_ALIGNMENTS"
+    script "modules/local/filterPrimaryAlignments/main.nf"
+    process "FILTER_PRIMARY_ALIGNMENTS"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "filter_primary_alignments"
+
+    setup {
+        run("GZIP_FILE", alias: "GZIP_WITH_SECONDARY") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_joined_with_secondary.tsv"))
+                '''
+            }
+        }
+        run("GZIP_FILE", alias: "GZIP_NO_SECONDARY") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_joined_no_secondary.tsv"))
+                '''
+            }
+        }
+        run("GZIP_FILE", alias: "GZIP_BOOL_FORMATS") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_bool_formats.tsv"))
+                '''
+            }
+        }
+        run("GZIP_FILE", alias: "GZIP_MISSING_COLUMN") {
+            script "modules/local/gzipFile/main.nf"
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_joined_missing_column.tsv"))
+                '''
+            }
+        }
+    }
+
+    test("Should fail when is_secondary column is missing") {
+        tag "expect_failed"
+        tag "harmon"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_MISSING_COLUMN.out
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("Missing required columns: ['is_secondary']")
+        }
+    }
+
+    test("Should filter primary alignments successfully") {
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_WITH_SECONDARY.out
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            
+            // Check output file structure
+            def outputFile = path(process.out.filtered[0][1])
+            def outputData = outputFile.csv(sep: "\t", decompress: true)
+            
+            // Should have only primary alignments (3 out of 5 rows)
+            assert outputData.rowCount == 3
+            
+            // Check that all rows have is_secondary = False
+            def isSecondaryColumn = outputData.columns["is_secondary"]
+            for (value in isSecondaryColumn) {
+                assert value == false
+            }
+            
+            // Check that the correct reads are present
+            def seqIdColumn = outputData.columns["seq_id"]
+            assert "read1" in seqIdColumn
+            assert "read3" in seqIdColumn
+            assert "read5" in seqIdColumn
+            assert !("read2" in seqIdColumn)
+            assert !("read4" in seqIdColumn)
+            
+            // Check that all original columns are preserved
+            def inputFile = path("${projectDir}/test-data/toy-data/test_joined_with_secondary.tsv")
+            def inputData = inputFile.csv(sep: "\t")
+            assert outputData.columnCount == inputData.columnCount
+            for (col in inputData.columnNames) {
+                assert col in outputData.columnNames
+            }
+        }
+    }
+
+    test("Should handle input with no secondary alignments") {
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_NO_SECONDARY.out
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            
+            // Check output file structure
+            def outputFile = path(process.out.filtered[0][1])
+            def outputData = outputFile.csv(sep: "\t", decompress: true)
+            
+            // Should have all 3 rows (all primary)
+            assert outputData.rowCount == 3
+            
+            // Check that all rows have is_secondary = False
+            def isSecondaryColumn = outputData.columns["is_secondary"]
+            for (value in isSecondaryColumn) {
+                assert value == false
+            }
+            
+            // Input and output should have same number of rows
+            def inputFile = path("${projectDir}/test-data/toy-data/test_joined_no_secondary.tsv")
+            def inputData = inputFile.csv(sep: "\t")
+            assert outputData.rowCount == inputData.rowCount
+        }
+    }
+
+    test("Should handle different boolean representations") {
+        tag "expect_success"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_BOOL_FORMATS.out
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            
+            // Check output file structure
+            def outputFile = path(process.out.filtered[0][1])
+            def outputData = outputFile.csv(sep: "\t", decompress: true)
+            
+            // Should have 3 rows (read2, read4, read6 are False/0/false)
+            assert outputData.rowCount == 3
+            
+            // Check that correct reads are present
+            def seqIdColumn = outputData.columns["seq_id"]
+            assert "read2" in seqIdColumn
+            assert "read4" in seqIdColumn  
+            assert "read6" in seqIdColumn
+            assert !("read1" in seqIdColumn)
+            assert !("read3" in seqIdColumn)
+            assert !("read5" in seqIdColumn)
+        }
+    }
+}
