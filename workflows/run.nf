@@ -52,15 +52,13 @@ workflow RUN {
         EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir)
         hits_fastq = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_ONT.out.hits_final
-        hits_unfiltered = Channel.empty()
         bbduk_match = Channel.empty()
         bbduk_trimmed = Channel.empty()
      } else {
-        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
-            params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, params.bt2_score_threshold,
+            params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.taxid_artificial)
         hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
-        hits_unfiltered = EXTRACT_VIRAL_READS_SHORT.out.hits_unfiltered
         bbduk_match = EXTRACT_VIRAL_READS_SHORT.out.bbduk_match
         bbduk_trimmed = EXTRACT_VIRAL_READS_SHORT.out.bbduk_trimmed
     }
@@ -121,7 +119,6 @@ workflow RUN {
         pipeline_compatibility_ch >> "logging"
         // Intermediate files
         bbduk_match >> "reads_raw_viral"
-        hits_unfiltered >> "intermediates"
         hits_fastq  >> "intermediates"
         bbduk_trimmed >> "reads_trimmed_viral"
         // QC
