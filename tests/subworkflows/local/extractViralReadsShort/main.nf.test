@@ -23,7 +23,6 @@ nextflow_workflow {
     test("Should run without failures") {
         tag "expect_success"
         tag "paired_end"
-        tag "harmon"
         when {
             params {
                 bt2_score_threshold = 20
