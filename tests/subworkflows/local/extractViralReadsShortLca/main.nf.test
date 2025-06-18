@@ -1,0 +1,157 @@
+nextflow_workflow {
+
+    name "Test subworkflow EXTRACT_VIRAL_READS_SHORT_LCA"
+    script "subworkflows/local/extractViralReadsShortLca/main.nf"
+    workflow "EXTRACT_VIRAL_READS_SHORT_LCA"
+    config "tests/configs/run.config"
+    tag "subworkflow"
+    tag "extract_viral_reads_short_lca"
+
+    setup {
+        run("LOAD_SAMPLESHEET") {
+            script "subworkflows/local/loadSampleSheet/main.nf"
+            process {
+                """
+                input[0] = "${projectDir}/test-data/samplesheet.csv"
+                input[1] = "illumina"
+                input[2] = false
+                """
+            }
+        }
+    }
+
+    test("Should run without failures") {
+        tag "expect_success"
+        tag "paired_end"
+        when {
+            params {
+                bt2_score_threshold = 20
+            }
+            workflow {
+                '''
+                input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                input[1] = params.ref_dir
+                input[2] = params.bt2_score_threshold
+                input[3] = params.adapters
+                input[4] = params.host_taxon
+                input[5] = params.cutadapt_error_rate
+                input[6] = "1"
+                input[7] = "24"
+                input[8] = "viral"
+                input[9] = "81077"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+            // Output should have a nonzero number of lines divisible by eight
+            // (for an interleaved FASTQ file)
+            // Output should be valid FASTQ with an even number of entries (interleaved)
+            def test_reads_fastq = path(workflow.out.test_reads[0][1]).fastq
+            def test_reads_count = test_reads_fastq.getNumberOfRecords()
+            assert test_reads_count > 0
+            assert test_reads_count % 2 == 0
+            // LCA'd output rows should be less than or equal to pre lca rows
+            def pre_lca_files = workflow.out.hits_prelca.collect { it[1] }
+            def total_pre_lca_rows = pre_lca_files.sum { file ->
+                  path(file).linesGzip.size() - 1  // minus header for each file
+            }
+            def hits_final_tab = path(workflow.out.hits_final[0]).csv(sep: "\t", decompress: true)
+            assert hits_final_tab.rowCount <= total_pre_lca_rows
+            // Filtered FASTQ should be a subset of test FASTQ
+            def hits_fastq = path(workflow.out.hits_fastq[0]).fastq
+            assert hits_fastq.getNumberOfRecords() <= test_reads_count
+            for (r in hits_fastq.readNames) {
+                assert r in test_reads_fastq.readNames
+            }
+            // Elements from test FASTQ should be in filtered FASTQ iff they're in filtered TSV
+            def ids_filtered = hits_final_tab.columns["seq_id"]
+            def ids_fastq_in = test_reads_fastq.readNames.collect{ it.tokenize(" ")[0] }
+            def ids_fastq_out = hits_fastq.readNames.collect{ it.tokenize(" ")[0] }
+            for (id in ids_fastq_in) {
+                if (id in ids_filtered) {
+                    assert id in ids_fastq_out
+                } else {
+                    assert !(id in ids_fastq_out)
+                }
+            }
+        }
+    }
+    
+    test("Should handle empty input file") {
+        tag "empty_file"
+        tag "expect_success"
+        setup {
+            run("GZIP_FILE", alias: "GZIP_EMPTY_FORWARD") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+            run("GZIP_FILE", alias: "GZIP_EMPTY_REVERSE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+            run("COPY_FILE") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    '''
+                    input[0] = GZIP_EMPTY_REVERSE.out
+                    input[1] = "reverse_empty"
+                    '''
+                }
+            }
+        }
+        when {
+            params {
+                bt2_score_threshold = 20
+            }
+            workflow {
+                '''
+                input[0] = GZIP_EMPTY_FORWARD.out.mix(COPY_FILE.out).groupTuple()
+                input[1] = params.ref_dir
+                input[2] = params.bt2_score_threshold
+                input[3] = params.adapters
+                input[4] = params.host_taxon
+                input[5] = params.cutadapt_error_rate
+                input[6] = "1"
+                input[7] = "24"
+                input[8] = "viral"
+                input[9] = "81077"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert workflow.success
+
+            // FASTQ output files should be empty
+            def fastq_files = [
+                path(workflow.out.bbduk_match[0][1]),
+                path(workflow.out.bbduk_trimmed[0][1]),
+                path(workflow.out.hits_fastq[0]),
+                path(workflow.out.test_reads[0][1])
+            ]
+            def fastqs = fastq_files.collect{ it.fastq }
+            def read_counts = fastqs.collect{ it.getNumberOfRecords() }
+            assert read_counts.every{ it == 0 }
+
+            // Tabular output files should have only header lines
+            def tabular_files = [
+                path(workflow.out.hits_final[0]),
+                path(workflow.out.hits_prelca[0][1])
+            ]
+            def tabular_lines = tabular_files.collect{ it.linesGzip.toList() }
+            assert tabular_lines.every{ it.size() == 1 }
+        }
+    }
+}
