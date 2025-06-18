@@ -46,7 +46,8 @@ SAM_HEADERS_PAIRED = [
     "aligner_length_normalized_score_fwd", 
     "aligner_length_normalized_score_rev",
     "aligner_length_normalized_score",
-    "aligner_pair_status"
+    "aligner_pair_status",
+    "is_secondary"
 ]
 
 SAM_HEADERS_UNPAIRED = [
@@ -58,6 +59,7 @@ SAM_HEADERS_UNPAIRED = [
     "query_len", "query_seq",
     "query_rc_by_aligner", "query_qual",
     "aligner_length_normalized_score",
+    "is_secondary"
 ]
 
 #=======================================================================
@@ -365,7 +367,8 @@ def get_line_from_single(read_dict: dict[str, str|int|bool],
         "aligner_genome_id": read_dict["genome_id"],
         "aligner_taxid": read_dict["taxid"],
         "aligner_length_normalized_score": adj_score,
-        "aligner_pair_status": read_dict["pair_status"]
+        "aligner_pair_status": read_dict["pair_status"],
+        "is_secondary": read_dict["is_secondary"]
     }
     if paired:
         # Additional fields for paired SAM
@@ -501,7 +504,8 @@ def get_line_from_pair(dict_1: dict[str, str|int|bool],
         "aligner_length_normalized_score_fwd": adj_score_fwd,
         "aligner_length_normalized_score_rev": adj_score_rev,
         "aligner_length_normalized_score": adj_score_max,
-        "aligner_pair_status": fwd_dict["pair_status"]
+        "aligner_pair_status": fwd_dict["pair_status"],
+        "is_secondary": fwd_dict["is_secondary"]
         }
     return get_line(out_dict, True)
 

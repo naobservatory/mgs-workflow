@@ -12,6 +12,8 @@ include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
 include { PROCESS_VIRAL_BOWTIE2_SAM_LCA as PROCESS_VIRAL_BOWTIE2_SAM } from "../../../modules/local/processViralBowtie2SamLca"
 include { SORT_TSV as SORT_BOWTIE_VIRAL } from "../../../modules/local/sortTsv"
+include { SORT_TSV as SORT_LCA } from "../../../modules/local/sortTsv"
+include { SORT_TSV as SORT_BOWTIE2 } from "../../../modules/local/sortTsv"
 include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
 include { CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_FILES } from "../../../modules/local/concatenateFiles"
@@ -20,7 +22,8 @@ include { LCA_TSV } from "../../../modules/local/lcaTsv"
 include { SORT_FASTQ } from "../../../modules/local/sortFastq"
 include { SORT_FILE } from "../../../modules/local/sortFile"
 include { FILTER_VIRAL_SAM } from "../../../modules/local/filterViralSam"
-
+include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
+include { FILTER_TO_PRIMARY_ALIGNMENTS } from "../../../modules/local/filterToPrimaryAlignments"
 
 /***********
 | WORKFLOW |
@@ -75,11 +78,19 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db,
             "seq_id", "aligner_taxid", "aligner_length_normalized_score", taxid_artificial,
             "bowtie2")
-        out_labeled_ch = ADD_SAMPLE_COLUMN(lca_ch.output, "sample", "viral_bowtie2")
-        // 9. Concatenate across reads
+        // 9. Sort both TSV files by seq_id for joining
+        lca_sorted_ch = SORT_LCA(lca_ch.output, "seq_id")
+        bowtie2_sorted_ch = SORT_BOWTIE2(bowtie2_tsv_ch.output, "seq_id")
+        // 10. Join LCA and Bowtie2 TSV on seq_id to combine taxonomic and alignment data
+        joined_input_ch = lca_sorted_ch.sorted.join(bowtie2_sorted_ch.sorted, by: 0)
+        joined_ch = JOIN_TSVS(joined_input_ch, "seq_id", "inner", "lca_bowtie2")
+        // 11. Filter to keep only primary alignments (is_secondary=False)
+        filtered_ch = FILTER_TO_PRIMARY_ALIGNMENTS(joined_ch.output)
+        out_labeled_ch = ADD_SAMPLE_COLUMN(filtered_ch.output, "sample", "viral_bowtie2")
+        // 12. Concatenate across reads
         label_combined_ch = out_labeled_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
         concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_final")
-        // 10. Extract filtered virus hits in FASTQ format
+        // 13. Extract filtered virus hits in FASTQ format
         fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ sample, file -> file }.collect().ifEmpty([])
         fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
         fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(concat_ch.output, fastq_unfiltered_concat.output)
