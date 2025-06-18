@@ -1,6 +1,6 @@
 // Extract information from a paired Bowtie2 SAM file based on Genbank download metadata
 // Updated version with testing and gzipped output
-process PROCESS_VIRAL_BOWTIE2_SAM {
+process PROCESS_VIRAL_BOWTIE2_SAM_LCA {
     label "pysam_biopython"
     label "single"
     input:
@@ -19,7 +19,7 @@ process PROCESS_VIRAL_BOWTIE2_SAM {
         paired=!{paired ? "--paired" : "--no-paired"}
         cmd="process_viral_bowtie2_sam.py -m ${meta} -v ${db} -o ${out} ${paired}"
         # Sort input SAM and pass to script
-        zcat !{sam} | sort -t $'\t' -k1,1 | ${cmd}
+        zcat !{sam} | ${cmd}
         # Link input to output for testing
         ln -s !{sam} !{sample}_bowtie2_sam_in.tsv.gz
         '''

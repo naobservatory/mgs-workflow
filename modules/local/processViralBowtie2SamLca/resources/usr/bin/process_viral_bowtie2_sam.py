@@ -210,6 +210,7 @@ def process_sam_flags(flag_sum: int|str) -> dict[str, bool]:
         dict[str, bool]: Dictionary of flag results.
     """
     flag_dict = {}
+    flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_secondary", 256)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_mate_2", 128)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_mate_1", 64)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "mate_aligned_reverse", 32)
