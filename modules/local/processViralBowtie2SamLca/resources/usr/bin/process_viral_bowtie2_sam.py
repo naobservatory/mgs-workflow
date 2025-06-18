@@ -47,7 +47,7 @@ SAM_HEADERS_PAIRED = [
     "aligner_length_normalized_score_rev",
     "aligner_length_normalized_score",
     "aligner_pair_status",
-    "is_secondary"
+    "aligner_secondary_status"
 ]
 
 SAM_HEADERS_UNPAIRED = [
@@ -59,7 +59,7 @@ SAM_HEADERS_UNPAIRED = [
     "query_len", "query_seq",
     "query_rc_by_aligner", "query_qual",
     "aligner_length_normalized_score",
-    "is_secondary"
+    "aligner_secondary_status"
 ]
 
 #=======================================================================
@@ -212,7 +212,7 @@ def process_sam_flags(flag_sum: int|str) -> dict[str, bool]:
         dict[str, bool]: Dictionary of flag results.
     """
     flag_dict = {}
-    flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_secondary", 256)
+    flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "aligner_secondary_status", 256)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_mate_2", 128)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_mate_1", 64)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "mate_aligned_reverse", 32)
@@ -368,7 +368,7 @@ def get_line_from_single(read_dict: dict[str, str|int|bool],
         "aligner_taxid": read_dict["taxid"],
         "aligner_length_normalized_score": adj_score,
         "aligner_pair_status": read_dict["pair_status"],
-        "is_secondary": read_dict["is_secondary"]
+        "aligner_secondary_status": read_dict["aligner_secondary_status"]
     }
     if paired:
         # Additional fields for paired SAM
@@ -505,7 +505,7 @@ def get_line_from_pair(dict_1: dict[str, str|int|bool],
         "aligner_length_normalized_score_rev": adj_score_rev,
         "aligner_length_normalized_score": adj_score_max,
         "aligner_pair_status": fwd_dict["pair_status"],
-        "is_secondary": fwd_dict["is_secondary"]
+        "aligner_secondary_status": fwd_dict["aligner_secondary_status"],
         }
     return get_line(out_dict, True)
 

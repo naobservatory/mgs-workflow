@@ -1,4 +1,0 @@
-seq_id	lca_taxid	aligner_genome_id	aligner_taxid	aligner_best_alignment_score	is_secondary
-read1	12345	genome1	12345	100	False
-read3	11111	genome3	11111	85	False
-read5	33333	genome5	33333	110	False

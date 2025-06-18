@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Filters joined TSV from LCA and Bowtie2 data to keep only primary alignments.
+Filters TSV files to keep only rows where a specified column matches a given value.
 """
 
 # =======================================================================
@@ -14,7 +14,7 @@ import csv
 import sys
 import gzip
 import bz2
-from typing import TextIO
+from typing import TextIO, Any, Union
 from datetime import datetime, timezone
 
 
@@ -83,14 +83,14 @@ def parse_args() -> argparse.Namespace:
         argparse.Namespace: Parsed command-line arguments.
     """
     parser = argparse.ArgumentParser(
-        description="Filter joined TSV to keep only primary alignments (is_secondary=False)."
+        description="Filter TSV file to keep only rows where specified column matches given value."
     )
     parser.add_argument(
         "-i",
         "--input",
         type=lambda f: open_by_suffix(f, "r"),
         default=sys.stdin,
-        help="Input joined TSV file (default: stdin). Supports .gz and .bz2 compression.",
+        help="Input TSV file (default: stdin). Supports .gz and .bz2 compression.",
     )
     parser.add_argument(
         "-o",
@@ -98,6 +98,32 @@ def parse_args() -> argparse.Namespace:
         type=lambda f: open_by_suffix(f, "w"),
         default=sys.stdout,
         help="Output filtered TSV file (default: stdout). Supports .gz and .bz2 compression.",
+    )
+    parser.add_argument(
+        "-c",
+        "--column",
+        type=str,
+        required=True,
+        help="Name of the column to filter on.",
+    )
+    parser.add_argument(
+        "-v",
+        "--value",
+        type=str,
+        required=True,
+        help="Value to match in the specified column. Will be converted to appropriate type.",
+    )
+    parser.add_argument(
+        "--keep-matching",
+        action="store_true",
+        default=True,
+        help="Keep rows that match the value (default behavior).",
+    )
+    parser.add_argument(
+        "--keep-non-matching",
+        action="store_true",
+        default=False,
+        help="Keep rows that do NOT match the value.",
     )
     return parser.parse_args()
 
@@ -107,33 +133,91 @@ def parse_args() -> argparse.Namespace:
 # =======================================================================
 
 
-def validate_input_columns(header: list[str], logger: logging.Logger) -> int:
+def validate_input_columns(header: list[str], column_name: str, logger: logging.Logger) -> int:
     """
-    Validate that the input header contains required columns.
+    Validate that the input header contains the specified column.
 
     Args:
         header (list[str]): list of column names from CSV header.
+        column_name (str): Name of the column to look for.
         logger (logging.Logger): Logger instance for logging messages.
 
     Returns:
-        int: Index of the is_secondary column.
+        int: Index of the specified column.
 
     Raises:
-        ValueError: If required columns are missing.
+        ValueError: If the specified column is missing.
     """
-    required_columns = ["is_secondary"]
-    missing_columns = [col for col in required_columns if col not in header]
-
-    if missing_columns:
-        error_msg = f"Missing required columns: {missing_columns}"
+    if column_name not in header:
+        error_msg = f"Column '{column_name}' not found in header. Available columns: {header}"
         logger.error(error_msg)
         raise ValueError(error_msg)
 
-    is_secondary_index = header.index("is_secondary")
-    logger.info(f"Input validation passed. Found {len(header)} columns.")
-    return is_secondary_index
+    column_index = header.index(column_name)
+    logger.info(f"Input validation passed. Found {len(header)} columns. Target column '{column_name}' at index {column_index}.")
+    return column_index
 
 
+def convert_value(value_str: str) -> Union[str, bool, int, float]:
+    """
+    Convert string value to appropriate type (bool, int, float, or str).
+
+    Args:
+        value_str (str): String representation of the value.
+
+    Returns:
+        Union[str, bool, int, float]: Converted value in appropriate type.
+    """
+    # Try boolean conversion first
+    if value_str.lower() in ('true', 'false'):
+        return value_str.lower() == 'true'
+    
+    # Try integer conversion
+    try:
+        return int(value_str)
+    except ValueError:
+        pass
+    
+    # Try float conversion
+    try:
+        return float(value_str)
+    except ValueError:
+        pass
+    
+    # Return as string if no other conversion works
+    return value_str
+
+
+def values_match(cell_value: str, target_value: Any) -> bool:
+    """
+    Check if a cell value matches the target value, handling type conversion.
+
+    Args:
+        cell_value (str): Value from the TSV cell.
+        target_value (Any): Target value to match against.
+
+    Returns:
+        bool: True if values match, False otherwise.
+    """
+    # Convert cell value to the same type as target value
+    if isinstance(target_value, bool):
+        # Handle boolean comparison
+        if cell_value.lower() in ('true', '1', 'yes'):
+            return target_value is True
+        elif cell_value.lower() in ('false', '0', 'no'):
+            return target_value is False
+        else:
+            return False
+    elif isinstance(target_value, (int, float)):
+        # Handle numeric comparison
+        try:
+            cell_numeric = type(target_value)(cell_value)
+            return cell_numeric == target_value
+        except ValueError:
+            return False
+    else:
+        # Handle string comparison
+        return str(cell_value) == str(target_value)
 
 
 # =======================================================================
@@ -142,10 +226,11 @@ def validate_input_columns(header: list[str], logger: logging.Logger) -> int:
 
 
 def stream_and_filter_tsv(
-    input_file: TextIO, output_file: TextIO, logger: logging.Logger
+    input_file: TextIO, output_file: TextIO, column_name: str, 
+    filter_value: Any, keep_matching: bool, logger: logging.Logger
 ) -> None:
     """
-    Stream TSV file and filter to keep only primary alignments using memory-efficient processing.
+    Stream TSV file and filter based on column value using memory-efficient processing.
     
     Processes the input file row by row without loading the entire dataset into memory,
     making it suitable for large files.
@@ -153,6 +238,9 @@ def stream_and_filter_tsv(
     Args:
         input_file (TextIO): Input file handle.
         output_file (TextIO): Output file handle.
+        column_name (str): Name of the column to filter on.
+        filter_value (Any): Value to match in the column.
+        keep_matching (bool): If True, keep matching rows; if False, keep non-matching rows.
         logger (logging.Logger): Logger instance for logging messages.
     """
     logger.info("Initializing streaming TSV reader and writer")
@@ -166,7 +254,7 @@ def stream_and_filter_tsv(
         logger.error("Input file is empty or contains no header")
         raise ValueError("Input file is empty or contains no header")
     
-    is_secondary_index = validate_input_columns(header, logger)
+    column_index = validate_input_columns(header, column_name, logger)
     writer.writerow(header)
     logger.info("Header processed and written to output")
 
@@ -175,6 +263,8 @@ def stream_and_filter_tsv(
     filtered_rows = 0
 
     logger.info("Starting row-by-row streaming processing")
+    logger.info(f"Filtering column '{column_name}' for value '{filter_value}' (type: {type(filter_value).__name__})")
+    logger.info(f"Keep matching: {keep_matching}")
     
     # Stream and process each row individually
     for row_num, row in enumerate(reader, start=1):
@@ -182,24 +272,20 @@ def stream_and_filter_tsv(
         
         # Log progress for large files
         if initial_rows % 100000 == 0:
-            logger.info(f"Processed {initial_rows} rows, kept {filtered_rows} primary alignments")
+            logger.info(f"Processed {initial_rows} rows, kept {filtered_rows} rows")
 
         try:
             # Check row length to prevent IndexError
-            if len(row) <= is_secondary_index:
-                error_msg = f"Row {row_num}: Row has {len(row)} columns but expected at least {is_secondary_index + 1}"
+            if len(row) <= column_index:
+                error_msg = f"Row {row_num}: Row has {len(row)} columns but expected at least {column_index + 1}"
                 logger.error(error_msg)
                 raise ValueError(error_msg)
                 
-            is_secondary_value = row[is_secondary_index]
-            # Convert string representation to boolean if needed
-            if isinstance(is_secondary_value, str):
-                is_secondary = is_secondary_value.lower() in ('true', '1')
-            else:
-                is_secondary = bool(is_secondary_value)
-
-            # Keep only primary alignments (is_secondary == False)
-            if not is_secondary:
+            cell_value = row[column_index]
+            matches = values_match(cell_value, filter_value)
+            
+            # Apply filtering logic
+            if (keep_matching and matches) or (not keep_matching and not matches):
                 writer.writerow(row)
                 filtered_rows += 1
 
@@ -210,26 +296,39 @@ def stream_and_filter_tsv(
 
     # Final statistics
     removed_rows = initial_rows - filtered_rows
+    action = "kept" if keep_matching else "removed"
 
     logger.info("Streaming processing completed:")
     logger.info(f"  - Input rows processed: {initial_rows}")
-    logger.info(f"  - Primary alignments kept: {filtered_rows}")
-    logger.info(f"  - Secondary alignments removed: {removed_rows}")
+    logger.info(f"  - Rows {action}: {filtered_rows}")
+    logger.info(f"  - Rows {'removed' if keep_matching else 'kept'}: {removed_rows}")
 
 
 def main() -> None:
     """Main function to execute the filtering process."""
-    logger.info("Starting primary alignment filtering.")
+    logger.info("Starting TSV column filtering.")
 
     try:
         # Parse arguments
         args = parse_args()
         logger.info("Parsed command-line arguments successfully.")
+        
+        # Handle conflicting arguments
+        if args.keep_non_matching:
+            keep_matching = False
+        else:
+            keep_matching = args.keep_matching
+        
+        # Convert filter value to appropriate type
+        filter_value = convert_value(args.value)
+        logger.info(f"Filter value '{args.value}' converted to {type(filter_value).__name__}: {filter_value}")
 
         try:
-            # Stream and filter primary alignments
+            # Stream and filter TSV
             logger.info("Starting streaming TSV processing...")
-            stream_and_filter_tsv(args.input, args.output, logger)
+            stream_and_filter_tsv(
+                args.input, args.output, args.column, filter_value, keep_matching, logger
+            )
             logger.info("Streaming processing completed successfully.")
         finally:
             # Close file handles if they're not stdin/stdout
@@ -242,7 +341,7 @@ def main() -> None:
         logger.error(f"Error during processing: {str(e)}")
         sys.exit(1)
 
-    logger.info("Primary alignment filtering completed.")
+    logger.info("TSV column filtering completed.")
 
 
 if __name__ == "__main__":

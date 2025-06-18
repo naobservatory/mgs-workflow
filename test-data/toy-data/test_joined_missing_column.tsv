@@ -1,4 +1,0 @@
-seq_id	lca_taxid	aligner_genome_id	aligner_taxid	aligner_best_alignment_score
-read1	12345	genome1	12345	100
-read2	67890	genome2	67890	95
-read3	11111	genome3	11111	85

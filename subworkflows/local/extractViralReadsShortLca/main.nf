@@ -23,7 +23,7 @@ include { SORT_FASTQ } from "../../../modules/local/sortFastq"
 include { SORT_FILE } from "../../../modules/local/sortFile"
 include { FILTER_VIRAL_SAM } from "../../../modules/local/filterViralSam"
 include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
-include { FILTER_TO_PRIMARY_ALIGNMENTS } from "../../../modules/local/filterToPrimaryAlignments"
+include { FILTER_TSV_COLUMN_BY_VALUE } from "../../../modules/local/filterTsvColumnByValue"
 
 /***********
 | WORKFLOW |
@@ -77,15 +77,15 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         // 8. Run LCA
         lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db,
             "seq_id", "aligner_taxid", "aligner_length_normalized_score", taxid_artificial,
-            "bowtie2")
+            "aligner")
         // 9. Sort both TSV files by seq_id for joining
         lca_sorted_ch = SORT_LCA(lca_ch.output, "seq_id")
         bowtie2_sorted_ch = SORT_BOWTIE2(bowtie2_tsv_ch.output, "seq_id")
         // 10. Join LCA and Bowtie2 TSV on seq_id to combine taxonomic and alignment data
         joined_input_ch = lca_sorted_ch.sorted.join(bowtie2_sorted_ch.sorted, by: 0)
         joined_ch = JOIN_TSVS(joined_input_ch, "seq_id", "inner", "lca_bowtie2")
-        // 11. Filter to keep only primary alignments (is_secondary=False)
-        filtered_ch = FILTER_TO_PRIMARY_ALIGNMENTS(joined_ch.output)
+        // 11. Filter to keep only primary alignments (aligner_secondary_status=False)
+        filtered_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "aligner_secondary_status", "false")
         out_labeled_ch = ADD_SAMPLE_COLUMN(filtered_ch.output, "sample", "viral_bowtie2")
         // 12. Concatenate across reads
         label_combined_ch = out_labeled_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
