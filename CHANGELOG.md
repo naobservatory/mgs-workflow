@@ -26,6 +26,7 @@
   - Change Bowtie2 to run with multiple alignments
   - Conduct contaminant and score filtering of Bowtie2 reads before running LCA
   - Stop running the TAXONOMY subworkflow (effectively removing our usage of Kraken in identifying viral reads)
+- Added developer documentations (docs/developer.md)
 
 # v2.9.0.4
 - Updated markAlignmentDuplicates module to reduce memory overhead and increase memory allocation (which collectively should avoid out-of-memory errors in DOWNSTREAM on large read groups).
