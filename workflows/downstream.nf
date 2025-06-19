@@ -10,8 +10,8 @@ include { LOAD_DOWNSTREAM_DATA } from "../subworkflows/local/loadDownstreamData"
 include { PREPARE_GROUP_TSVS } from "../subworkflows/local/prepareGroupTsvs"
 include { MARK_VIRAL_DUPLICATES } from "../subworkflows/local/markViralDuplicates"
 include { VALIDATE_VIRAL_ASSIGNMENTS } from "../subworkflows/local/validateViralAssignments"
-
-nextflow.preview.output = true
+include { COPY_FILE_BARE as COPY_VERSION } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_INPUT } from "../modules/local/copyFile"
 
 /*****************
 | MAIN WORKFLOWS |
@@ -42,16 +42,15 @@ workflow DOWNSTREAM {
         params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
         params_ch = Channel.of(params_str).collectFile(name: "params-downstream.json")
         time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
-        version_ch = Channel.fromPath("${projectDir}/pipeline-version.txt")
-    publish:
-        // Saved inputs
-        Channel.fromPath(params.input_file) >> "input_downstream"
-        params_ch >> "input_downstream"
-        time_ch >> "logging_downstream"
-        version_ch >> "logging_downstream"
-        // Duplicate results
-        MARK_VIRAL_DUPLICATES.out.dup >> "results_downstream"
-        // Validation results
-        VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits >> "results_downstream"
-        VALIDATE_VIRAL_ASSIGNMENTS.out.blast_results >> "intermediates_downstream"
-}
+        version_path = file("${projectDir}/pipeline-version.txt")
+        version_newpath = version_path.getFileName().toString()
+        version_ch = COPY_VERSION(Channel.fromPath(version_path), version_newpath)
+        input_newpath = file(params.input_file).getFileName().toString()
+        input_file_ch = COPY_INPUT(Channel.fromPath(params.input_file), input_newpath)
+
+    emit:
+       input_downstream = params_ch.mix(input_file_ch)
+       logging_downstream = time_ch.mix(version_ch)
+       intermediates_downstream = VALIDATE_VIRAL_ASSIGNMENTS.out.blast_results
+       results_downstream = MARK_VIRAL_DUPLICATES.out.dup.mix(VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits)
+}    
