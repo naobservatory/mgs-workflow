@@ -1,6 +1,0 @@
-id	value	threshold	status
-A	10	5	pass
-B	3	5	fail
-C	8	5	pass
-D	2	5	fail
-E	15	5	pass

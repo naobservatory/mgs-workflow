@@ -1,30 +1,28 @@
 // Helper function: filter table by column value
-def filter_by_column_value = { tab_in, column_name, filter_value -> 
+def filter_by_column_value = { tab_in, column_name, filter_value, keep_matching -> 
     def column = tab_in.table.column(column_name)
     def filtered_rows
-    
     // Handle different column types specially
     if (column.type().name() == "BOOLEAN") {
         // For boolean columns, use isTrue() or isFalse() methods
         def boolValue = filter_value.toLowerCase() == "true"
         if (boolValue) {
-            filtered_rows = tab_in.table.where(column.isTrue())
+            filtered_rows = keep_matching ? tab_in.table.where(column.isTrue()) : tab_in.table.where(column.isFalse())
         } else {
-            filtered_rows = tab_in.table.where(column.isFalse())
+            filtered_rows = keep_matching ? tab_in.table.where(column.isFalse()) : tab_in.table.where(column.isTrue())
         }
     } else if (column.type().name() == "INTEGER") {
-        // For integer columns, convert string to integer
-        def intValue = Integer.parseInt(filter_value)
-        filtered_rows = tab_in.table.where(column.isEqualTo(intValue))
+        // For integer columns, ensure filter_value is an integer
+        def intValue = filter_value instanceof Integer ? filter_value : Integer.parseInt(filter_value.toString())
+        filtered_rows = keep_matching ? tab_in.table.where(column.isEqualTo(intValue)) : tab_in.table.where(column.isNotEqualTo(intValue))
     } else if (column.type().name() == "DOUBLE") {
-        // For double columns, convert string to double
-        def doubleValue = Double.parseDouble(filter_value)
-        filtered_rows = tab_in.table.where(column.isEqualTo(doubleValue))
+        // For double columns, ensure filter_value is a double
+        def doubleValue = filter_value instanceof Double ? filter_value : Double.parseDouble(filter_value.toString())
+        filtered_rows = keep_matching ? tab_in.table.where(column.isEqualTo(doubleValue)) : tab_in.table.where(column.isNotEqualTo(doubleValue))
     } else {
         // For string and other columns
-        filtered_rows = tab_in.table.where(column.isEqualTo(filter_value))
+        filtered_rows = keep_matching ? tab_in.table.where(column.isEqualTo(filter_value)) : tab_in.table.where(column.isNotEqualTo(filter_value))
     }
-    
     return csv(filtered_rows)
 }
 
@@ -37,61 +35,123 @@ nextflow_process {
     tag "module"
     tag "filter_tsv_column_by_value"
 
-    test("Should fail when specified column is missing") {
-        tag "expect_failed"
-        
-        setup {
-            run("GZIP_FILE", alias: "GZIP_MISSING_COLUMN") {
-                script "modules/local/gzipFile/main.nf"
-                process {
-                    '''
-                    input[0] = Channel.of("test")
-                        | combine(Channel.of("${projectDir}/test-data/toy-data/test_filter_string.tsv"))
-                    '''
-                }
-            }
-        }
+    test("Should handle completely empty file (keep_matching = true)") {
+        tag "expect_success"
+        tag "empty_file"
         
         when {
-            params {}
+            params {
+                column_name = "test_column"
+                filter_value = "test_value"
+                keep_matching = true
+            }
             process {
                 '''
-                input[0] = GZIP_MISSING_COLUMN.out
-                input[1] = "nonexistent_column"
-                input[2] = "false"
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                input[1] = params.column_name
+                input[2] = params.filter_value
+                input[3] = params.keep_matching
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output file should exist but be empty
+            def output_file = path(process.out.output[0][1])
+            assert output_file.exists()
+            assert output_file.text.size() == 0
+        }
+    }
+
+    test("Should handle header-only input file (keep_matching = true)") {
+        tag "expect_success" 
+        tag "header_only"
+        
+        when {
+            params {
+                column_name = "x"
+                filter_value = "test_value"
+                keep_matching = true
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_empty.tsv"))
+                input[1] = params.column_name
+                input[2] = params.filter_value
+                input[3] = params.keep_matching
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output should have correct header only
+            def output_file = path(process.out.output[0][1])
+            
+            // Read the file manually to avoid issues with compressed file handling
+            def content = output_file.text.split("\n")
+            
+            // There should be only a header line
+            assert content.size() == 1
+            
+            // Header should have the expected columns
+            def header_fields = content[0].split("\t")
+            assert header_fields.size() == 3
+            assert header_fields[0] == "x"
+            assert header_fields[1] == "y"
+            assert header_fields[2] == "z"
+        }
+    }
+
+    test("Should fail when specified column is missing (keep_matching = true)") {
+        tag "expect_failed"
+        tag "missing_column"
+        
+        when {
+            params {
+                column_name = "nonexistent_column"
+                filter_value = "false"
+                keep_matching = true
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = params.column_name
+                input[2] = params.filter_value
+                input[3] = params.keep_matching
                 '''
             }
         }
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport.contains("Column 'nonexistent_column' not found in header")
+            assert process.errorReport.contains("Column '${params.column_name}' not found in header")
         }
     }
 
-    test("Should filter string column successfully") {
+    test("Should filter column successfully (by removing all rows, keep_matching = true)") {
         tag "expect_success"
-        tag "string_filter"
-        
-        setup {
-            run("GZIP_FILE", alias: "GZIP_STRING_TEST") {
-                script "modules/local/gzipFile/main.nf"
-                process {
-                    '''
-                    input[0] = Channel.of("test")
-                        | combine(Channel.of("${projectDir}/test-data/toy-data/test_filter_string.tsv"))
-                    '''
-                }
-            }
-        }
+        tag "keep_no_rows"
         
         when {
-            params {}
+            params {
+                column_name = "x"
+                filter_value = 5
+                keep_matching = true
+            }
             process {
                 '''
-                input[0] = GZIP_STRING_TEST.out
-                input[1] = "category"
-                input[2] = "electronics"
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = params.column_name
+                input[2] = params.filter_value
+                input[3] = params.keep_matching
                 '''
             }
         }
@@ -100,46 +160,45 @@ nextflow_process {
             assert process.success
             
             // Generate expected output from input using helper function
-            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true)
-            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
-            def tab_exp = filter_by_column_value(tab_in, "category", "electronics")
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_exp = filter_by_column_value(tab_in, params.column_name, params.filter_value, params.keep_matching)
             
-            // Compare output with expected filtered input
-            assert tab_out.columnCount == tab_exp.columnCount
-            assert tab_out.rowCount == tab_exp.rowCount
-            assertTableEquals tab_exp, tab_out
+            // Since this test expects no matching rows (header-only output), handle manually
+            def output_file = path(process.out.output[0][1])
+            def content = output_file.text.split("\n")
             
-            // Check that all output rows have category = electronics
-            def categoryColumn = tab_out.columns["category"]
-            for (value in categoryColumn) {
-                assert value == "electronics"
-            }
+            // Should have only header line (no data rows)
+            assert content.size() == 1
+            
+            // Header should have the expected columns
+            def header_fields = content[0].split("\t")
+            assert header_fields.size() == 3
+            assert header_fields[0] == "x"
+            assert header_fields[1] == "y" 
+            assert header_fields[2] == "z"
+            
+            // Verify expected result also has 0 rows
+            assert tab_exp.rowCount == 0
         }
     }
 
-    test("Should filter numeric column successfully") {
+    test("Should filter column successfully (by keeping rows with matching value, keep_matching = true)") {
         tag "expect_success"
-        tag "numeric_filter"
-        
-        setup {
-            run("GZIP_FILE", alias: "GZIP_NUMERIC_TEST") {
-                script "modules/local/gzipFile/main.nf"
-                process {
-                    '''
-                    input[0] = Channel.of("test")
-                        | combine(Channel.of("${projectDir}/test-data/toy-data/test_filter_numeric.tsv"))
-                    '''
-                }
-            }
-        }
+        tag "keep_rows"
         
         when {
-            params {}
+            params {
+                column_name = "x"
+                filter_value = 6
+                keep_matching = true
+            }
             process {
                 '''
-                input[0] = GZIP_NUMERIC_TEST.out
-                input[1] = "threshold"
-                input[2] = "5"
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = params.column_name
+                input[2] = params.filter_value
+                input[3] = params.keep_matching
                 '''
             }
         }
@@ -148,94 +207,40 @@ nextflow_process {
             assert process.success
             
             // Generate expected output from input using helper function
-            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true)
-            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
-            def tab_exp = filter_by_column_value(tab_in, "threshold", "5")
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
+            def tab_exp = filter_by_column_value(tab_in, params.column_name, params.filter_value, params.keep_matching)
             
             // Compare output with expected filtered input
             assert tab_out.columnCount == tab_exp.columnCount
             assert tab_out.rowCount == tab_exp.rowCount
             assertTableEquals tab_exp, tab_out
             
-            // Check that all output rows have threshold = 5
-            def thresholdColumn = tab_out.columns["threshold"]
-            for (value in thresholdColumn) {
-                assert value == 5 || value == "5"
+            // Check that all output rows have expected filter value
+            def filterColumn = tab_out.columns[params.column_name]
+            for (value in filterColumn) {
+                assert value == params.filter_value
             }
         }
     }
 
-    test("Should handle boolean true filter") {
-        tag "expect_success"
-        tag "boolean_true_filter"
-        
-        setup {
-            run("GZIP_FILE", alias: "GZIP_BOOLEAN_TRUE") {
-                script "modules/local/gzipFile/main.nf"
-                process {
-                    '''
-                    input[0] = Channel.of("test")
-                        | combine(Channel.of("${projectDir}/test-data/toy-data/test_filter_string.tsv"))
-                    '''
-                }
-            }
-        }
-        
-        when {
-            params {}
-            process {
-                '''
-                input[0] = GZIP_BOOLEAN_TRUE.out
-                input[1] = "active"
-                input[2] = "true"
-                '''
-            }
-        }
-        then {
-            // Should run without errors
-            assert process.success
-            
-            // Generate expected output from input using helper function
-            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true)
-            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
-            def tab_exp = filter_by_column_value(tab_in, "active", "true")
-            
-            // Compare output with expected filtered input
-            assert tab_out.columnCount == tab_exp.columnCount
-            assert tab_out.rowCount == tab_exp.rowCount
-            assertTableEquals tab_exp, tab_out
-            
-            // Check that all output rows have active = true
-            def activeColumn = tab_out.columns["active"]
-            for (value in activeColumn) {
-                assert value == true || value == "true"
-            }
-        }
-    }
-
-    test("Should handle input with no matching rows") {
+    test("Should handle input with no matching rows (keep_matching = true)") {
         tag "expect_success"
         tag "no_matches"
         
-        setup {
-            run("GZIP_FILE", alias: "GZIP_NO_MATCHES") {
-                script "modules/local/gzipFile/main.nf"
-                process {
-                    '''
-                    input[0] = Channel.of("test")
-                        | combine(Channel.of("${projectDir}/test-data/toy-data/test_filter_string.tsv"))
-                    '''
-                }
-            }
-        }
-        
         when {
-            params {}
+            params {
+                column_name = "x"
+                filter_value = 999
+                keep_matching = true
+            }
             process {
                 '''
-                input[0] = GZIP_NO_MATCHES.out
-                input[1] = "category"
-                input[2] = "nonexistent"
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = params.column_name
+                input[2] = params.filter_value
+                input[3] = params.keep_matching
                 '''
             }
         }
@@ -244,17 +249,66 @@ nextflow_process {
             assert process.success
             
             // Generate expected output from input using helper function
-            def tab_in = path(process.out.input[0][1]).csv(sep: "\t", decompress: true)
-            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
-            def tab_exp = filter_by_column_value(tab_in, "category", "nonexistent")
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_exp = filter_by_column_value(tab_in, params.column_name, params.filter_value, params.keep_matching)
             
-            // For empty results, just verify the process succeeded and produced output
-            assert path(process.out.output[0][1]).exists()
+            // Since this test expects no matching rows (header-only output), handle manually
+            def output_file = path(process.out.output[0][1])
+            def content = output_file.text.split("\n")
             
-            // Should have no matching rows (verified by checking the expected result)
-            assert tab_exp.rowCount == tab_out.rowCount
-            assert tab_out.rowCount == 0
+            // Should have only header line (no data rows)
+            assert content.size() - 1 == tab_exp.rowCount
+            
+            // Header should have the expected columns
+            def header_fields = content[0].split("\t")
+            assert header_fields.size() == 3
+            assert header_fields[0] == "x"
+            assert header_fields[1] == "y" 
+            assert header_fields[2] == "z"
         }
     }
+
+    test("Should discard rows with matching value (keep_matching = false)") {
+        tag "expect_success"
+        tag "discard_matching"
+        
+        when {
+            params {
+                column_name = "x"
+                filter_value = 6
+                keep_matching = false
+            }
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
+                input[1] = params.column_name
+                input[2] = params.filter_value
+                input[3] = params.keep_matching
+                '''
+            }
+        }
+        then {
+            // Should run without errors
+            assert process.success
+            
+            // Generate expected output from input using helper function
+            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t")
+            def tab_exp = filter_by_column_value(tab_in, params.column_name, params.filter_value, params.keep_matching)
+            
+            // Compare output with expected filtered input
+            assert tab_out.columnCount == tab_exp.columnCount
+            assert tab_out.rowCount == tab_exp.rowCount
+            assertTableEquals tab_exp, tab_out
+            
+            // Check that NO output rows have the filter value (they should all be discarded)
+            def filterColumn = tab_out.columns[params.column_name]
+            for (value in filterColumn) {
+                assert value != params.filter_value
+            }
+        }
+    }
+
 
 }

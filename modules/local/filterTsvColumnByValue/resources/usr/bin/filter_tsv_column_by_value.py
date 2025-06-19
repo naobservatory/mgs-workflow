@@ -89,15 +89,15 @@ def parse_args() -> argparse.Namespace:
         "-i",
         "--input",
         type=lambda f: open_by_suffix(f, "r"),
-        default=sys.stdin,
-        help="Input TSV file (default: stdin). Supports .gz and .bz2 compression.",
+        required=True,
+        help="Input TSV file. Supports .gz and .bz2 compression.",
     )
     parser.add_argument(
         "-o",
         "--output",
         type=lambda f: open_by_suffix(f, "w"),
-        default=sys.stdout,
-        help="Output filtered TSV file (default: stdout). Supports .gz and .bz2 compression.",
+        required=True,
+        help="Output filtered TSV file. Supports .gz and .bz2 compression.",
     )
     parser.add_argument(
         "-c",
@@ -115,15 +115,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--keep-matching",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=True,
-        help="Keep rows that match the value (default behavior).",
-    )
-    parser.add_argument(
-        "--keep-non-matching",
-        action="store_true",
-        default=False,
-        help="Keep rows that do NOT match the value.",
+        help="Keep rows that match the value (default: True). Use --no-keep-matching to keep non-matching rows instead.",
     )
     return parser.parse_args()
 
@@ -133,7 +127,9 @@ def parse_args() -> argparse.Namespace:
 # =======================================================================
 
 
-def validate_input_columns(header: list[str], column_name: str, logger: logging.Logger) -> int:
+def validate_input_columns(
+    header: list[str], column_name: str, logger: logging.Logger
+) -> int:
     """
     Validate that the input header contains the specified column.
 
@@ -149,12 +145,15 @@ def validate_input_columns(header: list[str], column_name: str, logger: logging.
         ValueError: If the specified column is missing.
     """
     if column_name not in header:
-        error_msg = f"Column '{column_name}' not found in header. Available columns: {header}"
+        error_msg = (
+            f"Column '{column_name}' not found in header. Available columns: {header}"
+        )
         logger.error(error_msg)
         raise ValueError(error_msg)
-
     column_index = header.index(column_name)
-    logger.info(f"Input validation passed. Found {len(header)} columns. Target column '{column_name}' at index {column_index}.")
+    logger.info(
+        f"Input validation passed. Found {len(header)} columns. Target column '{column_name}' at index {column_index}."
+    )
     return column_index
 
 
@@ -168,56 +167,25 @@ def convert_value(value_str: str) -> Union[str, bool, int, float]:
     Returns:
         Union[str, bool, int, float]: Converted value in appropriate type.
     """
+    # Handle empty or whitespace-only values
+    if not value_str or value_str.isspace():
+        return value_str
     # Try boolean conversion first
-    if value_str.lower() in ('true', 'false'):
-        return value_str.lower() == 'true'
-    
+    if value_str.lower() in ("true", "false"):
+        return value_str.lower() == "true"
     # Try integer conversion
     try:
         return int(value_str)
     except ValueError:
-        pass
-    
+        logger.debug(f"'{value_str}' is not an integer")
     # Try float conversion
     try:
         return float(value_str)
     except ValueError:
-        pass
-    
-    # Return as string if no other conversion works
+        logger.debug(f"'{value_str}' is not a float")
+    # Return as string
+    logger.debug(f"'{value_str}' treated as string")
     return value_str
-
-
-def values_match(cell_value: str, target_value: Any) -> bool:
-    """
-    Check if a cell value matches the target value, handling type conversion.
-
-    Args:
-        cell_value (str): Value from the TSV cell.
-        target_value (Any): Target value to match against.
-
-    Returns:
-        bool: True if values match, False otherwise.
-    """
-    # Convert cell value to the same type as target value
-    if isinstance(target_value, bool):
-        # Handle boolean comparison
-        if cell_value.lower() in ('true', '1', 'yes'):
-            return target_value is True
-        elif cell_value.lower() in ('false', '0', 'no'):
-            return target_value is False
-        else:
-            return False
-    elif isinstance(target_value, (int, float)):
-        # Handle numeric comparison
-        try:
-            cell_numeric = type(target_value)(cell_value)
-            return cell_numeric == target_value
-        except ValueError:
-            return False
-    else:
-        # Handle string comparison
-        return str(cell_value) == str(target_value)
 
 
 # =======================================================================
@@ -226,12 +194,16 @@ def values_match(cell_value: str, target_value: Any) -> bool:
 
 
 def stream_and_filter_tsv(
-    input_file: TextIO, output_file: TextIO, column_name: str, 
-    filter_value: Any, keep_matching: bool, logger: logging.Logger
+    input_file: TextIO,
+    output_file: TextIO,
+    column_name: str,
+    filter_value: Any,
+    keep_matching: bool,
+    logger: logging.Logger,
 ) -> None:
     """
     Stream TSV file and filter based on column value using memory-efficient processing.
-    
+
     Processes the input file row by row without loading the entire dataset into memory,
     making it suitable for large files.
 
@@ -246,58 +218,50 @@ def stream_and_filter_tsv(
     logger.info("Initializing streaming TSV reader and writer")
     reader = csv.reader(input_file, delimiter="\t")
     writer = csv.writer(output_file, delimiter="\t", lineterminator="\n")
-
     # Read and validate header
     try:
         header = next(reader)
     except StopIteration:
-        logger.error("Input file is empty or contains no header")
-        raise ValueError("Input file is empty or contains no header")
-    
+        logger.warning("Input file is empty - writing empty output file")
+        return
     column_index = validate_input_columns(header, column_name, logger)
     writer.writerow(header)
     logger.info("Header processed and written to output")
-
     # Initialize counters
     initial_rows = 0
     filtered_rows = 0
-
     logger.info("Starting row-by-row streaming processing")
-    logger.info(f"Filtering column '{column_name}' for value '{filter_value}' (type: {type(filter_value).__name__})")
+    logger.info(
+        f"Filtering column '{column_name}' for value '{filter_value}' (type: {type(filter_value).__name__})"
+    )
     logger.info(f"Keep matching: {keep_matching}")
-    
     # Stream and process each row individually
     for row_num, row in enumerate(reader, start=1):
         initial_rows += 1
-        
         # Log progress for large files
         if initial_rows % 100000 == 0:
             logger.info(f"Processed {initial_rows} rows, kept {filtered_rows} rows")
-
         try:
-            # Check row length to prevent IndexError
-            if len(row) <= column_index:
-                error_msg = f"Row {row_num}: Row has {len(row)} columns but expected at least {column_index + 1}"
-                logger.error(error_msg)
-                raise ValueError(error_msg)
-                
+            # Validate row
+            if len(row) != len(header):
+                raise ValueError(f"Row has {len(row)} columns but header has {len(header)} columns")
             cell_value = row[column_index]
-            matches = values_match(cell_value, filter_value)
-            
+            converted_cell_value = convert_value(cell_value)
+            matches = converted_cell_value == filter_value
             # Apply filtering logic
             if (keep_matching and matches) or (not keep_matching and not matches):
                 writer.writerow(row)
                 filtered_rows += 1
-
         except (ValueError, IndexError) as e:
             logger.error(f"Row {row_num}: {str(e)}")
             logger.error("Exiting due to data format error")
             raise
-
+    # Handle header-only files
+    if initial_rows == 0:
+        logger.warning("Input file contains only header with no data rows")
     # Final statistics
     removed_rows = initial_rows - filtered_rows
     action = "kept" if keep_matching else "removed"
-
     logger.info("Streaming processing completed:")
     logger.info(f"  - Input rows processed: {initial_rows}")
     logger.info(f"  - Rows {action}: {filtered_rows}")
@@ -307,27 +271,26 @@ def stream_and_filter_tsv(
 def main() -> None:
     """Main function to execute the filtering process."""
     logger.info("Starting TSV column filtering.")
-
     try:
         # Parse arguments
         args = parse_args()
         logger.info("Parsed command-line arguments successfully.")
-        
-        # Handle conflicting arguments
-        if args.keep_non_matching:
-            keep_matching = False
-        else:
-            keep_matching = args.keep_matching
-        
+        keep_matching = args.keep_matching
         # Convert filter value to appropriate type
         filter_value = convert_value(args.value)
-        logger.info(f"Filter value '{args.value}' converted to {type(filter_value).__name__}: {filter_value}")
-
+        logger.info(
+            f"Filter value '{args.value}' converted to {type(filter_value).__name__}: {filter_value}"
+        )
         try:
             # Stream and filter TSV
             logger.info("Starting streaming TSV processing...")
             stream_and_filter_tsv(
-                args.input, args.output, args.column, filter_value, keep_matching, logger
+                args.input,
+                args.output,
+                args.column,
+                filter_value,
+                keep_matching,
+                logger,
             )
             logger.info("Streaming processing completed successfully.")
         finally:
@@ -336,11 +299,9 @@ def main() -> None:
                 args.input.close()
             if args.output != sys.stdout:
                 args.output.close()
-
     except Exception as e:
         logger.error(f"Error during processing: {str(e)}")
         sys.exit(1)
-
     logger.info("TSV column filtering completed.")
 
 
