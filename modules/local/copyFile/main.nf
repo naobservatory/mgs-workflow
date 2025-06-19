@@ -14,10 +14,11 @@ process COPY_FILE {
 }
 
 // Copy a file without sample annotation
+// Note that null operation (when file and outname are the same) is supported
+// because it is useful for allowing workflow input and logging files to be published
 process COPY_FILE_BARE {
     label "single"
     label "coreutils"
-    label "testing_only" // Process is currently only used for testing
     input:
         path(file)
         val(outname)
@@ -25,6 +26,8 @@ process COPY_FILE_BARE {
         path("${outname}")
     shell:
         '''
-        cp !{file} !{outname}
+        if [ "!{file}" != "!{outname}" ]; then
+            cp !{file} !{outname}
+        fi
         '''
 }

@@ -14,5 +14,6 @@
     - [Pipeline outputs](./output.md)
 - **Other:**
     - [Versioning](./versioning.md)
+    - [Developer docs](docs/developer.md)    
     - [Viral infection status annotation](./annotation.md)
     - [Reproducibility](./reproducibility.md)
