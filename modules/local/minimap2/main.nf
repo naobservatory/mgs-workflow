@@ -74,6 +74,7 @@ process MINIMAP2_NON_STREAMED {
         path(index_dir)
         val(suffix)
         val(remove_sq)
+        val(alignment_params)
     output:
         tuple val(sample), path("${sample}_${suffix}_minimap2_mapped.sam.gz"), emit: sam
         tuple val(sample), path("${sample}_${suffix}_minimap2_mapped.fastq.gz"), emit: reads_mapped
@@ -94,7 +95,7 @@ process MINIMAP2_NON_STREAMED {
         #   - First branch (samtools view -u -f 4 -) filters SAM to unaligned reads and saves FASTQ
         #   - Second branch (samtools view -u -F 4 -) filters SAM to aligned reads and saves FASTQ
         #   - Third branch (samtools view -h -F 4 -) also filters SAM to aligned reads and saves SAM
-        minimap2 -a ${idx} ${reads} --split-prefix "mm2_split_" > complete_sam.sam
+        minimap2 -a !{alignment_params} ${idx} ${reads} --split-prefix "mm2_split_" > complete_sam.sam
 
         # Filter SAM to unaligned reads and save FASTQ
         samtools view -u -f 4 complete_sam.sam \

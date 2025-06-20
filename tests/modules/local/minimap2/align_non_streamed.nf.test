@@ -31,6 +31,7 @@ nextflow_process {
                 input[1] = "${params.ref_dir}/results/mm2-other-index"
                 input[2] = "test"
                 input[3] = false
+                input[4] = ""
                 '''
             }
         }
