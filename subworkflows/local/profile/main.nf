@@ -36,7 +36,7 @@ workflow PROFILE {
         // Separate ribosomal reads
         if (platform == "ont") {
             ribo_ref = "${ref_dir}/results/mm2-ribo-index"
-            ribo_ch = MINIMAP2(reads_ch, ribo_ref, ribo_suffix, false)
+            ribo_ch = MINIMAP2(reads_ch, ribo_ref, ribo_suffix, false, "")
             ribo_in = ribo_ch.reads_mapped
             noribo_in = ribo_ch.reads_unmapped
         } else {

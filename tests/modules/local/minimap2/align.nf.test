@@ -31,6 +31,7 @@ nextflow_process {
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
                 input[2] = "test"
                 input[3] = false
+                input[4] = ""
                 '''
             }
         }
@@ -81,6 +82,7 @@ nextflow_process {
                 input[1] = "${params.ref_dir}/results/mm2-human-index"
                 input[2] = "test"
                 input[3] = false
+                input[4] = ""
                 '''
             }
         }
@@ -130,6 +132,7 @@ nextflow_process {
                 input[1] = "${params.ref_dir}/results/mm2-ribo-index"
                 input[2] = "test"
                 input[3] = false
+                input[4] = ""
                 '''
             }
         }
@@ -193,6 +196,7 @@ nextflow_process {
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
                 input[2] = "test"
                 input[3] = false
+                input[4] = ""
                 '''
             }
         }

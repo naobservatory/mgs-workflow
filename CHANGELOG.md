@@ -1,3 +1,15 @@
+# v2.10.0.1-dev
+- Added FILTER_VIRAL_SAM process for consolidated preprocessing of viral alignments before converting to a TSV to run LCA on.
+- Created new temporary workflow EXTRACT_VIRAL_READS_SHORT_LCA, that will eventually replace EXTRACT_VIRAL_READS_SHORT:
+  - Change Bowtie2 to run with multiple alignments
+  - Conduct contaminant and score filtering of Bowtie2 reads before running LCA
+  - Stop running the TAXONOMY subworkflow (effectively removing our usage of Kraken in identifying viral reads)
+- Added developer documentations (docs/developer.md)
+- Updated EXTRACT_VIRAL_READS_SHORT_LCA such that the output viral hits table is compatible with the DOWNSTREAM workflow
+- Created new temporary workflow EXTRACT_VIRAL_READS_ONT_LCA, that will eventually replace EXTRACT_VIRAL_READS_ONT:
+  - Changes Minimap2 to run with multiple alignments
+  - Runs LCA on these multiple alignments
+  - Is compatible with the DOWNSTREAM workflow
 # v2.10.0.0
 - Moved all outputs to main workflow for compatibility with Nextflow 25.04.
     - Note that we are not compliant with the new strict syntax yet. 
