@@ -28,6 +28,10 @@
   - Stop running the TAXONOMY subworkflow (effectively removing our usage of Kraken in identifying viral reads)
 - Added developer documentations (docs/developer.md)
 - Updated EXTRACT_VIRAL_READS_SHORT_LCA such that the output viral hits table is compatible with the DOWNSTREAM workflow
+- Created new temporary workflow EXTRACT_VIRAL_READS_ONT_LCA, that will eventually replace EXTRACT_VIRAL_READS_ONT:
+  - Changes Minimap2 to run with multiple alignments
+  - Runs LCA on these multiple alignments
+  - Is compatible with the DOWNSTREAM workflow
 
 # v2.9.0.4
 - Updated markAlignmentDuplicates module to reduce memory overhead and increase memory allocation (which collectively should avoid out-of-memory errors in DOWNSTREAM on large read groups).
