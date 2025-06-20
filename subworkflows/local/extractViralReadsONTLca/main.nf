@@ -15,6 +15,7 @@ include { CONCATENATE_FILES } from "../../../modules/local/concatenateFiles"
 include { LCA_TSV } from "../../../modules/local/lcaTsv"
 include { SORT_TSV as SORT_MINIMAP2_VIRAL } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_LCA } from "../../../modules/local/sortTsv"
+include { SORT_TSV } from "../../../modules/local/sortTsv"
 include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
 include { FILTER_TSV_COLUMN_BY_VALUE } from "../../../modules/local/filterTsvColumnByValue"
 
@@ -60,7 +61,8 @@ workflow EXTRACT_VIRAL_READS_ONT_LCA {
 
         // Generate TSV of viral hits
         tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_fastq_ch, genome_meta_path, virus_db_path)
-        lca_ch = LCA_TSV(tsv_ch.output, nodes_db, names_db,
+        tsv_sorted_ch = SORT_TSV(tsv_ch.output, "seq_id")
+        lca_ch = LCA_TSV(tsv_sorted_ch.sorted, nodes_db, names_db,
             "seq_id", "aligner_taxid", "aligner_length_normalized_score", taxid_artificial,
             "aligner")
         // 9. Sort both TSV files by seq_id for joining
