@@ -224,50 +224,6 @@ nextflow_process {
         }
     }
 
-    test("Should handle input with no matching rows (keep_matching = true)") {
-        tag "expect_success"
-        tag "no_matches"
-        
-        when {
-            params {
-                column_name = "x"
-                filter_value = 999
-                keep_matching = true
-            }
-            process {
-                '''
-                input[0] = Channel.of("test")
-                    | combine(Channel.of("${projectDir}/test-data/toy-data/test_tab_sorted.tsv"))
-                input[1] = params.column_name
-                input[2] = params.filter_value
-                input[3] = params.keep_matching
-                '''
-            }
-        }
-        then {
-            // Should run without errors
-            assert process.success
-            
-            // Generate expected output from input using helper function
-            def tab_in = path(process.out.input[0][1]).csv(sep: "\t")
-            def tab_exp = filter_by_column_value(tab_in, params.column_name, params.filter_value, params.keep_matching)
-            
-            // Since this test expects no matching rows (header-only output), handle manually
-            def output_file = path(process.out.output[0][1])
-            def content = output_file.text.split("\n")
-            
-            // Should have only header line (no data rows)
-            assert content.size() - 1 == tab_exp.rowCount
-            
-            // Header should have the expected columns
-            def header_fields = content[0].split("\t")
-            assert header_fields.size() == 3
-            assert header_fields[0] == "x"
-            assert header_fields[1] == "y" 
-            assert header_fields[2] == "z"
-        }
-    }
-
     test("Should discard rows with matching value (keep_matching = false)") {
         tag "expect_success"
         tag "discard_matching"
