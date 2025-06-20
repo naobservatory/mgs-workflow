@@ -18,10 +18,11 @@
         - Reworked assignment of reads to duplicate groups to avoid slow all-vs-all comparisons.
     - Made MARK_ALIGNMENT_DUPLICATES explicitly handle NAs:
         - Now if the forward reads match and the reverse read alignments are NA, reads will be marked as duplicates. This is more conservative than the previous approach, which excluded reads from duplicate groups if either alignment was NA.     
-- Further work on post-hoc validation:
+- Completed work on post-hoc validation and integrated into DOWNSTREAM workflow:
     - Updated VALIDATE_VIRAL_ASSIGNMENTS to concatenate across species before rather than after BLAST_VIRAL, dramatically reducing per-process fixed costs of running BLAST. (Involved updates to PROPAGATE_VALIDATION_INFORMATION as well as new CONCATENATE_FASTA_ACROSS_SPECIES subworkflow and CONCATENATE_FASTN_LABELED process.)
     - Updated COMPUTE_TAXID_DISTANCE to compute distance from each taxid to their LCA rather than a single relative distance.
     - Modified COMPUTE_TAXID_DISTANCE and VALIDATE_CLUSTER_REPRESENTATIVES to use parameter maps.
+    - Added VALIDATE_VIRAL_ASSIGNMENTS to the DOWNSTREAM workflow and wrote associated tests.
 - Preparatory work for implementing LCA (lowest common ancestor) analysis:
     - Added FILTER_VIRAL_SAM process for consolidated preprocessing of viral alignments before converting to a TSV to run LCA on.
     - Created new temporary workflow EXTRACT_VIRAL_READS_SHORT_LCA, that will eventually replace EXTRACT_VIRAL_READS_SHORT. In this workflow:
