@@ -52,7 +52,7 @@ Main heading represents the folder name, and subheadings represent a description
 - `subset_qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
 
 #### Viral identification
-- `virus_hits_final.tsv.gz`: TSV output from EXTRACT_VIRAL_READS, giving information about each read pair assigned to a host-infecting virus.
+- `virus_hits_final.tsv.gz`: TSV output from EXTRACT_VIRAL_READS, giving information about each read pair assigned to a host-infecting virus. See [virus_hits_final.md](./virus_hits_final.md) for documentation of column names.
 
 #### Taxonomic identification
 - `bracken_reports_merged.tsv.gz`: Bracken output reports in TSV format, labeled by sample and ribosomal status, for subset samples produced by SUBSET_TRIM.

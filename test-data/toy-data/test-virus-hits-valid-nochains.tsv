@@ -1,4 +1,4 @@
-seq_id	bowtie2_genome_id_all	bowtie2_ref_start_fwd	bowtie2_ref_start_rev	query_qual_fwd	query_qual_rev	exemplar_exp_0	exemplar_exp_1	exemplar_exp_2	dup_comment
+seq_id	aligner_genome_id_all	aligner_ref_start	aligner_ref_start_rev	query_qual	query_qual_rev	exemplar_exp_0	exemplar_exp_1	exemplar_exp_2	dup_comment
 grp_1_0	test_gid_1	1	100	IIIIII	IIIIII	grp_1_1	grp_1_1	grp_1_1	Exact duplicate with grp_1_1
 grp_1_1	test_gid_1	1	100	JJJJJJ	JJJJJJ	grp_1_1	grp_1_1	grp_1_1	Group 1 exemplar
 grp_1_2	test_gid_1	100	1	JJJJJJ	JJJJJJ	grp_1_1	grp_1_1	grp_1_1	RC duplicate with grp_1_1
@@ -17,3 +17,8 @@ grp_5_0	test_gid_5	250	300	JJJJJJ	JJJJJJ	grp_5_0	grp_5_0	grp_5_0	Group 5 exempla
 grp_5_1	test_gid_5	250	300	JJJJJJ	JJJJJJ	grp_5_0	grp_5_0	grp_5_0	Exact duplicate with grp_5_0
 grp_5_2	test_gid_5	150	500	JJJJJJ	JJJJJJ	grp_5_2	grp_5_2	grp_5_2	Non-duplicate on same reference
 grp_6_0	test_gid_6	200	300	JJJJJJ	JJJJJJ	grp_6_0	grp_6_0	grp_6_0	Group 6 singleton exemplar
+grp_7_0	test_gid_1	1	NA	JJJJJJ	JJJJJJ	grp_7_0	grp_7_0	grp_7_0	Group 7 singleton with NA and gid match to 1
+grp_8_0	test_gid_8	100	NA	JJJJJJ	JJJJJJ	grp_8_0	grp_8_0	grp_8_0	Group 8 exemplar
+grp_8_1	test_gid_8	100	NA	JJJJJJ	JJJJJJ	grp_8_0	grp_8_0	grp_8_0	Exact duplicate with grp_8_0 with NA
+grp_8_2	test_gid_8	NA	100	JJJJJJ	JJJJJJ	grp_8_0	grp_8_0	grp_8_0	RC duplicate with grp_8_0 with NA
+grp_8_3	test_gid_8	101	NA	JJJJJJ	JJJJJJ	grp_8_3	grp_8_0	grp_8_0	1-off duplicate with grp_8_0 with NA
