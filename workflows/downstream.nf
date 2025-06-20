@@ -32,12 +32,8 @@ workflow DOWNSTREAM {
         viral_db_path = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
         viral_db = Channel.of(viral_db_path)
         dup_ch = MARK_VIRAL_DUPLICATES.out.dup.map{ label, tab, stats -> [label, tab] }
-        VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db,
-            params.validation_cluster_identity, 15, params.validation_n_clusters,
-            params.ref_dir, params.blast_db_prefix,
-            params.blast_perc_id, params.blast_qcov_hsp_perc,
-            params.blast_max_rank, params.blast_min_frac,
-            params.taxid_artificial)
+        //VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db,
+        //    params.validation_cluster_identity, 15, params.validation_n_clusters)        
         // Publish results
         params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
         params_ch = Channel.of(params_str).collectFile(name: "params-downstream.json")
@@ -51,6 +47,5 @@ workflow DOWNSTREAM {
     emit:
        input_downstream = params_ch.mix(input_file_ch)
        logging_downstream = time_ch.mix(version_ch)
-       intermediates_downstream = VALIDATE_VIRAL_ASSIGNMENTS.out.blast_results
-       results_downstream = MARK_VIRAL_DUPLICATES.out.dup.mix(VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits)
+       results_downstream = MARK_VIRAL_DUPLICATES.out.dup
 }    
