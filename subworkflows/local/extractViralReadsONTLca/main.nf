@@ -2,9 +2,9 @@
 | MODULES AND SUBWORKFLOWS |
 ***************************/
 
-include { MINIMAP2_LCA as MINIMAP2_VIRUS } from "../../../modules/local/minimap2"
+include { MINIMAP2 as MINIMAP2_VIRUS } from "../../../modules/local/minimap2"
 include { MINIMAP2 as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
-include { MINIMAP2_NON_STREAMED as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
+include { MINIMAP2 as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
 include { CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
 include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
 include { FILTLONG } from "../../../modules/local/filtlong"
@@ -42,13 +42,13 @@ workflow EXTRACT_VIRAL_READS_ONT_LCA {
         // Mask non-complex read sections
         masked_ch = MASK_FASTQ_READS(filtered_ch, 25, 0.55)
         // Drop human reads before pathogen identification
-        human_minimap2_ch = MINIMAP2_HUMAN(masked_ch.masked, minimap2_human_index, "human", false)
+        human_minimap2_ch = MINIMAP2_HUMAN(masked_ch.masked, minimap2_human_index, "human", false, "")
         no_human_ch = human_minimap2_ch.reads_unmapped
         // Identify other contaminants
-        contam_minimap2_ch = MINIMAP2_CONTAM(no_human_ch, minimap2_contam_index, "other", false)
+        contam_minimap2_ch = MINIMAP2_CONTAM(no_human_ch, minimap2_contam_index, "other", false, "")
         no_contam_ch = contam_minimap2_ch.reads_unmapped
         // Identify virus reads with multiple alignments for LCA analysis
-        virus_minimap2_ch = MINIMAP2_VIRUS(no_contam_ch, minimap2_virus_index, "virus", false, 5)
+        virus_minimap2_ch = MINIMAP2_VIRUS(no_contam_ch, minimap2_virus_index, "virus", false, "-N 10")
         virus_sam_ch = virus_minimap2_ch.sam
         // Group cleaned reads and sam files by sample
         sam_fastq_ch = virus_sam_ch.join(filtered_ch)
