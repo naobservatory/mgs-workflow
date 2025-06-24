@@ -1,3 +1,10 @@
+# v2.9.0.6
+- Moved all outputs to main workflow for compatibility with Nextflow 25.04. (backported from v2.10.0.0):
+    - Note that we are not compliant with the new strict syntax yet.
+    - Pipeline is now *incompatible* with Nextflow 24.
+- Switched to a defined release from [VirusHostDB](https://www.genome.jp/virushostdb) (backported from v2.10.0.0):
+    - The previous link (https://www.genome.jp/virushostdb/virushostdb.tsv) is currently broken.
+
 # v2.9.0.5
 - Overhauled MARK_ALIGNMENT_DUPLICATES to increase computational efficiency (backported from v2.10.0.0):
     - Added multithreaded processing of easily parallelizable steps
@@ -21,7 +28,6 @@
 - Updated trace path for DOWNSTREAM workflow to avoid overwriting RUN workflow trace.
 
 # v2.9.0.1
-
 - Modified Github Actions to pull specific Nextflow version (rather than "latest")
 - Fixed missing-columns bug for empty files in SUMMARIZE_MULTIQC
 - Restructured SORT_TSV process to improve memory efficiency
