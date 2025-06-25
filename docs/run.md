@@ -125,7 +125,7 @@ style I fill:#000,color:#fff,stroke:#000
 ```
 
 1. Input read pairs are processed with [BBMerge](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmerge-guide/)[^merge] to create single sequences. Any pairs that cannot be merged are joined end-to-end with an "N" base between them.
-2. Reads are taxonomically classified using [Kraken2](https://ccb.jhu.edu/software/kraken2/) with the reference database from the index workflow. 
+2. Reads are taxonomically classified using [Kraken2](https://ccb.jhu.edu/software/kraken2/) with the reference database from the index workflow.
 3. [Bracken](https://ccb.jhu.edu/software/bracken/) then processes these results to generate detailed taxonomic abundance estimates.
 4. Finally, the outputs from Kraken2 and Bracken are processed and combined into well-formatted TSVs for downstream processing.
 
@@ -178,11 +178,13 @@ C --> D[Cutadapt]
 D --> E["Bowtie2 <br> (viral index)"]
 E --> F["Bowtie2 <br> (human index)"]
 F --> G["Bowtie2 <br> (other contaminants index)"]
-G --> H[TAXONOMY]
-H --> |Kraken output| I[Filter by alignment score and Kraken assignment]
-E --> I
-I --> J(Viral hits table)
-I --> K(Interleaved viral FASTQ)
+G --> H[Filter by alignment score and read subset]
+E --> H
+H --> I[LCA]
+H --> J
+I --> J[Combine LCA output with primary alignment information from preLCA]
+J --> K(Viral hits table)
+J --> L(Interleaved viral FASTQ)
 
 subgraph "Filter for viral reads"
 B
@@ -201,22 +203,19 @@ style J fill:#000,color:#fff,stroke:#000
 style K fill:#000,color:#fff,stroke:#000
 style M fill:#000,color:#fff,stroke:#000
 ```
+@todo: Add in information about multiple alignments
 
 1. To begin with, the raw reads are screened against a database of vertebrate-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least one 24-mer matching any vertebrate-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative vertebrate-infecting viral reads while discarding the vast majority of non-viral reads, reducing the cost associated with the rest of this phase.
 2. Surviving reads undergo adapter and quality trimming with [FASTP](https://github.com/OpenGene/fastp) and [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) to remove adapter contamination and low-quality/low-complexity reads.
 3. Next, reads are aligned to the previously-mentioned database of vertebrate-infecting viral genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters designed to capture as many putative vertebrate viral reads as possible. The output files are processed to generate new read files containing any read pair for which at least one read matches the vertebrate viral database.
 4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using Bowtie2 in series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
-5. Surviving read pairs are then taxonomically profiled using the [TAXONOMY subworkflow](#taxonomic-assignment-taxonomy) to generate Kraken2 taxonomic assignments.
-6.  Finally, reads are assigned a final vertebrate-infecting virus status if they:
-    - Are classified as vertebrate-infecting virus by both Bowtie2 and Kraken2; or
-    - Are unassigned by Kraken and align to an vertebrate-infecting virus taxon with Bowtie2 with an alignment score above a user-specifed threshold[^threshold].
+5. Inital alignments from Bowtie2 viral are then filtered by alingment score, and to the subset of reads that survived the previous step. 
+6. Those reads are then passed to LCA to get a taxonomic assignment, and then combined with the post LCA output to get a final viral hits table that is compatible with downstream workflow. These reads are assigned a final vertebrate-infecting virus status
 
-[^threshold]: Specifically, Kraken-unassigned read pairs are classed as vertebrate viral if, for either read in the pair, S/ln(L) >= T, where S is the best-match Bowtie2 alignment score for that read, L is the length of the read, and T is the value of `params.bt2_score_threshold` specified in the config file.
-
-### Viral identification (ONT version) 
+### Viral identification (ONT version)
 #### EXTRACT_VIRAL_READS_ONT
 
-The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It takes as input ONT (oxford nanopore) reads. Due to the smaller size of ONT datasets compared to most short-read datasets, EXTRACT_VIRAL_READS_ONT currently uses a simpler workflow than EXTRACT_VIRAL_READS_SHORT, and is less optimized for low computational costs. 
+The goal of this subworkflow is to sensitively, specifically, and efficiently identify reads arising from host-infecting viruses. It takes as input ONT (oxford nanopore) reads. Due to the smaller size of ONT datasets compared to most short-read datasets, EXTRACT_VIRAL_READS_ONT currently uses a simpler workflow than EXTRACT_VIRAL_READS_SHORT, and is less optimized for low computational costs.
 
 ```mermaid
 ---
@@ -230,8 +229,11 @@ B --> C["BBMask <br> (entropy masking)"]
 C --> D["Minimap2 <br> (human index)"]
 D --> E["Minimap2 <br> (other contaminants index)"]
 E --> F["Minimap2 <br> (viral index)"]
-F --> G(Viral hits table)
-F --> H(Viral FASTQ)
+F --> G[LCA]
+F --> H
+G --> H[Combine LCA output with primary alignment information from preLCA]
+H --> I(Viral hits table)
+H --> J(Interleaved viral FASTQ)
 
 subgraph "Filter and mask"
 B
