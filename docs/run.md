@@ -90,7 +90,7 @@ style F fill:#000,color:#fff,stroke:#000
 
 ### Taxonomic assignment (TAXONOMY)
 
-This subworkflow performs taxonomic assignment on a set of reads using [Kraken2](https://ccb.jhu.edu/software/kraken2/). It is called by both the [PROFILE](#taxonomic-profiling-profile) and [EXTRACT_VIRAL_READS](#viral-identification-extract_viral_reads) subworkflows.
+This subworkflow performs taxonomic assignment on a set of reads using [Kraken2](https://ccb.jhu.edu/software/kraken2/). It is called by the [PROFILE](#taxonomic-profiling-profile) subworkflow.
 
 ```mermaid
 ---
