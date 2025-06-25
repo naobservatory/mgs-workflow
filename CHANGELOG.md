@@ -35,6 +35,7 @@
         - Changed Bowtie2 to run with multiple alignments.
         - Conducted contaminant and score filtering of Bowtie2 reads before running LCA.
         - Removed the TAXONOMY subworkflow (effectively removing our usage of Kraken2 in identifying viral reads).
+        - Updated EXTRACT_VIRAL_READS_SHORT_LCA such that the output viral hits table is compatible with the DOWNSTREAM workflow
 - Other updates:
     - Added developer documentation (docs/developer.md).
     - Switched to a defined release from [VirusHostDB](https://www.genome.jp/virushostdb), as the previous link (https://www.genome.jp/virushostdb/virushostdb.tsv) is currently broken.
