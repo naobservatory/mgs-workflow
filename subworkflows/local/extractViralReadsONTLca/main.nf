@@ -4,7 +4,7 @@
 
 include { MINIMAP2 as MINIMAP2_VIRUS } from "../../../modules/local/minimap2"
 include { MINIMAP2 as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
-include { MINIMAP2 as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
+include { MINIMAP2_NON_STREAMED as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
 include { CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
 include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
 include { FILTLONG } from "../../../modules/local/filtlong"
