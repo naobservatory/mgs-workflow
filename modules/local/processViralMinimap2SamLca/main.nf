@@ -1,4 +1,5 @@
 // Process SAM file (add reference taxid, add clean read information, turn into TSV)
+// This is a temporary process that will replace PROCESS_VIRAL_MINIMAP2_SAM once the LCA implementation for ONT is complete
 process PROCESS_VIRAL_MINIMAP2_SAM_LCA {
     label "pysam_biopython"
     label "single"

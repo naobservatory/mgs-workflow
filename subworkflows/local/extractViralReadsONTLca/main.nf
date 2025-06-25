@@ -15,7 +15,6 @@ include { CONCATENATE_FILES } from "../../../modules/local/concatenateFiles"
 include { LCA_TSV } from "../../../modules/local/lcaTsv"
 include { SORT_TSV as SORT_MINIMAP2_VIRAL } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_LCA } from "../../../modules/local/sortTsv"
-include { SORT_TSV } from "../../../modules/local/sortTsv"
 include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
 include { FILTER_TSV_COLUMN_BY_VALUE } from "../../../modules/local/filterTsvColumnByValue"
 
@@ -53,17 +52,15 @@ workflow EXTRACT_VIRAL_READS_ONT_LCA {
         // Group cleaned reads and sam files by sample
         sam_fastq_ch = virus_sam_ch.join(filtered_ch)
         // Generate TSV of viral hits, and sort
-        tsv_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_fastq_ch, genome_meta_path, virus_db_path)
-        tsv_sorted_ch = SORT_TSV(tsv_ch.output, "seq_id")
+        processed_minimap2_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_fastq_ch, genome_meta_path, virus_db_path)
+        processed_minimap2_sorted_ch = SORT_MINIMAP2_VIRAL(processed_minimap2_ch.output, "seq_id")
         // Run LCA on viral hits TSV
-        lca_ch = LCA_TSV(tsv_sorted_ch.sorted, nodes_db, names_db,
-            "seq_id", "aligner_taxid", "aligner_length_normalized_score", taxid_artificial,
-            "aligner")
-        // Sort both TSV files by seq_id for joining
+        lca_ch = LCA_TSV(processed_minimap2_sorted_ch.sorted, nodes_db, names_db, "seq_id", 
+            "aligner_taxid", "aligner_length_normalized_score", taxid_artificial, "aligner")
+        // Sort the LCA TSV files by seq_id for joining
         lca_sorted_ch = SORT_LCA(lca_ch.output, "seq_id")
-        minimap2_sorted_ch = SORT_MINIMAP2_VIRAL(tsv_ch.output, "seq_id")
         // Join LCA and Minimap2 TSV on seq_id to combine taxonomic and alignment data
-        joined_input_ch = lca_sorted_ch.sorted.join(minimap2_sorted_ch.sorted, by: 0)
+        joined_input_ch = lca_sorted_ch.sorted.join(processed_minimap2_sorted_ch.sorted, by: 0)
         joined_ch = JOIN_TSVS(joined_input_ch, "seq_id", "inner", "lca_minimap2")
         // Filter to keep only primary alignments (aligner_secondary_status=False)
         primary_lca_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "aligner_secondary_status", false, true)
