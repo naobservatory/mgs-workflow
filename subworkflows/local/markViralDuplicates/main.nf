@@ -20,8 +20,8 @@ workflow MARK_VIRAL_DUPLICATES {
         // 1. Mark duplicates
         dup_ch = MARK_ALIGNMENT_DUPLICATES(groups, deviation).output
         // 2. Sort output
-        reads_ch = dup_ch.map{ id, reads, stats -> tuple(id, reads) }
-        stats_ch = dup_ch.map{ id, reads, stats -> tuple(id, stats) }
+        reads_ch = dup_ch.map{ id, reads, _stats -> tuple(id, reads) }
+        stats_ch = dup_ch.map{ id, _reads, stats -> tuple(id, stats) }
         reads_sorted_ch = SORT_READS(reads_ch, "seq_id").sorted
         stats_sorted_ch = SORT_STATS(stats_ch, "aligner_genome_id_all").sorted
         // 3. Rename and prepare files for output
