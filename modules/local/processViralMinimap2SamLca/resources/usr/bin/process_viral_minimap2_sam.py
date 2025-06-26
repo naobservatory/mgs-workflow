@@ -59,12 +59,12 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record
     out["aligner_edit_distance"] = read.get_tag("NM")
     out["aligner_best_alignment_score"] = read.get_tag("AS")
     out["aligner_next_alignment_score"] = "NA"
-    out["aligner_length_normalized_score"] = out["aligner_best_alignment_score"] / math.log(read.query_length)
+    out["aligner_length_normalized_score"] = out["aligner_best_alignment_score"] / math.log(len(clean_query_record.seq))
 
     out["query_seq"] = query_seq_clean
     out["query_rc_by_aligner"] = read.is_reverse
     out["query_qual"] = query_qual_clean
-    out["query_len"] = read.query_length
+    out["query_len"] = len(clean_query_record.seq)
     out["aligner_secondary_status"] = read.is_secondary or read.is_supplementary
     
     return out
