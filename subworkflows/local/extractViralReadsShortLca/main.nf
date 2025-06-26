@@ -75,9 +75,8 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         // 7. Convert SAM to TSV
         bowtie2_tsv_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_filtered_ch.sam, genome_meta_path, virus_db_path, true)
         // 8. Run LCA
-        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db,
-            "seq_id", "aligner_taxid", "aligner_length_normalized_score", taxid_artificial,
-            "aligner")
+        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db, "seq_id", 
+            "aligner_taxid", "aligner_length_normalized_score", taxid_artificial,"")
         // 9. Sort both TSV files by seq_id for joining
         lca_sorted_ch = SORT_LCA(lca_ch.output, "seq_id")
         bowtie2_sorted_ch = SORT_BOWTIE2(bowtie2_tsv_ch.output, "seq_id")

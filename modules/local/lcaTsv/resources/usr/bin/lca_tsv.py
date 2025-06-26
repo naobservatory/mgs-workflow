@@ -807,7 +807,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--score", "-s", help="Column header for score field.")
     parser.add_argument("--artificial", "-a",
                         help="Parent taxid for artificial sequences (to be handled separately).")
-    parser.add_argument("--prefix", "-p", help="Column prefix for output columns.")
+    parser.add_argument("--prefix", "-p", default="", help="Column prefix for output columns.")
     # Return parsed arguments
     return parser.parse_args()
 
