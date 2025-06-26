@@ -2,9 +2,6 @@
 | WORKFLOW: PREPROCESSING, TAXONMIC PROFILING AND HUMAN VIRUS ANALYSIS ON SHORT-READ MGS DATA (EITHER SINGLE-END OR PAIRED-END) |
 ***********************************************************************************************/
 
-import groovy.json.JsonOutput
-import java.time.LocalDateTime
-
 /***************************
 | MODULES AND SUBWORKFLOWS |
 ***************************/
@@ -43,7 +40,6 @@ workflow RUN {
 
     // Setting reference paths
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
-    blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet and check platform
     LOAD_SAMPLESHEET(params.sample_sheet, params.platform, false)
@@ -103,7 +99,7 @@ workflow RUN {
     index_compatibility_ch = COPY_INDEX_COMPAT(Channel.fromPath(index_min_pipeline_version_path), index_min_pipeline_version_newpath)
 
     // Prepare other publishing variables
-    params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
+    params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "params-run.json")
     time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
     pipeline_version_newpath = pipeline_version_path.getFileName().toString()

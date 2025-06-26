@@ -40,10 +40,10 @@ workflow LOAD_SAMPLESHEET {
         }
         def endedness = allowed_endedness[platform_index]
         if (endedness == "single" && !single_end) {
-            throw new Exception("Platform '${plat}' requires single-end data.")
+            throw new Exception("Platform '${platform}' requires single-end data.")
         }
         if (endedness == "paired" && single_end) {
-            throw new Exception("Platform '${plat}' requires paired-end data.")
+            throw new Exception("Platform '${platform}' requires paired-end data.")
         }
 
         // If not in development mode, check if pipeline is implemented for specified platform and endedness

@@ -23,25 +23,24 @@ def isVersionLess(version1, version2) {
     def v2IntComponents
     try {
         v1IntComponents = v1Components.collect{ it.toInteger() }
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException _e) {
         def msg1 = "Invalid version format: version 1 (${version1}) contains non-integer components."
         throw new IllegalArgumentException(msg1)
     }
     try {
         v2IntComponents = v2Components.collect{ it.toInteger() }
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException _e) {
         def msg2 = "Invalid version format: version 2 (${version2}) contains non-integer components."
         throw new IllegalArgumentException(msg2)
     }
-    // Get the shortest version length
-    def minLength = Math.min(v1IntComponents.size(), v2IntComponents.size())
-    // Compare common components
-    for (int i = 0; i < minLength; i++) {
-        if (v1IntComponents[i] < v2IntComponents[i]) return true
-        if (v1IntComponents[i] > v2IntComponents[i]) return false
-    }
-    // If components are equal, longer version is newer
-    return v1IntComponents.size() < v2IntComponents.size()
+    // Get the longest version length and pad shorter version with zeros
+    def maxLength = Math.max(v1IntComponents.size(), v2IntComponents.size())
+    def paddedV1 = v1IntComponents + [0] * (maxLength - v1IntComponents.size())
+    def paddedV2 = v2IntComponents + [0] * (maxLength - v2IntComponents.size())
+    
+    // Find first differing component
+    def diff = (0..<maxLength).find { i -> paddedV1[i] != paddedV2[i] }
+    return diff != null ? paddedV1[diff] < paddedV2[diff] : false
 }
 
 /***********

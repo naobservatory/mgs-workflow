@@ -2,9 +2,6 @@
 | WORKFLOW: POST-HOC VALIDATION OF PUTATIVE VIRAL READS |
 ********************************************************/
 
-import groovy.json.JsonOutput
-import java.time.LocalDateTime
-
 /***************************
 | MODULES AND SUBWORKFLOWS |
 ***************************/
@@ -14,9 +11,6 @@ include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 include { COPY_FILE_BARE as COPY_VERSION } from "../modules/local/copyFile"
 include { COPY_FILE_BARE as COPY_INDEX_PARAMS } from "../modules/local/copyFile"
 include { COPY_FILE_BARE as COPY_INDEX_PIPELINE_VERSION } from "../modules/local/copyFile"
-
-
-nextflow.preview.output = true
 
 /****************
 | MAIN WORKFLOW |
@@ -38,7 +32,7 @@ workflow RUN_VALIDATION {
             // Define input
             tsv_ch = Channel.value(["viral_hits", file(params.viral_tsv)])
             fastq_out = EXTRACT_FASTQ(tsv_ch, params.drop_unpaired)
-            fastq_ch = fastq_out.output.map { label, fastq -> fastq }
+            fastq_ch = fastq_out.output.map { _label, fastq -> fastq }
         }
 
         // BLAST validation on host-viral reads
@@ -47,7 +41,7 @@ workflow RUN_VALIDATION {
             params.blast_perc_id, params.blast_qcov_hsp_perc, params.taxid_artificial)
 
         // Prepare results for publishing
-        params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
+        params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
         params_ch = Channel.of(params_str).collectFile(name: "params-run.json")
         time_ch = Channel.of(start_time_str + "\n").collectFile(name: "time.txt")
         pipeline_version_path = file("${projectDir}/pipeline-version.txt")
