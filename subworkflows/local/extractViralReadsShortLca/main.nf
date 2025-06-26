@@ -84,8 +84,8 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         // 10. Join LCA and Bowtie2 TSV on seq_id to combine taxonomic and alignment data
         joined_input_ch = lca_sorted_ch.sorted.join(bowtie2_sorted_ch.sorted, by: 0)
         joined_ch = JOIN_TSVS(joined_input_ch, "seq_id", "inner", "lca_bowtie2")
-        // 11. Filter to keep only primary alignments (aligner_secondary_status=False)
-        filtered_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "aligner_secondary_status", false, true)
+        // 11. Filter to keep only primary alignments (aligner_classification="primary")
+        filtered_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "aligner_classification", "primary", true)
         out_labeled_ch = ADD_SAMPLE_COLUMN(filtered_ch.output, "sample", "viral_bowtie2")
         // 12. Concatenate across reads
         label_combined_ch = out_labeled_ch.output.map{ sample, file -> file }.collect().ifEmpty([])

@@ -1,0 +1,198 @@
+nextflow_process {
+
+    name "Test process PROCESS_VIRAL_BOWTIE2_SAM_LCA"
+    script "modules/local/processViralBowtie2SamLca/main.nf"
+    process "PROCESS_VIRAL_BOWTIE2_SAM_LCA"
+    tag "module"
+    tag "process_viral_bowtie2_sam_lca"
+
+    test("On paired data, should run without errors and preserve lines") {
+        tag "expect_success"
+        tag "interleaved"
+        config "tests/configs/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = "illumina"
+                    input[2] = false
+                    '''
+                }
+            }
+            run("INTERLEAVE_FASTQ") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    '''
+                }
+            }
+            run("BOWTIE2") {
+                script "modules/local/bowtie2/main.nf"
+                process {
+                    '''
+                    input[0] = INTERLEAVE_FASTQ.out.output
+                    input[1] = "${params.ref_dir}/results/bt2-virus-index"
+                    input[2] = "--local --very-sensitive-local --score-min G,0.1,19"
+                    input[3] = "virus"
+                    input[4] = true
+                    input[5] = true
+                    input[6] = true
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = BOWTIE2.out.sam
+                input[1] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
+                input[2] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                input[3] = true
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output lines should match input lines (plus header)
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def countGzipLinesSam = { file -> ["bash", "-c", "zcat " + file + " | grep -v \"^@\" | wc -l"].execute().text.trim() as Integer }
+            def output_lines = countGzipLines(process.out.output[0][1])
+            def input_lines = countGzipLinesSam(process.out.input[0][1])
+            assert output_lines == input_lines / 2 + 1
+            // Output should be a valid TSV that can be parsed and read
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount > 0
+            assert tab_out.rowCount > 0
+            // TODO: Add more detailed tests of file content (requires parsing gzipped SAM file)
+        }
+    }
+
+    test("On unpaired data, should run without errors and preserve lines") {
+        tag "expect_success"
+        tag "single_end"
+        config "tests/configs/run.config"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = "illumina"
+                    input[2] = true
+                    '''
+                }
+            }
+            run("BOWTIE2") {
+                script "modules/local/bowtie2/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = "${params.ref_dir}/results/bt2-virus-index"
+                    input[2] = "--local --very-sensitive-local --score-min G,0.1,19"
+                    input[3] = "virus"
+                    input[4] = true
+                    input[5] = true
+                    input[6] = false
+                    '''
+                }
+            }
+            run("SORT_FILE", alias: "SORT_SAM") {
+                script "modules/local/sortFile/main.nf"
+                process {
+                    '''
+                    input[0] = BOWTIE2.out.sam
+                    input[1] = "-t\\$\'\\t\' -k1,1"
+                    input[2] = "process_bowtie2"
+                    '''
+                }
+            }
+
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = SORT_SAM.out.output
+                input[1] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
+                input[2] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                input[3] = false
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output lines should match input lines (plus header)
+            def countGzipLines = { file -> path(file).linesGzip.size() }
+            def countGzipLinesSam = { file -> ["bash", "-c", "zcat " + file + " | grep -v \"^@\" | wc -l"].execute().text.trim() as Integer }
+            def output_lines = countGzipLines(process.out.output[0][1])
+            def input_lines = countGzipLinesSam(process.out.input[0][1])
+            assert output_lines == input_lines + 1
+            // Output should be a valid TSV that can be parsed and read
+            def tab_out = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            assert tab_out.columnCount > 0
+            assert tab_out.rowCount > 0
+            // TODO: Add more detailed tests of file content (requires parsing gzipped SAM file)
+        }
+    }
+
+    test("Should handle empty input file and produce empty output file") {
+        tag "empty_file"
+        tag "expect_success"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE", alias: "GZIP_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test_empty")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/empty_file.txt"))
+                    '''
+                }
+            }
+        }
+        when {
+            params {}
+            process {
+                '''
+                input[0] = GZIP_EMPTY.out
+                input[1] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
+                input[2] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                input[3] = true
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output file should have only the header row (no data rows)
+            def outputFile = path(process.out.output[0][1])
+            def lines = outputFile.linesGzip.toList()
+            
+            // Should have exactly one line (the header)
+            assert lines.size() == 1
+            
+            // Split header by tabs and verify the expected column headers
+            def headers = lines[0].split("\t")
+            def expectedHeaders = [
+                "seq_id", 
+                "aligner_genome_id", 
+                "aligner_genome_id_all", 
+                "aligner_taxid", 
+                "aligner_taxid_all", 
+                "aligner_fragment_length"
+            ]
+            
+            // Verify all expected headers are present and in the right order
+            for (int i = 0; i < expectedHeaders.size(); i++) {
+                assert headers[i] == expectedHeaders[i]
+            }
+        }
+    }
+}

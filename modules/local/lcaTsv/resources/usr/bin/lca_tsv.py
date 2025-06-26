@@ -507,8 +507,12 @@ def get_output_header(
         score_field + "_max",
         score_field + "_mean",
     ]
-    fields_prefixed = [prefix + "_" + f for f in fields_base]
-    fields_all = [f + "_all" for f in fields_prefixed]
+    # Only add prefix if it's not empty (empty string evaluates to False)
+    if prefix:
+        fields_prefixed = [prefix + "_" + f for f in fields_base]
+    else:
+        fields_prefixed = fields_base
+    fields_all = fields_prefixed
     fields_natural = [f + "_natural" for f in fields_prefixed]
     fields_artificial = [f + "_artificial" for f in fields_prefixed]
     return [group_field] + fields_all + fields_natural + fields_artificial
