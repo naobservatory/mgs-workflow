@@ -1,5 +1,5 @@
 // Short-read version of EXTRACT_VIRAL_READS that uses streaming and interleaved files to minimize memory requirements and loading times
-
+// This is a temporary workflow that will replace EXTRACT_VIRAL_READS_SHORT once the LCA implementation is complete
 /***************************
 | MODULES AND SUBWORKFLOWS |
 ***************************/
@@ -75,17 +75,16 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         // 7. Convert SAM to TSV
         bowtie2_tsv_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_filtered_ch.sam, genome_meta_path, virus_db_path, true)
         // 8. Run LCA
-        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db,
-            "seq_id", "aligner_taxid", "aligner_length_normalized_score", taxid_artificial,
-            "aligner")
+        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db, "seq_id", 
+            "aligner_taxid", "aligner_length_normalized_score", taxid_artificial,"")
         // 9. Sort both TSV files by seq_id for joining
         lca_sorted_ch = SORT_LCA(lca_ch.output, "seq_id")
         bowtie2_sorted_ch = SORT_BOWTIE2(bowtie2_tsv_ch.output, "seq_id")
         // 10. Join LCA and Bowtie2 TSV on seq_id to combine taxonomic and alignment data
         joined_input_ch = lca_sorted_ch.sorted.join(bowtie2_sorted_ch.sorted, by: 0)
         joined_ch = JOIN_TSVS(joined_input_ch, "seq_id", "inner", "lca_bowtie2")
-        // 11. Filter to keep only primary alignments (aligner_secondary_status=False)
-        filtered_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "aligner_secondary_status", false, true)
+        // 11. Filter to keep only primary alignments (aligner_classification="primary")
+        filtered_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "aligner_classification", "primary", true)
         out_labeled_ch = ADD_SAMPLE_COLUMN(filtered_ch.output, "sample", "viral_bowtie2")
         // 12. Concatenate across reads
         label_combined_ch = out_labeled_ch.output.map{ sample, file -> file }.collect().ifEmpty([])

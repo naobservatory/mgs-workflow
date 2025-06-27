@@ -20,7 +20,10 @@ process LCA_TSV {
         '''
         # Set up and run Python script
         io="-i !{tsv} -o lca_!{tsv} -d !{nodes_db} -n !{names_db}"
-        par="-g !{group_field} -t !{taxid_field} -s !{score_field} -a !{taxid_artificial} -p !{prefix}"
+        par="-g !{group_field} -t !{taxid_field} -s !{score_field} -a !{taxid_artificial}"
+        if [ -n "!{prefix}" ]; then
+            par="${par} -p !{prefix}"
+        fi
         lca_tsv.py ${io} ${par}
         # Link input files to output for testing
         ln -s !{tsv} input_!{tsv}
