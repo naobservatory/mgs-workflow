@@ -1,5 +1,5 @@
 // Short-read version of EXTRACT_VIRAL_READS that uses streaming and interleaved files to minimize memory requirements and loading times
-
+// This is a temporary workflow that will replace EXTRACT_VIRAL_READS_SHORT once the LCA implementation is complete
 /***************************
 | MODULES AND SUBWORKFLOWS |
 ***************************/
