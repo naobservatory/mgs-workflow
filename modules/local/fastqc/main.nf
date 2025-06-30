@@ -1,6 +1,6 @@
 process FASTQC_LABELED {
     label "FASTQC"
-    label "single"
+    label "single_cpu_16GB_memory"
     input:
         tuple val(sample), path(reads)
     output:
