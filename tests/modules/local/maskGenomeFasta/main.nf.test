@@ -1,0 +1,123 @@
+nextflow_process {
+
+    name "Test process MASK_GENOME_FASTA"
+    script "modules/local/maskGenomeFasta/main.nf"
+    process "MASK_GENOME_FASTA"
+    tag "module"
+    tag "maskGenomeFasta"
+
+    test("Should run correctly on FASTA genome data with adapters and entropy masking") {
+        tag "expect_success"
+        tag "genome_masking"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/test_random_polyx_entropy.fasta"))
+                    '''
+                }
+            }
+        }
+        path(filtered_genomes)
+        path(adapters)
+		val(k)
+		val(hdist)
+		val(entropy)
+		val(polyx_len)
+        val(name_pattern)
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = GZIP_FILE.out
+                input[1] = "${projectDir}/ref/adapters.fasta"
+                input[2] = 20
+                input[3] = 3
+                input[4] = 0.5
+                input[5] = 10
+                input[6] = "test-genomes"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output files should be created
+            assert path(process.out.masked[0]).exists()
+            assert path(process.out.log1[0]).exists()
+            assert path(process.out.log2[0]).exists()
+            // Output should be gzipped FASTA
+            assert process.out.masked[0].toString().contains('test-genomes.masked.fasta.gz')
+            // Log files should be created with expected names
+            assert process.out.log1[0].toString().contains('test-genomes-mask-adapters-entropy.stats.txt')
+            assert process.out.log2[0].toString().contains('test-genomes-mask-polyx.stats.txt')
+            // Check expected number of masked bases (N's)
+            def fasta_out = path(process.out.masked[0]).fasta
+            def sequences = fasta_out.sequences
+            assert sequences.size() >= 2
+            // First sequence should have 70 masked bases
+            def n_count_seq1 = sequences[0].count('N')
+            assert n_count_seq1 == 70
+            // Second sequence should have 134 masked bases
+            def n_count_seq2 = sequences[1].count('N')
+            assert n_count_seq2 == 134
+        }
+    }
+
+    test("Should handle different parameter combinations") {
+        tag "expect_success"
+        tag "parameter_variation"
+        config "tests/configs/run.config"
+        setup {
+            run("GZIP_FILE") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("norovirus-params")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/norovirus_GI.fasta"))
+                    '''
+                }
+            }
+        }
+
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = GZIP_FILE.out
+                input[1] = "${projectDir}/ref/adapters.fasta"
+                input[2] = 21
+                input[3] = 0
+                input[4] = 0.8
+                input[5] = 10
+                input[6] = "param-test"
+                '''
+            }
+        }
+        then {
+            // Should run without failures with different parameters
+            assert process.success
+            // Output files should be created
+            assert path(process.out.masked[0]).exists()
+            assert path(process.out.log1[0]).exists()
+            assert path(process.out.log2[0]).exists()
+            // Output should contain expected name pattern
+            assert process.out.masked[0].toString().contains('param-test-masked.fasta.gz')
+            // Check expected number of masked bases (N's) with different parameters
+            def fasta_out = path(process.out.masked[0]).fasta
+            def sequences = fasta_out.sequences
+            assert sequences.size() >= 2
+            // First sequence should have 20 masked bases
+            def n_count_seq1 = sequences[0].count('N')
+            assert n_count_seq1 == 20
+            // Second sequence should have 34 masked bases
+            def n_count_seq2 = sequences[1].count('N')
+            assert n_count_seq2 == 34
+        }
+    }
+}
