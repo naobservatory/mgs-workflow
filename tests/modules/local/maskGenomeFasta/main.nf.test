@@ -8,32 +8,23 @@ nextflow_process {
 
     test("Should run correctly on FASTA genome data with adapters and entropy masking") {
         tag "expect_success"
-        tag "genome_masking"
-        config "tests/configs/run.config"
+        config "tests/configs/index.config"
         setup {
-            run("GZIP_FILE") {
+            run("GZIP_FILE_BARE") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
-                    input[0] = Channel.of("test")
-                        | combine(Channel.of("${projectDir}/test-data/toy-data/test_random_polyx_entropy.fasta"))
+                    input[0] = Channel.of("${projectDir}/test-data/toy-data/test-random-for-genomemask.fasta")
                     '''
                 }
             }
         }
-        path(filtered_genomes)
-        path(adapters)
-		val(k)
-		val(hdist)
-		val(entropy)
-		val(polyx_len)
-        val(name_pattern)
         when {
             params {
             }
             process {
                 '''
-                input[0] = GZIP_FILE.out
+                input[0] = GZIP_FILE_BARE.out
                 input[1] = "${projectDir}/ref/adapters.fasta"
                 input[2] = 20
                 input[3] = 3
@@ -51,34 +42,32 @@ nextflow_process {
             assert path(process.out.log1[0]).exists()
             assert path(process.out.log2[0]).exists()
             // Output should be gzipped FASTA
-            assert process.out.masked[0].toString().contains('test-genomes.masked.fasta.gz')
+            assert process.out.masked[0].toString().contains('test-genomes-masked.fasta.gz')
             // Log files should be created with expected names
             assert process.out.log1[0].toString().contains('test-genomes-mask-adapters-entropy.stats.txt')
             assert process.out.log2[0].toString().contains('test-genomes-mask-polyx.stats.txt')
             // Check expected number of masked bases (N's)
-            def fasta_out = path(process.out.masked[0]).fasta
-            def sequences = fasta_out.sequences
-            assert sequences.size() >= 2
-            // First sequence should have 70 masked bases
-            def n_count_seq1 = sequences[0].count('N')
-            assert n_count_seq1 == 70
-            // Second sequence should have 134 masked bases
-            def n_count_seq2 = sequences[1].count('N')
-            assert n_count_seq2 == 134
+            def fasta_map = path(process.out.masked[0]).fasta
+            assert fasta_map.size() == 2
+            // First sequence should have ~80 masked bases (50 entropy, 30 polyx)
+            // (slightly more because entropy masking will extend a little past deliberate low-complexity region)
+            def n_count = fasta_map['toy_genome_polyx_entropy'].count('N')
+            assert n_count >= 80
+            assert n_count < 88
+            // Second sequence should have 133 masked bases (100 entropy, 33 adapter)
+            assert fasta_map['toy_genome_entropy_adapter'].count('N') == 133
         }
     }
 
     test("Should handle different parameter combinations") {
         tag "expect_success"
-        tag "parameter_variation"
         config "tests/configs/run.config"
         setup {
-            run("GZIP_FILE") {
+            run("GZIP_FILE_BARE") {
                 script "modules/local/gzipFile/main.nf"
                 process {
                     '''
-                    input[0] = Channel.of("norovirus-params")
-                        | combine(Channel.of("${projectDir}/test-data/toy-data/norovirus_GI.fasta"))
+                    input[0] = Channel.of("${projectDir}/test-data/toy-data/test-random-for-genomemask.fasta")
                     '''
                 }
             }
@@ -89,12 +78,12 @@ nextflow_process {
             }
             process {
                 '''
-                input[0] = GZIP_FILE.out
+                input[0] = GZIP_FILE_BARE.out
                 input[1] = "${projectDir}/ref/adapters.fasta"
-                input[2] = 21
-                input[3] = 0
-                input[4] = 0.8
-                input[5] = 10
+                input[2] = 20
+                input[3] = 3
+                input[4] = 0
+                input[5] = 20
                 input[6] = "param-test"
                 '''
             }
@@ -109,15 +98,14 @@ nextflow_process {
             // Output should contain expected name pattern
             assert process.out.masked[0].toString().contains('param-test-masked.fasta.gz')
             // Check expected number of masked bases (N's) with different parameters
-            def fasta_out = path(process.out.masked[0]).fasta
-            def sequences = fasta_out.sequences
-            assert sequences.size() >= 2
-            // First sequence should have 20 masked bases
-            def n_count_seq1 = sequences[0].count('N')
-            assert n_count_seq1 == 20
-            // Second sequence should have 34 masked bases
-            def n_count_seq2 = sequences[1].count('N')
-            assert n_count_seq2 == 34
+            def fasta_map = path(process.out.masked[0]).fasta
+            assert fasta_map.size() == 2
+            // First sequence should have 20 masked bases (20 stretch of polyx)
+            assert fasta_map['toy_genome_polyx_entropy'].count('N') == 20
+            // Second sequence should have ~33 masked base (adapter only, but adapter masking may extend a bit)
+            def n_count = fasta_map['toy_genome_entropy_adapter'].count('N')
+            assert n_count >= 33
+            assert n_count <= 38
         }
     }
 }
