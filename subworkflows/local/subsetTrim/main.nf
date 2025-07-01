@@ -5,7 +5,9 @@
 include { SUBSET_READS_SINGLE_TARGET as SUBSET_SINGLE } from "../../../modules/local/subsetReads"
 include { SUBSET_READS_PAIRED_TARGET as SUBSET_PAIRED } from "../../../modules/local/subsetReads"
 include { FASTP } from "../../../modules/local/fastp"
-include { FILTLONG } from "../../../modules/local/filtlong"
+include { FILTLONG as FILTLONG_STRINGENT } from "../../../modules/local/filtlong"
+include { FILTLONG as FILTLONG_LOOSE } from "../../../modules/local/filtlong"
+
 include { INTERLEAVE_FASTQ } from "../../../modules/local/interleaveFastq"
 
 /***********
@@ -38,12 +40,14 @@ workflow SUBSET_TRIM {
         inter_ch = inter_ch_single.mix(inter_ch_paired)
         // Read cleaning
         if (platform == "ont") {
-            cleaned_ch = FILTLONG(inter_ch, 100, 15000, 90)
+            cleaned_ch = FILTLONG_STRINGENT(inter_ch, 100, 15000, 90)
+            subset_reads = FILTLONG_LOOSE(inter_ch, 1, 500000, 0.01) // Very loose filtering just to avoid out-of-memory errors
         } else {
             cleaned_ch = FASTP(inter_ch, adapter_path, single_end.map{!it})
+            subset_reads = inter_ch 
         }
     emit:
-        subset_reads = inter_ch
+        subset_reads
         trimmed_subset_reads = cleaned_ch.reads
         test_failed = platform == "ont" ? Channel.empty() : cleaned_ch.failed // TODO: Capture rejected ONT reads somehow
 }
