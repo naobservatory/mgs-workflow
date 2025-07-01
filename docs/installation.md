@@ -107,12 +107,13 @@ To confirm that the pipeline works in your hands, we recommend running it on a s
 1. Prepare the launch directory:
     - Create a clean launch directory outside the repository directory.
     - Copy over the run workflow config file to a new file in the launch directory labeled `nextflow.config`.
+        - Example below shows `run.config`; for the ONT platform, remember to use `run_ont.config` instead
     - Copy the test-data sample sheet from the repository directory to the launch directory.
 
 ```
 mkdir launch
 cd launch
-cp REPO_DIR/configs/run_<PLATFORM>.config nextflow.config
+cp REPO_DIR/configs/run.config nextflow.config 
 cp REPO_DIR/test-data/samplesheet.csv samplesheet.csv
 ```
 
