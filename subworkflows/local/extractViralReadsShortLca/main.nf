@@ -88,10 +88,10 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         filtered_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "aligner_secondary_status", false, true)
         out_labeled_ch = ADD_SAMPLE_COLUMN(filtered_ch.output, "sample", "viral_bowtie2")
         // 12. Concatenate across reads
-        label_combined_ch = out_labeled_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
+        label_combined_ch = out_labeled_ch.output.map{ _sample, file -> file }.collect().ifEmpty([])
         concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_final")
         // 13. Extract filtered virus hits in FASTQ format
-        fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ sample, file -> file }.collect().ifEmpty([])
+        fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ _sample, file -> file }.collect().ifEmpty([])
         fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
         fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(concat_ch.output, fastq_unfiltered_concat.output)
     emit:

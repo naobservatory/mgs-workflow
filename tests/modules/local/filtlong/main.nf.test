@@ -1,0 +1,53 @@
+nextflow_process {
+
+    name "Test process FILTLONG"
+    script "modules/local/filtlong/main.nf"
+    process "FILTLONG"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "filtlong"
+
+    test("Should run successfully on ONT data") {
+        tag "expect_success"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                    input[1] = "ont"
+                    input[2] = false
+                    """
+                }
+            }
+            run("COPY_FILE") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    """
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    input[1] = "input.fastq.gz"
+                    """
+                }
+            }
+        }
+        when {
+            params {
+            }
+            process {
+                '''
+                input[0] = COPY_FILE.out
+                input[1] = 50  // min_length
+                input[2] = 15000  // max_length  
+                input[3] = 90  // min_mean_q
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            // Output file should exist and be non-empty
+            assert path(process.out.reads[0][1]).size() > 0
+        }
+    }
+
+}

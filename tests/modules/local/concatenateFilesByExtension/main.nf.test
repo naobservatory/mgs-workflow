@@ -76,7 +76,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
-            assert process.errorReport =~ /Input file .* does not end with .fasta --/
+            assert process.errorReport =~ /Input files .* do not end with .fasta --/
         }
     }
 
