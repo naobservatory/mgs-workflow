@@ -77,7 +77,7 @@ nf-test test
 ## 5. Run index/reference workflow
 
 > [!TIP]
-> If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output`.
+> If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run_<PLATFORM>.config` such that `params.ref_dir` points to `INDEX_DIR/output`.
 
 Create a new directory outside the repo directory and copy over the index workflow config file as `nextflow.config` in that directory:
 
@@ -112,7 +112,7 @@ To confirm that the pipeline works in your hands, we recommend running it on a s
 ```
 mkdir launch
 cd launch
-cp REPO_DIR/configs/run.config nextflow.config
+cp REPO_DIR/configs/run_<PLATFORM>.config nextflow.config
 cp REPO_DIR/test-data/samplesheet.csv samplesheet.csv
 ```
 
