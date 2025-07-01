@@ -47,6 +47,7 @@ The config file specifies parameters and other configuration options used by Nex
 - Edit `params.ref_dir` to point to the directory containing the outputs of the reference workflow.
 - Edit `params.sample_sheet` to point to your sample sheet.
 - Edit `params.base_dir` to point to the directory in which Nextflow should put the pipeline working and output directories.
+- Make sure `params.platform` matches your data
 - If running on AWS Batch (see below), edit `process.queue` to the name of your Batch job queue.
 
 Most other entries in the config file can be left at their default values for most runs. See [here](./config.md) for a full description of config file parameters and their meanings.
