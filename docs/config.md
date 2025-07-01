@@ -6,7 +6,7 @@ All configuration files used in the pipeline are stored in the `configs` directo
 
 The rest of this page describes the specific options present in each config file, with a focus on those intended to be copied and edited by users.
 
-## Run workflow configuration (`configs/run_<PLATFORM>.config`)
+## Run workflow configuration (`configs/run.config` and `configs/run_ont.config`)
 
 This configuration file controls the pipeline's main RUN workflow. Its options are as follows:
 

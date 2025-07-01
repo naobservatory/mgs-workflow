@@ -41,7 +41,7 @@ If you're working with NAO data, [mgs-metadata](https://github.com/naobservatory
 
 ### 1.2. The config file
 
-The config file specifies parameters and other configuration options used by Nextflow in executing the pipeline. To create a config file for your pipeline run, copy appropriate config file for your platform (`configs/run_illumina.config` or `configs/run_ont.config`) into your launch directory as a file named `nextflow.config`, then modify the file as follows:
+The config file specifies parameters and other configuration options used by Nextflow in executing the pipeline. To create a config file for your pipeline run, copy appropriate config file for your platform (`configs/run.config` for Pacbio/Illumina/Aviti; or `configs/run_ont.config` for ONT) into your launch directory as a file named `nextflow.config`, then modify the file as follows:
 
 - Make sure `params.mode = "run"`; this instructs the pipeline to execute the [core run workflow](./run.md).
 - Edit `params.ref_dir` to point to the directory containing the outputs of the reference workflow.
