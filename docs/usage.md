@@ -41,17 +41,15 @@ If you're working with NAO data, [mgs-metadata](https://github.com/naobservatory
 
 ### 1.2. The config file
 
-The config file specifies parameters and other configuration options used by Nextflow in executing the pipeline. To create a config file for your pipeline run, copy `configs/run.config` into your launch directory as a file named `nextflow.config`, then modify the file as follows:
+The config file specifies parameters and other configuration options used by Nextflow in executing the pipeline. To create a config file for your pipeline run, copy appropriate config file for your platform (`configs/run_illumina.config` or `configs/run_ont.config`) or  into your launch directory as a file named `nextflow.config`, then modify the file as follows:
 
 - Make sure `params.mode = "run"`; this instructs the pipeline to execute the [core run workflow](./run.md).
 - Edit `params.ref_dir` to point to the directory containing the outputs of the reference workflow.
 - Edit `params.sample_sheet` to point to your sample sheet.
 - Edit `params.base_dir` to point to the directory in which Nextflow should put the pipeline working and output directories.
-- Make sure `params.platform` matches your data
 - If running on AWS Batch (see below), edit `process.queue` to the name of your Batch job queue.
 
 Most other entries in the config file can be left at their default values for most runs. See [here](./config.md) for a full description of config file parameters and their meanings.
-    - note that for ONT data, the BLAST-related parameters may need to be modified from their default values, as noted in [config.md] and in the comments in `configs/run.config`
 
 ## 2. Choosing a profile
 

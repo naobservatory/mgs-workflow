@@ -2,11 +2,11 @@
 
 Nextflow configuration is controlled by `.config` files, which specify parameters and other options used in executing the pipeline.
 
-All configuration files used in the pipeline are stored in the `configs` directory. To configure a specific pipeline run, copy the appropriate config file for that pipeline mode (e.g. `run.config`) into the launch directory, rename it to `nextflow.config`, and edit it as appropriate. That config file will in turn call other, standard config files included in the `configs` directory.
+All configuration files used in the pipeline are stored in the `configs` directory. To configure a specific pipeline run, copy the appropriate config file for that pipeline mode (e.g. `run_illumina.config`) into the launch directory, rename it to `nextflow.config`, and edit it as appropriate. That config file will in turn call other, standard config files included in the `configs` directory.
 
 The rest of this page describes the specific options present in each config file, with a focus on those intended to be copied and edited by users.
 
-## Run workflow configuration (`configs/run.config`)
+## Run workflow configuration (`configs/run_<PLATFORM>.config`)
 
 This configuration file controls the pipeline's main RUN workflow. Its options are as follows:
 
