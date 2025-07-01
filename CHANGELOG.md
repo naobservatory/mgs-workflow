@@ -1,6 +1,5 @@
 # v2.10.0.0
-- Moved all outputs to main workflow for compatibility with Nextflow 25.04.
-    - Note that we are not compliant with the new strict syntax yet. 
+- Moved all outputs to main workflow for compatibility with Nextflow 25.04, and made pipeline compliant with new strict syntax. 
     - Pipeline is now *incompatible* with Nextflow 24.
 - Changed column names in `virus_hits_final.tsv` for consistency between Illumina and ONT output:
     - Added `docs/virus_hits_final.md` with full documentation of column names.
