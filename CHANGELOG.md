@@ -1,3 +1,9 @@
+# v2.10.0.1-dev
+- Created new temporary workflow EXTRACT_VIRAL_READS_ONT_LCA, that will eventually replace EXTRACT_VIRAL_READS_ONT:
+  - Changes Minimap2 to run with multiple alignments
+  - Runs LCA on these multiple alignments
+  - Is compatible with the DOWNSTREAM workflow
+
 # v2.10.0.0
 - Moved all outputs to main workflow for compatibility with Nextflow 25.04, and made pipeline compliant with new strict syntax. 
     - Pipeline is now *incompatible* with Nextflow 24.
