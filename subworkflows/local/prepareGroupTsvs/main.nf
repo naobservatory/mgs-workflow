@@ -18,8 +18,8 @@ workflow PREPARE_GROUP_TSVS {
         input_files
     main:
         // 1. Sort inputs by sample ID
-        input_ch = input_files.map{ label, input, groups -> tuple(label, input) }
-        groups_ch = input_files.map{ label, input, groups -> tuple(label, groups) }
+        input_ch = input_files.map{ label, input, _groups -> tuple(label, input) }
+        groups_ch = input_files.map{ label, _input, groups -> tuple(label, groups) }
         input_sorted_ch = SORT_INPUT(input_ch, "sample").sorted
         groups_sorted_ch = SORT_GROUPS(groups_ch, "sample").sorted
         combined_sorted_ch = input_sorted_ch.combine(groups_sorted_ch, by: 0)
@@ -35,7 +35,7 @@ workflow PREPARE_GROUP_TSVS {
                 def pathlist = (filepaths instanceof List) ? filepaths : [filepaths]
                 pathlist.collect { path ->
                     def filename = path.last()
-                    def pattern = /^partition_(.*?)_sorted_group_${sample}_input_inner_joined_sample\.tsv\.gz$/
+                    def pattern = "^partition_(.*?)_sorted_group_${sample}_input_inner_joined_sample\\.tsv\\.gz\$"
                     def matcher = (filename =~ pattern)
                     if (!matcher) {
                         def msg = "Filename doesn't match required pattern: ${sample}, ${path}, ${path.last()}"

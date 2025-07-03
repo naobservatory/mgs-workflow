@@ -31,7 +31,7 @@ workflow DOWNSTREAM {
         // 4. Validate taxonomic assignments
         viral_db_path = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
         viral_db = Channel.of(viral_db_path)
-        dup_ch = MARK_VIRAL_DUPLICATES.out.dup.map{ label, tab, stats -> [label, tab] }
+        dup_ch = MARK_VIRAL_DUPLICATES.out.dup.map{ label, tab, _stats -> [label, tab] }
         VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db,
             params.validation_cluster_identity, 15, params.validation_n_clusters,
             params.ref_dir, params.blast_db_prefix,
