@@ -24,6 +24,8 @@ include { SORT_FILE } from "../../../modules/local/sortFile"
 include { FILTER_VIRAL_SAM } from "../../../modules/local/filterViralSam"
 include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
 include { FILTER_TSV_COLUMN_BY_VALUE } from "../../../modules/local/filterTsvColumnByValue"
+include { SELECT_TSV_COLUMNS } from "../../../modules/local/selectTsvColumns"
+include { PREFIX_TSV_COLUMNS } from "../../../modules/local/prefixTsvColumns"
 
 /***********
 | WORKFLOW |
@@ -31,74 +33,110 @@ include { FILTER_TSV_COLUMN_BY_VALUE } from "../../../modules/local/filterTsvCol
 
 workflow EXTRACT_VIRAL_READS_SHORT_LCA {
     take:
-        reads_ch
-        ref_dir
-        aln_score_threshold
-        adapter_path
-        cutadapt_error_rate
-        min_kmer_hits
-        k
-        bbduk_suffix
-        taxid_artificial
+    reads_ch
+    ref_dir
+    aln_score_threshold
+    adapter_path
+    cutadapt_error_rate
+    min_kmer_hits
+    k
+    bbduk_suffix
+    taxid_artificial
+
     main:
-        // Get reference paths
-        viral_genome_path = "${ref_dir}/results/virus-genomes-masked.fasta.gz"
-        genome_meta_path  = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
-        bt2_virus_index_path = "${ref_dir}/results/bt2-virus-index"
-        bt2_human_index_path = "${ref_dir}/results/bt2-human-index"
-        bt2_other_index_path = "${ref_dir}/results/bt2-other-index"
-        virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
-        nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
-        names_db = "${ref_dir}/results/taxonomy-names.dmp"
-        // 1. Run initial screen against viral genomes with BBDuk
-        bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
-        // 2. Carry out stringent adapter removal with FASTP and Cutadapt
-        fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
-        adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
-        // 3. Run Bowtie2 against a viral database and process output
-        par_virus = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
-        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path,
-            par_virus, "virus", true, false, true)
-        // 4. Filter contaminants
-        par_contaminants = "--local --very-sensitive-local"
-        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path,
-            par_contaminants, "human", false, false, true)
-        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path,
-            par_contaminants, "other", false, false, true)
-        // 5. Sort SAM and FASTQ files before filtering
-        bowtie2_sam_sorted_ch = SORT_FILE(bowtie2_ch.sam, "-t\$\'\\t\' -k1,1", "sam")
-        other_fastq_sorted_ch = SORT_FASTQ(other_bt2_ch.reads_unmapped)
-        // 6. Consolidated viral SAM filtering: keep contaminant-free reads, applies score threshold, adds missing mates
-        bowtie2_ch_combined = bowtie2_sam_sorted_ch.output.combine(other_fastq_sorted_ch.output, by: 0)
-        bowtie2_filtered_ch = FILTER_VIRAL_SAM(bowtie2_ch_combined, aln_score_threshold)
-        // 7. Convert SAM to TSV
-        bowtie2_tsv_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_filtered_ch.sam, genome_meta_path, virus_db_path, true)
-        // 8. Run LCA
-        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db, "seq_id", 
-            "taxid", "length_normalized_score", taxid_artificial, "aligner")
-        // 9. Sort both TSV files by seq_id for joining
-        lca_sorted_ch = SORT_LCA(lca_ch.output, "seq_id")
-        bowtie2_sorted_ch = SORT_BOWTIE2(bowtie2_tsv_ch.output, "seq_id")
-        // 10. Join LCA and Bowtie2 TSV on seq_id to combine taxonomic and alignment data
-        joined_input_ch = lca_sorted_ch.sorted.join(bowtie2_sorted_ch.sorted, by: 0)
-        joined_ch = JOIN_TSVS(joined_input_ch, "seq_id", "inner", "lca_bowtie2")
-        // 11. Filter to keep only primary alignments (aligner_classification="primary")
-        filtered_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "classification", "primary", true)
-        out_labeled_ch = ADD_SAMPLE_COLUMN(filtered_ch.output, "sample", "viral_bowtie2")
-        // 12. Concatenate across reads
-        label_combined_ch = out_labeled_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
-        concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_final")
-        // 13. Extract filtered virus hits in FASTQ format
-        fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ sample, file -> file }.collect().ifEmpty([])
-        fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
-        fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(concat_ch.output, fastq_unfiltered_concat.output)
+    // Get reference paths
+    viral_genome_path = "${ref_dir}/results/virus-genomes-masked.fasta.gz"
+    genome_meta_path = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
+    bt2_virus_index_path = "${ref_dir}/results/bt2-virus-index"
+    bt2_human_index_path = "${ref_dir}/results/bt2-human-index"
+    bt2_other_index_path = "${ref_dir}/results/bt2-other-index"
+    virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
+    nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
+    names_db = "${ref_dir}/results/taxonomy-names.dmp"
+    // 1. Run initial screen against viral genomes with BBDuk
+    bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
+    // 2. Carry out stringent adapter removal with FASTP and Cutadapt
+    fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
+    adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
+    // 3. Run Bowtie2 against a viral database and process output
+    par_virus = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
+    bowtie2_ch = BOWTIE2_VIRUS(
+        adapt_ch.reads,
+        bt2_virus_index_path,
+        par_virus,
+        "virus",
+        true,
+        false,
+        true,
+    )
+    // 4. Filter contaminants
+    par_contaminants = "--local --very-sensitive-local"
+    human_bt2_ch = BOWTIE2_HUMAN(
+        bowtie2_ch.reads_mapped,
+        bt2_human_index_path,
+        par_contaminants,
+        "human",
+        false,
+        false,
+        true,
+    )
+    other_bt2_ch = BOWTIE2_OTHER(
+        human_bt2_ch.reads_unmapped,
+        bt2_other_index_path,
+        par_contaminants,
+        "other",
+        false,
+        false,
+        true,
+    )
+    // 5. Sort SAM and FASTQ files before filtering
+    bowtie2_sam_sorted_ch = SORT_FILE(bowtie2_ch.sam, "-t\$\'\\t\' -k1,1", "sam")
+    other_fastq_sorted_ch = SORT_FASTQ(other_bt2_ch.reads_unmapped)
+    // 6. Consolidated viral SAM filtering: keep contaminant-free reads, applies score threshold, adds missing mates
+    bowtie2_ch_combined = bowtie2_sam_sorted_ch.output.combine(other_fastq_sorted_ch.output, by: 0)
+    bowtie2_filtered_ch = FILTER_VIRAL_SAM(bowtie2_ch_combined, aln_score_threshold)
+    // 7. Convert SAM to TSV
+    bowtie2_tsv_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_filtered_ch.sam, genome_meta_path, virus_db_path, true)
+    // 8. Run LCA
+    lca_ch = LCA_TSV(
+        bowtie2_tsv_ch.output,
+        nodes_db,
+        names_db,
+        "seq_id",
+        "taxid",
+        "length_normalized_score",
+        taxid_artificial,
+        "aligner",
+    )
+    // 9. Sort both TSV files by seq_id for joining
+    lca_sorted_ch = SORT_LCA(lca_ch.output, "seq_id")
+    bowtie2_sorted_ch = SORT_BOWTIE2(bowtie2_tsv_ch.output, "seq_id")
+    // 10. Join LCA and Bowtie2 TSV on seq_id to combine taxonomic and alignment data
+    joined_input_ch = lca_sorted_ch.sorted.join(bowtie2_sorted_ch.sorted, by: 0)
+    joined_ch = JOIN_TSVS(joined_input_ch, "seq_id", "inner", "lca_bowtie2")
+    // 11. Filter to keep only primary alignments (aligner_classification="primary")
+    filtered_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "classification", "primary", true)
+    // 12. Subset columns
+    selected_ch = SELECT_TSV_COLUMNS(filtered_ch.output, "seq_id,aligner_taxid_lca,aligner_taxid_top,aligner_length_normalized_score_mean,aligner_taxid_lca_natural,aligner_n_assignments_natural,aligner_length_normalized_score_mean_natural,aligner_taxid_lca_artificial,aligner_n_assignments_artificial,aligner_length_normalized_score_mean_artificial,genome_id_all,taxid_all,fragment_length,best_alignment_score,best_alignment_score_rev,edit_distance,edit_distance_rev,ref_start,ref_start_rev,query_len,query_len_rev,query_seq,query_seq_rev,query_rc,query_rc_rev,query_qual,query_qual_rev,pair_status", "keep")
+    // 13. Add prefix to columns
+    prefixed_ch = PREFIX_TSV_COLUMNS(selected_ch.output, "prim_align_", "genome_id_all,taxid_all,fragment_length,best_alignment_score,best_alignment_score_rev,edit_distance,edit_distance_rev,ref_start,ref_start_rev,query_len,query_len_rev,query_seq,query_seq_rev,query_rc,query_rc_rev,query_qual,query_qual_rev,pair_status", "include")
+    // 14. Add sample to column
+    out_labeled_ch = ADD_SAMPLE_COLUMN(prefixed_ch.output, "sample", "viral_bowtie2")
+    // 15. Concatenate across reads
+    label_combined_ch = out_labeled_ch.output.map { sample, file -> file }.collect().ifEmpty([])
+    concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_final")
+    // 16. Extract filtered virus hits in FASTQ format
+    fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map { sample, file -> file }.collect().ifEmpty([])
+    fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
+    fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(concat_ch.output, fastq_unfiltered_concat.output)
+
     emit:
-        bbduk_match = bbduk_ch.fail
-        bbduk_trimmed = adapt_ch.reads
-        hits_final = concat_ch.output
-        hits_prelca = bowtie2_tsv_ch.output
-        hits_fastq = fastq_ch.fastq
-        test_reads  = other_bt2_ch.reads_unmapped
-        test_filt_bowtie = bowtie2_filtered_ch.sam
-        test_unfilt_bowtie = bowtie2_ch.sam
+    bbduk_match = bbduk_ch.fail
+    bbduk_trimmed = adapt_ch.reads
+    hits_final = concat_ch.output
+    hits_prelca = bowtie2_tsv_ch.output
+    hits_fastq = fastq_ch.fastq
+    test_reads = other_bt2_ch.reads_unmapped
+    test_filt_bowtie = bowtie2_filtered_ch.sam
+    test_unfilt_bowtie = bowtie2_ch.sam
 }

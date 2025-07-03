@@ -1,0 +1,146 @@
+nextflow_process {
+
+    name "Test process PREFIX_TSV_COLUMNS"
+    script "modules/local/prefixTsvColumns/main.nf"
+    process "PREFIX_TSV_COLUMNS"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "prefix_tsv_columns"
+
+    test("Should add prefix to all columns in exclude mode with empty column list") {
+        tag "expect_success"
+        tag "exclude_mode"
+        tag "empty_columns"
+        when {
+            params {
+                prefix = "prefix_"
+            }
+            process {
+                '''
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_sorted.tsv")]
+                input[1] = params.prefix
+                input[2] = ""
+                input[3] = "exclude"
+                '''
+            }
+        }
+        then {
+            assert process.success
+            // Check output file exists and has correct content
+            def output = path(process.out.output[0][1]).text
+            def lines = output.split('\n')
+            def header = lines[0].split('\t')
+            // Check that all header columns contain the prefix
+            assert header.every { it.contains(params.prefix) }
+            assert header == ["${params.prefix}x", "${params.prefix}y", "${params.prefix}z"]
+        }
+    }
+
+    test("Should add prefix only to specified columns in include mode") {
+        tag "expect_success"
+        tag "include_mode"
+        when {
+            params {
+                prefix = "aligner_"
+            }
+            process {
+                '''
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_sorted.tsv")]
+                input[1] = params.prefix
+                input[2] = "y,z"
+                input[3] = "include"
+                '''
+            }
+        }
+        then {
+            assert process.success
+            // Check output file has prefixes only on specified columns
+            def output = path(process.out.output[0][1]).text
+            def lines = output.split('\n')
+            def header = lines[0].split('\t')
+            // Check that only specified columns have the prefix
+            assert header[0] == "x"  // no prefix
+            assert header[1].contains(params.prefix)
+            assert header[2].contains(params.prefix)
+            assert header == ["x", "${params.prefix}y", "${params.prefix}z"]
+        }
+    }
+
+    test("Should exclude specified columns from prefix in exclude mode") {
+        tag "expect_success"
+        tag "exclude_mode"
+        tag "with_columns"
+        when {
+            params {
+                prefix = "bowtie2_"
+            }
+            process {
+                '''
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_sorted.tsv")]
+                input[1] = params.prefix
+                input[2] = "x,y"
+                input[3] = "exclude"
+                '''
+            }
+        }
+        then {
+            assert process.success
+            // Check output file excludes specified columns from prefix
+            def output = path(process.out.output[0][1]).text
+            def lines = output.split('\n')
+            def header = lines[0].split('\t')
+            // Check that excluded columns don't have prefix, but others do
+            assert header[0] == "x"  // excluded
+            assert header[1] == "y"  // excluded
+            assert header[2].contains(params.prefix)
+            assert header == ["x", "y", "${params.prefix}z"]
+        }
+    }
+
+    test("Should fail when specified columns don't exist") {
+        tag "expect_failure"
+        tag "invalid_columns"
+        when {
+            params {
+                prefix = "prefix_"
+            }
+            process {
+                '''
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_sorted.tsv")]
+                input[1] = params.prefix
+                input[2] = "col4,col5"
+                input[3] = "include"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("Specified columns not found in header")
+        }
+    }
+
+    test("Should handle empty input file gracefully") {
+        tag "expect_success"
+        tag "empty_file"
+        when {
+            params {
+                prefix = "prefix_"
+            }
+            process {
+                '''
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/empty_file.txt")]
+                input[1] = params.prefix
+                input[2] = ""
+                input[3] = "exclude"
+                '''
+            }
+        }
+        then {
+            assert process.success
+            // Check output file is also empty
+            def output = path(process.out.output[0][1]).text
+            assert output == ""
+        }
+    }
+}
