@@ -15,7 +15,7 @@ import csv
 import sys
 import gzip
 import bz2
-from typing import TextIO, List
+from typing import TextIO
 from datetime import datetime, timezone
 
 
@@ -130,7 +130,7 @@ def parse_args() -> argparse.Namespace:
 # =======================================================================
 
 
-def parse_column_list(columns_str: str) -> List[str]:
+def parse_column_list(columns_str: str) -> list[str]:
     """
     Parse comma-separated column list, handling empty strings.
 
@@ -138,7 +138,7 @@ def parse_column_list(columns_str: str) -> List[str]:
         columns_str (str): Comma-separated list of column names
 
     Returns:
-        List[str]: List of column names (empty list if input is empty)
+        list[str]: list of column names (empty list if input is empty)
     """
     if not columns_str or columns_str.isspace():
         return []
@@ -146,20 +146,20 @@ def parse_column_list(columns_str: str) -> List[str]:
 
 
 def apply_prefix_to_headers(
-    headers: List[str], prefix: str, columns: List[str], mode: str, logger: logging.Logger
-) -> List[str]:
+    headers: list[str], prefix: str, columns: list[str], mode: str, logger: logging.Logger
+) -> list[str]:
     """
     Apply prefix to headers based on mode and column list.
 
     Args:
-        headers (List[str]): Original column headers
+        headers (list[str]): Original column headers
         prefix (str): Prefix to add
-        columns (List[str]): List of column names to include/exclude
+        columns (list[str]): list of column names to include/exclude
         mode (str): 'include' or 'exclude'
         logger (logging.Logger): Logger instance
 
     Returns:
-        List[str]: Headers with prefix applied according to rules
+        list[str]: Headers with prefix applied according to rules
     """
     # Validate that specified columns exist in headers
     if columns:
@@ -201,7 +201,7 @@ def stream_and_prefix_tsv(
     input_file: TextIO,
     output_file: TextIO,
     prefix: str,
-    columns: List[str],
+    columns: list[str],
     mode: str,
     logger: logging.Logger,
 ) -> None:
@@ -212,7 +212,7 @@ def stream_and_prefix_tsv(
         input_file (TextIO): Input file handle
         output_file (TextIO): Output file handle
         prefix (str): Prefix to add to column names
-        columns (List[str]): List of column names to include/exclude
+        columns (list[str]): list of column names to include/exclude
         mode (str): 'include' or 'exclude'
         logger (logging.Logger): Logger instance
     """
