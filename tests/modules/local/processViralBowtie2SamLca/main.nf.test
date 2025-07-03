@@ -183,11 +183,11 @@ nextflow_process {
             def headers = lines[0].split("\t")
             def expectedHeaders = [
                 "seq_id", 
-                "aligner_genome_id", 
-                "aligner_genome_id_all", 
-                "aligner_taxid", 
-                "aligner_taxid_all", 
-                "aligner_fragment_length"
+                "genome_id", 
+                "genome_id_all", 
+                "taxid", 
+                "taxid_all", 
+                "fragment_length"
             ]
             
             // Verify all expected headers are present and in the right order

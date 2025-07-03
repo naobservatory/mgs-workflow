@@ -499,7 +499,7 @@ def get_output_header(
     """
     fields_base = [
         taxid_field + "_lca",
-        "n_assignments_total",
+        "n_assignments",
         "n_assignments_classified",
         taxid_field + "_top",
         taxid_field + "_top_classified",
