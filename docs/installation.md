@@ -77,7 +77,7 @@ nf-test test
 ## 5. Run index/reference workflow
 
 > [!TIP]
-> If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output`.
+> If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` (or `configs/run_ont.config`) such that `params.ref_dir` points to `INDEX_DIR/output`.
 
 Create a new directory outside the repo directory and copy over the index workflow config file as `nextflow.config` in that directory:
 
@@ -107,12 +107,13 @@ To confirm that the pipeline works in your hands, we recommend running it on a s
 1. Prepare the launch directory:
     - Create a clean launch directory outside the repository directory.
     - Copy over the run workflow config file to a new file in the launch directory labeled `nextflow.config`.
+        - Example below shows `run.config`; for the ONT platform, remember to use `run_ont.config` instead
     - Copy the test-data sample sheet from the repository directory to the launch directory.
 
 ```
 mkdir launch
 cd launch
-cp REPO_DIR/configs/run.config nextflow.config
+cp REPO_DIR/configs/run.config nextflow.config 
 cp REPO_DIR/test-data/samplesheet.csv samplesheet.csv
 ```
 
