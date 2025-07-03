@@ -1,8 +1,15 @@
 # v2.10.0.1-dev
-- Created new temporary workflow EXTRACT_VIRAL_READS_ONT_LCA, that will eventually replace EXTRACT_VIRAL_READS_ONT:
-  - Changes Minimap2 to run with multiple alignments
-  - Runs LCA on these multiple alignments
-  - Is compatible with the DOWNSTREAM workflow
+- Preparatory work for implementing LCA (lowest common ancestor) analysis:
+  - Updated column names for output viral hits table in EXTRACT_VIRAL_READS_SHORT_LCA
+  - Allow user to pass in empty string for the prefix for LCA_TSV
+  - Remove the "_all" suffix from LCA_TSV
+  - Track the status of whether an alignment is primary or secondary.
+  - Subset column names and added prefix to specific columns in final viral hits table in EXTRACT_VIRAL_READS_SHORT_LCA
+  - Temporarily, DOWNSTREAM workflow will not work for EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_SHORT_LCA will have different column names from EXTRACT_VIRAL_READS_ONT
+  - Created new temporary workflow EXTRACT_VIRAL_READS_ONT_LCA, that will eventually replace EXTRACT_VIRAL_READS_ONT:
+    - Changes Minimap2 to run with multiple alignments
+    - Runs LCA on these multiple alignments
+    - Is compatible with the DOWNSTREAM workflow
 
 # v2.10.0.0
 - Moved all outputs to main workflow for compatibility with Nextflow 25.04, and made pipeline compliant with new strict syntax. 

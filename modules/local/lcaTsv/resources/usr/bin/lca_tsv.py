@@ -499,7 +499,7 @@ def get_output_header(
     """
     fields_base = [
         taxid_field + "_lca",
-        "n_assignments_total",
+        "n_assignments",
         "n_assignments_classified",
         taxid_field + "_top",
         taxid_field + "_top_classified",
@@ -507,8 +507,12 @@ def get_output_header(
         score_field + "_max",
         score_field + "_mean",
     ]
-    fields_prefixed = [prefix + "_" + f for f in fields_base]
-    fields_all = [f + "_all" for f in fields_prefixed]
+    # Only add prefix if it's not empty (empty string evaluates to False)
+    if prefix:
+        fields_prefixed = [prefix + "_" + f for f in fields_base]
+    else:
+        fields_prefixed = fields_base
+    fields_all = fields_prefixed
     fields_natural = [f + "_natural" for f in fields_prefixed]
     fields_artificial = [f + "_artificial" for f in fields_prefixed]
     return [group_field] + fields_all + fields_natural + fields_artificial
@@ -803,7 +807,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--score", "-s", help="Column header for score field.")
     parser.add_argument("--artificial", "-a",
                         help="Parent taxid for artificial sequences (to be handled separately).")
-    parser.add_argument("--prefix", "-p", help="Column prefix for output columns.")
+    parser.add_argument("--prefix", "-p", default="", help="Column prefix for output columns.")
     # Return parsed arguments
     return parser.parse_args()
 
