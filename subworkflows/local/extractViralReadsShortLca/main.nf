@@ -12,8 +12,6 @@ include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
 include { PROCESS_VIRAL_BOWTIE2_SAM_LCA as PROCESS_VIRAL_BOWTIE2_SAM } from "../../../modules/local/processViralBowtie2SamLca"
 include { SORT_TSV as SORT_BOWTIE_VIRAL } from "../../../modules/local/sortTsv"
-include { SORT_TSV as SORT_LCA } from "../../../modules/local/sortTsv"
-include { SORT_TSV as SORT_BOWTIE2 } from "../../../modules/local/sortTsv"
 include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
 include { CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_FILES } from "../../../modules/local/concatenateFiles"
@@ -22,10 +20,7 @@ include { LCA_TSV } from "../../../modules/local/lcaTsv"
 include { SORT_FASTQ } from "../../../modules/local/sortFastq"
 include { SORT_FILE } from "../../../modules/local/sortFile"
 include { FILTER_VIRAL_SAM } from "../../../modules/local/filterViralSam"
-include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
-include { FILTER_TSV_COLUMN_BY_VALUE } from "../../../modules/local/filterTsvColumnByValue"
-include { SELECT_TSV_COLUMNS } from "../../../modules/local/selectTsvColumns"
-include { PREFIX_TSV_COLUMNS } from "../../../modules/local/prefixTsvColumns"
+include { PROCESS_LCA_BOWTIE_COLUMNS } from "../processLcaBowtieColumns"
 
 /***********
 | WORKFLOW |
@@ -52,6 +47,19 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
         nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
         names_db = "${ref_dir}/results/taxonomy-names.dmp"
+        // Define columns without duplication
+        col_keep_no_prefix = ["seq_id", "aligner_taxid_lca", "aligner_taxid_top", 
+                              "aligner_length_normalized_score_mean", "aligner_taxid_lca_natural",
+                              "aligner_n_assignments_natural", "aligner_length_normalized_score_mean_natural",
+                              "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
+                              "aligner_length_normalized_score_mean_artificial"]
+        col_keep_add_prefix = ["genome_id_all", "taxid_all", "fragment_length", 
+                               "best_alignment_score", "best_alignment_score_rev",
+                               "edit_distance", "edit_distance_rev", "ref_start", 
+                               "ref_start_rev", "query_len", "query_len_rev",
+                               "query_seq", "query_seq_rev", "query_rc", 
+                               "query_rc_rev", "query_qual", "query_qual_rev", 
+                               "pair_status"]
         // 1. Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // 2. Carry out stringent adapter removal with FASTP and Cutadapt
@@ -78,26 +86,19 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db,
             "seq_id", "taxid", "length_normalized_score", taxid_artificial,
             "aligner")
-        // 9. Sort both TSV files by seq_id for joining
-        lca_sorted_ch = SORT_LCA(lca_ch.output, "seq_id")
-        bowtie2_sorted_ch = SORT_BOWTIE2(bowtie2_tsv_ch.output, "seq_id")
-        // 10. Join LCA and Bowtie2 TSV on seq_id to combine taxonomic and alignment data
-        joined_input_ch = lca_sorted_ch.sorted.join(bowtie2_sorted_ch.sorted, by: 0)
-        joined_ch = JOIN_TSVS(joined_input_ch, "seq_id", "inner", "lca_bowtie2")
-        // 11. Filter to keep only primary alignments (aligner_classification="primary")
-        filtered_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "classification", "primary", true)
-        // 12. Subset columns
-        col_to_keep = "seq_id,aligner_taxid_lca,aligner_taxid_top,aligner_length_normalized_score_mean,aligner_taxid_lca_natural,aligner_n_assignments_natural,aligner_length_normalized_score_mean_natural,aligner_taxid_lca_artificial,aligner_n_assignments_artificial,aligner_length_normalized_score_mean_artificial,genome_id_all,taxid_all,fragment_length,best_alignment_score,best_alignment_score_rev,edit_distance,edit_distance_rev,ref_start,ref_start_rev,query_len,query_len_rev,query_seq,query_seq_rev,query_rc,query_rc_rev,query_qual,query_qual_rev,pair_status"
-        selected_ch = SELECT_TSV_COLUMNS(filtered_ch.output, col_to_keep, "keep")
-        // 13. Add prefix to columns
-        col_add_prefix = "genome_id_all,taxid_all,fragment_length,best_alignment_score,best_alignment_score_rev,edit_distance,edit_distance_rev,ref_start,ref_start_rev,query_len,query_len_rev,query_seq,query_seq_rev,query_rc,query_rc_rev,query_qual,query_qual_rev,pair_status"
-        prefixed_ch = PREFIX_TSV_COLUMNS(selected_ch.output, "prim_align_", col_add_prefix, "include")
-        // 14. Add sample to column
-        out_labeled_ch = ADD_SAMPLE_COLUMN(prefixed_ch.output, "sample", "viral_bowtie2")
-        // 15. Concatenate across reads
+        // 9. Process LCA and Bowtie2 columns
+        processed_ch = PROCESS_LCA_BOWTIE_COLUMNS(
+            lca_ch.output,
+            bowtie2_tsv_ch.output,
+            col_keep_no_prefix,
+            col_keep_add_prefix
+        )
+        // 10. Add sample to column
+        out_labeled_ch = ADD_SAMPLE_COLUMN(processed_ch.output, "sample", "viral_bowtie2")
+        // 11. Concatenate across reads
         label_combined_ch = out_labeled_ch.output.map{ _sample, file -> file }.collect().ifEmpty([])
         concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_final")
-        // 16. Extract filtered virus hits in FASTQ format
+        // 12. Extract filtered virus hits in FASTQ format
         fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ _sample, file -> file }.collect().ifEmpty([])
         fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
         fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(concat_ch.output, fastq_unfiltered_concat.output)

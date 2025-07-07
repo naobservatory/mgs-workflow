@@ -507,15 +507,13 @@ def get_output_header(
         score_field + "_max",
         score_field + "_mean",
     ]
-    # Only add prefix if it's not empty (empty string evaluates to False)
-    if prefix:
-        fields_prefixed = [prefix + "_" + f for f in fields_base]
-    else:
+    if prefix == "":
         fields_prefixed = fields_base
-    fields_all = fields_prefixed
+    else:
+        fields_prefixed = [prefix + "_" + f for f in fields_base]
     fields_natural = [f + "_natural" for f in fields_prefixed]
     fields_artificial = [f + "_artificial" for f in fields_prefixed]
-    return [group_field] + fields_all + fields_natural + fields_artificial
+    return [group_field] + fields_prefixed + fields_natural + fields_artificial
 
 def write_output_line(
         fields: list[str],
