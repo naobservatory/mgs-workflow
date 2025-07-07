@@ -117,9 +117,11 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
     // 11. Filter to keep only primary alignments (aligner_classification="primary")
     filtered_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "classification", "primary", true)
     // 12. Subset columns
-    selected_ch = SELECT_TSV_COLUMNS(filtered_ch.output, "seq_id,aligner_taxid_lca,aligner_taxid_top,aligner_length_normalized_score_mean,aligner_taxid_lca_natural,aligner_n_assignments_natural,aligner_length_normalized_score_mean_natural,aligner_taxid_lca_artificial,aligner_n_assignments_artificial,aligner_length_normalized_score_mean_artificial,genome_id_all,taxid_all,fragment_length,best_alignment_score,best_alignment_score_rev,edit_distance,edit_distance_rev,ref_start,ref_start_rev,query_len,query_len_rev,query_seq,query_seq_rev,query_rc,query_rc_rev,query_qual,query_qual_rev,pair_status", "keep")
+    col_to_keep = "seq_id,aligner_taxid_lca,aligner_taxid_top,aligner_length_normalized_score_mean,aligner_taxid_lca_natural,aligner_n_assignments_natural,aligner_length_normalized_score_mean_natural,aligner_taxid_lca_artificial,aligner_n_assignments_artificial,aligner_length_normalized_score_mean_artificial,genome_id_all,taxid_all,fragment_length,best_alignment_score,best_alignment_score_rev,edit_distance,edit_distance_rev,ref_start,ref_start_rev,query_len,query_len_rev,query_seq,query_seq_rev,query_rc,query_rc_rev,query_qual,query_qual_rev,pair_status"
+    selected_ch = SELECT_TSV_COLUMNS(filtered_ch.output, col_to_keep, "keep")
     // 13. Add prefix to columns
-    prefixed_ch = PREFIX_TSV_COLUMNS(selected_ch.output, "prim_align_", "genome_id_all,taxid_all,fragment_length,best_alignment_score,best_alignment_score_rev,edit_distance,edit_distance_rev,ref_start,ref_start_rev,query_len,query_len_rev,query_seq,query_seq_rev,query_rc,query_rc_rev,query_qual,query_qual_rev,pair_status", "include")
+    col_add_prefix = "genome_id_all,taxid_all,fragment_length,best_alignment_score,best_alignment_score_rev,edit_distance,edit_distance_rev,ref_start,ref_start_rev,query_len,query_len_rev,query_seq,query_seq_rev,query_rc,query_rc_rev,query_qual,query_qual_rev,pair_status"
+    prefixed_ch = PREFIX_TSV_COLUMNS(selected_ch.output, "prim_align_", col_add_prefix, "include")
     // 14. Add sample to column
     out_labeled_ch = ADD_SAMPLE_COLUMN(prefixed_ch.output, "sample", "viral_bowtie2")
     // 15. Concatenate across reads
