@@ -42,7 +42,6 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         k
         bbduk_suffix
         taxid_artificial
-
     main:
         // Get reference paths
         viral_genome_path = "${ref_dir}/results/virus-genomes-masked.fasta.gz"
@@ -102,7 +101,6 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ _sample, file -> file }.collect().ifEmpty([])
         fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
         fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(concat_ch.output, fastq_unfiltered_concat.output)
-
     emit:
         bbduk_match = bbduk_ch.fail
         bbduk_trimmed = adapt_ch.reads
