@@ -91,7 +91,8 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
             lca_ch.output,
             bowtie2_tsv_ch.output,
             col_keep_no_prefix,
-            col_keep_add_prefix
+            col_keep_add_prefix,
+            "prim_align_"
         )
         // 10. Add sample to column
         out_labeled_ch = ADD_SAMPLE_COLUMN(processed_ch.output, "sample", "viral_bowtie2")

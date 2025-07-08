@@ -20,6 +20,7 @@ workflow PROCESS_LCA_BOWTIE_COLUMNS {
         bowtie2_tsv    // Output from PROCESS_VIRAL_BOWTIE2_SAM
         col_keep_no_prefix   // List of columns to keep without prefix
         col_keep_add_prefix  // List of columns to keep with prefix
+        column_prefix        // Prefix to add to specified columns
     main:
         // Step 1: Sort both TSV files by seq_id for joining
         lca_sorted_ch = SORT_LCA(lca_tsv, "seq_id")
@@ -34,7 +35,7 @@ workflow PROCESS_LCA_BOWTIE_COLUMNS {
         selected_ch = SELECT_TSV_COLUMNS(filtered_ch.output, col_keep, "keep")
         // Step 5: Rename columns with prefix using REHEAD_TSV
         old_cols = col_keep_add_prefix.join(",")
-        new_cols = col_keep_add_prefix.collect { "prim_align_${it}" }.join(",")
+        new_cols = col_keep_add_prefix.collect { "${column_prefix}${it}" }.join(",")
         renamed_ch = REHEAD_TSV(selected_ch.output, old_cols, new_cols)
     emit:
         output = renamed_ch.output

@@ -7,85 +7,84 @@ nextflow_workflow {
     tag "subworkflow"
     tag "process_lca_bowtie_columns"
 
-    setup {
-        run("LOAD_SAMPLESHEET") {
-            script "subworkflows/local/loadSampleSheet/main.nf"
-            process {
-                """
-                input[0] = "${projectDir}/test-data/samplesheet.csv"
-                input[1] = "illumina"
-                input[2] = false
-                """
+    test("Should run without failures") {
+        tag "expect_success"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = "illumina"
+                    input[2] = false
+                    """
+                }
             }
-        }
-        run("INTERLEAVE_FASTQ") {
-            script "modules/local/interleaveFastq/main.nf"
-            process {
-                '''
-                input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                '''
-            }
-        }
-        run("BOWTIE2") {
-                script "modules/local/bowtie2/main.nf"
+            run("INTERLEAVE_FASTQ") {
+                script "modules/local/interleaveFastq/main.nf"
                 process {
                     '''
-                    input[0] = INTERLEAVE_FASTQ.out.output 
-                    input[1] = "${params.ref_dir}/results/bt2-virus-index"
-                    input[2] = "--local --very-sensitive-local --score-min G,0.1,19"
-                    input[3] = "virus"
-                    input[4] = true
-                    input[5] = false
-                    input[6] = true
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
                     '''
                 }
             }
-        run("SORT_FILE") {
-            script "modules/local/sortFile/main.nf"
-            process {
-                '''
-                input[0] = BOWTIE2.out.sam
-                input[1] = "-t\\$\'\\t\' -k1,1 -k2,2n"
-                input[2] = "sam"
-                '''
+            run("BOWTIE2") {
+                    script "modules/local/bowtie2/main.nf"
+                    process {
+                        '''
+                        input[0] = INTERLEAVE_FASTQ.out.output 
+                        input[1] = "${params.ref_dir}/results/bt2-virus-index"
+                        input[2] = "--local --very-sensitive-local --score-min G,0.1,19"
+                        input[3] = "virus"
+                        input[4] = true
+                        input[5] = false
+                        input[6] = true
+                        '''
+                    }
+                }
+            run("SORT_FILE") {
+                script "modules/local/sortFile/main.nf"
+                process {
+                    '''
+                    input[0] = BOWTIE2.out.sam
+                    input[1] = "-t\\$\'\\t\' -k1,1 -k2,2n"
+                    input[2] = "sam"
+                    '''
+                }
             }
-        }
-        run("PROCESS_VIRAL_BOWTIE2_SAM_LCA") {
-            script "modules/local/processViralBowtie2SamLca/main.nf"
-            process {
-                '''
-                input[0] = SORT_FILE.out.output
-                input[1] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
-                input[2] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
-                input[3] = true
-                '''
+            run("PROCESS_VIRAL_BOWTIE2_SAM_LCA") {
+                script "modules/local/processViralBowtie2SamLca/main.nf"
+                process {
+                    '''
+                    input[0] = SORT_FILE.out.output
+                    input[1] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
+                    input[2] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                    input[3] = true
+                    '''
+                }
             }
-        }
-        run("LCA_TSV") {
-            script "modules/local/lcaTsv/main.nf"
-            process {
-                '''
-                input[0] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
-                input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
-                input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
-                input[3] = "seq_id"
-                input[4] = "taxid"
-                input[5] = "length_normalized_score"
-                input[6] = "12908"
-                input[7] = "aligner"
-                '''
+            run("LCA_TSV") {
+                script "modules/local/lcaTsv/main.nf"
+                process {
+                    '''
+                    input[0] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
+                    input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
+                    input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
+                    input[3] = "seq_id"
+                    input[4] = "taxid"
+                    input[5] = "length_normalized_score"
+                    input[6] = "12908"
+                    input[7] = "aligner"
+                    '''
+                }
             }
-        }
 
-    }
-
-    test("Should run without failures") {
-        tag "expect_success"
-        
+        }
         when {
             params {
                 col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
                 col_keep_add_prefix = ["genome_id_all"]
+                column_prefix = "prim_align_"
             }
             workflow {
                 """
@@ -93,12 +92,67 @@ nextflow_workflow {
                 input[1] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
                 input[2] = params.col_keep_no_prefix
                 input[3] = params.col_keep_add_prefix
+                input[4] = params.column_prefix
                 """
             }
         }
 
         then {
-            assert workflow.success
+          assert workflow.success
+
+          // Parse input files using nf-test CSV helpers
+          def lcaData = path(workflow.out.test_lca[0][1]).csv(sep: "\t", decompress: true)
+          def bowtieData = path(workflow.out.test_bowtie[0][1]).csv(sep: "\t", decompress: true)
+          def outputData = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
+
+          // Basic structure validation
+          assert outputData.columnCount > 0
+          assert outputData.rowCount > 0
+
+          // Validate expected columns exist
+          assert "seq_id" in outputData.columns.keySet()
+          assert "aligner_taxid_lca" in outputData.columns.keySet()
+          assert "prim_align_genome_id_all" in outputData.columns.keySet()
+          assert outputData.columnCount == 3
+
+          // Validate join integrity - all output seq_ids should exist in both inputs
+          def outputSeqIds = outputData.columns["seq_id"].toSet()
+          def lcaSeqIds = lcaData.columns["seq_id"].toSet()
+          def bowtieSeqIds = bowtieData.columns["seq_id"].toSet()
+
+          for (seqId in outputSeqIds) {
+              assert seqId in lcaSeqIds
+              assert seqId in bowtieSeqIds
+          }
+
+          // Validate filtering - output should only contain primary alignments
+          // Need to iterate through rows by index to filter
+          def primaryBowtieSeqIds = []
+          for (int i = 0; i < bowtieData.rowCount; i++) {
+              if (bowtieData.columns["classification"][i] == "primary") {
+                  primaryBowtieSeqIds.add(bowtieData.columns["seq_id"][i])
+              }
+          }
+          def primaryBowtieSeqIdsSet = primaryBowtieSeqIds.toSet()
+
+          // Output seq_ids should be intersection of primary alignments and LCA data
+          def expectedSeqIds = primaryBowtieSeqIdsSet.intersect(lcaSeqIds)
+          assert outputSeqIds == expectedSeqIds
+
+          // Validate data integrity - values should match between input and output
+          for (int i = 0; i < outputData.rowCount; i++) {
+              def seqId = outputData.columns["seq_id"][i]
+
+              // Find corresponding rows in input files by index
+              def lcaIndex = lcaData.columns["seq_id"].findIndexOf { it == seqId }
+              def bowtieIndex = bowtieData.columns["seq_id"].findIndexOf { it == seqId }
+
+              // Check LCA data preserved
+              assert outputData.columns["aligner_taxid_lca"][i] == lcaData.columns["aligner_taxid_lca"][lcaIndex]
+
+              // Check Bowtie data preserved with renamed column
+              assert outputData.columns["prim_align_genome_id_all"][i] == bowtieData.columns["genome_id_all"][bowtieIndex]
+          }
         }
 
     }
