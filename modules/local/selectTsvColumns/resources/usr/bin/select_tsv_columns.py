@@ -125,8 +125,9 @@ def select_columns(input_path: str, output_path: str, fields: list[str], mode: s
         header_line = inf.readline().strip()
         logger.debug(f"Input header: {header_line}")
         if not header_line:
-            # No header = selected fields are missing
-            raise ValueError("No header to select fields from.")
+            # No header = empty file, log and create empty output
+            logger.warning("Input file is empty (no header). Creating empty output file.")
+            return
         headers_in = header_line.split("\t")
         # Get indices of selected fields
         indices = [get_header_index(headers_in, field, mode) for field in fields]

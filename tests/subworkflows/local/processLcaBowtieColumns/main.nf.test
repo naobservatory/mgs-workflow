@@ -154,7 +154,79 @@ nextflow_workflow {
               assert outputData.columns["prim_align_genome_id_all"][i] == bowtieData.columns["genome_id_all"][bowtieIndex]
           }
         }
-
     }
 
+    test("Should handle empty input files") {
+        tag "empty_input"
+        tag "expect_success"
+        
+        setup {
+            run("COPY_FILE_BARE", alias: "COPY_LCA_EMPTY") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/toy-data/empty_file.txt"
+                    input[1] = "empty_lca.txt"
+                    '''
+                }
+            }
+            run("GZIP_FILE", alias: "GZIP_LCA_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(COPY_LCA_EMPTY.out)
+                    '''
+                }
+            }
+            run("COPY_FILE_BARE", alias: "COPY_BOWTIE_EMPTY") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/toy-data/empty_file.txt"
+                    input[1] = "empty_bowtie.txt"
+                    '''
+                }
+            }
+            run("GZIP_FILE", alias: "GZIP_BOWTIE_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(COPY_BOWTIE_EMPTY.out)
+                    '''
+                }
+            }
+        }
+
+        when {
+            params {
+                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
+                col_keep_add_prefix = ["genome_id_all"]
+                column_prefix = "prim_align_"
+            }
+            workflow {
+                """
+                input[0] = GZIP_LCA_EMPTY.out
+                input[1] = GZIP_BOWTIE_EMPTY.out
+                input[2] = params.col_keep_no_prefix
+                input[3] = params.col_keep_add_prefix
+                input[4] = params.column_prefix
+                """
+            }
+        }
+
+        then {
+            // Should run without failures
+            assert workflow.success
+            
+            // Output file should exist but be empty
+            def outputFile = path(workflow.out.output[0][1])
+            assert outputFile.exists()
+            
+            // Check that the file is empty (no lines when decompressed)
+            def outputLines = outputFile.linesGzip.size()
+            assert outputLines == 0
+        }
+    }
 }
