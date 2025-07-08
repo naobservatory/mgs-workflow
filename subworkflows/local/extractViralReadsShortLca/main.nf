@@ -67,7 +67,8 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
         // 3. Run Bowtie2 against a viral database and process output
         par_virus = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
-        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, par_virus, "virus", true, false, true)
+        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, 
+            par_virus, "virus", true, false, true)
         // 4. Filter contaminants
         par_contaminants = "--local --very-sensitive-local"
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path,
