@@ -212,6 +212,7 @@ def process_sam_flags(flag_sum: int|str) -> dict[str, bool]:
         dict[str, bool]: Dictionary of flag results.
     """
     flag_dict = {}
+    flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_supplementary", 2048)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_secondary", 256)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_mate_2", 128)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_mate_1", 64)
@@ -363,12 +364,15 @@ def get_line_from_single(read_dict: dict[str, str|int|bool],
     adj_score = float(read_dict["alignment_score"]) / math.log(float(read_dict["query_len"]))
     # Prepare dictionary for output
     out_dict = {
-        "seq_id": read_dict["seq_id"],
-        "genome_id": read_dict["genome_id"],
-        "taxid": read_dict["taxid"],
-        "length_normalized_score": adj_score,
-        "pair_status": read_dict["pair_status"],
-        "classification": "secondary" if read_dict["is_secondary"] else "primary"
+    "seq_id": read_dict["seq_id"],
+    "genome_id": read_dict["genome_id"],
+    "taxid": read_dict["taxid"],
+    "length_normalized_score": adj_score,
+    "pair_status": read_dict["pair_status"],
+    "classification": (
+        "supplementary"  if read_dict["is_supplementary"]
+        else "secondary" if read_dict["is_secondary"]
+        else "primary")
     }
     if paired:
         # Additional fields for paired SAM
