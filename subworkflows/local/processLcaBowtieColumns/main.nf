@@ -38,4 +38,6 @@ workflow PROCESS_LCA_BOWTIE_COLUMNS {
         renamed_ch = REHEAD_TSV(selected_ch.output, old_cols, new_cols)
     emit:
         output = renamed_ch.output
+        test_lca = lca_tsv
+        test_bowtie = bowtie2_tsv
 }
