@@ -3,12 +3,12 @@
         "content": [
             "gs1_duplicate_reads.tsv.gz:md5,8c258338541e764fefb1426e289625b4",
             "gs1_duplicate_stats.tsv.gz:md5,f5a68ad0bf55ebf5b388ad257b3ba565",
-            "gs1_validation_hits.tsv.gz:md5,954dcd2277943402b008e6c584571bf6"
+            "gs1_validation_hits.tsv.gz:md5,02ac29df59c1dae3ecbe0b9cec5cc4cf"
         ],
         "meta": {
             "nf-test": "0.9.2",
-            "nextflow": "24.10.5"
+            "nextflow": "25.04.4"
         },
-        "timestamp": "2025-06-12T17:49:41.4671417"
+        "timestamp": "2025-07-07T10:18:01.441684129"
     }
 }

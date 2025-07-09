@@ -1,5 +1,6 @@
 // Extract information from a paired Bowtie2 SAM file based on Genbank download metadata
 // Updated version with testing and gzipped output
+// This is a temporary process that will replace PROCESS_VIRAL_BOWTIE_2_SAM once the LCA implementation is complete
 process PROCESS_VIRAL_BOWTIE2_SAM_LCA {
     label "pysam_biopython"
     label "single"

@@ -28,38 +28,38 @@ import io
 
 SAM_HEADERS_PAIRED = [
     "seq_id",
-    "aligner_genome_id", "aligner_genome_id_all",
-    "aligner_taxid", "aligner_taxid_all",
-    "aligner_fragment_length",
-    "aligner_genome_id_fwd", "aligner_genome_id_rev",
-    "aligner_taxid_fwd", "aligner_taxid_rev",
-    "aligner_best_alignment_score", "aligner_best_alignment_score_rev",
-    "aligner_next_alignment_score", "aligner_next_alignment_score_rev",
-    "aligner_edit_distance", "aligner_edit_distance_rev",
-    "aligner_ref_start", "aligner_ref_start_rev",
-    "aligner_map_qual", "aligner_map_qual_rev",
-    "aligner_cigar", "aligner_cigar_rev",
+    "genome_id", "genome_id_all",
+    "taxid", "taxid_all",
+    "fragment_length",
+    "genome_id_fwd", "genome_id_rev",
+    "taxid_fwd", "taxid_rev",
+    "best_alignment_score", "best_alignment_score_rev",
+    "next_alignment_score", "next_alignment_score_rev",
+    "edit_distance", "edit_distance_rev",
+    "ref_start", "ref_start_rev",
+    "map_qual", "map_qual_rev",
+    "cigar", "cigar_rev",
     "query_len", "query_len_rev",
     "query_seq", "query_seq_rev",
-    "query_rc_by_aligner", "query_rc_by_aligner_rev",
+    "query_rc", "query_rc_rev",
     "query_qual", "query_qual_rev",
-    "aligner_length_normalized_score_fwd", 
-    "aligner_length_normalized_score_rev",
-    "aligner_length_normalized_score",
-    "aligner_pair_status",
-    "aligner_secondary_status"
+    "length_normalized_score_fwd", 
+    "length_normalized_score_rev",
+    "length_normalized_score",
+    "pair_status",
+    "classification"
 ]
 
 SAM_HEADERS_UNPAIRED = [
     "seq_id",
-    "aligner_genome_id", "aligner_taxid",
-    "aligner_best_alignment_score", "aligner_next_alignment_score",
-    "aligner_edit_distance", "aligner_ref_start",
-    "aligner_map_qual", "aligner_cigar",
+    "genome_id", "taxid",
+    "best_alignment_score", "next_alignment_score",
+    "edit_distance", "ref_start",
+    "map_qual", "cigar",
     "query_len", "query_seq",
-    "query_rc_by_aligner", "query_qual",
-    "aligner_length_normalized_score",
-    "aligner_secondary_status"
+    "query_rc", "query_qual",
+    "length_normalized_score",
+    "classification"
 ]
 
 #=======================================================================
@@ -212,7 +212,8 @@ def process_sam_flags(flag_sum: int|str) -> dict[str, bool]:
         dict[str, bool]: Dictionary of flag results.
     """
     flag_dict = {}
-    flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "aligner_secondary_status", 256)
+    flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_supplementary", 2048)
+    flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_secondary", 256)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_mate_2", 128)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "is_mate_1", 64)
     flag_sum, flag_dict = check_flag(flag_sum, flag_dict, "mate_aligned_reverse", 32)
@@ -316,11 +317,11 @@ def process_sam_alignment(sam_line: str,
     out["query_qual"] = fields_in[10]
     out.update(extract_optional_fields(fields_in[11:]))
     # Check if alignment is in reverse orientation, and reverse-complement if so
-    out["query_rc_by_aligner"] = False
+    out["query_rc"] = False
     if out["aligned_reverse"]:
         out["query_seq"] = str(Seq.Seq(out["query_seq"]).reverse_complement())
         out["query_qual"] = out["query_qual"][::-1]
-        out["query_rc_by_aligner"] = True
+        out["query_rc"] = True
     out["query_len"] = len(out["query_seq"])
     return(out)
 
@@ -363,58 +364,61 @@ def get_line_from_single(read_dict: dict[str, str|int|bool],
     adj_score = float(read_dict["alignment_score"]) / math.log(float(read_dict["query_len"]))
     # Prepare dictionary for output
     out_dict = {
-        "seq_id": read_dict["seq_id"],
-        "aligner_genome_id": read_dict["genome_id"],
-        "aligner_taxid": read_dict["taxid"],
-        "aligner_length_normalized_score": adj_score,
-        "aligner_pair_status": read_dict["pair_status"],
-        "aligner_secondary_status": read_dict["aligner_secondary_status"]
+    "seq_id": read_dict["seq_id"],
+    "genome_id": read_dict["genome_id"],
+    "taxid": read_dict["taxid"],
+    "length_normalized_score": adj_score,
+    "pair_status": read_dict["pair_status"],
+    "classification": (
+        "supplementary"  if read_dict["is_supplementary"]
+        else "secondary" if read_dict["is_secondary"]
+        else "primary")
     }
     if paired:
         # Additional fields for paired SAM
-        out_dict["aligner_genome_id_all"] = read_dict["genome_id"]
-        out_dict["aligner_taxid_all"] = read_dict["taxid"]
-        out_dict["aligner_pair_status"] = read_dict["pair_status"]
-        out_dict["aligner_fragment_length"] = "NA"
+        out_dict["genome_id_all"] = read_dict["genome_id"]
+        out_dict["taxid_all"] = read_dict["taxid"]
+        out_dict["pair_status"] = read_dict["pair_status"]
+        out_dict["fragment_length"] = "NA"
         # Additional fields based on forward/reverse status
         if read_dict["is_mate_1"]:
-            out_dict["aligner_genome_id_fwd"], out_dict["aligner_genome_id_rev"] = read_dict["genome_id"], "NA"
-            out_dict["aligner_taxid_fwd"], out_dict["aligner_taxid_rev"] = read_dict["taxid"], "NA"
-            out_dict["aligner_best_alignment_score"], out_dict["aligner_best_alignment_score_rev"] = read_dict["alignment_score"], "NA"
-            out_dict["aligner_next_alignment_score"], out_dict["aligner_next_alignment_score_rev"] = read_dict["next_best_alignment"], "NA"
-            out_dict["aligner_edit_distance"], out_dict["aligner_edit_distance_rev"] = read_dict["edit_distance"], "NA"
-            out_dict["aligner_ref_start"], out_dict["aligner_ref_start_rev"] = read_dict["ref_start"], "NA"
-            out_dict["aligner_map_qual"], out_dict["aligner_map_qual_rev"] = read_dict["map_qual"], "NA"
-            out_dict["aligner_cigar"], out_dict["aligner_cigar_rev"] = read_dict["cigar"], "NA"
+            out_dict["genome_id_fwd"], out_dict["genome_id_rev"] = read_dict["genome_id"], "NA"
+            out_dict["taxid_fwd"], out_dict["taxid_rev"] = read_dict["taxid"], "NA"
+            out_dict["best_alignment_score"], out_dict["best_alignment_score_rev"] = read_dict["alignment_score"], "NA"
+            out_dict["next_alignment_score"], out_dict["next_alignment_score_rev"] = read_dict["next_best_alignment"], "NA"
+            out_dict["edit_distance"], out_dict["edit_distance_rev"] = read_dict["edit_distance"], "NA"
+            out_dict["ref_start"], out_dict["ref_start_rev"] = read_dict["ref_start"], "NA"
+            out_dict["map_qual"], out_dict["map_qual_rev"] = read_dict["map_qual"], "NA"
+            out_dict["cigar"], out_dict["cigar_rev"] = read_dict["cigar"], "NA"
             out_dict["query_len"], out_dict["query_len_rev"] = read_dict["query_len"], "NA"
             out_dict["query_seq"], out_dict["query_seq_rev"] = read_dict["query_seq"], "NA"
-            out_dict["query_rc_by_aligner"], out_dict["query_rc_by_aligner_rev"] = read_dict["query_rc_by_aligner"], "NA"
+            out_dict["query_rc"], out_dict["query_rc_rev"] = read_dict["query_rc"], "NA"
             out_dict["query_qual"], out_dict["query_qual_rev"] = read_dict["query_qual"], "NA"
-            out_dict["aligner_length_normalized_score_fwd"], out_dict["aligner_length_normalized_score_rev"] = adj_score, "NA"
+            out_dict["length_normalized_score_fwd"], out_dict["length_normalized_score_rev"] = adj_score, "NA"
         else: # Is mate 2
-            out_dict["aligner_genome_id_fwd"], out_dict["aligner_genome_id_rev"] = "NA", read_dict["genome_id"]
-            out_dict["aligner_taxid_fwd"], out_dict["aligner_taxid_rev"] = "NA", read_dict["taxid"]
-            out_dict["aligner_best_alignment_score"], out_dict["aligner_best_alignment_score_rev"] = "NA", read_dict["alignment_score"]
-            out_dict["aligner_next_alignment_score"], out_dict["aligner_next_alignment_score_rev"] = "NA", read_dict["next_best_alignment"]
-            out_dict["aligner_edit_distance"], out_dict["aligner_edit_distance_rev"] = "NA", read_dict["edit_distance"]
-            out_dict["aligner_ref_start"], out_dict["aligner_ref_start_rev"] = "NA", read_dict["ref_start"]
-            out_dict["aligner_map_qual"], out_dict["aligner_map_qual_rev"] = "NA", read_dict["map_qual"]
-            out_dict["aligner_cigar"], out_dict["aligner_cigar_rev"] = "NA", read_dict["cigar"]
+            out_dict["genome_id_fwd"], out_dict["genome_id_rev"] = "NA", read_dict["genome_id"]
+            out_dict["taxid_fwd"], out_dict["taxid_rev"] = "NA", read_dict["taxid"]
+            out_dict["best_alignment_score"], out_dict["best_alignment_score_rev"] = "NA", read_dict["alignment_score"]
+            out_dict["next_alignment_score"], out_dict["next_alignment_score_rev"] = "NA", read_dict["next_best_alignment"]
+            out_dict["edit_distance"], out_dict["edit_distance_rev"] = "NA", read_dict["edit_distance"]
+            out_dict["ref_start"], out_dict["ref_start_rev"] = "NA", read_dict["ref_start"]
+            out_dict["map_qual"], out_dict["map_qual_rev"] = "NA", read_dict["map_qual"]
+            out_dict["cigar"], out_dict["cigar_rev"] = "NA", read_dict["cigar"]
             out_dict["query_len"], out_dict["query_len_rev"] = "NA", read_dict["query_len"]
             out_dict["query_seq"], out_dict["query_seq_rev"] = "NA", read_dict["query_seq"]
-            out_dict["query_rc_by_aligner"], out_dict["query_rc_by_aligner_rev"] = "NA", read_dict["query_rc_by_aligner"]
+            out_dict["query_rc"], out_dict["query_rc_rev"] = "NA", read_dict["query_rc"]
             out_dict["query_qual"], out_dict["query_qual_rev"] = "NA", read_dict["query_qual"]
-            out_dict["aligner_length_normalized_score_fwd"], out_dict["aligner_length_normalized_score_rev"] = "NA", adj_score
+            out_dict["length_normalized_score_fwd"], out_dict["length_normalized_score_rev"] = "NA", adj_score
     else: # Is unpaired
-        out_dict["aligner_best_alignment_score"] = read_dict["alignment_score"]
-        out_dict["aligner_next_alignment_score"] = read_dict["next_best_alignment"]
-        out_dict["aligner_edit_distance"] = read_dict["edit_distance"]
-        out_dict["aligner_ref_start"] = read_dict["ref_start"]
-        out_dict["aligner_map_qual"] = read_dict["map_qual"]
-        out_dict["aligner_cigar"] = read_dict["cigar"]
+        out_dict["best_alignment_score"] = read_dict["alignment_score"]
+        out_dict["next_alignment_score"] = read_dict["next_best_alignment"]
+        out_dict["edit_distance"] = read_dict["edit_distance"]
+        out_dict["ref_start"] = read_dict["ref_start"]
+        out_dict["map_qual"] = read_dict["map_qual"]
+        out_dict["cigar"] = read_dict["cigar"]
         out_dict["query_len"] = read_dict["query_len"]
         out_dict["query_seq"] = read_dict["query_seq"]
-        out_dict["query_rc_by_aligner"] = read_dict["query_rc_by_aligner"]
+        out_dict["query_rc"] = read_dict["query_rc"]
         out_dict["query_qual"] = read_dict["query_qual"]
     return get_line(out_dict, paired)
 
@@ -472,40 +476,40 @@ def get_line_from_pair(dict_1: dict[str, str|int|bool],
     # Prepare dictionary for output
     out_dict = {
         "seq_id": fwd_dict["seq_id"],
-        "aligner_genome_id": genome_id_best,
-        "aligner_genome_id_all": genome_id_all,
-        "aligner_taxid": taxid_best,
-        "aligner_taxid_all": taxid_all,
-        "aligner_fragment_length": fragment_length,
-        "aligner_genome_id_fwd": fwd_dict["genome_id"],
-        "aligner_genome_id_rev": rev_dict["genome_id"],
-        "aligner_taxid_fwd": fwd_dict["taxid"],
-        "aligner_taxid_rev": rev_dict["taxid"],
-        "aligner_best_alignment_score": fwd_dict["alignment_score"],
-        "aligner_best_alignment_score_rev": rev_dict["alignment_score"],
-        "aligner_next_alignment_score": fwd_dict["next_best_alignment"],
-        "aligner_next_alignment_score_rev": rev_dict["next_best_alignment"],
-        "aligner_edit_distance": fwd_dict["edit_distance"],
-        "aligner_edit_distance_rev": rev_dict["edit_distance"],
-        "aligner_ref_start": fwd_dict["ref_start"],
-        "aligner_ref_start_rev": rev_dict["ref_start"],
-        "aligner_map_qual": fwd_dict["map_qual"],
-        "aligner_map_qual_rev": rev_dict["map_qual"],
-        "aligner_cigar": fwd_dict["cigar"],
-        "aligner_cigar_rev": rev_dict["cigar"],
+        "genome_id": genome_id_best,
+        "genome_id_all": genome_id_all,
+        "taxid": taxid_best,
+        "taxid_all": taxid_all,
+        "fragment_length": fragment_length,
+        "genome_id_fwd": fwd_dict["genome_id"],
+        "genome_id_rev": rev_dict["genome_id"],
+        "taxid_fwd": fwd_dict["taxid"],
+        "taxid_rev": rev_dict["taxid"],
+        "best_alignment_score": fwd_dict["alignment_score"],
+        "best_alignment_score_rev": rev_dict["alignment_score"],
+        "next_alignment_score": fwd_dict["next_best_alignment"],
+        "next_alignment_score_rev": rev_dict["next_best_alignment"],
+        "edit_distance": fwd_dict["edit_distance"],
+        "edit_distance_rev": rev_dict["edit_distance"],
+        "ref_start": fwd_dict["ref_start"],
+        "ref_start_rev": rev_dict["ref_start"],
+        "map_qual": fwd_dict["map_qual"],
+        "map_qual_rev": rev_dict["map_qual"],
+        "cigar": fwd_dict["cigar"],
+        "cigar_rev": rev_dict["cigar"],
         "query_len": fwd_dict["query_len"],
         "query_len_rev": rev_dict["query_len"],
         "query_seq": fwd_dict["query_seq"],
         "query_seq_rev": rev_dict["query_seq"],
-        "query_rc_by_aligner": fwd_dict["query_rc_by_aligner"],
-        "query_rc_by_aligner_rev": rev_dict["query_rc_by_aligner"],
+        "query_rc": fwd_dict["query_rc"],
+        "query_rc_rev": rev_dict["query_rc"],
         "query_qual": fwd_dict["query_qual"],
         "query_qual_rev": rev_dict["query_qual"],
-        "aligner_length_normalized_score_fwd": adj_score_fwd,
-        "aligner_length_normalized_score_rev": adj_score_rev,
-        "aligner_length_normalized_score": adj_score_max,
-        "aligner_pair_status": fwd_dict["pair_status"],
-        "aligner_secondary_status": fwd_dict["aligner_secondary_status"],
+        "length_normalized_score_fwd": adj_score_fwd,
+        "length_normalized_score_rev": adj_score_rev,
+        "length_normalized_score": adj_score_max,
+        "pair_status": fwd_dict["pair_status"],
+        "classification": "secondary" if fwd_dict["is_secondary"] else "primary",
         }
     return get_line(out_dict, True)
 
