@@ -1,11 +1,11 @@
 nextflow_workflow {
 
-    name "Test Workflow PROCESS_LCA_BOWTIE_COLUMNS"
-    script "subworkflows/local/processLcaBowtieColumns/main.nf"
-    workflow "PROCESS_LCA_BOWTIE_COLUMNS"
+    name "Test Workflow PROCESS_LCA_ALIGNER_OUTPUT"
+    script "subworkflows/local/processLcaAlignerOutput/main.nf"
+    workflow "PROCESS_LCA_ALIGNER_OUTPUT"
     config "tests/configs/run.config"
     tag "subworkflow"
-    tag "process_lca_bowtie_columns"
+    tag "process_lca_aligner_output"
 
     test("Should run without failures") {
         tag "expect_success"
@@ -82,17 +82,13 @@ nextflow_workflow {
         }
         when {
             params {
-                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
-                col_keep_add_prefix = ["genome_id_all"]
                 column_prefix = "prim_align_"
             }
             workflow {
                 """
                 input[0] = LCA_TSV.out.output
                 input[1] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
-                input[2] = params.col_keep_no_prefix
-                input[3] = params.col_keep_add_prefix
-                input[4] = params.column_prefix
+                input[2] = params.column_prefix
                 """
             }
         }
@@ -102,41 +98,54 @@ nextflow_workflow {
 
           // Parse input files using nf-test CSV helpers
           def lcaData = path(workflow.out.test_lca[0][1]).csv(sep: "\t", decompress: true)
-          def bowtieData = path(workflow.out.test_bowtie[0][1]).csv(sep: "\t", decompress: true)
+          def alignerData = path(workflow.out.test_aligner[0][1]).csv(sep: "\t", decompress: true)
           def outputData = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
 
           // Basic structure validation
           assert outputData.columnCount > 0
           assert outputData.rowCount > 0
 
+          // Get expected columns from workflow outputs
+          // The workflow emits these as single values containing the lists
+          def colsNoPrefix = workflow.out.test_col_no_prefix[0]
+          def colsAddPrefix = workflow.out.test_col_add_prefix[0]
+          
           // Validate expected columns exist
-          assert "seq_id" in outputData.columns.keySet()
-          assert "aligner_taxid_lca" in outputData.columns.keySet()
-          assert "prim_align_genome_id_all" in outputData.columns.keySet()
-          assert outputData.columnCount == 3
+          // Columns without prefix
+          for (col in colsNoPrefix) {
+              assert col in outputData.columns.keySet()
+          }
+          
+          // Columns with prefix
+          for (col in colsAddPrefix) {
+              assert "${params.column_prefix}${col}".toString() in outputData.columns.keySet()
+          }
+          
+          // Total column count should match
+          assert outputData.columnCount == colsNoPrefix.size() + colsAddPrefix.size()
 
           // Validate join integrity - all output seq_ids should exist in both inputs
           def outputSeqIds = outputData.columns["seq_id"].toSet()
           def lcaSeqIds = lcaData.columns["seq_id"].toSet()
-          def bowtieSeqIds = bowtieData.columns["seq_id"].toSet()
+          def alignerSeqIds = alignerData.columns["seq_id"].toSet()
 
           for (seqId in outputSeqIds) {
               assert seqId in lcaSeqIds
-              assert seqId in bowtieSeqIds
+              assert seqId in alignerSeqIds
           }
 
           // Validate filtering - output should only contain primary alignments
           // Need to iterate through rows by index to filter
-          def primaryBowtieSeqIds = []
-          for (int i = 0; i < bowtieData.rowCount; i++) {
-              if (bowtieData.columns["classification"][i] == "primary") {
-                  primaryBowtieSeqIds.add(bowtieData.columns["seq_id"][i])
+          def primaryAlignerSeqIds = []
+          for (int i = 0; i < alignerData.rowCount; i++) {
+              if (alignerData.columns["classification"][i] == "primary") {
+                  primaryAlignerSeqIds.add(alignerData.columns["seq_id"][i])
               }
           }
-          def primaryBowtieSeqIdsSet = primaryBowtieSeqIds.toSet()
+          def primaryAlignerSeqIdsSet = primaryAlignerSeqIds.toSet()
 
           // Output seq_ids should be intersection of primary alignments and LCA data
-          def expectedSeqIds = primaryBowtieSeqIdsSet.intersect(lcaSeqIds)
+          def expectedSeqIds = primaryAlignerSeqIdsSet.intersect(lcaSeqIds)
           assert outputSeqIds == expectedSeqIds
 
           // Validate data integrity - values should match between input and output
@@ -145,13 +154,22 @@ nextflow_workflow {
 
               // Find corresponding rows in input files by index
               def lcaIndex = lcaData.columns["seq_id"].findIndexOf { it == seqId }
-              def bowtieIndex = bowtieData.columns["seq_id"].findIndexOf { it == seqId }
+              def alignerIndex = alignerData.columns["seq_id"].findIndexOf { it == seqId }
 
-              // Check LCA data preserved
-              assert outputData.columns["aligner_taxid_lca"][i] == lcaData.columns["aligner_taxid_lca"][lcaIndex]
+              // Check that columns without prefix preserve their values from LCA
+              for (col in colsNoPrefix) {
+                  if (col in lcaData.columns.keySet()) {
+                      assert outputData.columns[col][i] == lcaData.columns[col][lcaIndex]
+                  }
+              }
 
-              // Check Bowtie data preserved with renamed column
-              assert outputData.columns["prim_align_genome_id_all"][i] == bowtieData.columns["genome_id_all"][bowtieIndex]
+              // Check that columns with prefix preserve their values from Aligner
+              for (col in colsAddPrefix) {
+                  if (col in alignerData.columns.keySet()) {
+                      def prefixedCol = "${params.column_prefix}${col}".toString()
+                      assert outputData.columns[prefixedCol][i] == alignerData.columns[col][alignerIndex]
+                  }
+              }
           }
         }
     }
@@ -201,17 +219,13 @@ nextflow_workflow {
 
         when {
             params {
-                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
-                col_keep_add_prefix = ["genome_id_all"]
                 column_prefix = "prim_align_"
             }
             workflow {
                 """
                 input[0] = GZIP_LCA_EMPTY.out
                 input[1] = GZIP_BOWTIE_EMPTY.out
-                input[2] = params.col_keep_no_prefix
-                input[3] = params.col_keep_add_prefix
-                input[4] = params.column_prefix
+                input[2] = params.column_prefix
                 """
             }
         }
@@ -227,6 +241,74 @@ nextflow_workflow {
             // Check that the file is empty (no lines when decompressed)
             def outputLines = outputFile.linesGzip.size()
             assert outputLines == 0
+        }
+    }
+    test("Should handle file with header only") {
+        tag "empty_input"
+        tag "header_only"
+        tag "expect_success"
+        
+        setup {
+            run("GZIP_FILE", alias: "GZIP_BOWTIE2_SAM_PROCESSED_HEADER_ONLY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/process-lca-aligner/header-only-bowtie2-sam-processed.tsv"))
+                    '''
+                }
+            }
+            run("GZIP_FILE", alias: "GZIP_LCA_HEADER_ONLY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/process-lca-aligner/header-only-lca.tsv"))
+                    '''
+                }
+            }
+        }
+
+        when {
+            params {
+                column_prefix = "prim_align_"
+            }
+            workflow {
+                """
+                input[0] = GZIP_LCA_HEADER_ONLY.out
+                input[1] = GZIP_BOWTIE2_SAM_PROCESSED_HEADER_ONLY.out
+                input[2] = params.column_prefix
+                """
+            }
+        }
+
+        then {
+            // Should run without failures
+            assert workflow.success
+            
+            // Output file should exist but be empty
+            def outputFile = path(workflow.out.output[0][1])
+            assert outputFile.exists()
+            
+            // Check that the file is empty (no lines when decompressed)
+            def outputLines = outputFile.linesGzip
+            assert outputLines.size() == 1
+
+            // Get expected columns from workflow outputs
+            // The workflow emits these as single values containing the lists
+            def colsNoPrefix = workflow.out.test_col_no_prefix[0]
+            def colsAddPrefix = workflow.out.test_col_add_prefix[0]
+            
+            // Validate expected columns exist
+            // Columns without prefix
+            for (col in colsNoPrefix) {
+                outputLines.contains(col)
+            }
+            
+            // Columns with prefix
+            for (col in colsAddPrefix) {
+                outputLines.contains("${params.column_prefix}${col}".toString())
+            }
         }
     }
 }

@@ -20,7 +20,7 @@ include { LCA_TSV } from "../../../modules/local/lcaTsv"
 include { SORT_FASTQ } from "../../../modules/local/sortFastq"
 include { SORT_FILE } from "../../../modules/local/sortFile"
 include { FILTER_VIRAL_SAM } from "../../../modules/local/filterViralSam"
-include { PROCESS_LCA_BOWTIE_COLUMNS } from "../processLcaBowtieColumns"
+include { PROCESS_LCA_ALIGNER_OUTPUT } from "../../../subworkflows/local/processLcaAlignerOutput/"
 
 /***********
 | WORKFLOW |
@@ -47,20 +47,7 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
         nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
         names_db = "${ref_dir}/results/taxonomy-names.dmp"
-        // Define columns without duplication
-        col_keep_no_prefix = ["seq_id", "aligner_taxid_lca", "aligner_taxid_top", 
-                              "aligner_length_normalized_score_mean", "aligner_taxid_lca_natural",
-                              "aligner_n_assignments_natural", "aligner_length_normalized_score_mean_natural",
-                              "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
-                              "aligner_length_normalized_score_mean_artificial"]
-        col_keep_add_prefix = ["genome_id_all", "taxid_all", "fragment_length", 
-                               "best_alignment_score", "best_alignment_score_rev",
-                               "edit_distance", "edit_distance_rev", "ref_start", 
-                               "ref_start_rev", "query_len", "query_len_rev",
-                               "query_seq", "query_seq_rev", "query_rc", 
-                               "query_rc_rev", "query_qual", "query_qual_rev", 
-                               "pair_status"]
-        // 1. Run initial screen against viral genomes with BBDuk
+         // 1. Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // 2. Carry out stringent adapter removal with FASTP and Cutadapt
         fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
@@ -88,11 +75,9 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
             "seq_id", "taxid", "length_normalized_score", taxid_artificial,
             "aligner")
         // 9. Process LCA and Bowtie2 columns
-        processed_ch = PROCESS_LCA_BOWTIE_COLUMNS(
+        processed_ch = PROCESS_LCA_ALIGNER_OUTPUT(
             lca_ch.output,
             bowtie2_tsv_ch.output,
-            col_keep_no_prefix,
-            col_keep_add_prefix,
             "prim_align_"
         )
         // 10. Add sample to column
