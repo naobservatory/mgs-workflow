@@ -278,7 +278,7 @@ nextflow_workflow {
         when {
             params {
                 col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
-                col_keep_add_prefix = ["genome_id"]
+                col_keep_add_prefix = ["genome_id_all"]
                 column_prefix = "prim_align_"
             }
             workflow {

@@ -43,10 +43,14 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record
 
     reference_genome_name = read.reference_name
     out["genome_id"] = reference_genome_name
+    # Added to keep consistent with short read pipeline
+    out["genome_id_all"] = out["genome_id"]
     reference_taxid = extract_viral_taxid(
         reference_genome_name, genbank_metadata, viral_taxids
     )
     out["taxid"] = reference_taxid
+    # Added to keep consistent with short read pipeline
+    out["taxid_all"] = out["taxid"]
 
     # Adding original read sequence and quality
     if read.is_reverse:
@@ -105,7 +109,9 @@ def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_d
         header = (
             "seq_id\t"
             "genome_id\t"
+            "genome_id_all\t"
             "taxid\t"
+            "taxid_all\t"
             "map_qual\t"
             "ref_start\t"
             "cigar\t"

@@ -44,7 +44,7 @@ workflow EXTRACT_VIRAL_READS_ONT_LCA {
                               "aligner_n_assignments_natural", "aligner_length_normalized_score_mean_natural",
                               "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
                               "aligner_length_normalized_score_mean_artificial"]
-        col_keep_add_prefix = ["genome_id", "taxid", "best_alignment_score", "edit_distance",  
+        col_keep_add_prefix = ["genome_id_all", "taxid_all", "best_alignment_score", "edit_distance",  
                                "ref_start", "query_len", "query_seq",  
                                "query_rc", "query_qual"]
         // Filter reads by length and quality scores
