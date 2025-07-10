@@ -12,8 +12,6 @@ include { BOWTIE2 as BOWTIE2_HUMAN } from "../../../modules/local/bowtie2"
 include { BOWTIE2 as BOWTIE2_OTHER } from "../../../modules/local/bowtie2"
 include { PROCESS_VIRAL_BOWTIE2_SAM_LCA as PROCESS_VIRAL_BOWTIE2_SAM } from "../../../modules/local/processViralBowtie2SamLca"
 include { SORT_TSV as SORT_BOWTIE_VIRAL } from "../../../modules/local/sortTsv"
-include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
-include { CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
 include { CONCATENATE_FILES } from "../../../modules/local/concatenateFiles"
 include { EXTRACT_VIRAL_HITS_TO_FASTQ } from "../../../modules/local/extractViralHitsToFastq"
 include { LCA_TSV } from "../../../modules/local/lcaTsv"
@@ -83,15 +81,14 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         bowtie2_filtered_ch = FILTER_VIRAL_SAM(bowtie2_ch_combined, aln_score_threshold)
         // 7. Convert SAM to TSV
         bowtie2_tsv_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_filtered_ch.sam, genome_meta_path, virus_db_path, true)
-        bowtie2_labeled_ch = ADD_SAMPLE_COLUMN(bowtie2_tsv_ch.output, "sample", "viral_bowtie2")
         // 8. Run LCA
-        lca_ch = LCA_TSV(bowtie2_labeled_ch.output, nodes_db, names_db,
+        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db,
             "seq_id", "taxid", "length_normalized_score", taxid_artificial,
             "aligner")
         // 9. Process LCA and Bowtie2 columns
         processed_ch = PROCESS_LCA_ALIGNER_OUTPUT(
             lca_ch.output,
-            bowtie2_labeled_ch.output,
+            bowtie2_tsv_ch.output,
             col_keep_no_prefix,
             col_keep_add_prefix,
             "prim_align_"

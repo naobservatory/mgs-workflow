@@ -5,8 +5,6 @@
 include { MINIMAP2 as MINIMAP2_VIRUS } from "../../../modules/local/minimap2"
 include { MINIMAP2 as MINIMAP2_HUMAN } from "../../../modules/local/minimap2"
 include { MINIMAP2_NON_STREAMED as MINIMAP2_CONTAM } from "../../../modules/local/minimap2"
-include { CONCATENATE_TSVS } from "../../../modules/local/concatenateTsvs"
-include { ADD_SAMPLE_COLUMN } from "../../../modules/local/addSampleColumn"
 include { FILTLONG } from "../../../modules/local/filtlong"
 include { MASK_FASTQ_READS } from "../../../modules/local/maskRead"
 include { PROCESS_VIRAL_MINIMAP2_SAM_LCA as PROCESS_VIRAL_MINIMAP2_SAM } from "../../../modules/local/processViralMinimap2SamLca"
@@ -65,14 +63,13 @@ workflow EXTRACT_VIRAL_READS_ONT_LCA {
         // Generate TSV of viral hits, and sort
         processed_minimap2_ch = PROCESS_VIRAL_MINIMAP2_SAM(sam_fastq_ch, genome_meta_path, virus_db_path)
         processed_minimap2_sorted_ch = SORT_MINIMAP2_VIRAL(processed_minimap2_ch.output, "seq_id")
-        minimap2_labeled_ch = ADD_SAMPLE_COLUMN(processed_minimap2_sorted_ch.sorted, "sample", "viral_minimap2") 
         // Run LCA on viral hits TSV
-        lca_ch = LCA_TSV(minimap2_labeled_ch.output, nodes_db, names_db, "seq_id", 
+        lca_ch = LCA_TSV(processed_minimap2_sorted_ch.sorted, nodes_db, names_db, "seq_id", 
             "taxid", "length_normalized_score", taxid_artificial, "aligner")
         // Process LCA and Minimap2 columns
         processed_ch = PROCESS_LCA_ALIGNER_OUTPUT(
             lca_ch.output,
-            minimap2_labeled_ch.output,
+            processed_minimap2_sorted_ch.sorted,
             col_keep_no_prefix,
             col_keep_add_prefix,
             "prim_align_"

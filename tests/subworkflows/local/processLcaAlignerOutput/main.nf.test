@@ -143,21 +143,11 @@ nextflow_workflow {
                     '''
                 }
             }
-            run("ADD_SAMPLE_COLUMN"){
-                script "modules/local/addSampleColumn/main.nf"
-                process {
-                    '''
-                    input[0] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
-                    input[1] = "sample"
-                    input[2] = "viral_bowtie2"
-                    '''
-                }
-            }
             run("LCA_TSV") {
                 script "modules/local/lcaTsv/main.nf"
                 process {
                     '''
-                    input[0] = ADD_SAMPLE_COLUMN.out.output
+                    input[0] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
                     input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
                     input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
                     input[3] = "seq_id"
@@ -179,7 +169,7 @@ nextflow_workflow {
             workflow {
                 """
                 input[0] = LCA_TSV.out.output
-                input[1] = ADD_SAMPLE_COLUMN.out.output
+                input[1] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
                 input[2] = params.col_keep_no_prefix
                 input[3] = params.col_keep_add_prefix
                 input[4] = params.column_prefix
@@ -266,21 +256,11 @@ nextflow_workflow {
                 }
 
             }
-            run("ADD_SAMPLE_COLUMN"){
-                script "modules/local/addSampleColumn/main.nf"
-                process {
-                    '''
-                    input[0] = SORT_TSV.out.sorted
-                    input[1] = "sample"
-                    input[2] = "viral_minimap2"
-                    '''
-                }
-            }
             run("LCA_TSV") {
                 script "modules/local/lcaTsv/main.nf"
                 process {
                     '''
-                    input[0] = ADD_SAMPLE_COLUMN.out.output
+                    input[0] = SORT_TSV.out.sorted
                     input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
                     input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
                     input[3] = "seq_id"
@@ -302,7 +282,7 @@ nextflow_workflow {
             workflow {
                 """
                 input[0] = LCA_TSV.out.output
-                input[1] = ADD_SAMPLE_COLUMN.out.output
+                input[1] = SORT_TSV.out.sorted
                 input[2] = params.col_keep_no_prefix
                 input[3] = params.col_keep_add_prefix
                 input[4] = params.column_prefix
