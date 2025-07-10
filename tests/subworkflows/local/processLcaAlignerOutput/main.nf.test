@@ -82,13 +82,17 @@ nextflow_workflow {
         }
         when {
             params {
+                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
+                col_keep_add_prefix = ["genome_id_all"]
                 column_prefix = "prim_align_"
             }
             workflow {
                 """
                 input[0] = LCA_TSV.out.output
                 input[1] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
-                input[2] = params.column_prefix
+                input[2] = params.col_keep_no_prefix
+                input[3] = params.col_keep_add_prefix
+                input[4] = params.column_prefix
                 """
             }
         }
@@ -107,8 +111,8 @@ nextflow_workflow {
 
           // Get expected columns from workflow outputs
           // The workflow emits these as single values containing the lists
-          def colsNoPrefix = workflow.out.test_col_no_prefix[0]
-          def colsAddPrefix = workflow.out.test_col_add_prefix[0]
+          def colsNoPrefix = params.col_keep_no_prefix
+          def colsAddPrefix = params.col_keep_add_prefix
           
           // Validate expected columns exist
           // Columns without prefix
@@ -219,13 +223,17 @@ nextflow_workflow {
 
         when {
             params {
+                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
+                col_keep_add_prefix = ["genome_id_all"]
                 column_prefix = "prim_align_"
             }
             workflow {
                 """
                 input[0] = GZIP_LCA_EMPTY.out
                 input[1] = GZIP_BOWTIE_EMPTY.out
-                input[2] = params.column_prefix
+                input[2] = params.col_keep_no_prefix
+                input[3] = params.col_keep_add_prefix
+                input[4] = params.column_prefix
                 """
             }
         }
@@ -271,14 +279,28 @@ nextflow_workflow {
 
         when {
             params {
+                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca", "aligner_taxid_top", 
+                                      "aligner_length_normalized_score_mean", "aligner_taxid_lca_natural",
+                                      "aligner_n_assignments_natural", "aligner_length_normalized_score_mean_natural",
+                                      "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
+                                      "aligner_length_normalized_score_mean_artificial"]
+                col_keep_add_prefix = ["genome_id_all", "taxid_all", "fragment_length", 
+                                       "best_alignment_score", "best_alignment_score_rev",
+                                       "edit_distance", "edit_distance_rev", "ref_start", 
+                                       "ref_start_rev", "query_len", "query_len_rev",
+                                       "query_seq", "query_seq_rev", "query_rc", 
+                                       "query_rc_rev", "query_qual", "query_qual_rev", 
+                                       "pair_status"]
                 column_prefix = "prim_align_"
             }
             workflow {
                 """
                 input[0] = GZIP_LCA_HEADER_ONLY.out
                 input[1] = GZIP_BOWTIE2_SAM_PROCESSED_HEADER_ONLY.out
-                input[2] = params.column_prefix
-                """
+                input[2] = params.col_keep_no_prefix
+                input[3] = params.col_keep_add_prefix
+                input[4] = params.column_prefix
+                 """
             }
         }
 
@@ -296,8 +318,8 @@ nextflow_workflow {
 
             // Get expected columns from workflow outputs
             // The workflow emits these as single values containing the lists
-            def colsNoPrefix = workflow.out.test_col_no_prefix[0]
-            def colsAddPrefix = workflow.out.test_col_add_prefix[0]
+            def colsNoPrefix = params.col_keep_no_prefix
+            def colsAddPrefix = params.col_keep_add_prefix
             
             // Validate expected columns exist
             // Columns without prefix
