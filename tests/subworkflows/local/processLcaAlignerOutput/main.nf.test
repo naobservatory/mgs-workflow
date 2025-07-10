@@ -162,7 +162,7 @@ nextflow_workflow {
         }
         when {
             params {
-                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
+                col_keep_no_prefix = ["seq_id", "sample", "aligner_taxid_lca"]
                 col_keep_add_prefix = ["genome_id_all"]
                 column_prefix = "prim_align_"
             }
@@ -180,9 +180,9 @@ nextflow_workflow {
         then {
             assert workflow.success
             
-            def lcaData = path(workflow.out.test_lca[0][1]).csv(sep: "\t", decompress: true)
-            def alignerData = path(workflow.out.test_aligner[0][1]).csv(sep: "\t", decompress: true)
-            def outputData = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
+            def lcaData = path(workflow.out.lca_tsv[0]).csv(sep: "\t", decompress: true)
+            def alignerData = path(workflow.out.aligner_tsv[0]).csv(sep: "\t", decompress: true)
+            def outputData = path(workflow.out.viral_hits_tsv[0]).csv(sep: "\t", decompress: true)
             
             def colsNoPrefix = params.col_keep_no_prefix
             def colsAddPrefix = params.col_keep_add_prefix
@@ -275,7 +275,7 @@ nextflow_workflow {
         }
         when {
             params {
-                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
+                col_keep_no_prefix = ["seq_id", "sample", "aligner_taxid_lca"]
                 col_keep_add_prefix = ["genome_id_all"]
                 column_prefix = "prim_align_"
             }
@@ -293,9 +293,9 @@ nextflow_workflow {
         then {
             assert workflow.success
             
-            def lcaData = path(workflow.out.test_lca[0][1]).csv(sep: "\t", decompress: true)
-            def alignerData = path(workflow.out.test_aligner[0][1]).csv(sep: "\t", decompress: true)
-            def outputData = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
+            def lcaData = path(workflow.out.lca_tsv[0]).csv(sep: "\t", decompress: true)
+            def alignerData = path(workflow.out.aligner_tsv[0]).csv(sep: "\t", decompress: true)
+            def outputData = path(workflow.out.viral_hits_tsv[0]).csv(sep: "\t", decompress: true)
             
             def colsNoPrefix = params.col_keep_no_prefix
             def colsAddPrefix = params.col_keep_add_prefix
@@ -379,7 +379,7 @@ nextflow_workflow {
         then {
             assert workflow.success
             
-            def outputFile = path(workflow.out.output[0][1])
+            def outputFile = path(workflow.out.viral_hits_tsv[0])
             assert outputFile.exists()
             
             def outputLines = outputFile.linesGzip.size()
@@ -442,7 +442,7 @@ nextflow_workflow {
         then {
             assert workflow.success
             
-            def outputFile = path(workflow.out.output[0][1])
+            def outputFile = path(workflow.out.viral_hits_tsv[0])
             assert outputFile.exists()
             
             def outputLines = outputFile.linesGzip
