@@ -82,11 +82,21 @@ nextflow_workflow {
                     '''
                 }
             }
+            run("ADD_SAMPLE_COLUMN"){
+                script "modules/local/addSampleColumn/main.nf"
+                process {
+                    '''
+                    input[0] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
+                    input[1] = "sample"
+                    input[2] = "viral_bowtie2"
+                    '''
+                }
+            }
             run("LCA_TSV") {
                 script "modules/local/lcaTsv/main.nf"
                 process {
                     '''
-                    input[0] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
+                    input[0] = ADD_SAMPLE_COLUMN.out.output
                     input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
                     input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
                     input[3] = "seq_id"
@@ -101,14 +111,14 @@ nextflow_workflow {
         }
         when {
             params {
-                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
+                col_keep_no_prefix = ["seq_id", "sample", "aligner_taxid_lca"]
                 col_keep_add_prefix = ["genome_id_all"]
                 column_prefix = "prim_align_"
             }
             workflow {
                 """
                 input[0] = LCA_TSV.out.output
-                input[1] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
+                input[1] = ADD_SAMPLE_COLUMN.out.output
                 input[2] = params.col_keep_no_prefix
                 input[3] = params.col_keep_add_prefix
                 input[4] = params.column_prefix
@@ -259,11 +269,21 @@ nextflow_workflow {
                 }
 
             }
+            run("ADD_SAMPLE_COLUMN"){
+                script "modules/local/addSampleColumn/main.nf"
+                process {
+                    '''
+                    input[0] = SORT_TSV.out.sorted
+                    input[1] = "sample"
+                    input[2] = "viral_minimap2"
+                    '''
+                }
+            }
             run("LCA_TSV") {
                 script "modules/local/lcaTsv/main.nf"
                 process {
                     '''
-                    input[0] = SORT_TSV.out.sorted
+                    input[0] = ADD_SAMPLE_COLUMN.out.output
                     input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
                     input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
                     input[3] = "seq_id"
@@ -278,14 +298,14 @@ nextflow_workflow {
         }
         when {
             params {
-                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
+                col_keep_no_prefix = ["seq_id", "sample", "aligner_taxid_lca"]
                 col_keep_add_prefix = ["genome_id"]
                 column_prefix = "prim_align_"
             }
             workflow {
                 """
                 input[0] = LCA_TSV.out.output
-                input[1] = SORT_TSV.out.sorted
+                input[1] = ADD_SAMPLE_COLUMN.out.output
                 input[2] = params.col_keep_no_prefix
                 input[3] = params.col_keep_add_prefix
                 input[4] = params.column_prefix
@@ -298,9 +318,9 @@ nextflow_workflow {
           assert workflow.success
 
           // Parse input files using nf-test CSV helpers
-          def lcaData = path(workflow.out.lca_tsv[0][1]).csv(sep: "\t", decompress: true)
-          def alignerData = path(workflow.out.aligner_tsv[0][1]).csv(sep: "\t", decompress: true)
-          def outputData = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
+          def lcaData = path(workflow.out.lca_tsv[0]).csv(sep: "\t", decompress: true)
+          def alignerData = path(workflow.out.aligner_tsv[0]).csv(sep: "\t", decompress: true)
+          def outputData = path(workflow.out.viral_hits_tsv[0]).csv(sep: "\t", decompress: true)
 
           // Basic structure validation
           assert outputData.columnCount > 0
@@ -449,7 +469,7 @@ nextflow_workflow {
             assert workflow.success
             
             // Output file should exist but be empty
-            def outputFile = path(workflow.out.output[0][1])
+            def outputFile = path(workflow.out.viral_hits_tsv[0])
             assert outputFile.exists()
             
             // Check that the file is empty (no lines when decompressed)
@@ -515,7 +535,7 @@ nextflow_workflow {
             assert workflow.success
             
             // Output file should exist but be empty
-            def outputFile = path(workflow.out.output[0][1])
+            def outputFile = path(workflow.out.viral_hits_tsv[0])
             assert outputFile.exists()
             
             // Check that the file is empty (no lines when decompressed)
