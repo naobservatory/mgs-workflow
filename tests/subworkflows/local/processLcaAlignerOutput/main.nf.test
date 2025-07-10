@@ -117,12 +117,13 @@ nextflow_workflow {
         }
 
         then {
+          // Bowtie2
           assert workflow.success
 
           // Parse input files using nf-test CSV helpers
-          def lcaData = path(workflow.out.test_lca[0][1]).csv(sep: "\t", decompress: true)
-          def alignerData = path(workflow.out.test_aligner[0][1]).csv(sep: "\t", decompress: true)
-          def outputData = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
+          def lcaData = path(workflow.out.lca_tsv[0]).csv(sep: "\t", decompress: true)
+          def alignerData = path(workflow.out.aligner_tsv[0]).csv(sep: "\t", decompress: true)
+          def outputData = path(workflow.out.viral_hits_tsv[0]).csv(sep: "\t", decompress: true)
 
           // Basic structure validation
           assert outputData.columnCount > 0
@@ -293,11 +294,12 @@ nextflow_workflow {
         }
 
         then {
+          // Bowtie2
           assert workflow.success
 
           // Parse input files using nf-test CSV helpers
-          def lcaData = path(workflow.out.test_lca[0][1]).csv(sep: "\t", decompress: true)
-          def alignerData = path(workflow.out.test_aligner[0][1]).csv(sep: "\t", decompress: true)
+          def lcaData = path(workflow.out.lca_tsv[0][1]).csv(sep: "\t", decompress: true)
+          def alignerData = path(workflow.out.aligner_tsv[0][1]).csv(sep: "\t", decompress: true)
           def outputData = path(workflow.out.output[0][1]).csv(sep: "\t", decompress: true)
 
           // Basic structure validation

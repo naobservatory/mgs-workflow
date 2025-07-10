@@ -48,7 +48,7 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
         names_db = "${ref_dir}/results/taxonomy-names.dmp"
        // Define columns to keep, separating by ones to prefix and ones to not
-        col_keep_no_prefix = ["seq_id", "aligner_taxid_lca", "aligner_taxid_top", 
+        col_keep_no_prefix = ["seq_id", "sample", "aligner_taxid_lca", "aligner_taxid_top", 
                               "aligner_length_normalized_score_mean", "aligner_taxid_lca_natural",
                               "aligner_n_assignments_natural", "aligner_length_normalized_score_mean_natural",
                               "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
@@ -83,31 +83,29 @@ workflow EXTRACT_VIRAL_READS_SHORT_LCA {
         bowtie2_filtered_ch = FILTER_VIRAL_SAM(bowtie2_ch_combined, aln_score_threshold)
         // 7. Convert SAM to TSV
         bowtie2_tsv_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_filtered_ch.sam, genome_meta_path, virus_db_path, true)
+        bowtie2_labeled_ch = ADD_SAMPLE_COLUMN(bowtie2_tsv_ch.output, "sample", "viral_bowtie2")
         // 8. Run LCA
-        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db,
+        lca_ch = LCA_TSV(bowtie2_labeled_ch.output, nodes_db, names_db,
             "seq_id", "taxid", "length_normalized_score", taxid_artificial,
             "aligner")
         // 9. Process LCA and Bowtie2 columns
         processed_ch = PROCESS_LCA_ALIGNER_OUTPUT(
             lca_ch.output,
-            bowtie2_tsv_ch.output,
+            bowtie2_labeled_ch.output,
             col_keep_no_prefix,
             col_keep_add_prefix,
             "prim_align_"
         )
-        // 10. Add sample to column
-        out_labeled_ch = ADD_SAMPLE_COLUMN(processed_ch.output, "sample", "viral_bowtie2")
-        // 11. Concatenate across reads
-        label_combined_ch = out_labeled_ch.output.map{ _sample, file -> file }.collect().ifEmpty([])
-        concat_ch = CONCATENATE_TSVS(label_combined_ch, "virus_hits_final")
-        // 12. Extract filtered virus hits in FASTQ format
+        // 10. Extract filtered virus hits in FASTQ format
         fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ _sample, file -> file }.collect().ifEmpty([])
         fastq_unfiltered_concat = CONCATENATE_FILES(fastq_unfiltered_collect, "reads_unfiltered", "fastq.gz")
-        fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(concat_ch.output, fastq_unfiltered_concat.output)
+        fastq_ch = EXTRACT_VIRAL_HITS_TO_FASTQ(processed_ch.viral_hits_tsv, fastq_unfiltered_concat.output)
     emit:
         bbduk_match = bbduk_ch.fail
         bbduk_trimmed = adapt_ch.reads
-        hits_final = concat_ch.output
+        hits_final = processed_ch.viral_hits_tsv
+        inter_lca = processed_ch.lca_tsv
+        inter_bowtie = processed_ch.aligner_tsv
         hits_prelca = bowtie2_tsv_ch.output
         hits_fastq = fastq_ch.fastq
         test_reads = other_bt2_ch.reads_unmapped
