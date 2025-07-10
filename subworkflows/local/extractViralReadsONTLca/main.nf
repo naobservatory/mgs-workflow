@@ -17,6 +17,8 @@ include { SORT_TSV as SORT_MINIMAP2_VIRAL } from "../../../modules/local/sortTsv
 include { SORT_TSV as SORT_LCA } from "../../../modules/local/sortTsv"
 include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
 include { FILTER_TSV_COLUMN_BY_VALUE } from "../../../modules/local/filterTsvColumnByValue"
+include { PROCESS_LCA_ALIGNER_OUTPUT } from "../../../subworkflows/local/processLcaAlignerOutput/"
+
 
 /***********
 | WORKFLOW |
@@ -36,6 +38,15 @@ workflow EXTRACT_VIRAL_READS_ONT_LCA {
         virus_db_path = "${ref_dir}/results/total-virus-db-annotated.tsv.gz"
         nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
         names_db = "${ref_dir}/results/taxonomy-names.dmp"
+       // Define columns to keep, separating by ones to prefix and ones to not
+        col_keep_no_prefix = ["seq_id", "aligner_taxid_lca", "aligner_taxid_top", 
+                              "aligner_length_normalized_score_mean", "aligner_taxid_lca_natural",
+                              "aligner_n_assignments_natural", "aligner_length_normalized_score_mean_natural",
+                              "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
+                              "aligner_length_normalized_score_mean_artificial"]
+        col_keep_add_prefix = ["genome_id", "taxid", "best_alignment_score", "edit_distance",  
+                               "ref_start", "query_len", "query_seq",  
+                               "query_rc", "query_qual"]
         // Filter reads by length and quality scores
         filtered_ch = FILTLONG(reads_ch, 50, 15000, 90)
         // Mask non-complex read sections
@@ -56,15 +67,17 @@ workflow EXTRACT_VIRAL_READS_ONT_LCA {
         processed_minimap2_sorted_ch = SORT_MINIMAP2_VIRAL(processed_minimap2_ch.output, "seq_id")
         // Run LCA on viral hits TSV
         lca_ch = LCA_TSV(processed_minimap2_sorted_ch.sorted, nodes_db, names_db, "seq_id", 
-            "aligner_taxid", "aligner_length_normalized_score", taxid_artificial, "aligner")
-        // Sort the LCA TSV files by seq_id for joining
-        lca_sorted_ch = SORT_LCA(lca_ch.output, "seq_id")
-        // Join LCA and Minimap2 TSV on seq_id to combine taxonomic and alignment data
-        joined_input_ch = lca_sorted_ch.sorted.join(processed_minimap2_sorted_ch.sorted, by: 0)
-        joined_ch = JOIN_TSVS(joined_input_ch, "seq_id", "inner", "lca_minimap2")
-        // Filter to keep only primary alignments (aligner_secondary_status=False)
-        primary_lca_ch = FILTER_TSV_COLUMN_BY_VALUE(joined_ch.output, "aligner_secondary_status", false, true)
-        tsv_labeled_ch = ADD_SAMPLE_COLUMN(primary_lca_ch.output, "sample", "viral_minimap2") 
+            "taxid", "length_normalized_score", taxid_artificial, "aligner")
+        // Process LCA and Minimap2 columns
+        processed_ch = PROCESS_LCA_ALIGNER_OUTPUT(
+            lca_ch.output,
+            processed_minimap2_sorted_ch.sorted,
+            col_keep_no_prefix,
+            col_keep_add_prefix,
+            "prim_align_"
+        )
+        // Add sample column to LCA TSV
+        tsv_labeled_ch = ADD_SAMPLE_COLUMN(processed_ch.output, "sample", "viral_minimap2") 
         // Concatenate TSVs of viral hits
         viral_tsvs = tsv_labeled_ch.output.map { it[1] }.collect()
         merged_tsv_ch = CONCATENATE_TSVS(viral_tsvs, "virus_hits_final") 

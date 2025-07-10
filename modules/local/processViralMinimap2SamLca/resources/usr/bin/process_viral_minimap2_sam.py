@@ -10,27 +10,31 @@ import pysam
 import gzip
 import bz2
 import math
-from collections import defaultdict
 from Bio import SeqIO
 
 # Utility functions
 
+
 def print_log(message):
     print("[", datetime.datetime.now(), "]\t", message, sep="", file=sys.stderr)
 
+
 def open_by_suffix(filename, mode="r"):
-    if filename.endswith('.gz'):
-        return gzip.open(filename, mode + 't')
-    elif filename.endswith('.bz2'):
+    if filename.endswith(".gz"):
+        return gzip.open(filename, mode + "t")
+    elif filename.endswith(".bz2"):
         return bz2.BZ2file(filename, mode)
     else:
         return open(filename, mode)
 
+
 def join_line(fields):
     "Convert a list of arguments into a TSV string for output."
-    return("\t".join(map(str, fields)) + "\n")
+    return "\t".join(map(str, fields)) + "\n"
+
 
 # Alignment-level functions
+
 
 def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record):
     """Parse a Minimap2 SAM alignment."""
@@ -38,10 +42,11 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record
     out["seq_id"] = read.query_name
 
     reference_genome_name = read.reference_name
-    out["aligner_genome_id"] = reference_genome_name
-    reference_taxid = extract_viral_taxid(reference_genome_name, genbank_metadata, viral_taxids)
-    out["aligner_taxid"] = reference_taxid
-
+    out["genome_id"] = reference_genome_name
+    reference_taxid = extract_viral_taxid(
+        reference_genome_name, genbank_metadata, viral_taxids
+    )
+    out["taxid"] = reference_taxid
 
     # Adding original read sequence and quality
     if read.is_reverse:
@@ -51,22 +56,30 @@ def parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record
     query_seq_clean = clean_query_record.seq
     query_qual_clean_numeric = clean_query_record.letter_annotations["phred_quality"]
     # Turn numeric quality scores back into Phred+33 scores.
-    query_qual_clean = "".join([chr(x+33) for x in query_qual_clean_numeric])
+    query_qual_clean = "".join([chr(x + 33) for x in query_qual_clean_numeric])
 
-    out["aligner_map_qual"] = read.mapping_quality
-    out["aligner_ref_start"] = read.reference_start
-    out["aligner_cigar"] = read.cigarstring
-    out["aligner_edit_distance"] = read.get_tag("NM")
-    out["aligner_best_alignment_score"] = read.get_tag("AS")
-    out["aligner_next_alignment_score"] = "NA"
-    out["aligner_length_normalized_score"] = out["aligner_best_alignment_score"] / math.log(len(clean_query_record.seq))
+    out["map_qual"] = read.mapping_quality
+    out["ref_start"] = read.reference_start
+    out["cigar"] = read.cigarstring
+    out["edit_distance"] = read.get_tag("NM")
+    out["best_alignment_score"] = read.get_tag("AS")
+    out["next_alignment_score"] = "NA"
+    out["length_normalized_score"] = out["best_alignment_score"] / math.log(
+        len(clean_query_record.seq)
+    )
 
     out["query_seq"] = query_seq_clean
-    out["query_rc_by_aligner"] = read.is_reverse
+    out["query_rc"] = read.is_reverse
     out["query_qual"] = query_qual_clean
     out["query_len"] = len(clean_query_record.seq)
-    out["aligner_secondary_status"] = read.is_secondary or read.is_supplementary
-    
+    out["classification"] = (
+        "supplementary"
+        if read.is_supplementary
+        else "secondary"
+        if read.is_secondary
+        else "primary"
+    )
+
     return out
 
 
@@ -85,25 +98,26 @@ def extract_viral_taxid(genome_id, genbank_metadata, viral_taxids):
 
 # File-level functions
 
+
 def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_dict):
     """Process a Minimap2 SAM file."""
     with open_by_suffix(out_file, "w") as out_fh:
         header = (
             "seq_id\t"
-            "aligner_genome_id\t"
-            "aligner_taxid\t"
-            "aligner_map_qual\t"
-            "aligner_ref_start\t"
-            "aligner_cigar\t"
-            "aligner_edit_distance\t"
-            "aligner_best_alignment_score\t"
-            "aligner_next_alignment_score\t"
-            "aligner_length_normalized_score\t"
+            "genome_id\t"
+            "taxid\t"
+            "map_qual\t"
+            "ref_start\t"
+            "cigar\t"
+            "edit_distance\t"
+            "best_alignment_score\t"
+            "next_alignment_score\t"
+            "length_normalized_score\t"
             "query_seq\t"
-            "query_rc_by_aligner\t"
+            "query_rc\t"
             "query_qual\t"
             "query_len\t"
-            "aligner_secondary_status\n"
+            "classification\n"
         )
         out_fh.write(header)
         try:
@@ -117,7 +131,9 @@ def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_d
                     read_id = read.query_name
 
                     clean_query_record = clean_read_dict[read_id]
-                    line = parse_sam_alignment(read, genbank_metadata, viral_taxids, clean_query_record)
+                    line = parse_sam_alignment(
+                        read, genbank_metadata, viral_taxids, clean_query_record
+                    )
                     if line is None:
                         continue
                     line_keys = line.keys()
@@ -126,14 +142,18 @@ def process_sam(sam_file, out_file, genbank_metadata, viral_taxids, clean_read_d
 
                     out_fh.write(join_line(line.values()))
                 if num_reads == 0:
-                    print_log("Warning: Input SAM file is empty. Creating empty output with header only.")
+                    print_log(
+                        "Warning: Input SAM file is empty. Creating empty output with header only."
+                    )
 
         except Exception as e:
             import traceback
+
             error_detail = traceback.format_exc()
             print_log(f"Error processing SAM file: {str(e)}")
             print_log(f"Error details: {error_detail}")
             raise
+
 
 def parse_arguments():
     """Parse and return command-line arguments.
@@ -145,34 +165,40 @@ def parse_arguments():
         description="Process Minimap2 SAM output into a TSV with viral alignment information."
     )
     parser.add_argument(
-        "-a", "--sam",
+        "-a",
+        "--sam",
         type=str,
         required=True,
-        help="Path to Minimap2 SAM alignment file."
+        help="Path to Minimap2 SAM alignment file.",
     )
     parser.add_argument(
-        "-r", "--reads",
+        "-r",
+        "--reads",
         type=lambda f: open_by_suffix(f, "r"),
         default=sys.stdin,
-        help="Path to FASTQ that contains the non-masked version of viral reads (default: stdin)."
+        help="Path to FASTQ that contains the non-masked version of viral reads (default: stdin).",
     )
     parser.add_argument(
-        "-m", "--metadata",
+        "-m",
+        "--metadata",
         required=True,
-        help="Path to Genbank metadata file containing genomeID and taxid information."
+        help="Path to Genbank metadata file containing genomeID and taxid information.",
     )
     parser.add_argument(
-        "-v", "--viral_db",
+        "-v",
+        "--viral_db",
         required=True,
-        help="Path to TSV containing viral taxonomic information."
+        help="Path to TSV containing viral taxonomic information.",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         type=str,
         required=True,
-        help="Output path for processed data frame."
+        help="Output path for processed data frame.",
     )
     return parser.parse_args()
+
 
 def main():
     # Parse arguments
@@ -199,13 +225,14 @@ def main():
         meta_db = pd.read_csv(meta_path, sep="\t", dtype=str)
         genbank_metadata = {
             genome_id: [taxid, species_taxid]
-            for genome_id, taxid, species_taxid in zip(meta_db["genome_id"], meta_db["taxid"], meta_db["species_taxid"])
+            for genome_id, taxid, species_taxid in zip(
+                meta_db["genome_id"], meta_db["taxid"], meta_db["species_taxid"]
+            )
         }
         print_log("Importing viral DB file...")
         virus_db = pd.read_csv(vdb_path, sep="\t", dtype=str)
         viral_taxids = set(virus_db["taxid"].values)
         print_log(f"Virus DB imported. {len(virus_db)} total viral taxids.")
-
 
         print_log(f"Imported {len(viral_taxids)} virus taxa.")
 
@@ -233,5 +260,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
