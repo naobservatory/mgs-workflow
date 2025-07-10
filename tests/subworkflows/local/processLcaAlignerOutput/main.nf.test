@@ -7,6 +7,67 @@ nextflow_workflow {
     tag "subworkflow"
     tag "process_lca_aligner_output"
 
+    def validateOutputStructure = { outputData, colsNoPrefix, colsAddPrefix, columnPrefix ->
+        assert outputData.columnCount > 0
+        assert outputData.rowCount > 0
+        
+        for (col in colsNoPrefix) {
+            assert col in outputData.columns.keySet()
+        }
+        
+        for (col in colsAddPrefix) {
+            assert "${columnPrefix}${col}".toString() in outputData.columns.keySet()
+        }
+        
+        assert outputData.columnCount == colsNoPrefix.size() + colsAddPrefix.size()
+    }
+
+    def validateJoinIntegrity = { outputSeqIds, lcaSeqIds, alignerSeqIds ->
+        for (seqId in outputSeqIds) {
+            assert seqId in lcaSeqIds
+            assert seqId in alignerSeqIds
+        }
+    }
+
+    def getPrimaryAlignmentSeqIds = { alignerData ->
+        def primaryAlignerSeqIds = []
+        for (int i = 0; i < alignerData.rowCount; i++) {
+            if (alignerData.columns["classification"][i] == "primary") {
+                primaryAlignerSeqIds.add(alignerData.columns["seq_id"][i])
+            }
+        }
+        return primaryAlignerSeqIds.toSet()
+    }
+
+    def validateDataIntegrity = { outputData, lcaData, alignerData, colsNoPrefix, colsAddPrefix, columnPrefix ->
+        for (int i = 0; i < outputData.rowCount; i++) {
+            def seqId = outputData.columns["seq_id"][i]
+            
+            def lcaIndex = lcaData.columns["seq_id"].findIndexOf { it == seqId }
+            
+            def alignerIndex = -1
+            for (int j = 0; j < alignerData.rowCount; j++) {
+                if (alignerData.columns["seq_id"][j] == seqId && alignerData.columns["classification"][j] == "primary") {
+                    alignerIndex = j
+                    break
+                }
+            }
+            
+            for (col in colsNoPrefix) {
+                if (col in lcaData.columns.keySet()) {
+                    assert outputData.columns[col][i] == lcaData.columns[col][lcaIndex]
+                }
+            }
+            
+            for (col in colsAddPrefix) {
+                if (col in alignerData.columns.keySet()) {
+                    def prefixedCol = "${columnPrefix}${col}".toString()
+                    assert outputData.columns[prefixedCol][i] == alignerData.columns[col][alignerIndex]
+                }
+            }
+        }
+    }
+
     test("Should run without failures on Bowtie2 output") {
         tag "expect_success"
         tag "bowtie2"
@@ -127,91 +188,27 @@ nextflow_workflow {
         }
 
         then {
-          // Bowtie2
-          assert workflow.success
-
-          // Parse input files using nf-test CSV helpers
-          def lcaData = path(workflow.out.lca_tsv[0]).csv(sep: "\t", decompress: true)
-          def alignerData = path(workflow.out.aligner_tsv[0]).csv(sep: "\t", decompress: true)
-          def outputData = path(workflow.out.viral_hits_tsv[0]).csv(sep: "\t", decompress: true)
-
-          // Basic structure validation
-          assert outputData.columnCount > 0
-          assert outputData.rowCount > 0
-
-          // Get expected columns from workflow outputs
-          // The workflow emits these as single values containing the lists
-          def colsNoPrefix = params.col_keep_no_prefix
-          def colsAddPrefix = params.col_keep_add_prefix
-          
-          // Validate expected columns exist
-          // Columns without prefix
-          for (col in colsNoPrefix) {
-              assert col in outputData.columns.keySet()
-          }
-          
-          // Columns with prefix
-          for (col in colsAddPrefix) {
-              assert "${params.column_prefix}${col}".toString() in outputData.columns.keySet()
-          }
-          
-          // Total column count should match
-          assert outputData.columnCount == colsNoPrefix.size() + colsAddPrefix.size()
-
-          // Validate join integrity - all output seq_ids should exist in both inputs
-          def outputSeqIds = outputData.columns["seq_id"].toSet()
-          def lcaSeqIds = lcaData.columns["seq_id"].toSet()
-          def alignerSeqIds = alignerData.columns["seq_id"].toSet()
-
-          for (seqId in outputSeqIds) {
-              assert seqId in lcaSeqIds
-              assert seqId in alignerSeqIds
-          }
-
-          // Validate filtering - output should only contain primary alignments
-          // Need to iterate through rows by index to filter
-          def primaryAlignerSeqIds = []
-          for (int i = 0; i < alignerData.rowCount; i++) {
-              if (alignerData.columns["classification"][i] == "primary") {
-                  primaryAlignerSeqIds.add(alignerData.columns["seq_id"][i])
-              }
-          }
-          def primaryAlignerSeqIdsSet = primaryAlignerSeqIds.toSet()
-
-          // Output seq_ids should be intersection of primary alignments and LCA data
-          def expectedSeqIds = primaryAlignerSeqIdsSet.intersect(lcaSeqIds)
-          assert outputSeqIds == expectedSeqIds
-
-          // Validate data integrity - values should match between input and output
-          for (int i = 0; i < outputData.rowCount; i++) {
-              def seqId = outputData.columns["seq_id"][i]
-
-              // Find corresponding rows in input files by index
-              def lcaIndex = lcaData.columns["seq_id"].findIndexOf { it == seqId }
-              // Find the primary alignment for this seq_id
-              def alignerIndex = -1
-              for (int j = 0; j < alignerData.rowCount; j++) {
-                  if (alignerData.columns["seq_id"][j] == seqId && alignerData.columns["classification"][j] == "primary") {
-                      alignerIndex = j
-                      break
-                  }
-              }
-
-              // Check that columns without prefix preserve their values from LCA
-              for (col in colsNoPrefix) {
-                  if (col in lcaData.columns.keySet()) {
-                      assert outputData.columns[col][i] == lcaData.columns[col][lcaIndex]
-                  }
-              }
-
-              // Check that columns with prefix preserve their values from Aligner
-              for (col in colsAddPrefix) {
-                  if (col in alignerData.columns.keySet()) {
-                      def prefixedCol = "${params.column_prefix}${col}".toString()
-                      assert outputData.columns[prefixedCol][i] == alignerData.columns[col][alignerIndex]
-                  }
-              }
-          }
+            assert workflow.success
+            
+            def lcaData = path(workflow.out.lca_tsv[0]).csv(sep: "\t", decompress: true)
+            def alignerData = path(workflow.out.aligner_tsv[0]).csv(sep: "\t", decompress: true)
+            def outputData = path(workflow.out.viral_hits_tsv[0]).csv(sep: "\t", decompress: true)
+            
+            def colsNoPrefix = params.col_keep_no_prefix
+            def colsAddPrefix = params.col_keep_add_prefix
+            
+            validateOutputStructure(outputData, colsNoPrefix, colsAddPrefix, params.column_prefix)
+            
+            def outputSeqIds = outputData.columns["seq_id"].toSet()
+            def lcaSeqIds = lcaData.columns["seq_id"].toSet()
+            def alignerSeqIds = alignerData.columns["seq_id"].toSet()
+            validateJoinIntegrity(outputSeqIds, lcaSeqIds, alignerSeqIds)
+            
+            def primaryAlignerSeqIdsSet = getPrimaryAlignmentSeqIds(alignerData)
+            def expectedSeqIds = primaryAlignerSeqIdsSet.intersect(lcaSeqIds)
+            assert outputSeqIds == expectedSeqIds
+            
+            validateDataIntegrity(outputData, lcaData, alignerData, colsNoPrefix, colsAddPrefix, params.column_prefix)
         }
     }
 
@@ -299,7 +296,7 @@ nextflow_workflow {
         when {
             params {
                 col_keep_no_prefix = ["seq_id", "sample", "aligner_taxid_lca"]
-                col_keep_add_prefix = ["genome_id"]
+                col_keep_add_prefix = ["genome_id_all"]
                 column_prefix = "prim_align_"
             }
             workflow {
@@ -314,92 +311,27 @@ nextflow_workflow {
         }
 
         then {
-          // Bowtie2
-          assert workflow.success
-
-          // Parse input files using nf-test CSV helpers
-          def lcaData = path(workflow.out.lca_tsv[0]).csv(sep: "\t", decompress: true)
-          def alignerData = path(workflow.out.aligner_tsv[0]).csv(sep: "\t", decompress: true)
-          def outputData = path(workflow.out.viral_hits_tsv[0]).csv(sep: "\t", decompress: true)
-
-          // Basic structure validation
-          assert outputData.columnCount > 0
-          assert outputData.rowCount > 0
-
-          // Get expected columns from workflow outputs
-          // The workflow emits these as single values containing the lists
-          def colsNoPrefix = params.col_keep_no_prefix
-          def colsAddPrefix = params.col_keep_add_prefix
-          
-          // Validate expected columns exist
-          // Columns without prefix
-          for (col in colsNoPrefix) {
-              assert col in outputData.columns.keySet()
-          }
-          
-          // Columns with prefix
-          for (col in colsAddPrefix) {
-              assert "${params.column_prefix}${col}".toString() in outputData.columns.keySet()
-          }
-          
-          // Total column count should match
-          assert outputData.columnCount == colsNoPrefix.size() + colsAddPrefix.size()
-
-          // Validate join integrity - all output seq_ids should exist in both inputs
-          def outputSeqIds = outputData.columns["seq_id"].toSet()
-          def lcaSeqIds = lcaData.columns["seq_id"].toSet()
-          def alignerSeqIds = alignerData.columns["seq_id"].toSet()
-
-          for (seqId in outputSeqIds) {
-              assert seqId in lcaSeqIds
-              assert seqId in alignerSeqIds
-          }
-
-          // Validate filtering - output should only contain primary alignments
-          // Need to iterate through rows by index to filter
-          def primaryAlignerSeqIds = []
-          for (int i = 0; i < alignerData.rowCount; i++) {
-              if (alignerData.columns["classification"][i] == "primary") {
-                  primaryAlignerSeqIds.add(alignerData.columns["seq_id"][i])
-              }
-          }
-          def primaryAlignerSeqIdsSet = primaryAlignerSeqIds.toSet()
-
-          // Minimap2
-          // Output seq_ids should be intersection of primary alignments and LCA data
-          def expectedSeqIds = primaryAlignerSeqIdsSet.intersect(lcaSeqIds)
-          assert outputSeqIds == expectedSeqIds
-
-          // Validate data integrity - values should match between input and output
-          for (int i = 0; i < outputData.rowCount; i++) {
-              def seqId = outputData.columns["seq_id"][i]
-
-              // Find corresponding rows in input files by index
-              def lcaIndex = lcaData.columns["seq_id"].findIndexOf { it == seqId }
-              // Find the primary alignment for this seq_id
-              def alignerIndex = -1
-              for (int j = 0; j < alignerData.rowCount; j++) {
-                  if (alignerData.columns["seq_id"][j] == seqId && alignerData.columns["classification"][j] == "primary") {
-                      alignerIndex = j
-                      break
-                  }
-              }
-
-              // Check that columns without prefix preserve their values from LCA
-              for (col in colsNoPrefix) {
-                  if (col in lcaData.columns.keySet()) {
-                      assert outputData.columns[col][i] == lcaData.columns[col][lcaIndex]
-                  }
-              }
-
-              // Check that columns with prefix preserve their values from Aligner
-              for (col in colsAddPrefix) {
-                  if (col in alignerData.columns.keySet()) {
-                      def prefixedCol = "${params.column_prefix}${col}".toString()
-                      assert outputData.columns[prefixedCol][i] == alignerData.columns[col][alignerIndex]
-                  }
-              }
-          }
+            assert workflow.success
+            
+            def lcaData = path(workflow.out.lca_tsv[0]).csv(sep: "\t", decompress: true)
+            def alignerData = path(workflow.out.aligner_tsv[0]).csv(sep: "\t", decompress: true)
+            def outputData = path(workflow.out.viral_hits_tsv[0]).csv(sep: "\t", decompress: true)
+            
+            def colsNoPrefix = params.col_keep_no_prefix
+            def colsAddPrefix = params.col_keep_add_prefix
+            
+            validateOutputStructure(outputData, colsNoPrefix, colsAddPrefix, params.column_prefix)
+            
+            def outputSeqIds = outputData.columns["seq_id"].toSet()
+            def lcaSeqIds = lcaData.columns["seq_id"].toSet()
+            def alignerSeqIds = alignerData.columns["seq_id"].toSet()
+            validateJoinIntegrity(outputSeqIds, lcaSeqIds, alignerSeqIds)
+            
+            def primaryAlignerSeqIdsSet = getPrimaryAlignmentSeqIds(alignerData)
+            def expectedSeqIds = primaryAlignerSeqIdsSet.intersect(lcaSeqIds)
+            assert outputSeqIds == expectedSeqIds
+            
+            validateDataIntegrity(outputData, lcaData, alignerData, colsNoPrefix, colsAddPrefix, params.column_prefix)
         }
     }
 
@@ -465,14 +397,11 @@ nextflow_workflow {
         }
 
         then {
-            // Should run without failures
             assert workflow.success
             
-            // Output file should exist but be empty
             def outputFile = path(workflow.out.viral_hits_tsv[0])
             assert outputFile.exists()
             
-            // Check that the file is empty (no lines when decompressed)
             def outputLines = outputFile.linesGzip.size()
             assert outputLines == 0
         }
@@ -531,29 +460,21 @@ nextflow_workflow {
         }
 
         then {
-            // Should run without failures
             assert workflow.success
             
-            // Output file should exist but be empty
             def outputFile = path(workflow.out.viral_hits_tsv[0])
             assert outputFile.exists()
             
-            // Check that the file is empty (no lines when decompressed)
             def outputLines = outputFile.linesGzip
             assert outputLines.size() == 1
 
-            // Get expected columns from workflow outputs
-            // The workflow emits these as single values containing the lists
             def colsNoPrefix = params.col_keep_no_prefix
             def colsAddPrefix = params.col_keep_add_prefix
             
-            // Validate expected columns exist
-            // Columns without prefix
             for (col in colsNoPrefix) {
                 outputLines.contains(col)
             }
             
-            // Columns with prefix
             for (col in colsAddPrefix) {
                 outputLines.contains("${params.column_prefix}${col}".toString())
             }
