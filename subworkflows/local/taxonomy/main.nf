@@ -35,12 +35,7 @@ workflow TAXONOMY {
         summarize_bbmerge_ch = merge_ch.bbmerge_summary
         // Run Kraken and munge reports
         // First copy file to ensure it is available in the working directory
-        kraken_db_ch.view { v -> println "TYPE=" + v.getClass() + "  VALUE=" + v }
-        outdir = "/scratch/kraken_db"
-        if (!file(outdir).exists()) {
-            COPY_REF_DIRECTORY(kraken_db_ch, outdir)
-        }
-        kraken_ch = KRAKEN(single_read_ch, file(outdir))
+        kraken_ch = KRAKEN(single_read_ch)
         kraken_headers = "pc_reads_total,n_reads_clade,n_reads_direct,n_minimizers_total,n_minimizers_distinct,rank,taxid,name"
         kraken_head_ch = HEAD_KRAKEN_REPORTS(kraken_ch.report, kraken_headers, "kraken_report")
         kraken_label_ch = LABEL_KRAKEN_REPORTS(kraken_head_ch.output, "sample", "kraken_report")
