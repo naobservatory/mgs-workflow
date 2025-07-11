@@ -16,7 +16,7 @@ process KRAKEN {
         out=!{sample}.output
         report=!{sample}.report
         # Define parameters
-        par="--db ${db} --use-names --report-minimizer-data --threads !{task.cpus} --report ${report}"
+        par="--db ${db} --use-names --report-minimizer-data --threads !{task.cpus} --report ${report} --memory-mapping"
         # Run Kraken
         zcat !{reads} | kraken2 ${par} /dev/fd/0 > ${out}
         # Make empty output files if needed
