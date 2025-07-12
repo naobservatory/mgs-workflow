@@ -15,7 +15,6 @@ include { BRACKEN } from "../../../modules/local/bracken"
 include { REHEAD_TSV as REHEAD_BRACKEN } from "../../../modules/local/reheadTsv"
 include { ADD_SAMPLE_COLUMN as LABEL_BRACKEN } from "../../../modules/local/addSampleColumn"
 include { CONCATENATE_TSVS as CONCATENATE_BRACKEN } from "../../../modules/local/concatenateTsvs"
-include { COPY_REF_DIRECTORY } from "../../../modules/local/copyRefDirectory"
 
 /***********
 | WORKFLOW |
