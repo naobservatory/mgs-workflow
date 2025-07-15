@@ -1,0 +1,133 @@
+nextflow_process {
+
+    name "Test Process CLEANSE_VIRAL_TAXID"
+    script "modules/local/cleanseViralTaxid/main.nf"
+    process "CLEANSE_VIRAL_TAXID"
+    config "tests/configs/run.config"
+    tag "process"
+    tag "cleanse_viral_taxid"
+
+    test("Should add conditional column based on column values") {
+
+        when {
+            process {
+                """
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_single.tsv")]
+                input[1] = "x"
+                input[2] = "0"
+                input[3] = "y"
+                input[4] = "z"
+                input[5] = "selected"
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            
+            // Parse the output
+            def outputData = path(process.out.tsv[0][1]).csv(sep: "\t", decompress: false)
+            
+            // Validate structure
+            assert outputData.rowCount == 4
+            assert outputData.columnCount == 4
+            assert "selected" in outputData.columns.keySet()
+            
+            // Validate conditional logic: when x == "0", use y value, otherwise use z value
+            for (int i = 0; i < outputData.rowCount; i++) {
+                def xValue = outputData.columns["x"][i]
+                def yValue = outputData.columns["y"][i]
+                def zValue = outputData.columns["z"][i]
+                def selectedValue = outputData.columns["selected"][i]
+                
+                if (xValue == "0") {
+                    assert selectedValue == yValue
+                } else {
+                    assert selectedValue == zValue
+                }
+            }
+        }
+    }
+
+    test("Should handle empty file") {
+
+        when {
+            process {
+                """
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/empty_file.txt")]
+                input[1] = "taxid_species"
+                input[2] = "NA"
+                input[3] = "aligner_taxid_lca"
+                input[4] = "taxid_species"
+                input[5] = "selected_taxid"
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            
+            // Verify output file exists but is empty
+            def outputFile = path(process.out.tsv[0][1])
+            assert outputFile.exists()
+            assert outputFile.text.trim() == ""
+        }
+    }
+
+    test("Should handle header-only file") {
+
+        when {
+            process {
+                """
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_empty.tsv")]
+                input[1] = "x"
+                input[2] = "0"
+                input[3] = "y"
+                input[4] = "z"
+                input[5] = "selected"
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            
+            // Per preferred_testing.md, use text.split for header-only files
+            def outputFile = path(process.out.tsv[0][1])
+            def lines = outputFile.text.split("\n")
+            
+            // Should have exactly one line (the header)
+            assert lines.size() == 1
+            
+            // Check columns in header
+            def headers = lines[0].split("\t")
+            assert headers.size() == 4
+            assert headers.contains("x")
+            assert headers.contains("y")
+            assert headers.contains("z")
+            assert headers.contains("selected")
+        }
+    }
+
+    test("Should fail when required columns don't exist") {
+
+        when {
+            process {
+                """
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_single.tsv")]
+                input[1] = "nonexistent_col"
+                input[2] = "NA"
+                input[3] = "also_not_there"
+                input[4] = "missing_col"
+                input[5] = "selected"
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            // Per preferred_testing.md, use errorReport instead of stderr
+            assert process.errorReport.contains("ERROR: could not find all requested columns in header")
+        }
+    }
+ }
