@@ -57,7 +57,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             "validation")
         // 5. Validate original group hits against concatenated BLAST results
         distance_params = [
-            taxid_field_1: "aligner_taxid",
+            taxid_field_1: "aligner_taxid_lca",
             taxid_field_2: "validation_staxid_lca_natural",
             distance_field_1: "validation_distance_aligner",
             distance_field_2: "validation_distance_validation"
@@ -66,9 +66,9 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             ref_dir, distance_params)
         // 6. Propagate validation information back to individual hits
         propagate_ch = PROPAGATE_VALIDATION_INFORMATION(groups, concat_cluster_ch.output,
-            validate_ch.output, "aligner_taxid")
+            validate_ch.output, "aligner_taxid_lca")
         // 7. Cleanup and generate final outputs
-        regrouped_drop_ch = SELECT_TSV_COLUMNS(propagate_ch.output, "taxid_species", "drop").output
+        regrouped_drop_ch = SELECT_TSV_COLUMNS(propagate_ch.output, "taxid_species,selected_taxid", "drop").output 
         output_hits_ch = COPY_HITS(regrouped_drop_ch, "validation_hits.tsv.gz")
         output_blast_ch = COPY_BLAST(blast_ch.blast, "validation_blast.tsv.gz")
     emit:

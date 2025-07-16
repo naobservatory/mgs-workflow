@@ -1,11 +1,11 @@
 nextflow_process {
 
-    name "Test Process CLEANSE_VIRAL_TAXID"
-    script "modules/local/cleanseViralTaxid/main.nf"
-    process "CLEANSE_VIRAL_TAXID"
+    name "Test Process CREATE_CONDITIONAL_COLUMN"
+    script "modules/local/createConditionalColumn/main.nf"
+    process "CREATE_CONDITIONAL_COLUMN"
     config "tests/configs/run.config"
     tag "process"
-    tag "cleanse_viral_taxid"
+    tag "create_conditional_column"
 
     test("Should add conditional column based on column values") {
 
@@ -40,7 +40,7 @@ nextflow_process {
                 def zValue = outputData.columns["z"][i]
                 def selectedValue = outputData.columns["selected"][i]
                 
-                if (xValue == "0") {
+                if (xValue == 0) {
                     assert selectedValue == yValue
                 } else {
                     assert selectedValue == zValue

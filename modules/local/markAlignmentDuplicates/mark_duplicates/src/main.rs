@@ -290,8 +290,8 @@ fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, u
     let header_indices: HashMap<_, _> = headers.iter().enumerate().map(|(i, &s)| (s, i)).collect();
     // Define required header fields
     let required_headers = vec![
-        "seq_id", "aligner_genome_id_all", "aligner_ref_start", "aligner_ref_start_rev",
-        "query_qual", "query_qual_rev"
+        "seq_id", "prim_align_genome_id_all", "prim_align_ref_start", "prim_align_ref_start_rev",
+        "prim_align_query_qual", "prim_align_query_qual_rev"
     ];
     // Build a lookup for required headers
     let mut indices = HashMap::new();
@@ -308,11 +308,11 @@ fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, u
 fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEntry {
     // Extract required fields using references to avoid cloning unnecessarily
     let query_name = fields[indices["seq_id"]].clone();
-    let genome_id = &fields[indices["aligner_genome_id_all"]];
-    let ref_start_fwd = parse_int_or_na(&fields[indices["aligner_ref_start"]]);
-    let ref_start_rev = parse_int_or_na(&fields[indices["aligner_ref_start_rev"]]);
-    let quality_fwd = &fields[indices["query_qual"]];
-    let quality_rev = &fields[indices["query_qual_rev"]];
+    let genome_id = &fields[indices["prim_align_genome_id_all"]];
+    let ref_start_fwd = parse_int_or_na(&fields[indices["prim_align_ref_start"]]);
+    let ref_start_rev = parse_int_or_na(&fields[indices["prim_align_ref_start_rev"]]);
+    let quality_fwd = &fields[indices["prim_align_query_qual"]];
+    let quality_rev = &fields[indices["prim_align_query_qual_rev"]];
     // Handle split assignments
     let genome_id_sorted: String;
     let aln_start: Option<i32>;
@@ -393,7 +393,7 @@ fn extract_read_groups(input_path: &str,
     let (headers, indices, header_count) = process_header_line(&header_line)?;
     // Create the output header line
     let mut headers_out = headers.clone();
-    headers_out.push("aligner_dup_exemplar");
+    headers_out.push("prim_align_dup_exemplar");
     let header_out = headers_out.join("\t");
     // Get the seq_id column index for later use
     let seq_id_index = indices["seq_id"];
@@ -532,7 +532,7 @@ fn write_metadata_file(
     // Open the metadata output file
     let mut writer_meta = open_writer(output_path_meta)?;
     // Write header
-    let header_meta = "aligner_genome_id_all\taligner_dup_exemplar\taligner_dup_count\taligner_dup_pairwise_match_frac";
+    let header_meta = "prim_align_genome_id_all\tprim_align_dup_exemplar\tprim_align_dup_count\tprim_align_dup_pairwise_match_frac";
     writeln!(writer_meta, "{}", header_meta)?;
     // Write duplicate group metadata (once per group)
     for dup_group in duplicate_groups {
