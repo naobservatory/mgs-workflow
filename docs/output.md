@@ -31,8 +31,9 @@ Main heading represents the folder name, and subheadings represent a description
 
 ### `intermediates/`
 
-- `virus_hits_all.tsv.gz`: Complete list of putative viral reads identified by the EXTRACT_VIRAL_READS subworkflow, prior to filtering with FILTER_VIRUS_READS. (Note: this is not currently produced for ONT data.)
 - `virus_hits_final.fastq.gz`: Filtered viral hits in FASTQ format.
+- `aligner_final.tsv.gz`: List of all putative viral alignments (primary, secondary and supplementary) from the aligner used in the `RUN` workflow (bowtie2 for EXTRACT_VIRAL_READS_SHORT or minimap2 for EXTRACT_VIRAL_READS_ONT) with modified columns from the [SAM specification](https://samtools.github.io/hts-specs/SAMv1.pdf).
+- `lca_final.tsv.gz`: List of putative viral reads after having applied LCA to `aligner_final.tsv.gz`, along with columns representing summary statistics.
 - `reads/raw_viral/*`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk. (Note: this is not currently produced for ONT data.)
 
 ### `results/`
