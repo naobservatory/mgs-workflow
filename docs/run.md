@@ -46,7 +46,7 @@ To perform these functions, the workflow runs a series of subworkflows responsib
 1. [Setup subworkflows](#setup-subworkflows): Prepare the input data for analysis
     - [Load data into channels (LOAD_SAMPLESHEET)](#load-data-into-channels-load_samplesheet)
     - [Subset and trim reads (SUBSET_TRIM)](#subset-and-trim-reads-subset_trim)
-2. [Helper subworkflows](#helper-subworkflows): Helper workflows that are used by other subworkflows in this list
+2. [Helper subworkflows](#helper-subworkflows): Helper subworkflows that are used by other subworkflows in this list
     - [Process Lca Aligner Output (PROCESS_LCA_ALIGNER_OUTPUT)](#process-lca-aligner-output-process_lca_aligner_output)
     - [Taxonomic assignment (TAXONOMY)](#taxonomic-assignment-taxonomy)
     - [QC (QC)](#qc-qc)
@@ -87,7 +87,7 @@ style E fill:#000,color:#fff,stroke:#000
 style F fill:#000,color:#fff,stroke:#000
 ```
 
-## Helper workflows
+## Helper subworkflows
 
 ### Process LCA Aligner Output (PROCESS_LCA_ALIGNER_OUTPUT)
 
@@ -259,9 +259,8 @@ F
 G
 end
 style A fill:#fff,stroke:#000
-style J fill:#000,color:#fff,stroke:#000
 style K fill:#000,color:#fff,stroke:#000
-style M fill:#000,color:#fff,stroke:#000
+style L fill:#000,color:#fff,stroke:#000
 ```
 1. To begin with, the raw reads are screened against a database of vertebrate-infecting viral genomes generated from Genbank by the index workflow. This initial screen is performed using [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), which flags any read that contains at least one 24-mer matching any vertebrate-infecting viral genome. The purpose of this initial screen is to rapidly and sensitively identify putative vertebrate-infecting viral reads while discarding the vast majority of non-viral reads, reducing the cost associated with the rest of this phase.
 2. Surviving reads undergo adapter and quality trimming with [FASTP](https://github.com/OpenGene/fastp) and [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) to remove adapter contamination and low-quality/low-complexity reads.
@@ -269,7 +268,7 @@ style M fill:#000,color:#fff,stroke:#000
 4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using Bowtie2 in series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
 5. The reads that survive contaminant filtering then goes through an alignment score filtering step to get rid of low quality alignments. 
 6. The reads that make it through the score filter are then run through our custom LCA algorithm. The LCA taxid assignment is what we use to classify reads in the final viral hits table.
-7. The LCA and processed bowtie2 output are ran through PROCESS_LCA_ALIGNER_OUTPUT to organize and clean the output viral hits table.
+7. The LCA and processed bowtie2 output are ran through [PROCESS_LCA_ALIGNER_OUTPUT](#process-lca-aligner-output-process_lca_aligner_output) to organize and clean the output viral hits table.
 
 ### Viral identification (ONT version)
 #### EXTRACT_VIRAL_READS_ONT
@@ -306,8 +305,8 @@ subgraph "Identify viral reads"
 F
 end
 style A fill:#fff,stroke:#000
-style G fill:#000,color:#fff,stroke:#000
-style H fill:#000,color:#fff,stroke:#000
+style I fill:#000,color:#fff,stroke:#000
+style J fill:#000,color:#fff,stroke:#000
 ```
 
 1. First, reads are filtered for length and quality with [Filtlong](https://github.com/rrwick/Filtlong), and low-complexity regions are masked with [BBMask](https://archive.jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbmask-guide/) (entropy masking).
@@ -316,7 +315,7 @@ style H fill:#000,color:#fff,stroke:#000
 3. Then, reads are aligned to our database of vertebrate-infecting viral genomes using Minimap2 while allowing multiple alignments to be returned. (As noted above, the viral database is generated from Genbank by the index workflow.)
 4. After that, these reads are run through our custom LCA algorithm. The LCA taxid assignment is what we use to classify reads in the final viral hits table.
   - Note that, unlike EXTRACT_VIRAL_READS_SHORT, we don't do any alignment score filtering as our experiments revealed that misclassified reads couldn't be distinguished by setting a simple score threshold.
-5. Finally, the LCA and processed minimap2 output are ran through PROCESS_LCA_ALIGNER_OUTPUT to organize and clean the output viral hits table.
+5. Finally, the LCA and processed minimap2 output are ran through [PROCESS_LCA_ALIGNER_OUTPUT](#process-lca-aligner-output-process_lca_aligner_output) to organize and clean the output viral hits table.
 
 ### Taxonomic profiling (PROFILE)
 
