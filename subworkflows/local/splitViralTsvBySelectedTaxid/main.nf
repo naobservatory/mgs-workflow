@@ -26,7 +26,7 @@ include { CREATE_CONDITIONAL_COLUMN } from "../../../modules/local/createConditi
 | WORKFLOW |
 ***********/
 
-workflow SPLIT_VIRAL_TSV_BY_SPECIES {
+workflow SPLIT_VIRAL_TSV_BY_SELECTED_TAXID {
     take:
         groups // Labeled viral hit TSVs partitioned by group
         db // Viral taxonomy DB

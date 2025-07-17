@@ -1,8 +1,8 @@
 nextflow_workflow {
 
-    name "Test workflow CONCATENATE_TSVS_ACROSS_SPECIES"
-    script "subworkflows/local/concatenateTsvsAcrossSpecies/main.nf"
-    workflow "CONCATENATE_TSVS_ACROSS_SPECIES"
+    name "Test workflow CONCATENATE_TSVS_ACROSS_SELECTED_TAXID"
+    script "subworkflows/local/concatenateTsvsAcrossSelectedTaxid/main.nf"
+    workflow "CONCATENATE_TSVS_ACROSS_SELECTED_TAXID"
     config "tests/configs/downstream.config"
     tag "subworkflow"
     tag "downstream"
@@ -36,8 +36,8 @@ nextflow_workflow {
                     '''
                 }
             }
-            run("SPLIT_VIRAL_TSV_BY_SPECIES") {
-                script "subworkflows/local/splitViralTsvBySpecies/main.nf"
+            run("SPLIT_VIRAL_TSV_BY_SELECTED_TAXID") {
+                script "subworkflows/local/splitViralTsvBySelectedTaxid/main.nf"
                 process {
                     '''
                     input[0] = PREPARE_GROUP_TSVS.out.groups // groups
@@ -51,7 +51,7 @@ nextflow_workflow {
             }
             workflow {
                 '''
-                input[0] = SPLIT_VIRAL_TSV_BY_SPECIES.out.tsv // tsvs
+                input[0] = SPLIT_VIRAL_TSV_BY_SELECTED_TAXID.out.tsv // tsvs
                 input[1] = "test" // filename_suffix
                 '''
             }
