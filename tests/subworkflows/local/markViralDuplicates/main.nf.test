@@ -13,7 +13,7 @@ nextflow_workflow {
             script "subworkflows/local/loadDownstreamData/main.nf"
             process {
                 """
-                input[0] = "${projectDir}/test-data/downstream/input_file.csv"
+                input[0] = "${projectDir}/test-data/downstream/input_file_lca.csv"
                 """
             }
         }
