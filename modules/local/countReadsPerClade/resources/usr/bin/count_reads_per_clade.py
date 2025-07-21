@@ -33,52 +33,47 @@ def count_reads_per_taxid(data):
     return total, dedup
 
 def build_tree(tax_data):
-    # {parent: [children]}
-    children = defaultdict(list)
+    # {parent: [child]}
+    tree = defaultdict(list)
     for taxon in tax_data:
-        children[taxon["parent_taxid"]].append(taxon["taxid"])
-    return children
+        tree[taxon["parent_taxid"]].append(taxon["taxid"])
+    return tree
 
-def get_roots(children):
-    # Find roots of a tree
-    all_children = {child for lst in children.values() for child in lst} 
-    parents = set(children.keys())
-    return parents - all_children
+def roots(tree):
+    # Find roots of a tree (parents nodes are not also child nodes)
+    parents = set(tree.keys())
+    children = {child for lst in tree.values() for child in lst} 
+    return parents - children
 
-def aggregate_counts(node_counts, children):
-    roots = get_roots(children)
+def aggregate_counts(node_counts, tree):
 
-    # Post-order traversal to compute clade counts
     clade_counts = {}
 
+    # Depth-first search of the tree, store results as you go
     def dfs(node):
         # Start with this node's own count
         total = node_counts.get(node, 0)
 
         # Add counts from all descendants
-        for child in children[node]:
+        for child in tree[node]:
             total += dfs(child)
 
         clade_counts[node] = total
         return total
 
-    for root in roots:
+    for root in roots(tree):
         dfs(root)
 
     return clade_counts
 
+
 def main():
-    read_table = read_tsv(argv[1])
-    tax_db = read_tsv(argv[2])
-    reads_total, reads_dedup = count_reads_per_taxid(read_table)
-    children = build_tree(tax_db)
-    clade_counts = aggregate_counts(reads_total, children)
-    # Note: total should equal the sum of the roots
-    for taxid, count in clade_counts.items():
-        if count > 0:
-            print(taxid, count, sep="\t")
-    print(clade_counts["1"])
-    print(reads_total.total())
+    read_table = argv[1]
+    tax_db = argv[2]
+    reads_total, reads_dedup = count_reads_per_taxid(read_tsv(read_table))
+    tree = build_tree(read_tsv(tax_db))
+    clade_counts_total = aggregate_counts(reads_total, tree)
+    clade_counts_dedup = aggregate_counts(reads_dedup, tree)
 
 if __name__ == "__main__":
     main()
