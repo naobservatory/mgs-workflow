@@ -251,7 +251,7 @@ style J fill:#000,color:#fff,stroke:#000
 
 #### Cluster hits within selected taxid and obtain representative sequences (`CLUSTER_VIRAL_ASSIGNMENTS`)
 
-This subworkflow takes in partitioned FASTQ sequences from `SPLIT_VIRAL_TSV_BY_SELECTED_TAXID`, clusters them using [VSEARCH](https://github.com/torognes/vsearch), and returns representative sequences from the largest clusters, along with a TSV mapping each hit to its corresponding cluster representative. By clustering sequences within each selected taxid, the subworkflow reduces the computational cost of validation by selecting only representative sequences rather than validating every individual hit.
+This subworkflow takes in partitioned FASTQ sequences from `SPLIT_VIRAL_TSV_BY_SELECTED_TAXID`, clusters them using [VSEARCH](https://github.com/torognes/vsearch), and returns representative sequences from the largest clusters, along with a TSV mapping each hit to its corresponding cluster representative. By clustering sequences within each taxid group, the subworkflow reduces the computational cost of validation by selecting only representative sequences rather than validating every individual hit.
 
 ```mermaid
 ---
@@ -287,7 +287,7 @@ style I fill:#000,color:#fff,stroke:#000
 
 #### Concatenate data across selected taxid (`CONCATENATE_FILES_ACROSS_SELECTED_TAXID` and `CONCATENATE_TSVS_ACROSS_SELECTED_TAXID`)
 
-These two subworkflows take partitioned data from `CLUSTER_VIRAL_ASSIGNMENTS` (FASTA files and clustering TSVs respectively) and reorganize them by sample group rather than by selected taxid. Each subworkflow extracts the group identifier from the combined group/selected taxid labels, then concatenates all files sharing the same group label. This restructuring allows for group-level BLAST analysis rather than separate BLAST jobs for each selected taxid, significantly reducing computational overhead.
+These two subworkflows take partitioned data from `CLUSTER_VIRAL_ASSIGNMENTS` (FASTA files and clustering TSVs respectively) and reorganize them by sample group rather than by taxid group. Each subworkflow extracts the group identifier from the combined group/taxid group labels, then concatenates all files sharing the same group label. This restructuring allows for group-level BLAST analysis rather than separate BLAST jobs for each taxid group, significantly reducing computational overhead.
 
 ```mermaid
 ---
