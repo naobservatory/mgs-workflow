@@ -20,7 +20,7 @@ include { PARTITION_TSV } from "../../../modules/local/partitionTsv"
 include { SORT_TSV as SORT_GROUP_TAXID } from "../../../modules/local/sortTsv"
 include { SORT_TSV as SORT_JOINED_SPECIES } from "../../../modules/local/sortTsv"
 include { EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED as EXTRACT_FASTQ } from "../../../modules/local/extractViralHitsToFastqNoref"
-include { CREATE_CONDITIONAL_COLUMN } from "../../../modules/local/createConditionalColumn"
+include { ADD_CONDITIONAL_TSV_COLUMN } from "../../../modules/local/addConditionalTsvColumn"
 
 /***********
 | WORKFLOW |
@@ -45,7 +45,13 @@ workflow SPLIT_VIRAL_TSV_BY_SELECTED_TAXID {
         join_prep_ch = sorted_ch.combine(db_raw_ch)
         join_ch = JOIN_TSVS(join_prep_ch, "aligner_taxid_lca", "left", "taxonomy").output
         // 3. Partition on species taxid        
-        updated_col = CREATE_CONDITIONAL_COLUMN(join_ch, "taxid_species", "NA", "aligner_taxid_lca", "taxid_species", "selected_taxid").tsv
+        updated_col = ADD_CONDITIONAL_TSV_COLUMN(join_ch, [
+            chk_col: "taxid_species",
+            match_val: "NA",
+            if_col: "aligner_taxid_lca",
+            else_col: "taxid_species",
+            new_hdr: "selected_taxid"
+        ]).tsv
         join_sorted_ch = SORT_JOINED_SPECIES(updated_col, "selected_taxid").sorted
         part_ch = PARTITION_TSV(join_sorted_ch, "selected_taxid").output
         // 4. Restructure channel to separate species
@@ -56,7 +62,7 @@ workflow SPLIT_VIRAL_TSV_BY_SELECTED_TAXID {
                 pathlist.collect { path ->
                     // Define regex pattern for extracting species taxid
                     def filename = path.last()
-                    def pattern = "^partition_(.*?)_sorted_selected_taxid_adjusted_selected_taxid_${group}_taxonomy_left_joined_aligner_taxid_lca\\.tsv\\.gz\$"
+                    def pattern = "^partition_(.*?)_sorted_selected_taxid_added_selected_taxid_${group}_taxonomy_left_joined_aligner_taxid_lca\\.tsv\\.gz\$"
                     def matcher = (filename =~ pattern)
                     if (!matcher) {
                         def msg = "Filename doesn't match required pattern: ${group}, ${path}, ${path.last()}"

@@ -7,7 +7,7 @@
     - Added column to track the status of whether an alignment is primary, secondary, or supplementary in PROCESS_VIRAL_{MINIMAP2,BOWTIE2}_SAM
     - Created new temporary workflow, EXTRACT_VIRAL_READS_ONT_LCA, that will eventually replace EXTRACT_VIRAL_READS_ONT which makes MINIMAP2 run with multiple alignments, then runs LCA on this output
     - Updating DOWNSTREAM and RUN_VALIDATION to be compatible with EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_ONT_LCA
-        - Changed SPLIT_VIRAL_TSV_BY_SPECIES to be SPLIT_VIRAL_TSV_BY_SELECTED_TAXID, CONCATENATE_FILES_ACROSS_SPECIES to be CONCATENATE_FILES_ACROSS_SELECTED_TAXID, and CONCATENATE_TSVS_ACROSS_SPECIES to be CONCATENATE_TSVS_ACROSS_SELECTED_TAXID as we still group reads by species if their LCA taxid assignment is below the species level; however, if a reads LCA taxid assignment is above the species level, we use the LCA taxid assignment to group reads.
+        - Changed SPLIT_VIRAL_TSV_BY_SPECIES to be SPLIT_VIRAL_TSV_BY_SELECTED_TAXID, CONCATENATE_FILES_ACROSS_SPECIES to be CONCATENATE_FILES_ACROSS_SELECTED_TAXID, and CONCATENATE_TSVS_ACROSS_SPECIES to be CONCATENATE_TSVS_ACROSS_SELECTED_TAXID as we still group reads by species if their LCA taxid assignment is below the species level; however, if a read's LCA taxid assignment is above the species level, we use the LCA taxid assignment to group reads.
         - Updated DOWNSTREAM docs
         - Updated DOWNSTREAM and RUN_VALIDATION to use LCA versions of output from RUN workflow such that the tests can run correctly. These files/changes will temporarily have the word "lca" in them, but that will be removed once the LCA migration is complete.
 

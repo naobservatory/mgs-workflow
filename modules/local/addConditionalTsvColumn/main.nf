@@ -1,28 +1,27 @@
-// Creates a new column with conditional values based on checking another column
-process CREATE_CONDITIONAL_COLUMN {
+/*
+* Add a new TSV column where values are conditionally selected from two source columns.
+* Example: Create column D where D = column B when column A matches a value, otherwise D = column C.
+*/
+process ADD_CONDITIONAL_TSV_COLUMN {
     label "single"
     label "coreutils_gzip_gawk"
     input:
         tuple val(sample), path(tsv)
-        val(chk_col)
-        val(match_val)
-        val(if_col)
-        val(else_col)
-        val(new_hdr)
+        val(params_map)
     output:
-        tuple val(sample), path("adjusted_${new_hdr}_${tsv}"), emit: tsv
+        tuple val(sample), path("added_${params_map.new_hdr}_${tsv}"), emit: tsv
     script:
         def isGzipped = tsv.toString().endsWith(".gz")
         def extractCmd = isGzipped ? "zcat" : "cat"
-        def outputFile = "adjusted_${new_hdr}_${tsv}"
+        def outputFile = "added_${params_map.new_hdr}_${tsv}"
         def compressCmd = isGzipped ? "| gzip" : ""
         """
         set -eou pipefail
-        ${extractCmd} ${tsv} | awk -v chk_col="${chk_col}" \\
-            -v match_val="${match_val}" \\
-            -v if_col="${if_col}" \\
-            -v else_col="${else_col}" \\
-            -v new_hdr="${new_hdr}" \\
+        ${extractCmd} ${tsv} | awk -v chk_col="${params_map.chk_col}" \\
+            -v match_val="${params_map.match_val}" \\
+            -v if_col="${params_map.if_col}" \\
+            -v else_col="${params_map.else_col}" \\
+            -v new_hdr="${params_map.new_hdr}" \\
             'BEGIN {
                 FS = OFS = "\\t"
                 error_occurred = 0

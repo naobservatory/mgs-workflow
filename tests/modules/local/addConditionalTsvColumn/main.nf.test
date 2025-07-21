@@ -1,0 +1,204 @@
+nextflow_process {
+
+    name "Test Process ADD_CONDITIONAL_TSV_COLUMN"
+    script "modules/local/addConditionalTsvColumn/main.nf"
+    process "ADD_CONDITIONAL_TSV_COLUMN"
+    config "tests/configs/run.config"
+    tag "process"
+    tag "add_conditional_tsv_column"
+
+    test("Should add conditional column based on column values") {
+
+        when {
+            params {
+                column_params = [
+                    chk_col: "x",
+                    match_val: "0",
+                    if_col: "y",
+                    else_col: "z",
+                    new_hdr: "selected"
+                ]
+            }
+            
+            process {
+                """
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_single.tsv")]
+                input[1] = params.column_params
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            
+            def inputData = path("${projectDir}/test-data/toy-data/test_tab_single.tsv").csv(sep: "\t", decompress: false)
+            def outputData = path(process.out.tsv[0][1]).csv(sep: "\t", decompress: false)
+            
+            assert outputData.rowCount == inputData.rowCount
+            assert outputData.columnCount == inputData.columnCount + 1
+            assert params.column_params.new_hdr in outputData.columns.keySet()
+            
+            for (int i = 0; i < outputData.rowCount; i++) {
+                def xValue = outputData.columns[params.column_params.chk_col][i]
+                def yValue = outputData.columns[params.column_params.if_col][i]
+                def zValue = outputData.columns[params.column_params.else_col][i]
+                def selectedValue = outputData.columns[params.column_params.new_hdr][i]
+                
+                if (xValue == 0) {
+                    assert selectedValue == yValue
+                } else {
+                    assert selectedValue == zValue
+                }
+            }
+        }
+    }
+
+    test("Should handle empty file") {
+
+        when {
+            params {
+                column_params = [
+                    chk_col: "taxid_species",
+                    match_val: "NA",
+                    if_col: "aligner_taxid_lca",
+                    else_col: "taxid_species",
+                    new_hdr: "selected_taxid"
+                ]
+            }
+            
+            process {
+                """
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/empty_file.txt")]
+                input[1] = params.column_params
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            
+            // Verify output file exists but is empty
+            def outputFile = path(process.out.tsv[0][1])
+            assert outputFile.exists()
+            assert outputFile.text.trim() == ""
+        }
+    }
+
+    test("Should handle header-only file") {
+
+        when {
+            params {
+                column_params = [
+                    chk_col: "x",
+                    match_val: "0",
+                    if_col: "y",
+                    else_col: "z",
+                    new_hdr: "selected"
+                ]
+            }
+            
+            process {
+                """
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_empty.tsv")]
+                input[1] = params.column_params
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            
+            def inputFile = path("${projectDir}/test-data/toy-data/test_tab_empty.tsv")
+            def outputFile = path(process.out.tsv[0][1])
+            
+            def inputHeaders = inputFile.text.split("\n")[0].split("\t") as List
+            def outputHeaders = outputFile.text.split("\n")[0].split("\t") as List
+            
+            assert outputFile.text.split("\n").size() == 1  // Header only
+            assert outputHeaders.size() == inputHeaders.size() + 1
+            assert outputHeaders.containsAll(inputHeaders)
+            assert outputHeaders.contains(params.column_params.new_hdr)
+        }
+    }
+
+    test("Should fail when check column doesn't exist") {
+
+        when {
+            params {
+                column_params = [
+                    chk_col: "nonexistent_col",
+                    match_val: "0",
+                    if_col: "y",
+                    else_col: "z",
+                    new_hdr: "selected"
+                ]
+            }
+            
+            process {
+                """
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_single.tsv")]
+                input[1] = params.column_params
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains("ERROR: could not find all requested columns in header")
+        }
+    }
+
+    test("Should fail when if column doesn't exist") {
+
+        when {
+            params {
+                column_params = [
+                    chk_col: "x",
+                    match_val: "0",
+                    if_col: "missing_col",
+                    else_col: "z",
+                    new_hdr: "selected"
+                ]
+            }
+            
+            process {
+                """
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_single.tsv")]
+                input[1] = params.column_params
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains("ERROR: could not find all requested columns in header")
+        }
+    }
+
+    test("Should fail when else column doesn't exist") {
+
+        when {
+            params {
+                column_params = [
+                    chk_col: "x",
+                    match_val: "0",
+                    if_col: "y",
+                    else_col: "not_there",
+                    new_hdr: "selected"
+                ]
+            }
+            
+            process {
+                """
+                input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_single.tsv")]
+                input[1] = params.column_params
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains("ERROR: could not find all requested columns in header")
+        }
+    }
+ }
