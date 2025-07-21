@@ -5,7 +5,8 @@ import csv
 from collections import Counter, defaultdict
 from typing import Iterator, TextIO
 
-Tree = dict[str, list[str]]
+TaxId = str
+Tree = dict[TaxId, list[TaxId]]
 
 
 def open_by_suffix(filename: str, mode: str = "r", debug: bool = False) -> TextIO:
@@ -38,24 +39,26 @@ def read_tsv(file_path: str) -> Iterator[dict[str, str]]:
 def is_duplicate(read: dict[str, str]) -> bool:
     """
     Check if a read is a duplicate based on sequence ID and primary alignment exemplar.
-    
+
     Args:
         read: Dictionary representing a read record
-        
+
     Returns:
         True if the read is a duplicate, False otherwise
     """
     return read["seq_id"] != read["prim_align_dup_exemplar"]
 
 
-def count_reads_per_taxid(data: Iterator[dict[str, str]], taxid_field: str = "aligner_taxid_lca") -> tuple[Counter[str], Counter[str]]:
+def count_reads_per_taxid(
+    data: Iterator[dict[str, str]], taxid_field: str = "aligner_taxid_lca"
+) -> tuple[Counter[TaxId], Counter[TaxId]]:
     """
     Count total and deduplicated reads per taxonomic ID.
-    
+
     Args:
         data: Iterator of read records as dictionaries
         taxid_field: Field name containing the taxonomic ID
-        
+
     Returns:
         Tuple of (total_counts, deduplicated_counts) as Counters
     """
@@ -69,15 +72,19 @@ def count_reads_per_taxid(data: Iterator[dict[str, str]], taxid_field: str = "al
     return total, dedup
 
 
-def build_tree(tax_data: Iterator[dict[str, str]], child_field: str = "taxid", parent_field: str = "parent_taxid") -> Tree:
+def build_tree(
+    tax_data: Iterator[dict[str, str]],
+    child_field: str = "taxid",
+    parent_field: str = "parent_taxid",
+) -> Tree:
     """
     Build a taxonomic tree from taxonomy data.
-    
+
     Args:
         tax_data: Iterator of taxonomy records as dictionaries
         child_field: Field name containing child taxonomic ID
         parent_field: Field name containing parent taxonomic ID
-        
+
     Returns:
         Dictionary mapping parent IDs to lists of child IDs
     """
@@ -87,41 +94,41 @@ def build_tree(tax_data: Iterator[dict[str, str]], child_field: str = "taxid", p
     return tree
 
 
-def parents(tree: Tree) -> set[str]:
+def parents(tree: Tree) -> set[TaxId]:
     """Get all parent nodes from a tree."""
     return set(tree.keys())
 
 
-def children(tree: Tree) -> set[str]:
+def children(tree: Tree) -> set[TaxId]:
     """Get all child nodes from a tree."""
     return {child for lst in tree.values() for child in lst}
 
 
-def nodes(tree: Tree) -> set[str]:
+def nodes(tree: Tree) -> set[TaxId]:
     """Get all nodes (parents and children) from a tree."""
     return parents(tree) | children(tree)
 
 
-def roots(tree: Tree) -> set[str]:
+def roots(tree: Tree) -> set[TaxId]:
     """Find root nodes of a tree (parent nodes that are not also child nodes)."""
     return parents(tree) - children(tree)
 
 
-def aggregate_counts(node_counts: Counter[str], tree: Tree) -> Counter[str]:
+def aggregate_counts(node_counts: Counter[TaxId], tree: Tree) -> Counter[TaxId]:
     """
     Aggregate read counts for each clade (node and all its descendants).
-    
+
     Args:
         node_counts: Counter of reads per taxonomic ID
         tree: Taxonomic tree structure
-        
+
     Returns:
         Counter mapping taxonomic IDs to their clade counts
     """
     clade_counts = Counter()
 
     # Depth-first search of the tree, store results as you go
-    def dfs(node: str) -> int:
+    def dfs(node: TaxId) -> int:
         # Start with this node's own count
         total = node_counts[node]
 
@@ -141,14 +148,14 @@ def aggregate_counts(node_counts: Counter[str], tree: Tree) -> Counter[str]:
 def write_output_tsv(
     output_path: str,
     tree: Tree,
-    reads_total: Counter[str],
-    reads_dedup: Counter[str],
-    clade_counts_total: Counter[str],
-    clade_counts_dedup: Counter[str],
+    reads_total: Counter[TaxId],
+    reads_dedup: Counter[TaxId],
+    clade_counts_total: Counter[TaxId],
+    clade_counts_dedup: Counter[TaxId],
 ) -> None:
     """
     Write taxonomic read counts to a TSV file.
-    
+
     Args:
         output_path: Path to output TSV file
         tree: Taxonomic tree structure
@@ -160,6 +167,7 @@ def write_output_tsv(
     with open_by_suffix(output_path, "w") as outfile:
         fieldnames = [
             "taxid",
+            "parent_taxid",
             "reads_direct_total",
             "reads_direct_dedup",
             "reads_clade_total",
@@ -167,9 +175,11 @@ def write_output_tsv(
         ]
         writer = csv.DictWriter(outfile, fieldnames=fieldnames, delimiter="\t")
         writer.writeheader()
-        for node in nodes(tree):
+        # Write rows in depth-first order
+        def dfs(node: TaxId, parent = ".") -> None:
             row = {
                 "taxid": node,
+                "parent_taxid": parent,
                 "reads_direct_total": reads_total[node],
                 "reads_direct_dedup": reads_dedup[node],
                 "reads_clade_total": clade_counts_total[node],
@@ -178,6 +188,12 @@ def write_output_tsv(
             # Only print clades that have some reads
             if row["reads_clade_total"] > 0:
                 writer.writerow(row)
+            for child in tree[node]:
+                dfs(child, parent = node)
+
+        for root in roots(tree):
+            dfs(root)
+
 
 
 def parse_args() -> argparse.Namespace:
