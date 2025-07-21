@@ -2,8 +2,8 @@ def checkGzipSorted = { file,key -> ["bash", "-c", "zcat " + file + " | sort -C 
 def exp_lca_headers_base = ["staxid_lca", "n_assignments_total", "n_assignments_classified",
     "staxid_top", "staxid_top_classified", "bitscore_min", "bitscore_max", "bitscore_mean"]
 def exp_lca_headers_prefixed = exp_lca_headers_base.collect{ "testprefix_${it}" }
-def exp_lca_headers_all = exp_lca_headers_prefixed.collect{ it + "_all" }
-def exp_lca_headers_natural = exp_lca_headers_prefixed.collect{ it + "_natural" }
+def exp_lca_headers_all = exp_lca_headers_prefixed.collect{ it + "_combined" }
+def exp_lca_headers_natural = exp_lca_headers_prefixed.collect{ it }
 def exp_lca_headers_artificial = exp_lca_headers_prefixed.collect{ it + "_artificial" }
 def exp_lca_headers = ["qseqid"] + exp_lca_headers_all + exp_lca_headers_natural + exp_lca_headers_artificial
 
