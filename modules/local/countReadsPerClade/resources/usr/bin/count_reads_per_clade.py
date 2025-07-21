@@ -1,8 +1,8 @@
+import argparse
 import gzip
 import bz2
 import csv
 from collections import Counter, defaultdict
-from sys import argv
 
 
 def open_by_suffix(filename, mode="r", debug=False):
@@ -36,7 +36,7 @@ def is_duplicate(read):
     return read["seq_id"] != read["prim_align_dup_exemplar"]
 
 
-def count_reads_per_taxid(data, taxid_field = "aligner_taxid_lca"):
+def count_reads_per_taxid(data, taxid_field="aligner_taxid_lca"):
     total = Counter()
     dedup = Counter()
     for read in data:
@@ -47,7 +47,7 @@ def count_reads_per_taxid(data, taxid_field = "aligner_taxid_lca"):
     return total, dedup
 
 
-def build_tree(tax_data, child_field = "taxid", parent_field = "parent_taxid"):
+def build_tree(tax_data, child_field="taxid", parent_field="parent_taxid"):
     # {parent: [child]}
     tree = defaultdict(list)
     for taxon in tax_data:
@@ -124,16 +124,24 @@ def write_output_tsv(
                 writer.writerow(row)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reads", help="Path to read TSV with LCA assignments.")
+    parser.add_argument(
+        "--taxdb", help="Path to taxonomy database with taxid and parent_taxid."
+    )
+    parser.add_argument("--output", help="Path to output TSV.")
+    return parser.parse_args()
+
+
 def main():
-    read_table = argv[1]
-    tax_db = argv[2]
-    output_path = argv[3]
-    reads_total, reads_dedup = count_reads_per_taxid(read_tsv(read_table))
-    tree = build_tree(read_tsv(tax_db))
+    args = parse_args()
+    reads_total, reads_dedup = count_reads_per_taxid(read_tsv(args.reads))
+    tree = build_tree(read_tsv(args.taxdb))
     clade_counts_total = aggregate_counts(reads_total, tree)
     clade_counts_dedup = aggregate_counts(reads_dedup, tree)
     write_output_tsv(
-        output_path,
+        args.output,
         tree,
         reads_total,
         reads_dedup,
