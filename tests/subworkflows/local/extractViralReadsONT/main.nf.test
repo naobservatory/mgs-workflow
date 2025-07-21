@@ -22,12 +22,14 @@ nextflow_workflow {
 
     test("Should run without failures") {
         tag "expect_success"
-        tag "ont"
+        tag "ont_lca"
+        tag "harmon-test"
         when {
             workflow {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = params.ref_dir
+                input[2] = "81077"
                 '''
             }
         }
@@ -41,9 +43,17 @@ nextflow_workflow {
                 .collect { line -> line.split('\t')[0] }  // Get read IDs
                 .toSet()
             def hits_final = path(workflow.out.hits_final[0]).csv(sep: "\t", decompress: true)
-            def hits_final_read_ids = hits_final.columns["seq_id"].toSet()
+            def hits_final_read_ids_list = hits_final.columns["seq_id"]  // Keep as list to check for duplicates
+            def hits_final_read_ids_set = hits_final_read_ids_list.toSet()
+            
+            // Verify there's only one entry for each read ID in the final output
+            assert hits_final_read_ids_list.size() == hits_final_read_ids_set.size(), 
+                "Found duplicate read IDs in final output: expected ${hits_final_read_ids_set.size()} unique IDs but got ${hits_final_read_ids_list.size()} total entries"
+            
+            // Verify all final read IDs exist in the SAM file
             assert sam_ids.size() > 0
-            assert sam_ids == hits_final_read_ids
+            assert hits_final_read_ids_set.every { it in sam_ids }, 
+                "All read IDs in final output should exist in SAM file"
 
             // Check the the human and contam filtering work and produce FASTQ files that are subsets of the prior FASTQ file.
             def fastq_filtered_human = path(workflow.out.test_fastq_filtered_human[0][1]).fastq
@@ -62,7 +72,7 @@ nextflow_workflow {
     test("Should handle empty input file") {
         tag "empty_file"
         tag "expect_success"
-        tag "ont"
+        tag "ont_lca"
         setup {
             run("GZIP_FILE", alias: "GZIP_EMPTY_FORWARD") {
                 script "modules/local/gzipFile/main.nf"
@@ -80,6 +90,7 @@ nextflow_workflow {
                 '''
                 input[0] = GZIP_EMPTY_FORWARD.out
                 input[1] = params.ref_dir
+                input[2] = "81077"
                 '''
             }
         }
