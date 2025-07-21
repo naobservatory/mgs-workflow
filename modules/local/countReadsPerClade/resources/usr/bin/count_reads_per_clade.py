@@ -3,9 +3,12 @@ import gzip
 import bz2
 import csv
 from collections import Counter, defaultdict
+from typing import Iterator, TextIO
+
+Tree = dict[str, list[str]]
 
 
-def open_by_suffix(filename, mode="r", debug=False):
+def open_by_suffix(filename: str, mode: str = "r", debug: bool = False) -> TextIO:
     """Parse the suffix of a filename to determine the right open method
     to use, then open the file. Can handle .gz, .bz2, and uncompressed files."""
     if filename.endswith(".gz"):
@@ -16,7 +19,7 @@ def open_by_suffix(filename, mode="r", debug=False):
         return open(filename, mode)
 
 
-def read_tsv(file_path):
+def read_tsv(file_path: str) -> Iterator[dict[str, str]]:
     """
     Read a TSV file and yield rows one at a time.
 
@@ -32,11 +35,30 @@ def read_tsv(file_path):
             yield row
 
 
-def is_duplicate(read):
+def is_duplicate(read: dict[str, str]) -> bool:
+    """
+    Check if a read is a duplicate based on sequence ID and primary alignment exemplar.
+    
+    Args:
+        read: Dictionary representing a read record
+        
+    Returns:
+        True if the read is a duplicate, False otherwise
+    """
     return read["seq_id"] != read["prim_align_dup_exemplar"]
 
 
-def count_reads_per_taxid(data, taxid_field="aligner_taxid_lca"):
+def count_reads_per_taxid(data: Iterator[dict[str, str]], taxid_field: str = "aligner_taxid_lca") -> tuple[Counter[str], Counter[str]]:
+    """
+    Count total and deduplicated reads per taxonomic ID.
+    
+    Args:
+        data: Iterator of read records as dictionaries
+        taxid_field: Field name containing the taxonomic ID
+        
+    Returns:
+        Tuple of (total_counts, deduplicated_counts) as Counters
+    """
     total = Counter()
     dedup = Counter()
     for read in data:
@@ -47,38 +69,61 @@ def count_reads_per_taxid(data, taxid_field="aligner_taxid_lca"):
     return total, dedup
 
 
-def build_tree(tax_data, child_field="taxid", parent_field="parent_taxid"):
-    # {parent: [child]}
+def build_tree(tax_data: Iterator[dict[str, str]], child_field: str = "taxid", parent_field: str = "parent_taxid") -> Tree:
+    """
+    Build a taxonomic tree from taxonomy data.
+    
+    Args:
+        tax_data: Iterator of taxonomy records as dictionaries
+        child_field: Field name containing child taxonomic ID
+        parent_field: Field name containing parent taxonomic ID
+        
+    Returns:
+        Dictionary mapping parent IDs to lists of child IDs
+    """
     tree = defaultdict(list)
     for taxon in tax_data:
         tree[taxon[parent_field]].append(taxon[child_field])
     return tree
 
 
-def parents(tree):
+def parents(tree: Tree) -> set[str]:
+    """Get all parent nodes from a tree."""
     return set(tree.keys())
 
 
-def children(tree):
+def children(tree: Tree) -> set[str]:
+    """Get all child nodes from a tree."""
     return {child for lst in tree.values() for child in lst}
 
 
-def nodes(tree):
+def nodes(tree: Tree) -> set[str]:
+    """Get all nodes (parents and children) from a tree."""
     return parents(tree) | children(tree)
 
 
-def roots(tree):
-    # Find roots of a tree (parents nodes that are not also child nodes)
+def roots(tree: Tree) -> set[str]:
+    """Find root nodes of a tree (parent nodes that are not also child nodes)."""
     return parents(tree) - children(tree)
 
 
-def aggregate_counts(node_counts, tree):
-    clade_counts = {}
+def aggregate_counts(node_counts: Counter[str], tree: Tree) -> Counter[str]:
+    """
+    Aggregate read counts for each clade (node and all its descendants).
+    
+    Args:
+        node_counts: Counter of reads per taxonomic ID
+        tree: Taxonomic tree structure
+        
+    Returns:
+        Counter mapping taxonomic IDs to their clade counts
+    """
+    clade_counts = Counter()
 
     # Depth-first search of the tree, store results as you go
-    def dfs(node):
+    def dfs(node: str) -> int:
         # Start with this node's own count
-        total = node_counts.get(node, 0)
+        total = node_counts[node]
 
         # Add counts from all descendants
         for child in tree[node]:
@@ -94,13 +139,24 @@ def aggregate_counts(node_counts, tree):
 
 
 def write_output_tsv(
-    output_path,
-    tree,
-    reads_total,
-    reads_dedup,
-    clade_counts_total,
-    clade_counts_dedup,
-):
+    output_path: str,
+    tree: Tree,
+    reads_total: Counter[str],
+    reads_dedup: Counter[str],
+    clade_counts_total: Counter[str],
+    clade_counts_dedup: Counter[str],
+) -> None:
+    """
+    Write taxonomic read counts to a TSV file.
+    
+    Args:
+        output_path: Path to output TSV file
+        tree: Taxonomic tree structure
+        reads_total: Total read counts per taxonomic ID
+        reads_dedup: Deduplicated read counts per taxonomic ID
+        clade_counts_total: Total clade counts per taxonomic ID
+        clade_counts_dedup: Deduplicated clade counts per taxonomic ID
+    """
     with open_by_suffix(output_path, "w") as outfile:
         fieldnames = [
             "taxid",
@@ -114,17 +170,17 @@ def write_output_tsv(
         for node in nodes(tree):
             row = {
                 "taxid": node,
-                "reads_direct_total": reads_total.get(node, 0),
-                "reads_direct_dedup": reads_dedup.get(node, 0),
-                "reads_clade_total": clade_counts_total.get(node, 0),
-                "reads_clade_dedup": clade_counts_dedup.get(node, 0),
+                "reads_direct_total": reads_total[node],
+                "reads_direct_dedup": reads_dedup[node],
+                "reads_clade_total": clade_counts_total[node],
+                "reads_clade_dedup": clade_counts_dedup[node],
             }
             # Only print clades that have some reads
             if row["reads_clade_total"] > 0:
                 writer.writerow(row)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--reads", help="Path to read TSV with LCA assignments.")
     parser.add_argument(
@@ -134,7 +190,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
     reads_total, reads_dedup = count_reads_per_taxid(read_tsv(args.reads))
     tree = build_tree(read_tsv(args.taxdb))
