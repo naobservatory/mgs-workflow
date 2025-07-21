@@ -36,22 +36,22 @@ def is_duplicate(read):
     return read["seq_id"] != read["prim_align_dup_exemplar"]
 
 
-def count_reads_per_taxid(data):
+def count_reads_per_taxid(data, taxid_field = "aligner_taxid_lca"):
     total = Counter()
     dedup = Counter()
     for read in data:
-        taxid = read["aligner_taxid_lca"]
+        taxid = read[taxid_field]
         total[taxid] += 1
         if not is_duplicate(read):
             dedup[taxid] += 1
     return total, dedup
 
 
-def build_tree(tax_data):
+def build_tree(tax_data, child_field = "taxid", parent_field = "parent_taxid"):
     # {parent: [child]}
     tree = defaultdict(list)
     for taxon in tax_data:
-        tree[taxon["parent_taxid"]].append(taxon["taxid"])
+        tree[taxon[parent_field]].append(taxon[child_field])
     return tree
 
 
