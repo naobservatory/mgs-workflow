@@ -1,5 +1,4 @@
 nextflow_process {
-
     name "Test Process ADD_CONDITIONAL_TSV_COLUMN"
     script "modules/local/addConditionalTsvColumn/main.nf"
     process "ADD_CONDITIONAL_TSV_COLUMN"
@@ -8,7 +7,7 @@ nextflow_process {
     tag "add_conditional_tsv_column"
 
     test("Should add conditional column based on column values") {
-
+        tag "expect_success"
         when {
             params {
                 column_params = [
@@ -19,7 +18,6 @@ nextflow_process {
                     new_hdr: "selected"
                 ]
             }
-            
             process {
                 """
                 input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_single.tsv")]
@@ -27,23 +25,18 @@ nextflow_process {
                 """
             }
         }
-
         then {
             assert process.success
-            
             def inputData = path("${projectDir}/test-data/toy-data/test_tab_single.tsv").csv(sep: "\t", decompress: false)
             def outputData = path(process.out.tsv[0][1]).csv(sep: "\t", decompress: false)
-            
             assert outputData.rowCount == inputData.rowCount
             assert outputData.columnCount == inputData.columnCount + 1
             assert params.column_params.new_hdr in outputData.columns.keySet()
-            
             for (int i = 0; i < outputData.rowCount; i++) {
                 def xValue = outputData.columns[params.column_params.chk_col][i]
                 def yValue = outputData.columns[params.column_params.if_col][i]
                 def zValue = outputData.columns[params.column_params.else_col][i]
                 def selectedValue = outputData.columns[params.column_params.new_hdr][i]
-                
                 if (xValue == 0) {
                     assert selectedValue == yValue
                 } else {
@@ -54,7 +47,8 @@ nextflow_process {
     }
 
     test("Should handle empty file") {
-
+        tag "expect_success"
+        tag "empty_input"
         when {
             params {
                 column_params = [
@@ -65,7 +59,6 @@ nextflow_process {
                     new_hdr: "selected_taxid"
                 ]
             }
-            
             process {
                 """
                 input[0] = ["sample1", file("${projectDir}/test-data/toy-data/empty_file.txt")]
@@ -73,10 +66,8 @@ nextflow_process {
                 """
             }
         }
-
         then {
             assert process.success
-            
             // Verify output file exists but is empty
             def outputFile = path(process.out.tsv[0][1])
             assert outputFile.exists()
@@ -85,7 +76,8 @@ nextflow_process {
     }
 
     test("Should handle header-only file") {
-
+        tag "expect_success"
+        tag "header_only"
         when {
             params {
                 column_params = [
@@ -96,7 +88,6 @@ nextflow_process {
                     new_hdr: "selected"
                 ]
             }
-            
             process {
                 """
                 input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_empty.tsv")]
@@ -104,16 +95,12 @@ nextflow_process {
                 """
             }
         }
-
         then {
             assert process.success
-            
             def inputFile = path("${projectDir}/test-data/toy-data/test_tab_empty.tsv")
             def outputFile = path(process.out.tsv[0][1])
-            
             def inputHeaders = inputFile.text.split("\n")[0].split("\t") as List
             def outputHeaders = outputFile.text.split("\n")[0].split("\t") as List
-            
             assert outputFile.text.split("\n").size() == 1  // Header only
             assert outputHeaders.size() == inputHeaders.size() + 1
             assert outputHeaders.containsAll(inputHeaders)
@@ -122,7 +109,7 @@ nextflow_process {
     }
 
     test("Should fail when check column doesn't exist") {
-
+        tag "expect_failure"
         when {
             params {
                 column_params = [
@@ -133,7 +120,6 @@ nextflow_process {
                     new_hdr: "selected"
                 ]
             }
-            
             process {
                 """
                 input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_single.tsv")]
@@ -141,15 +127,19 @@ nextflow_process {
                 """
             }
         }
-
         then {
             assert process.failed
-            assert process.errorReport.contains("ERROR: could not find all requested columns in header")
+            // When a Nextflow process fails, the errorReport contains both the script definition
+            // and the actual runtime error output. Since our error message is embedded in the AWK
+            // script (line 38 of main.nf), it appears twice: once in the script definition and 
+            // once as the actual stderr output. The "\n  " prefix helps identify the actual runtime
+            // error occurrence versus the script definition.
+            assert process.errorReport.contains("\n  ERROR: could not find all requested columns in header")
         }
     }
 
     test("Should fail when if column doesn't exist") {
-
+        tag "expect_failure"
         when {
             params {
                 column_params = [
@@ -160,7 +150,6 @@ nextflow_process {
                     new_hdr: "selected"
                 ]
             }
-            
             process {
                 """
                 input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_single.tsv")]
@@ -168,15 +157,14 @@ nextflow_process {
                 """
             }
         }
-
         then {
             assert process.failed
-            assert process.errorReport.contains("ERROR: could not find all requested columns in header")
+            assert process.errorReport.contains("\n  ERROR: could not find all requested columns in header")
         }
     }
 
     test("Should fail when else column doesn't exist") {
-
+        tag "expect_failure"
         when {
             params {
                 column_params = [
@@ -187,7 +175,6 @@ nextflow_process {
                     new_hdr: "selected"
                 ]
             }
-            
             process {
                 """
                 input[0] = ["sample1", file("${projectDir}/test-data/toy-data/test_tab_single.tsv")]
@@ -195,10 +182,9 @@ nextflow_process {
                 """
             }
         }
-
         then {
             assert process.failed
-            assert process.errorReport.contains("ERROR: could not find all requested columns in header")
+            assert process.errorReport.contains("\n  ERROR: could not find all requested columns in header")
         }
     }
- }
+}
