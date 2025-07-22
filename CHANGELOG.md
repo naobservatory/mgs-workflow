@@ -7,6 +7,7 @@
     - Added column to track the status of whether an alignment is primary, secondary, or supplementary in PROCESS_VIRAL_{MINIMAP2,BOWTIE2}_SAM
     - Created new temporary workflow, EXTRACT_VIRAL_READS_ONT_LCA, that will eventually replace EXTRACT_VIRAL_READS_ONT which makes MINIMAP2 run with multiple alignments, then runs LCA on this output
     - Temporarily made EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_ONT_LCA incompatible with DOWNSTREAM
+- Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
 - Updated SORT_FASTQ to sort alphanumerically
 
 # v2.10.0.1
