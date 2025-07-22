@@ -10,6 +10,7 @@
         - Changed SPLIT_VIRAL_TSV_BY_SPECIES to be SPLIT_VIRAL_TSV_BY_SELECTED_TAXID, CONCATENATE_FILES_ACROSS_SPECIES to be CONCATENATE_FILES_ACROSS_SELECTED_TAXID, and CONCATENATE_TSVS_ACROSS_SPECIES to be CONCATENATE_TSVS_ACROSS_SELECTED_TAXID because of the new way that we group reads; specifically, we partition reads into taxid groups using the following rule: if a read's LCA assignment is at the species level or lower, group it by the species level taxid; otherwise, group the read by the raw LCA taxid. 
         - Updated DOWNSTREAM docs
         - Updated DOWNSTREAM and RUN_VALIDATION to use LCA versions of output from RUN workflow such that the tests can run correctly. These files/changes will temporarily have the word "lca" in them, but that will be removed once the LCA migration is complete.
+- Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
 
 # v2.10.0.1-dev
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
