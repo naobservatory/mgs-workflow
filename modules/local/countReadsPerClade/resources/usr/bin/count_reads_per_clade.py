@@ -6,7 +6,8 @@ from collections import Counter, defaultdict
 from typing import Iterator
 
 TaxId = int
-Tree = dict[TaxId, list[TaxId]]
+# Tree as adjacency list mapping parents to children
+Tree = defaultdict[TaxId, set[TaxId]]
 
 
 def open_by_suffix(filename: str, mode: str = "r"):
@@ -41,10 +42,13 @@ def is_duplicate(read: dict[str, str]) -> bool:
     Check if a read is a duplicate based on sequence ID and primary alignment exemplar.
 
     Args:
-        read: Dictionary representing a read record
+        read: Dictionary representing a read record with 'seq_id' and 'prim_align_dup_exemplar' fields
 
     Returns:
-        True if the read is a duplicate, False otherwise
+        True if the read is a duplicate (seq_id differs from prim_align_dup_exemplar), False otherwise
+
+    Raises:
+        KeyError: if 'seq_id' or 'prim_align_dup_exemplar' fields are missing
     """
     return read["seq_id"] != read["prim_align_dup_exemplar"]
 
@@ -88,9 +92,9 @@ def build_tree(
     Returns:
         Dictionary mapping parent IDs to lists of child IDs
     """
-    tree = defaultdict(list)
+    tree = defaultdict(set)
     for taxon in tax_data:
-        tree[int(taxon[parent_field])].append(int(taxon[child_field]))
+        tree[int(taxon[parent_field])].add(int(taxon[child_field]))
     return tree
 
 
@@ -101,7 +105,7 @@ def parents(tree: Tree) -> set[TaxId]:
 
 def children(tree: Tree) -> set[TaxId]:
     """Get all child nodes from a tree."""
-    return {child for lst in tree.values() for child in lst}
+    return set.union(*tree.values()) if tree else set()
 
 
 def nodes(tree: Tree) -> set[TaxId]:
