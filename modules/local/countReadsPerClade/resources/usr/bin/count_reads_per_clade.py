@@ -3,19 +3,19 @@ import gzip
 import bz2
 import csv
 from collections import Counter, defaultdict
-from typing import Iterator, TextIO
+from typing import Iterator
 
 TaxId = int
 Tree = dict[TaxId, list[TaxId]]
 
 
-def open_by_suffix(filename: str, mode: str = "r", debug: bool = False) -> TextIO:
+def open_by_suffix(filename: str, mode: str = "r"):
     """Parse the suffix of a filename to determine the right open method
     to use, then open the file. Can handle .gz, .bz2, and uncompressed files."""
     if filename.endswith(".gz"):
         return gzip.open(filename, mode + "t")
     elif filename.endswith(".bz2"):
-        return bz2.BZ2File(filename, mode)
+        return bz2.open(filename, mode + "t")
     else:
         return open(filename, mode)
 
@@ -62,8 +62,8 @@ def count_reads_per_taxid(
     Returns:
         Tuple of (total_counts, deduplicated_counts) as Counters
     """
-    total = Counter()
-    dedup = Counter()
+    total: Counter[TaxId] = Counter()
+    dedup: Counter[TaxId] = Counter()
     for read in data:
         taxid = int(read[taxid_field])
         total[taxid] += 1
@@ -125,7 +125,7 @@ def aggregate_counts(node_counts: Counter[TaxId], tree: Tree) -> Counter[TaxId]:
     Returns:
         Counter mapping taxonomic IDs to their clade counts
     """
-    clade_counts = Counter()
+    clade_counts: Counter[TaxId] = Counter()
 
     # Depth-first search of the tree, store results as you go
     def dfs(node: TaxId) -> int:
@@ -175,8 +175,9 @@ def write_output_tsv(
         ]
         writer = csv.DictWriter(outfile, fieldnames=fieldnames, delimiter="\t")
         writer.writeheader()
+
         # Write rows in depth-first order
-        def dfs(node: TaxId, parent = ".") -> None:
+        def dfs(node: TaxId, parent=".") -> None:
             row = {
                 "taxid": node,
                 "parent_taxid": parent,
@@ -189,11 +190,10 @@ def write_output_tsv(
             if row["reads_clade_total"] > 0:
                 writer.writerow(row)
             for child in sorted(tree[node]):
-                dfs(child, parent = node)
+                dfs(child, parent=node)
 
         for root in sorted(roots(tree)):
             dfs(root)
-
 
 
 def parse_args() -> argparse.Namespace:
