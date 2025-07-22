@@ -42,10 +42,7 @@ nextflow_workflow {
             }
         }
         then {
-            // Should run without failures
             assert workflow.success
-            // Output should have a nonzero number of lines divisible by eight
-            // (for an interleaved FASTQ file)
             // Output should be valid FASTQ with an even number of entries (interleaved)
             def test_reads_fastq = path(workflow.out.test_reads[0][1]).fastq
             def test_reads_count = test_reads_fastq.getNumberOfRecords()
@@ -129,9 +126,7 @@ nextflow_workflow {
             }
         }
         then {
-            // Should run without failures
             assert workflow.success
-
             // FASTQ output files should be empty
             def fastq_files = [
                 path(workflow.out.bbduk_match[0][1]),
@@ -142,7 +137,6 @@ nextflow_workflow {
             def fastqs = fastq_files.collect{ it.fastq }
             def read_counts = fastqs.collect{ it.getNumberOfRecords() }
             assert read_counts.every{ it == 0 }
-
             // Tabular output files should have only header lines
             def tabular_files = [
                 path(workflow.out.hits_final[0]),
