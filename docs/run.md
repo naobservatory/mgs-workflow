@@ -119,7 +119,7 @@ style G fill:#000,color:#fff,stroke:#000
 3. After that, we subset the columns and add a prefix to the primary alignment columns to make interpreting the output of the final viral hits table easier.
 4. Finally, the viral hits table, LCA output and processed aligner output go from separate files per sample, to one big file for each output. The viral hits table is emitted by the `RUN` workflow as a main output, whereas the LCA output and processed aligner output are emitted in the intermediates folder.
 
-To learn more about the LCA output and processed aligner output, see `docs/process_lca_aligner_output_intermediates.md`.
+To learn more about the LCA output and processed aligner output, see `docs/lca_intermediates.md`.
 
 ### Taxonomic assignment (TAXONOMY)
 
@@ -190,33 +190,6 @@ style J fill:#000,color:#fff,stroke:#000
 2. The output of FASTQC is then run through [MultiQC](https://multiqc.info/) to extract QC information into a more usable form.
 3. The output of MultiQC is then processed and summarized into a series of summary TSV files.
 
-### Custom lowest common ancestor algorithm (LCA_TSV)
-
-To improve our taxonomic assignments, we enable each of our aligners (Minimap2, Bowtie2, or BLAST) to output multiple alignments per query sequence, if they exist, then apply a custom LCA algorithm that takes alignment score along with other alignment information into account.
-
-The information that our algorithm uses includes whether the alignment is unclassified or classified, and whether it artificial or natural:
-
-- Unclassified taxa: NCBI taxa whose names contain the strings "unclassified" or "sp."
-- Classified taxa: All non-unclassified sequences
-- Artificial taxa: NCBI taxa who descend from taxid 81077
-- Natural taxa: All non-artificial sequences
-
-The algorithm operates as follows:
-
-1. Top taxid selection: Among all alignments within the same seq_id with the highest score:
-  - Classified taxa are always preferred over unclassified ones
-  - If multiple classified taxa tie for the top score, the first encountered is selected
-  - If only unclassified taxa have the top score, the first encountered is selected
-2. LCA calculation rules:
-  - If the top taxid is classified: Only classified taxa are included in the LCA calculation (all unclassified alignments are excluded)
-  - If the top taxid is unclassified: The LCA includes all classified taxa PLUS any unclassified taxa that share the top score
-3. Output categories: The algorithm produces three separate LCA calculations:
-  - Natural: Excludes all artificial alignments 
-  - Artificial: Only artificial alignments
-  - All: Includes both natural and artificial alignments
-
-More information on the output of `LCA_TSV` for the `RUN` workflow can be found in `docs/process_lca_aligner_output_intermediates.md`.
-
 ## Analysis subworkflows
 
 ### Viral identification (short read version)
@@ -266,9 +239,9 @@ style L fill:#000,color:#fff,stroke:#000
 2. Surviving reads undergo adapter and quality trimming with [FASTP](https://github.com/OpenGene/fastp) and [Cutadapt](https://cutadapt.readthedocs.io/en/stable/) to remove adapter contamination and low-quality/low-complexity reads.
 3. Next, reads are aligned to the previously-mentioned database of vertebrate-infecting viral genomes with [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) using quite permissive parameters that allow multiple alignments to be returned and are designed to capture as many putative vertebrate viral reads as possible. The output files are processed to generate new read files containing any read pair for which at least one read matches the vertebrate viral database.
 4. The output of the previous step is passed to a further filtering step, in which reads matching a series of common contaminant sequences are removed. This is done by aligning surviving reads to these contaminants using Bowtie2 in series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
-5. The reads that survive contaminant filtering then goes through an alignment score filtering step to get rid of low quality alignments. 
-6. The reads that make it through the score filter are then run through our custom LCA algorithm. The LCA taxid assignment is what we use to classify reads in the final viral hits table.
-7. The LCA and processed bowtie2 output are ran through [PROCESS_LCA_ALIGNER_OUTPUT](#process-lca-aligner-output-process_lca_aligner_output) to organize and clean the output viral hits table.
+5. The reads that survive contaminant filtering then go through an alignment score filtering step to get rid of low quality alignments. 
+6. The reads that make it through the score filter are then run through our [custom LCA algorithm](docs/lca.md). The LCA taxid assignment is what we use to classify reads in the final viral hits table.
+7. The LCA and processed bowtie2 output are run through [PROCESS_LCA_ALIGNER_OUTPUT](#process-lca-aligner-output-processlcaaligneroutput) to organize and clean the output viral hits table.
 
 ### Viral identification (ONT version)
 #### EXTRACT_VIRAL_READS_ONT
@@ -313,9 +286,9 @@ style J fill:#000,color:#fff,stroke:#000
 2. Next, common contaminant sequences are removed, by aligning reads to contaminants with [Minimap2](https://github.com/lh3/minimap2) in a series. Contaminants to be screened against include reference genomes from human, cow, pig, carp, mouse and *E. coli*, as well as various genetic engineering vectors.
     - Note that, unlike for EXTRACT_VIRAL_READS_SHORT, contaminant removal is done before viral read identification. EXTRACT_VIRAL_READS_ONT is frequently used on swab samples (not just on wastewater samples); we avoid analyzing human reads from swab samples for privacy/compliance reasons, so we wish to discard human reads as early in the workflow as possible.
 3. Then, reads are aligned to our database of vertebrate-infecting viral genomes using Minimap2 while allowing multiple alignments to be returned. (As noted above, the viral database is generated from Genbank by the index workflow.)
-4. After that, these reads are run through our custom LCA algorithm. The LCA taxid assignment is what we use to classify reads in the final viral hits table.
+4. After that, these reads are run through our [custom LCA algorithm](docs/lca). The LCA taxid assignment is what we use to classify reads in the final viral hits table.
   - Note that, unlike EXTRACT_VIRAL_READS_SHORT, we don't do any alignment score filtering as our experiments revealed that misclassified reads couldn't be distinguished by setting a simple score threshold.
-5. Finally, the LCA and processed minimap2 output are ran through [PROCESS_LCA_ALIGNER_OUTPUT](#process-lca-aligner-output-process_lca_aligner_output) to organize and clean the output viral hits table.
+5. Finally, the LCA and processed minimap2 output are run through [PROCESS_LCA_ALIGNER_OUTPUT](#process-lca-aligner-output-processlcaaligneroutput) to organize and clean the output viral hits table.
 
 ### Taxonomic profiling (PROFILE)
 

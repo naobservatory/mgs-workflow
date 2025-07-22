@@ -1,17 +1,17 @@
 # Intermediate TSV's relevant to `virus_hits_final.tsv.gz`
 
-As apart of the `RUN` workflow, we emit two intermediate files that provide more context surrounding the results found in `virus_hits_final.tsv.gz`. More information about how these files are produced can be found in `docs/run.md`.
+As a part of the `RUN` workflow, we emit two intermediate files that provide more context surrounding the results found in `virus_hits_final.tsv.gz`. More information about how these files are produced can be found in `docs/run.md`.
 
 For most users, looking at these files will probably not be necessary. Some reasons you may want to look at these files include:
 - You'd like to get more statistics on the LCA results
 - You want to see whether a read had supplementary alignments
-- You want to know the specific alignments that lead to an LCA assignment
+- You want to know the specific alignments that led to an LCA assignment
 
 ## Columns of `lca_final.tsv.gz`
 
- The `lca_final.tsv.gz` file contains LCA results organized into three data categories per sequence (`all`, `natural`, and `artificial`). For details on how the LCA algorithm works and the definitions of these categories, see `docs/run.md`. Importantly, there is only one row per `seq_id` in this final table.
+ The `lca_final.tsv.gz` file contains LCA results organized into three data categories per sequence (`natural`, `combined`, and `artificial`). For details on how the LCA algorithm works and the definitions of these categories, see `docs/run.md`. Importantly, there is only one row per `seq_id` in this final table.
 
-There are eight core statistical columns, which are repeated for each of the three data categories. The suffix of each column name (e.g. no suffix for `all`, `_natural`, `_artificial`) indicates which category it describes. Additionally, there is one column, `seq_id`, which specifies the name of the read.
+There are eight core statistical columns, which are repeated for each of the three data categories. The suffix of each column name (e.g. no suffix for `natural`, `_combined`, `_artificial`) indicates which category it describes. Additionally, there is one column, `seq_id`, which specifies the name of the read.
 
 #### Core Column Definitions:
 
@@ -26,8 +26,8 @@ There are eight core statistical columns, which are repeated for each of the thr
 
 #### Column Groups:
 
-* **all** (e.g., `aligner_taxid_lca`, `aligner_n_assignments`): These columns provide statistics for *all* alignments (natural + artificial).
-* **natural** (e.g., `aligner_taxid_lca_natural`, `aligner_n_assignments_natural`): These columns provide the same statistics but *only* for the natural alignments.
+* **natural** (e.g., `aligner_taxid_lca`, `aligner_n_assignments`): These columns provide statistics for *only* the natural alignments.
+* **combined** (e.g., `aligner_taxid_lca_combined`, `aligner_n_assignments_combined`): These columns provide the same statistics but for *all* alignments (natural + artificial).
 * **artificial** (e.g., `aligner_taxid_lca_artificial`, `aligner_n_assignments_artificial`): These columns provide the same statistics but *only* for the artificial alignments.
 
 ## Columns of `aligner_final.tsv.gz`
@@ -62,8 +62,8 @@ There are eight core statistical columns, which are repeated for each of the thr
 - `query_len_rev`: Length of reverse read. For single-read data, this column doesn't exist.
 - `query_seq`: Sequence of read (for paired-end data, sequence of forward read). Not reverse-complemented (we undo any reverse-complement performed by aligner). Note that forward and reverse read is arbitrary (for those looking for duplicates, this means that you might try looking for duplicates by reversing the reads).
 - `query_seq_rev`: Sequence of reverse read. Like query_seq, not reverse-complemented. For single-read data, this column doesn't exist.
-- `query_rc`: A boolean (`True`/`False`) value indicating if the query reverse-complemented by aligner?
-- `query_rc_by_rev`: A boolean (`True`/`False`) value indicating if the (reverse-read) query reverse-complemented by aligner? For single-read data, this column doesn't exist.
+- `query_rc`: A boolean (`True`/`False`) value indicating if the query was reverse-complemented by aligner?
+- `query_rc_by_rev`: A boolean (`True`/`False`) value indicating if the (reverse-read) query was reverse-complemented by aligner? For single-read data, this column doesn't exist.
 - `query_qual`: PHRED quality scores for read (for paired-end data, quality scores for forward read). Like `query_seq`, not reverse-complemented. 
 - `query_qual_rev`: PHRED quality scores for reverse read. For single-read data, this column doesn't exist.
 - `length_normalized_score_fwd`: Length-normalized alignment score for forward read. For single-read data, this column doesn't exist.
