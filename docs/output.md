@@ -27,7 +27,7 @@ Main heading represents the folder name, and subheadings represent a description
 - `pipeline-version-index.txt`: Version of the pipeline used to generate the specified index directory (copied from index directory).
 - `pipeline-version.txt`: Version of the pipeline used to run the workflow (copied from repository).
 - `time.txt`: Start time of the run.
-- `trace.txt`: Tab delimited log of all the information for each task run in the pipeline including runtime, memory usage, exit status, etc. Can be used to create an execution timeline using the the script `bin/plot-timeline-script.R` after the pipeline has finished running. More information regarding the trace file format can be found [here](https://www.nextflow.io/docs/latest/reports.html#trace-file).
+- `trace_<timestamp>.tsv`: Tab delimited log of all the information for each task run in the pipeline including runtime, memory usage, exit status, etc. Can be used to create an execution timeline using the the script `bin/plot-timeline-script.R` after the pipeline has finished running. More information regarding the trace file format can be found [here](https://www.nextflow.io/docs/latest/reports.html#trace-file).
 
 ### `intermediates/`
 
