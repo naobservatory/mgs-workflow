@@ -5,7 +5,7 @@ import csv
 from collections import Counter, defaultdict
 from typing import Iterator, TextIO
 
-TaxId = str
+TaxId = int
 Tree = dict[TaxId, list[TaxId]]
 
 
@@ -65,7 +65,7 @@ def count_reads_per_taxid(
     total = Counter()
     dedup = Counter()
     for read in data:
-        taxid = read[taxid_field]
+        taxid = int(read[taxid_field])
         total[taxid] += 1
         if not is_duplicate(read):
             dedup[taxid] += 1
@@ -90,7 +90,7 @@ def build_tree(
     """
     tree = defaultdict(list)
     for taxon in tax_data:
-        tree[taxon[parent_field]].append(taxon[child_field])
+        tree[int(taxon[parent_field])].append(int(taxon[child_field]))
     return tree
 
 
@@ -188,10 +188,10 @@ def write_output_tsv(
             # Only print clades that have some reads
             if row["reads_clade_total"] > 0:
                 writer.writerow(row)
-            for child in tree[node]:
+            for child in sorted(tree[node]):
                 dfs(child, parent = node)
 
-        for root in roots(tree):
+        for root in sorted(roots(tree)):
             dfs(root)
 
 
