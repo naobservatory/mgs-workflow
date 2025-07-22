@@ -1,4 +1,4 @@
-# v2.10.0.1-dev
+# v3.0.0.0-dev
 - Made new processes and subworkflows in preparation for introducing LCA to our pipeline:
     - Updated column names for output viral hits table in EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_SHORT_ONT to make them more user-friendly
         - Updated LCA_TSV to allow user to pass in empty prefix

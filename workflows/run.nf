@@ -52,18 +52,20 @@ workflow RUN {
 
     // Extract and count human-viral reads
     if ( params.platform == "ont" ) {
-        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir)
+        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.taxid_artificial)
         hits_fastq = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_ONT.out.hits_final
-        hits_unfiltered = Channel.empty()
+        inter_lca = EXTRACT_VIRAL_READS_ONT.out.inter_lca
+        inter_aligner = EXTRACT_VIRAL_READS_ONT.out.inter_minimap2
         bbduk_match = Channel.empty()
         bbduk_trimmed = Channel.empty()
      } else {
-        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
-            params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, params.bt2_score_threshold,
+            params.adapters, "0.33", "1", "24", "viral", params.taxid_artificial)
         hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
-        hits_unfiltered = EXTRACT_VIRAL_READS_SHORT.out.hits_unfiltered
+        inter_lca = EXTRACT_VIRAL_READS_SHORT.out.inter_lca
+        inter_aligner = EXTRACT_VIRAL_READS_SHORT.out.inter_bowtie
         bbduk_match = EXTRACT_VIRAL_READS_SHORT.out.bbduk_match
         bbduk_trimmed = EXTRACT_VIRAL_READS_SHORT.out.bbduk_trimmed
     }
@@ -115,7 +117,7 @@ workflow RUN {
     emit:
         input_run = index_params_ch.mix(samplesheet_ch, adapters_ch, params_ch)
         logging_run = index_pipeline_version_ch.mix(index_compatibility_ch, time_ch, version_ch, pipeline_compatibility_ch)
-        intermediates_run = hits_unfiltered.mix(hits_fastq)
+        intermediates_run = hits_fastq.mix(inter_lca, inter_aligner)
         reads_raw_viral = bbduk_match
         reads_trimmed_viral = bbduk_trimmed
         // Lots of results; split across 2 channels (QC, and other)
