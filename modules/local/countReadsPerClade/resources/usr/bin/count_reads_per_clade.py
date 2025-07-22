@@ -1,9 +1,9 @@
 import argparse
-import gzip
 import bz2
 import csv
+import gzip
 from collections import Counter, defaultdict
-from typing import Iterator
+from collections.abc import Iterator
 
 TaxId = int
 # Tree as adjacency list mapping parents to children
@@ -11,53 +11,57 @@ Tree = defaultdict[TaxId, set[TaxId]]
 
 
 def open_by_suffix(filename: str, mode: str = "r"):
-    """Parse the suffix of a filename to determine the right open method
-    to use, then open the file. Can handle .gz, .bz2, and uncompressed files."""
+    """Parse the suffix of a filename to determine the open method, then open the file.
+
+    Can handle .gz, .bz2, and uncompressed files.
+    """
     if filename.endswith(".gz"):
         return gzip.open(filename, mode + "t")
-    elif filename.endswith(".bz2"):
+    if filename.endswith(".bz2"):
         return bz2.open(filename, mode + "t")
-    else:
-        return open(filename, mode)
+    return open(filename, mode)
 
 
 def read_tsv(file_path: str) -> Iterator[dict[str, str]]:
-    """
-    Read a TSV file and yield rows one at a time.
+    """Read a TSV file and yield rows one at a time.
 
     Args:
         file_path (str): Path to the TSV file
 
     Yields:
         dict: Dictionary representing each row
+
     """
     with open_by_suffix(file_path, mode="rt") as file:
         reader = csv.DictReader(file, delimiter="\t")
-        for row in reader:
-            yield row
+        yield from reader
 
 
 def is_duplicate(read: dict[str, str]) -> bool:
-    """
-    Check if a read is a duplicate based on sequence ID and primary alignment exemplar.
+    """Check if a read is a duplicate.
+
+    A duplicate read is one where sequence ID != primary alignment exemplar.
 
     Args:
-        read: Dictionary representing a read record with 'seq_id' and 'prim_align_dup_exemplar' fields
+        read: Dictionary representing a read record
+              Must contain 'seq_id' and 'prim_align_dup_exemplar' fields
 
     Returns:
-        True if the read is a duplicate (seq_id differs from prim_align_dup_exemplar), False otherwise
+        True if the read is a duplicate (seq_id differs from prim_align_dup_exemplar)
+        False otherwise
 
     Raises:
         KeyError: if 'seq_id' or 'prim_align_dup_exemplar' fields are missing
+
     """
     return read["seq_id"] != read["prim_align_dup_exemplar"]
 
 
 def count_reads_per_taxid(
-    data: Iterator[dict[str, str]], taxid_field: str = "aligner_taxid_lca"
+    data: Iterator[dict[str, str]],
+    taxid_field: str = "aligner_taxid_lca",
 ) -> tuple[Counter[TaxId], Counter[TaxId]]:
-    """
-    Count total and deduplicated reads per taxonomic ID.
+    """Count total and deduplicated reads per taxonomic ID.
 
     Args:
         data: Iterator of read records as dictionaries
@@ -65,6 +69,7 @@ def count_reads_per_taxid(
 
     Returns:
         Tuple of (total_counts, deduplicated_counts) as Counters
+
     """
     total: Counter[TaxId] = Counter()
     dedup: Counter[TaxId] = Counter()
@@ -81,8 +86,7 @@ def build_tree(
     child_field: str = "taxid",
     parent_field: str = "parent_taxid",
 ) -> Tree:
-    """
-    Build a taxonomic tree from taxonomy data.
+    """Build a taxonomic tree from taxonomy data.
 
     Args:
         tax_data: Iterator of taxonomy records as dictionaries
@@ -91,6 +95,7 @@ def build_tree(
 
     Returns:
         Dictionary mapping parent IDs to lists of child IDs
+
     """
     tree = defaultdict(set)
     for taxon in tax_data:
@@ -119,8 +124,7 @@ def roots(tree: Tree) -> set[TaxId]:
 
 
 def aggregate_counts(node_counts: Counter[TaxId], tree: Tree) -> Counter[TaxId]:
-    """
-    Aggregate read counts for each clade (node and all its descendants).
+    """Aggregate read counts for each clade (node and all its descendants).
 
     Args:
         node_counts: Counter of reads per taxonomic ID
@@ -128,6 +132,7 @@ def aggregate_counts(node_counts: Counter[TaxId], tree: Tree) -> Counter[TaxId]:
 
     Returns:
         Counter mapping taxonomic IDs to their clade counts
+
     """
     clade_counts: Counter[TaxId] = Counter()
 
@@ -157,8 +162,7 @@ def write_output_tsv(
     clade_counts_total: Counter[TaxId],
     clade_counts_dedup: Counter[TaxId],
 ) -> None:
-    """
-    Write taxonomic read counts to a TSV file.
+    """Write taxonomic read counts to a TSV file.
 
     Args:
         output_path: Path to output TSV file
@@ -167,6 +171,7 @@ def write_output_tsv(
         reads_dedup: Deduplicated read counts per taxonomic ID
         clade_counts_total: Total clade counts per taxonomic ID
         clade_counts_dedup: Deduplicated clade counts per taxonomic ID
+
     """
     with open_by_suffix(output_path, "w") as outfile:
         fieldnames = [
@@ -204,7 +209,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--reads", help="Path to read TSV with LCA assignments.")
     parser.add_argument(
-        "--taxdb", help="Path to taxonomy database with taxid and parent_taxid."
+        "--taxdb",
+        help="Path to taxonomy database with taxid and parent_taxid.",
     )
     parser.add_argument("--output", help="Path to output TSV.")
     return parser.parse_args()

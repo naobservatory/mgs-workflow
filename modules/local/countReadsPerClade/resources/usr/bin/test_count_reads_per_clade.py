@@ -1,13 +1,15 @@
-import pytest
 from collections import Counter
+
+import pytest
+
 from count_reads_per_clade import (
+    aggregate_counts,
+    build_tree,
+    children,
+    count_reads_per_taxid,
     is_duplicate,
     parents,
-    children,
     roots,
-    build_tree,
-    count_reads_per_taxid,
-    aggregate_counts,
 )
 
 
