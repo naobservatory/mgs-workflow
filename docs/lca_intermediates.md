@@ -62,8 +62,8 @@ There are eight core statistical columns, which are repeated for each of the thr
 - `query_len_rev`: Length of reverse read. For single-read data, this column doesn't exist.
 - `query_seq`: Sequence of read (for paired-end data, sequence of forward read). Not reverse-complemented (we undo any reverse-complement performed by aligner). Note that forward and reverse read is arbitrary (for those looking for duplicates, this means that you might try looking for duplicates by reversing the reads).
 - `query_seq_rev`: Sequence of reverse read. Like query_seq, not reverse-complemented. For single-read data, this column doesn't exist.
-- `query_rc`: A boolean (`True`/`False`) value indicating if the query was reverse-complemented by aligner?
-- `query_rc_by_rev`: A boolean (`True`/`False`) value indicating if the (reverse-read) query was reverse-complemented by aligner? For single-read data, this column doesn't exist.
+- `query_rc`: A boolean (`True`/`False`) value indicating if the query was reverse-complemented by aligner.
+- `query_rc_by_rev`: A boolean (`True`/`False`) value indicating if the (reverse-read) query was reverse-complemented by aligner. For single-read data, this column doesn't exist.
 - `query_qual`: PHRED quality scores for read (for paired-end data, quality scores for forward read). Like `query_seq`, not reverse-complemented. 
 - `query_qual_rev`: PHRED quality scores for reverse read. For single-read data, this column doesn't exist.
 - `length_normalized_score_fwd`: Length-normalized alignment score for forward read. For single-read data, this column doesn't exist.

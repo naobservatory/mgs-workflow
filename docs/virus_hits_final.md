@@ -40,6 +40,6 @@ Below, we've separated out the columns we expect are most relevant to most users
 - `prim_align_map_qual_rev`: Mapping quality (MAPQ) of reverse read. For single-read data, this column doesn't exist.
 - `prim_align_cigar`: CIGAR string representing alignment of read to aligned genome (for paired-end data, CIGAR string for forward read). Note that this is the CIGAR string as returned by the aligner. If `query_rc` is true, you should reverse-complement the query sequence before comparing it against the CIGAR string.
 - `prim_align_cigar_rev`: CIGAR string representing alignment of reverse read to aligned genome. For single-read data, this column doesn't exist.
-- `prim_align_query_rc`: A boolean (`True`/`False`) value indicating if the query was reverse-complemented by aligner?
-- `prim_align_query_rc_rev`: A boolean (`True`/`False`) value indicating if the (reverse-read) query was reverse-complemented by aligner? For single-read data, this column doesn't exist.
+- `prim_align_query_rc`: A boolean (`True`/`False`) value indicating if the query was reverse-complemented by aligner.
+- `prim_align_query_rc_rev`: A boolean (`True`/`False`) value indicating if the (reverse-read) query was reverse-complemented by aligner. For single-read data, this column doesn't exist.
 - `prim_align_pair_status`: Pair status (UU for unpaired, CP for concordant pair, DP for discordant pair, UP for unaligned pair). For single-read data, this column doesn't exist.
