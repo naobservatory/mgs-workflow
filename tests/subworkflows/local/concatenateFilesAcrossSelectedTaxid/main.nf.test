@@ -1,8 +1,8 @@
 nextflow_workflow {
 
-    name "Test workflow CONCATENATE_FILES_ACROSS_SPECIES"
-    script "subworkflows/local/concatenateFilesAcrossSpecies/main.nf"
-    workflow "CONCATENATE_FILES_ACROSS_SPECIES"
+    name "Test workflow CONCATENATE_FILES_ACROSS_SELECTED_TAXID"
+    script "subworkflows/local/concatenateFilesAcrossSelectedTaxid/main.nf"
+    workflow "CONCATENATE_FILES_ACROSS_SELECTED_TAXID"
     config "tests/configs/run.config"
     tag "subworkflow"
     tag "concatenate_files_across_species"

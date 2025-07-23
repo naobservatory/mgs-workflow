@@ -1,8 +1,8 @@
 nextflow_workflow {
 
-    name "Test workflow SPLIT_VIRAL_TSV_BY_SPECIES"
-    script "subworkflows/local/splitViralTsvBySpecies/main.nf"
-    workflow "SPLIT_VIRAL_TSV_BY_SPECIES"
+    name "Test workflow SPLIT_VIRAL_TSV_BY_SELECTED_TAXID"
+    script "subworkflows/local/splitViralTsvBySelectedTaxid/main.nf"
+    workflow "SPLIT_VIRAL_TSV_BY_SELECTED_TAXID"
     config "tests/configs/downstream.config"
     tag "subworkflow"
     tag "downstream"
@@ -63,7 +63,7 @@ nextflow_workflow {
                 script "subworkflows/local/loadDownstreamData/main.nf"
                 process {
                     """
-                    input[0] = "${projectDir}/test-data/downstream/input_file_single.csv"
+                    input[0] = "${projectDir}/test-data/downstream/input_file_single_lca.csv"
                     """
                 }
             }

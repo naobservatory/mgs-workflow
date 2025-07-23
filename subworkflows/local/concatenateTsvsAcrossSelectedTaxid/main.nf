@@ -24,7 +24,7 @@ include { ADD_SAMPLE_COLUMN as LABEL_GROUP } from "../../../modules/local/addSam
 | WORKFLOW |
 ***********/
 
-workflow CONCATENATE_TSVS_ACROSS_SPECIES {
+workflow CONCATENATE_TSVS_ACROSS_SELECTED_TAXID {
     take:
         tsvs // Channel of 2-tuples, each containing a combined group/species label and a TSV path
         filename_suffix // Suffix for output filenames

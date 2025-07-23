@@ -1,4 +1,4 @@
-seq_id	aligner_genome_id_all	aligner_ref_start	aligner_ref_start_rev	query_qual	query_qual_rev	exemplar_exp_0	exemplar_exp_1	exemplar_exp_2	pairwise_exp_0	pairwise_exp_1	pairwise_exp_2	dup_comment
+seq_id	prim_align_genome_id_all	prim_align_ref_start	prim_align_ref_start_rev	prim_align_query_qual	prim_align_query_qual_rev	exemplar_exp_0	exemplar_exp_1	exemplar_exp_2	pairwise_exp_0	pairwise_exp_1	pairwise_exp_2	dup_comment
 grp_1_0	test_gid_1	50	150	JJJJJJ	JJJJJJ	grp_1_0	grp_1_0	grp_1_0	0	4	6	Group 1 exemplar
 grp_1_1	test_gid_1	51	151	JJJJJJ	JJJJJJ	grp_1_1	grp_1_0	grp_1_0	1	3	6	1-off from grp_1_0
 grp_1_2	test_gid_1	151	51	JJJJJJ	JJJJJJ	grp_1_1	grp_1_0	grp_1_0	0	2	5	RC 1-off from grp_1_0

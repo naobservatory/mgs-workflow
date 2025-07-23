@@ -18,7 +18,7 @@ include { CONCATENATE_FILES_BY_EXTENSION } from "../../../modules/local/concaten
 | WORKFLOW |
 ***********/
 
-workflow CONCATENATE_FILES_ACROSS_SPECIES {
+workflow CONCATENATE_FILES_ACROSS_SELECTED_TAXID {
     take:
         files // Channel of 2-tuples, each containing a combined group/species label and a file path
         filename_suffix // Suffix for output filenames
