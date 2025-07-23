@@ -3,10 +3,10 @@ from collections import Counter
 import pytest
 
 from count_reads_per_clade import (
-    aggregate_counts,
     build_tree,
     children,
-    count_reads_per_taxid,
+    count_direct_reads_per_taxid,
+    get_clade_counts,
     is_duplicate,
     parents,
     roots,
@@ -206,7 +206,7 @@ def test_build_tree():
     assert 100 in result[50]
 
 
-def test_count_reads_per_taxid():
+def test_count_direct_reads_per_taxid():
     # Test basic counting with some duplicates
     read_data = [
         {
@@ -231,7 +231,7 @@ def test_count_reads_per_taxid():
         },  # not duplicate
     ]
 
-    total, dedup = count_reads_per_taxid(iter(read_data))
+    total, dedup = count_direct_reads_per_taxid(iter(read_data))
 
     # Total counts: taxid 100 has 3 reads, taxid 200 has 1 read
     assert total[100] == 3
@@ -245,22 +245,24 @@ def test_count_reads_per_taxid():
     read_data = [
         {"custom_taxid": "50", "seq_id": "read1", "prim_align_dup_exemplar": "read1"}
     ]
-    total, dedup = count_reads_per_taxid(iter(read_data), taxid_field="custom_taxid")
+    total, dedup = count_direct_reads_per_taxid(
+        iter(read_data), taxid_field="custom_taxid"
+    )
     assert total[50] == 1
     assert dedup[50] == 1
 
     # Test with empty data
-    total, dedup = count_reads_per_taxid(iter([]))
+    total, dedup = count_direct_reads_per_taxid(iter([]))
     assert len(total) == 0
     assert len(dedup) == 0
 
     # Test return types are Counters
-    total, dedup = count_reads_per_taxid(iter([]))
+    total, dedup = count_direct_reads_per_taxid(iter([]))
     assert isinstance(total, Counter)
     assert isinstance(dedup, Counter)
 
 
-def test_aggregate_counts():
+def test_get_clade_counts():
     # Test with simple tree: 1->2, 1->3, 2->4
     # If node counts are: {1:5, 2:10, 3:7, 4:3}
     # Then clade counts should be:
@@ -276,7 +278,7 @@ def test_aggregate_counts():
     tree = build_tree(iter(tax_data))
     node_counts = Counter({1: 5, 2: 10, 3: 7, 4: 3})
 
-    result = aggregate_counts(node_counts, tree)
+    result = get_clade_counts(node_counts, tree)
     expected = Counter({1: 25, 2: 13, 3: 7, 4: 3})
     assert result == expected
 
@@ -284,14 +286,14 @@ def test_aggregate_counts():
     tax_data = [{"taxid": "2", "parent_taxid": "1"}]
     tree = build_tree(iter(tax_data))
     node_counts = Counter({1: 5})  # node 2 has 0 count
-    result = aggregate_counts(node_counts, tree)
+    result = get_clade_counts(node_counts, tree)
     expected = Counter({1: 5, 2: 0})
     assert result == expected
 
     # Test with empty tree
     tree = build_tree(iter([]))
     node_counts = Counter({1: 5})  # node 1 not in tree
-    result = aggregate_counts(node_counts, tree)
+    result = get_clade_counts(node_counts, tree)
     expected = Counter({})  # empty result since no nodes in tree
     assert result == expected
 
@@ -299,12 +301,12 @@ def test_aggregate_counts():
     tax_data = [{"taxid": "2", "parent_taxid": "1"}]
     tree = build_tree(iter(tax_data))
     node_counts = Counter({1: 3, 2: 7, 999: 100})  # 999 not in tree
-    result = aggregate_counts(node_counts, tree)
+    result = get_clade_counts(node_counts, tree)
     expected = Counter({1: 10, 2: 7})  # 999 ignored
 
     # Test return type is Counter
     tax_data = [{"taxid": "2", "parent_taxid": "1"}]
     tree = build_tree(iter(tax_data))
     node_counts = Counter({1: 1})
-    result = aggregate_counts(node_counts, tree)
+    result = get_clade_counts(node_counts, tree)
     assert isinstance(result, Counter)

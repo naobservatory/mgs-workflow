@@ -1,3 +1,11 @@
+"""Generate clade counts for a taxonomic tree.
+
+Take a table of reads with LCA assignments and a table of (child, parent) taxid pairs
+and output a table of taxids with counts of reads that are directly assigned to
+the taxid and all reads that are assigned to the clade descended from the taxid.
+Output both deduplicated and total (non-deduplicated) counts.
+"""
+
 import argparse
 import bz2
 import csv
@@ -57,11 +65,13 @@ def is_duplicate(read: dict[str, str]) -> bool:
     return read["seq_id"] != read["prim_align_dup_exemplar"]
 
 
-def count_reads_per_taxid(
+def count_direct_reads_per_taxid(
     data: Iterator[dict[str, str]],
     taxid_field: str = "aligner_taxid_lca",
 ) -> tuple[Counter[TaxId], Counter[TaxId]]:
     """Count total and deduplicated reads per taxonomic ID.
+
+    These are reads assigned directly to the tax ID, not including descendent counts.
 
     Args:
         data: Iterator of read records as dictionaries
@@ -123,11 +133,11 @@ def roots(tree: Tree) -> set[TaxId]:
     return parents(tree) - children(tree)
 
 
-def aggregate_counts(node_counts: Counter[TaxId], tree: Tree) -> Counter[TaxId]:
+def get_clade_counts(direct_counts: Counter[TaxId], tree: Tree) -> Counter[TaxId]:
     """Aggregate read counts for each clade (node and all its descendants).
 
     Args:
-        node_counts: Counter of reads per taxonomic ID
+        direct_counts: Counter of directly-assigned reads per taxonomic ID
         tree: Taxonomic tree structure
 
     Returns:
@@ -139,7 +149,7 @@ def aggregate_counts(node_counts: Counter[TaxId], tree: Tree) -> Counter[TaxId]:
     # Depth-first search of the tree, store results as you go
     def dfs(node: TaxId) -> int:
         # Start with this node's own count
-        total = node_counts[node]
+        total = direct_counts[node]
 
         # Add counts from all descendants
         for child in tree[node]:
@@ -157,8 +167,8 @@ def aggregate_counts(node_counts: Counter[TaxId], tree: Tree) -> Counter[TaxId]:
 def write_output_tsv(
     output_path: str,
     tree: Tree,
-    reads_total: Counter[TaxId],
-    reads_dedup: Counter[TaxId],
+    direct_counts_total: Counter[TaxId],
+    direct_counts_dedup: Counter[TaxId],
     clade_counts_total: Counter[TaxId],
     clade_counts_dedup: Counter[TaxId],
 ) -> None:
@@ -167,8 +177,8 @@ def write_output_tsv(
     Args:
         output_path: Path to output TSV file
         tree: Taxonomic tree structure
-        reads_total: Total read counts per taxonomic ID
-        reads_dedup: Deduplicated read counts per taxonomic ID
+        direct_counts_total: Total directly assigned read counts per taxonomic ID
+        direct_counts_dedup: Deduplicated directly assigned read counts per taxonomic ID
         clade_counts_total: Total clade counts per taxonomic ID
         clade_counts_dedup: Deduplicated clade counts per taxonomic ID
 
@@ -190,8 +200,8 @@ def write_output_tsv(
             row = {
                 "taxid": node,
                 "parent_taxid": parent,
-                "reads_direct_total": reads_total[node],
-                "reads_direct_dedup": reads_dedup[node],
+                "reads_direct_total": direct_counts_total[node],
+                "reads_direct_dedup": direct_counts_dedup[node],
                 "reads_clade_total": clade_counts_total[node],
                 "reads_clade_dedup": clade_counts_dedup[node],
             }
@@ -218,15 +228,17 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    reads_total, reads_dedup = count_reads_per_taxid(read_tsv(args.reads))
+    direct_counts_total, direct_counts_dedup = count_direct_reads_per_taxid(
+        read_tsv(args.reads)
+    )
     tree = build_tree(read_tsv(args.taxdb))
-    clade_counts_total = aggregate_counts(reads_total, tree)
-    clade_counts_dedup = aggregate_counts(reads_dedup, tree)
+    clade_counts_total = get_clade_counts(direct_counts_total, tree)
+    clade_counts_dedup = get_clade_counts(direct_counts_dedup, tree)
     write_output_tsv(
         args.output,
         tree,
-        reads_total,
-        reads_dedup,
+        direct_counts_total,
+        direct_counts_dedup,
         clade_counts_total,
         clade_counts_dedup,
     )
