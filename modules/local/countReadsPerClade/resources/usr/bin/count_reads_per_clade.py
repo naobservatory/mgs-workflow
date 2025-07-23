@@ -104,7 +104,7 @@ def build_tree(
         parent_field: Field name containing parent taxonomic ID
 
     Returns:
-        Dictionary mapping parent IDs to lists of child IDs
+        Dictionary mapping parent IDs to sets of child IDs
 
     """
     tree = defaultdict(set)
@@ -122,24 +122,24 @@ def build_tree(
 
 
 def detect_cycle(tree: Tree) -> bool:
-    """Return True if the tree has a cycle, False otherwise.
-
-    Because we have already validated that each child has only one parent,
-    the only possible cycles are ones with no root. Detect these traversing
-    from each root and determining if there are any unreachable nodes.
-    """
     visited = set()
+    current_path = set()
 
     def dfs(node: TaxId):
+        if node in current_path:
+            return True
+        if node in visited:
+            return False
         visited.add(node)
+        current_path.add(node)
         if node in tree:
             for child in tree[node]:
-                dfs(child)
+                if dfs(child):
+                    return True
+        current_path.remove(node)
+        return False
 
-    for root in roots(tree):
-        dfs(root)
-
-    return visited != nodes(tree)
+    return any(dfs(node) for node in tree)
 
 
 def parents(tree: Tree) -> set[TaxId]:
