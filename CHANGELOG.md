@@ -27,10 +27,6 @@
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
 - Made separate run_illumina.config and run_ont.config files to record correct BLAST defaults for each.
 
-# v2.10.0.1
-- Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
-- Made separate run_illumina.config and run_ont.config files to record correct BLAST defaults for each.
-
 # v2.10.0.0
 - Moved all outputs to main workflow for compatibility with Nextflow 25.04, and made pipeline compliant with new strict syntax. 
     - Pipeline is now *incompatible* with Nextflow 24.
