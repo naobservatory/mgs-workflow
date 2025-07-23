@@ -28,8 +28,8 @@ nextflow_process {
             assert path(process.out.output[0][1]).exists()
             assert path(process.out.input[0][1]).exists()
             
-            // Parse the output TSV
-            def output_tsv = path(process.out.output[0][1]).csv(sep: "\t")
+            // Parse the gzipped output TSV
+            def output_tsv = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
             
             // Should have 4 rows (header + 4 taxids: 0, 1, 2, 3)
             assert output_tsv.rowCount == 4
@@ -104,8 +104,10 @@ nextflow_process {
             assert path(process.out.output[0][1]).exists()
             assert path(process.out.input[0][1]).exists()
             
-            // Check file content directly since CSV parser struggles with header-only files
-            def output_content = path(process.out.output[0][1]).text.trim()
+            // Check gzipped file content directly since CSV parser struggles with header-only files
+            def gzFile = new java.util.zip.GZIPInputStream(path(process.out.output[0][1]).newInputStream())
+            def output_content = gzFile.text.trim()
+            gzFile.close()
             def lines = output_content.split('\n')
             
             // Should have exactly 1 line (header only)
