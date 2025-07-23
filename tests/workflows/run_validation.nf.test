@@ -10,7 +10,7 @@ nextflow_pipeline {
         tag "run_validation_viral_hits"
         when {
           params {
-            viral_tsv = "${projectDir}/test-data/gold-standard-results/virus_hits_final.tsv"
+            viral_tsv = "${projectDir}/test-data/gold-standard-results/virus_hits_final_lca.tsv"
             viral_fastq = ""
           }
         }
@@ -38,7 +38,7 @@ nextflow_pipeline {
         tag "run_validation_viral_hits_single"
         when {
           params {
-            viral_tsv = "${projectDir}/test-data/ont-ww-test-results/virus_hits_final.tsv"
+            viral_tsv = "${projectDir}/test-data/ont-ww-test-results/virus_hits_final_lca.tsv"
             viral_fastq = ""
           }
         }
