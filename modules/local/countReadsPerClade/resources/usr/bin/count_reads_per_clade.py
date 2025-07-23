@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Generate clade counts for a taxonomic tree.
 
 Take a table of reads with LCA assignments and a table of (child, parent) taxid pairs
