@@ -9,6 +9,11 @@
     - Temporarily made EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_ONT_LCA incompatible with DOWNSTREAM
     - Updating docs to reflect new output as a result of LCA
 - Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
+- Updated SORT_FASTQ to sort alphanumerically
+
+# v2.10.0.1
+- Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
+- Made separate run_illumina.config and run_ont.config files to record correct BLAST defaults for each.
 
 # v2.10.0.1-dev
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
