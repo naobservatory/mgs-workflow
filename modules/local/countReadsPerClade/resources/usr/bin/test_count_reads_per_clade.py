@@ -90,18 +90,6 @@ def test_children():
     result = children(single_tree)
     assert result == {20}
 
-    # Test with duplicate children in different parents (should still return unique set)
-    tax_data = [
-        {"taxid": "2", "parent_taxid": "1"},
-        {"taxid": "3", "parent_taxid": "1"},
-        {"taxid": "2", "parent_taxid": "4"},
-        {"taxid": "5", "parent_taxid": "4"},
-    ]
-    tree_with_duplicates = build_tree(iter(tax_data))
-    result = children(tree_with_duplicates)
-    expected = {2, 3, 5}
-    assert result == expected
-
     # Test return type is set
     tax_data = [{"taxid": "2", "parent_taxid": "1"}]
     tree = build_tree(iter(tax_data))
@@ -142,18 +130,6 @@ def test_roots():
     single_tree = build_tree(iter(tax_data))
     result = roots(single_tree)
     assert result == {10}
-
-    # Test with cycle-like structure: 1->2, 2->3, 4->1
-    # Root should be {4} (only parent that's never a child)
-    tax_data = [
-        {"taxid": "2", "parent_taxid": "1"},
-        {"taxid": "3", "parent_taxid": "2"},
-        {"taxid": "1", "parent_taxid": "4"},
-    ]
-    tree_with_cycle_parent = build_tree(iter(tax_data))
-    result = roots(tree_with_cycle_parent)
-    expected = {4}
-    assert result == expected
 
     # Test return type is set
     tax_data = [{"taxid": "2", "parent_taxid": "1"}]
@@ -204,6 +180,82 @@ def test_build_tree():
     # Keys and values should be integers
     assert 50 in result
     assert 100 in result[50]
+
+
+def test_build_tree_duplicate_child_error():
+    """Test that build_tree raises an error when a child has multiple parents."""
+    # Child taxid 2 appears with two different parents
+    tax_data = [
+        {"taxid": "2", "parent_taxid": "1"},
+        {"taxid": "2", "parent_taxid": "3"},  # same child, different parent
+    ]
+    with pytest.raises(ValueError, match="Child taxid 2 has multiple parents"):
+        build_tree(iter(tax_data))
+
+    # Test with more complex case
+    tax_data = [
+        {"taxid": "10", "parent_taxid": "5"},
+        {"taxid": "20", "parent_taxid": "5"},
+        {"taxid": "10", "parent_taxid": "6"},  # duplicate child, different parent
+    ]
+    with pytest.raises(ValueError, match="Child taxid 10 has multiple parents"):
+        build_tree(iter(tax_data))
+
+    # Exact duplicate relationship
+    tax_data = [
+        {"taxid": "2", "parent_taxid": "1"},
+        {"taxid": "2", "parent_taxid": "1"},  # exact duplicate
+    ]
+    with pytest.raises(ValueError, match="Duplicate relationship"):
+        build_tree(iter(tax_data))
+
+    # Exact duplicate mixed with valid relationships
+    tax_data = [
+        {"taxid": "2", "parent_taxid": "1"},
+        {"taxid": "3", "parent_taxid": "1"},  # valid
+        {"taxid": "2", "parent_taxid": "1"},  # duplicate of first
+    ]
+    with pytest.raises(ValueError, match="Duplicate relationship"):
+        build_tree(iter(tax_data))
+
+
+def test_build_tree_cycle_error():
+    """Test that build_tree raises an error when there are cycles in the tree."""
+    # Simple self-loop
+    tax_data = [
+        {"taxid": "1", "parent_taxid": "1"},
+    ]
+    with pytest.raises(ValueError, match="Cycle detected"):
+        build_tree(iter(tax_data))
+
+    # Two-node cycle
+    tax_data = [
+        {"taxid": "1", "parent_taxid": "2"},
+        {"taxid": "2", "parent_taxid": "1"},
+    ]
+    with pytest.raises(ValueError, match="Cycle detected"):
+        build_tree(iter(tax_data))
+
+    # Three-node cycle
+    tax_data = [
+        {"taxid": "1", "parent_taxid": "2"},
+        {"taxid": "2", "parent_taxid": "3"},
+        {"taxid": "3", "parent_taxid": "1"},
+    ]
+    with pytest.raises(ValueError, match="Cycle detected"):
+        build_tree(iter(tax_data))
+
+    # Complex case with valid tree plus cycle
+    tax_data = [
+        {"taxid": "2", "parent_taxid": "1"},  # valid
+        {"taxid": "3", "parent_taxid": "1"},  # valid
+        {"taxid": "4", "parent_taxid": "2"},  # valid
+        {"taxid": "5", "parent_taxid": "6"},  # start of cycle
+        {"taxid": "6", "parent_taxid": "7"},
+        {"taxid": "7", "parent_taxid": "5"},  # completes cycle
+    ]
+    with pytest.raises(ValueError, match="Cycle detected"):
+        build_tree(iter(tax_data))
 
 
 def test_count_direct_reads_per_taxid():
