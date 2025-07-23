@@ -11,6 +11,11 @@
         - Updated DOWNSTREAM docs
         - Updated DOWNSTREAM and RUN_VALIDATION to use LCA versions of output from RUN workflow such that the tests can run correctly. These files/changes will temporarily have the word "lca" in them, but that will be removed once the LCA migration is complete.
 - Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
+- Updated SORT_FASTQ to sort alphanumerically
+
+# v2.10.0.1
+- Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
+- Made separate run_illumina.config and run_ont.config files to record correct BLAST defaults for each.
 
 # v2.10.0.1
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
