@@ -6,16 +6,15 @@
         - Planned to return LCA_TSV output and PROCESS_VIRAL_{MINIMAP2,BOWTIE2}_SAM output as intermediates once LCA has been completely integrated
     - Added column to track the status of whether an alignment is primary, secondary, or supplementary in PROCESS_VIRAL_{MINIMAP2,BOWTIE2}_SAM
     - Created new temporary workflow, EXTRACT_VIRAL_READS_ONT_LCA, that will eventually replace EXTRACT_VIRAL_READS_ONT which makes MINIMAP2 run with multiple alignments, then runs LCA on this output
-    - Temporarily made EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_ONT_LCA incompatible with DOWNSTREAM
     - Updating docs to reflect new output as a result of LCA
+    - Updating DOWNSTREAM and RUN_VALIDATION to be compatible with EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_ONT_LCA
+        - Changed SPLIT_VIRAL_TSV_BY_SPECIES to be SPLIT_VIRAL_TSV_BY_SELECTED_TAXID, CONCATENATE_FILES_ACROSS_SPECIES to be CONCATENATE_FILES_ACROSS_SELECTED_TAXID, and CONCATENATE_TSVS_ACROSS_SPECIES to be CONCATENATE_TSVS_ACROSS_SELECTED_TAXID because of the new way that we group reads; specifically, we partition reads into taxid groups using the following rule: if a read's LCA assignment is at the species level or lower, group it by the species level taxid; otherwise, group the read by the raw LCA taxid. 
+        - Updated DOWNSTREAM docs
+        - Updated DOWNSTREAM and RUN_VALIDATION to use LCA versions of output from RUN workflow such that the tests can run correctly. These files/changes will temporarily have the word "lca" in them, but that will be removed once the LCA migration is complete.
 - Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
 - Updated SORT_FASTQ to sort alphanumerically
 
 # v2.10.0.1
-- Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
-- Made separate run_illumina.config and run_ont.config files to record correct BLAST defaults for each.
-
-# v2.10.0.1-dev
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
 - Made separate run_illumina.config and run_ont.config files to record correct BLAST defaults for each.
 
