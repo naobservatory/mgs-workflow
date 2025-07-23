@@ -113,18 +113,22 @@ def build_tree(
         child = int(taxon[child_field])
         parent = int(taxon[parent_field])
         if child in children:
-            raise ValueError(f"Child taxid {child} appears multiple times in taxdb")
+            msg = f"Child taxid {child} appears multiple times in taxdb"
+            raise ValueError(msg)
         children.add(child)
         tree[parent].add(child)
     if detect_cycle(tree):
-        raise ValueError("Cycle detected in taxdb")
+        msg = "Cycle detected in taxdb"
+        raise ValueError(msg)
     return tree
 
 
 def detect_cycle(tree: Tree) -> bool:
+    """Return True if the tree contains a cycle, False otherwise."""
     visited = set()
     current_path = set()
 
+    # Visit all the nodes, using depth-first search
     def dfs(node: TaxId):
         if node in current_path:
             return True
