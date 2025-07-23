@@ -111,12 +111,35 @@ def build_tree(
     children = set()
     for taxon in tax_data:
         child = int(taxon[child_field])
+        parent = int(taxon[parent_field])
         if child in children:
             raise ValueError(f"Child taxid {child} appears multiple times in taxdb")
         children.add(child)
-        parent = int(taxon[parent_field])
         tree[parent].add(child)
+    if detect_cycle(tree):
+        raise ValueError("Cycle detected in taxdb")
     return tree
+
+
+def detect_cycle(tree: Tree) -> bool:
+    """Return True if the tree has a cycle, False otherwise.
+
+    Because we have already validated that each child has only one parent,
+    the only possible cycles are ones with no root. Detect these traversing
+    from each root and determining if there are any unreachable nodes.
+    """
+    visited = set()
+
+    def dfs(node: TaxId):
+        visited.add(node)
+        if node in tree:
+            for child in tree[node]:
+                dfs(child)
+
+    for root in roots(tree):
+        dfs(root)
+
+    return visited != nodes(tree)
 
 
 def parents(tree: Tree) -> set[TaxId]:

@@ -223,7 +223,7 @@ def test_build_tree_cycle_error():
     tax_data = [
         {"taxid": "1", "parent_taxid": "1"},
     ]
-    with pytest.raises(ValueError, match="Cycle detected"):
+    with pytest.raises(ValueError, match="Cycle detected in taxdb"):
         build_tree(iter(tax_data))
 
     # Two-node cycle
@@ -231,7 +231,7 @@ def test_build_tree_cycle_error():
         {"taxid": "1", "parent_taxid": "2"},
         {"taxid": "2", "parent_taxid": "1"},
     ]
-    with pytest.raises(ValueError, match="Cycle detected"):
+    with pytest.raises(ValueError, match="Cycle detected in taxdb"):
         build_tree(iter(tax_data))
 
     # Three-node cycle
@@ -240,7 +240,7 @@ def test_build_tree_cycle_error():
         {"taxid": "2", "parent_taxid": "3"},
         {"taxid": "3", "parent_taxid": "1"},
     ]
-    with pytest.raises(ValueError, match="Cycle detected"):
+    with pytest.raises(ValueError, match="Cycle detected in taxdb"):
         build_tree(iter(tax_data))
 
     # Complex case with valid tree plus cycle
@@ -252,7 +252,7 @@ def test_build_tree_cycle_error():
         {"taxid": "6", "parent_taxid": "7"},
         {"taxid": "7", "parent_taxid": "5"},  # completes cycle
     ]
-    with pytest.raises(ValueError, match="Cycle detected"):
+    with pytest.raises(ValueError, match="Cycle detected in taxdb"):
         build_tree(iter(tax_data))
 
 
