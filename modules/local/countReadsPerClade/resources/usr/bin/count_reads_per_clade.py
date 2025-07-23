@@ -108,8 +108,14 @@ def build_tree(
 
     """
     tree = defaultdict(set)
+    children = set()
     for taxon in tax_data:
-        tree[int(taxon[parent_field])].add(int(taxon[child_field]))
+        child = int(taxon[child_field])
+        if child in children:
+            raise ValueError(f"Child taxid {child} appears multiple times in taxdb")
+        children.add(child)
+        parent = int(taxon[parent_field])
+        tree[parent].add(child)
     return tree
 
 

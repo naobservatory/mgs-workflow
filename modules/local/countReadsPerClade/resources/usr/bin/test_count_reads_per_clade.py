@@ -160,16 +160,6 @@ def test_build_tree():
     expected = {5: {10, 11}}
     assert result == expected
 
-    # Test with duplicate relationships (should only include each child once)
-    tax_data = [
-        {"taxid": "2", "parent_taxid": "1"},
-        {"taxid": "2", "parent_taxid": "1"},  # duplicate
-        {"taxid": "3", "parent_taxid": "1"},
-    ]
-    result = build_tree(iter(tax_data))
-    expected = {1: {2, 3}}
-    assert result == expected
-
     # Test with empty data
     result = build_tree(iter([]))
     assert result == {}
@@ -189,7 +179,9 @@ def test_build_tree_duplicate_child_error():
         {"taxid": "2", "parent_taxid": "1"},
         {"taxid": "2", "parent_taxid": "3"},  # same child, different parent
     ]
-    with pytest.raises(ValueError, match="Child taxid 2 has multiple parents"):
+    with pytest.raises(
+        ValueError, match="Child taxid 2 appears multiple times in taxdb"
+    ):
         build_tree(iter(tax_data))
 
     # Test with more complex case
@@ -198,7 +190,9 @@ def test_build_tree_duplicate_child_error():
         {"taxid": "20", "parent_taxid": "5"},
         {"taxid": "10", "parent_taxid": "6"},  # duplicate child, different parent
     ]
-    with pytest.raises(ValueError, match="Child taxid 10 has multiple parents"):
+    with pytest.raises(
+        ValueError, match="Child taxid 10 appears multiple times in taxdb"
+    ):
         build_tree(iter(tax_data))
 
     # Exact duplicate relationship
@@ -206,7 +200,9 @@ def test_build_tree_duplicate_child_error():
         {"taxid": "2", "parent_taxid": "1"},
         {"taxid": "2", "parent_taxid": "1"},  # exact duplicate
     ]
-    with pytest.raises(ValueError, match="Duplicate relationship"):
+    with pytest.raises(
+        ValueError, match="Child taxid 2 appears multiple times in taxdb"
+    ):
         build_tree(iter(tax_data))
 
     # Exact duplicate mixed with valid relationships
@@ -215,7 +211,9 @@ def test_build_tree_duplicate_child_error():
         {"taxid": "3", "parent_taxid": "1"},  # valid
         {"taxid": "2", "parent_taxid": "1"},  # duplicate of first
     ]
-    with pytest.raises(ValueError, match="Duplicate relationship"):
+    with pytest.raises(
+        ValueError, match="Child taxid 2 appears multiple times in taxdb"
+    ):
         build_tree(iter(tax_data))
 
 
