@@ -10,7 +10,7 @@ process SORT_FASTQ {
     shell:
         '''
         set -euo pipefail
-        zcat !{fastq} | paste - - - - | sort -dk1,1 | \\
+        zcat !{fastq} | paste - - - - | sort -k1,1 | \\
             tr '\\t' '\\n' | gzip > sorted_!{fastq}
         # Link input to output for testing
         ln -s !{fastq} input_!{fastq}
