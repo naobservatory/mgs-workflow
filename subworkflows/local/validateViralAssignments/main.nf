@@ -58,7 +58,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         // 5. Validate original group hits against concatenated BLAST results
         distance_params = [
             taxid_field_1: "aligner_taxid_lca",
-            taxid_field_2: "validation_staxid_lca_natural",
+            taxid_field_2: "validation_staxid_lca",
             distance_field_1: "validation_distance_aligner",
             distance_field_2: "validation_distance_validation"
         ]

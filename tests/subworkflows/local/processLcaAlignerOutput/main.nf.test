@@ -415,8 +415,8 @@ nextflow_workflow {
         when {
             params {
                 col_keep_no_prefix = ["seq_id", "aligner_taxid_lca", "aligner_taxid_top", 
-                                      "aligner_length_normalized_score_mean", "aligner_taxid_lca_natural",
-                                      "aligner_n_assignments_natural", "aligner_length_normalized_score_mean_natural",
+                                      "aligner_length_normalized_score_mean", "aligner_taxid_lca_combined",
+                                      "aligner_n_assignments_combined", "aligner_length_normalized_score_mean_combined",
                                       "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
                                       "aligner_length_normalized_score_mean_artificial"]
                 col_keep_add_prefix = ["genome_id_all", "taxid_all", "fragment_length", 
