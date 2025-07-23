@@ -1,0 +1,217 @@
+nextflow_process {
+
+    name "Test process COUNT_READS_PER_CLADE"
+    script "modules/local/countReadsPerClade/main.nf"
+    process "COUNT_READS_PER_CLADE"
+    config "tests/configs/run.config"
+    tag "module"
+    tag "count_reads_per_clade"
+
+    test("Should produce correct output for toy data") {
+        tag "expect_success"
+        tag "validate_output"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/count-reads-per-clade/test-reads.tsv"))
+                input[1] = "${projectDir}/test-data/toy-data/count-reads-per-clade/test-taxonomy.tsv"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output and input files should exist
+            assert path(process.out.output[0][1]).exists()
+            assert path(process.out.input[0][1]).exists()
+            
+            // Parse the output TSV
+            def output_tsv = path(process.out.output[0][1]).csv(sep: "\t")
+            
+            // Should have 4 rows (header + 4 taxids: 0, 1, 2, 3)
+            assert output_tsv.rowCount == 4
+            
+            // Check header columns
+            def expected_columns = ["taxid", "parent_taxid", "reads_direct_total", "reads_direct_dedup", "reads_clade_total", "reads_clade_dedup"]
+            assert output_tsv.columnNames == expected_columns
+            
+            // Convert to map for easier validation
+            def rows_by_taxid = [:]
+            output_tsv.rows.each { row ->
+                rows_by_taxid[row.taxid] = row
+            }
+            
+            // Validate taxid 0 (root)
+            def row0 = rows_by_taxid[0]
+            assert row0 != null
+            assert row0.parent_taxid == "."
+            assert row0.reads_direct_total == 0
+            assert row0.reads_direct_dedup == 0
+            assert row0.reads_clade_total == 6
+            assert row0.reads_clade_dedup == 4
+            
+            // Validate taxid 1
+            def row1 = rows_by_taxid[1]
+            assert row1 != null
+            assert row1.parent_taxid == "0"
+            assert row1.reads_direct_total == 3
+            assert row1.reads_direct_dedup == 2
+            assert row1.reads_clade_total == 6
+            assert row1.reads_clade_dedup == 4
+            
+            // Validate taxid 2
+            def row2 = rows_by_taxid[2]
+            assert row2 != null
+            assert row2.parent_taxid == "1"
+            assert row2.reads_direct_total == 1
+            assert row2.reads_direct_dedup == 1
+            assert row2.reads_clade_total == 1
+            assert row2.reads_clade_dedup == 1
+            
+            // Validate taxid 3
+            def row3 = rows_by_taxid[3]
+            assert row3 != null
+            assert row3.parent_taxid == "1"
+            assert row3.reads_direct_total == 2
+            assert row3.reads_direct_dedup == 1
+            assert row3.reads_clade_total == 2
+            assert row3.reads_clade_dedup == 1
+        }
+    }
+
+    test("Should handle header-only reads file") {
+        tag "expect_success"
+        tag "edge_case" 
+        tag "empty_input"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/count-reads-per-clade/test-reads-header-only.tsv"))
+                input[1] = "${projectDir}/test-data/toy-data/count-reads-per-clade/test-taxonomy.tsv"
+                '''
+            }
+        }
+        then {
+            // Should run without failures
+            assert process.success
+            
+            // Output and input files should exist
+            assert path(process.out.output[0][1]).exists()
+            assert path(process.out.input[0][1]).exists()
+            
+            // Check file content directly since CSV parser struggles with header-only files
+            def output_content = path(process.out.output[0][1]).text.trim()
+            def lines = output_content.split('\n')
+            
+            // Should have exactly 1 line (header only)
+            assert lines.size() == 1
+            
+            // Check header is correct
+            def header = lines[0]
+            def expected_header = "taxid\tparent_taxid\treads_direct_total\treads_direct_dedup\treads_clade_total\treads_clade_dedup"
+            assert header == expected_header
+        }
+    }
+
+    test("Should fail when reads file missing seq_id column") {
+        tag "expect_failed"
+        tag "missing_columns"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/count-reads-per-clade/test-reads-missing-seq-id.tsv"))
+                input[1] = "${projectDir}/test-data/toy-data/count-reads-per-clade/test-taxonomy.tsv"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+        }
+    }
+
+    test("Should fail when reads file missing prim_align_dup_exemplar column") {
+        tag "expect_failed"
+        tag "missing_columns"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/count-reads-per-clade/test-reads-missing-exemplar.tsv"))
+                input[1] = "${projectDir}/test-data/toy-data/count-reads-per-clade/test-taxonomy.tsv"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+        }
+    }
+
+    test("Should fail when reads file missing aligner_taxid_lca column") {
+        tag "expect_failed"
+        tag "missing_columns"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/count-reads-per-clade/test-reads-missing-taxid.tsv"))
+                input[1] = "${projectDir}/test-data/toy-data/count-reads-per-clade/test-taxonomy.tsv"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+        }
+    }
+
+    test("Should fail when taxonomy file missing taxid column") {
+        tag "expect_failed"
+        tag "missing_columns"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/count-reads-per-clade/test-reads.tsv"))
+                input[1] = "${projectDir}/test-data/toy-data/count-reads-per-clade/test-taxonomy-missing-taxid.tsv"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+        }
+    }
+
+    test("Should fail when taxonomy file missing parent_taxid column") {
+        tag "expect_failed"
+        tag "missing_columns"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/count-reads-per-clade/test-reads.tsv"))
+                input[1] = "${projectDir}/test-data/toy-data/count-reads-per-clade/test-taxonomy-missing-parent.tsv"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+        }
+    }
+
+}
+
