@@ -20,7 +20,6 @@
             - SPLIT_VIRAL_TSV_BY_SPECIES -> SPLIT_VIRAL_TSV_BY_SELECTED_TAXID
             - CONCATENATE_FILES_ACROSS_SPECIES -> CONCATENATE_FILES_ACROSS_SELECTED_TAXID
             - CONCATENATE_TSVS_ACROSS_SPECIES -> CONCATENATE_TSVS_ACROSS_SELECTED_TAXID
-        - Due to some testing files being on s3, temporary files were added with the word "lca" in them that refer to the lca-related output files on s3; however, we will overwrite those files with the lca files once the LCA migration has been fully merged
 - Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
 - Updated SORT_FASTQ to sort alphanumerically
 
