@@ -132,8 +132,8 @@ nextflow_workflow {
                     '''
                 }
             }
-            run("PROCESS_VIRAL_BOWTIE2_SAM_LCA") {
-                script "modules/local/processViralBowtie2SamLca/main.nf"
+            run("PROCESS_VIRAL_BOWTIE2_SAM") {
+                script "modules/local/processViralBowtie2Sam/main.nf"
                 process {
                     '''
                     input[0] = FILTER_VIRAL_SAM.out.sam
@@ -147,7 +147,7 @@ nextflow_workflow {
                 script "modules/local/lcaTsv/main.nf"
                 process {
                     '''
-                    input[0] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
+                    input[0] = PROCESS_VIRAL_BOWTIE2_SAM.out.output
                     input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
                     input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
                     input[3] = "seq_id"
@@ -169,7 +169,7 @@ nextflow_workflow {
             workflow {
                 """
                 input[0] = LCA_TSV.out.output
-                input[1] = PROCESS_VIRAL_BOWTIE2_SAM_LCA.out.output
+                input[1] = PROCESS_VIRAL_BOWTIE2_SAM.out.output
                 input[2] = params.col_keep_no_prefix
                 input[3] = params.col_keep_add_prefix
                 input[4] = params.column_prefix
@@ -236,8 +236,8 @@ nextflow_workflow {
                         '''
                     }
                 }
-            run("PROCESS_VIRAL_MINIMAP2_SAM_LCA") {
-                script "modules/local/processViralMinimap2SamLca/main.nf"
+            run("PROCESS_VIRAL_MINIMAP2_SAM") {
+                script "modules/local/processViralMinimap2Sam/main.nf"
                 process {
                     '''
                     input[0] = MINIMAP2.out.sam.join(INTERLEAVE_FASTQ.out.output)
@@ -250,7 +250,7 @@ nextflow_workflow {
                 script "modules/local/sortTsv/main.nf"
                 process {
                     '''
-                    input[0] = PROCESS_VIRAL_MINIMAP2_SAM_LCA.out.output
+                    input[0] = PROCESS_VIRAL_MINIMAP2_SAM.out.output
                     input[1] = "seq_id"
                     '''
                 }
@@ -415,8 +415,8 @@ nextflow_workflow {
         when {
             params {
                 col_keep_no_prefix = ["seq_id", "aligner_taxid_lca", "aligner_taxid_top", 
-                                      "aligner_length_normalized_score_mean", "aligner_taxid_lca_natural",
-                                      "aligner_n_assignments_natural", "aligner_length_normalized_score_mean_natural",
+                                      "aligner_length_normalized_score_mean", "aligner_taxid_lca_combined",
+                                      "aligner_n_assignments_combined", "aligner_length_normalized_score_mean_combined",
                                       "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
                                       "aligner_length_normalized_score_mean_artificial"]
                 col_keep_add_prefix = ["genome_id_all", "taxid_all", "fragment_length", 

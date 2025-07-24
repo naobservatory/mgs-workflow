@@ -511,9 +511,10 @@ def get_output_header(
         fields_prefixed = fields_base
     else:
         fields_prefixed = [prefix + "_" + f for f in fields_base]
-    fields_natural = [f + "_natural" for f in fields_prefixed]
+    # Natural fields will be default used by user so we don't add prefix to make the output more readable
+    fields_all = [f + "_combined" for f in fields_prefixed]
     fields_artificial = [f + "_artificial" for f in fields_prefixed]
-    return [group_field] + fields_prefixed + fields_natural + fields_artificial
+    return [group_field] + fields_all + fields_prefixed + fields_artificial
 
 def write_output_line(
         fields: list[str],

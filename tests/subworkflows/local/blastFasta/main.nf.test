@@ -1,10 +1,10 @@
 def checkGzipSorted = { file,key -> ["bash", "-c", "zcat " + file + " | sort -C " + key + " && printf 1 || printf 0"].execute().text.trim() as Integer }
-def exp_lca_headers_base = ["staxid_lca", "n_assignments_total", "n_assignments_classified",
+def exp_lca_headers_base = ["staxid_lca", "n_assignments", "n_assignments_classified",
     "staxid_top", "staxid_top_classified", "bitscore_min", "bitscore_max", "bitscore_mean"]
-def exp_lca_headers_prefixed = exp_lca_headers_base.collect{ "testprefix_${it}" }
-def exp_lca_headers_all = exp_lca_headers_prefixed.collect{ it + "_all" }
-def exp_lca_headers_natural = exp_lca_headers_prefixed.collect{ it + "_natural" }
-def exp_lca_headers_artificial = exp_lca_headers_prefixed.collect{ it + "_artificial" }
+def exp_lca_headers_prefixed = exp_lca_headers_base.collect{ "testprefix_${it}".toString() }
+def exp_lca_headers_all = exp_lca_headers_prefixed.collect{ (it + "_combined").toString() }
+def exp_lca_headers_natural = exp_lca_headers_prefixed.collect{ it.toString() }
+def exp_lca_headers_artificial = exp_lca_headers_prefixed.collect{ (it + "_artificial").toString() }
 def exp_lca_headers = ["qseqid"] + exp_lca_headers_all + exp_lca_headers_natural + exp_lca_headers_artificial
 
 nextflow_workflow {
