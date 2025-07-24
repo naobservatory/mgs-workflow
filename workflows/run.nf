@@ -61,7 +61,7 @@ workflow RUN {
         bbduk_trimmed = Channel.empty()
      } else {
         EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, params.bt2_score_threshold,
-            params.adapters, "0.33", "1", "24", "viral", params.taxid_artificial)
+            params.adapters, params.cutadapt_error_rate, "1", "24", "viral", params.taxid_artificial)
         hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
         inter_lca = EXTRACT_VIRAL_READS_SHORT.out.inter_lca
