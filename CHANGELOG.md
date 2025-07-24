@@ -1,3 +1,8 @@
+# v3.0.0.1-dev
+- Added module COUNT_READS_PER_CLADE to DOWNSTREAM.
+    - Module creates a new output file `results_downstream/{sample}_clade_counts.tsv.gz`
+    - Does not modify any existing output.
+
 # v3.0.0.0-dev
 - Made new processes and subworkflows in preparation for introducing LCA to our pipeline:
     - Updated column names for output viral hits table in EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_SHORT_ONT to make them more user-friendly
