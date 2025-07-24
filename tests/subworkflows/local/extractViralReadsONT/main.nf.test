@@ -22,7 +22,7 @@ nextflow_workflow {
 
     test("Should run without failures") {
         tag "expect_success"
-        tag "ont_lca"
+        tag "ont"
         when {
             workflow {
                 '''
@@ -63,7 +63,7 @@ nextflow_workflow {
     test("Should handle empty input file") {
         tag "empty_file"
         tag "expect_success"
-        tag "ont_lca"
+        tag "ont"
         setup {
             run("GZIP_FILE", alias: "GZIP_EMPTY_FORWARD") {
                 script "modules/local/gzipFile/main.nf"
