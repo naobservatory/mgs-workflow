@@ -1,4 +1,4 @@
-seq_id	taxid	test_score	exp_lca_artificial	exp_lca_natural	exp_lca	comments
+seq_id	taxid	test_score	exp_lca_artificial	exp_lca	exp_lca_combined	comments
 X	8001	100	8000	NA	8000	two artificial matches
 X	8002	200	8000	NA	8000	two artificial matches
 Y	8001	100	8001	9001	1	one natural & one artificial match

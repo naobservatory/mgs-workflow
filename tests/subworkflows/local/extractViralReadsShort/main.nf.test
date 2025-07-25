@@ -1,10 +1,3 @@
-// Helper function: manual table filtering
-def filter_tab = { tab_in, threshold -> csv(tab_in.table.where(
-    tab_in.table.intColumn("kraken2_assigned_host_virus").isEqualTo(1).or(
-        tab_in.table.numberColumn("aligner_length_normalized_score").isGreaterThanOrEqualTo(threshold).and(
-            tab_in.table.intColumn("kraken2_assigned_host_virus").isEqualTo(2).or(
-                tab_in.table.booleanColumn("kraken2_classified").isFalse()))))) }
-
 nextflow_workflow {
 
     name "Test subworkflow EXTRACT_VIRAL_READS_SHORT"
@@ -38,46 +31,30 @@ nextflow_workflow {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = params.ref_dir
-                input[2] = "${params.ref_dir}/results/kraken_db"
-                input[3] = params.bt2_score_threshold
-                input[4] = params.adapters
-                input[5] = params.host_taxon
-                input[6] = params.cutadapt_error_rate
-                input[7] = "1"
-                input[8] = "24"
-                input[9] = "viral"
-                input[10] = "5"
+                input[2] = params.bt2_score_threshold
+                input[3] = params.adapters
+                input[4] = params.cutadapt_error_rate
+                input[5] = "1"
+                input[6] = "24"
+                input[7] = "viral"
+                input[8] = "81077"
                 '''
             }
         }
         then {
-            // Should run without failures
             assert workflow.success
-            // Output should have a nonzero number of lines divisible by eight
-            // (for an interleaved FASTQ file)
             // Output should be valid FASTQ with an even number of entries (interleaved)
             def test_reads_fastq = path(workflow.out.test_reads[0][1]).fastq
             def test_reads_count = test_reads_fastq.getNumberOfRecords()
             assert test_reads_count > 0
             assert test_reads_count % 2 == 0
-            // Processed Kraken output should match lines in test reads
-            def test_kraken_tab = path(workflow.out.test_kraken[0][1]).csv(sep: "\t", decompress: true)
-            assert test_kraken_tab.rowCount == test_reads_count / 2
-            // Other tabular tests
-            def test_bowtie_tab = path(workflow.out.test_bowtie[0][1]).csv(sep: "\t", decompress: true)
-            def test_joined_tab = path(workflow.out.test_joined[0][1]).csv(sep: "\t", decompress: true)
-            assert test_joined_tab.rowCount == Math.min(test_bowtie_tab.rowCount, test_kraken_tab.rowCount)
-            assert test_joined_tab.columnCount == test_bowtie_tab.columnCount + test_kraken_tab.columnCount - 1 + 2
-            // Test filtering produced expected results
-            def hits_all_tab = path(workflow.out.hits_unfiltered[0]).csv(sep: "\t", decompress: true)
+            // LCA'd output rows should be less than or equal to pre lca rows
+            def pre_lca_files = workflow.out.hits_prelca.collect { it[1] }
+            def total_pre_lca_rows = pre_lca_files.sum { file ->
+                  path(file).linesGzip.size() - 1  // minus header for each file
+            }
             def hits_final_tab = path(workflow.out.hits_final[0]).csv(sep: "\t", decompress: true)
-            assertTableEquals hits_all_tab, test_joined_tab
-            assert hits_all_tab.columnNames == hits_final_tab.columnNames
-            assert hits_all_tab.rowCount >= hits_final_tab.rowCount
-            def hits_exp_tab = filter_tab(hits_all_tab, params.bt2_score_threshold)
-            assert hits_exp_tab.columnNames == hits_final_tab.columnNames
-            assert hits_exp_tab.rowCount == hits_final_tab.rowCount
-            assertTableEquals hits_exp_tab, hits_final_tab
+            assert hits_final_tab.rowCount <= total_pre_lca_rows
             // Filtered FASTQ should be a subset of test FASTQ
             def hits_fastq = path(workflow.out.hits_fastq[0]).fastq
             assert hits_fastq.getNumberOfRecords() <= test_reads_count
@@ -138,22 +115,18 @@ nextflow_workflow {
                 '''
                 input[0] = GZIP_EMPTY_FORWARD.out.mix(COPY_FILE.out).groupTuple()
                 input[1] = params.ref_dir
-                input[2] = "${params.ref_dir}/results/kraken_db"
-                input[3] = params.bt2_score_threshold
-                input[4] = params.adapters
-                input[5] = params.host_taxon
-                input[6] = params.cutadapt_error_rate
-                input[7] = "1"
-                input[8] = "24"
-                input[9] = "viral"
-                input[10] = "5"
+                input[2] = params.bt2_score_threshold
+                input[3] = params.adapters
+                input[4] = params.cutadapt_error_rate
+                input[5] = "1"
+                input[6] = "24"
+                input[7] = "viral"
+                input[8] = "81077"
                 '''
             }
         }
         then {
-            // Should run without failures
             assert workflow.success
-
             // FASTQ output files should be empty
             def fastq_files = [
                 path(workflow.out.bbduk_match[0][1]),
@@ -164,14 +137,10 @@ nextflow_workflow {
             def fastqs = fastq_files.collect{ it.fastq }
             def read_counts = fastqs.collect{ it.getNumberOfRecords() }
             assert read_counts.every{ it == 0 }
-
             // Tabular output files should have only header lines
             def tabular_files = [
-                path(workflow.out.hits_unfiltered[0]),
                 path(workflow.out.hits_final[0]),
-                path(workflow.out.test_kraken[0][1]),
-                path(workflow.out.test_bowtie[0][1]),
-                path(workflow.out.test_joined[0][1])
+                path(workflow.out.hits_prelca[0][1])
             ]
             def tabular_lines = tabular_files.collect{ it.linesGzip.toList() }
             assert tabular_lines.every{ it.size() == 1 }
