@@ -1,7 +1,6 @@
 from collections import Counter
 
 import pytest
-
 from count_reads_per_clade import (
     build_tree,
     children,
