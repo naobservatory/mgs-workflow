@@ -1,8 +1,3 @@
-# v3.0.0.1-dev
-- Added module COUNT_READS_PER_CLADE to DOWNSTREAM.
-    - Module creates a new output file `results_downstream/{sample}_clade_counts.tsv.gz`
-    - Does not modify any existing output.
-
 # v3.0.0.0-dev
 - Made new processes and subworkflows in preparation for introducing LCA to our pipeline:
     - Updated column names for output viral hits table in EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_SHORT_ONT to make them more user-friendly
@@ -18,6 +13,11 @@
         - Updated DOWNSTREAM and RUN_VALIDATION to use LCA versions of output from RUN workflow such that the tests can run correctly. These files/changes will temporarily have the word "lca" in them, but that will be removed once the LCA migration is complete.
 - Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
 - Updated SORT_FASTQ to sort alphanumerically
+- Added module COUNT_READS_PER_CLADE to DOWNSTREAM, which counts the number of lca-assigned reads in each viral clade.
+    - Module creates a new output file `results_downstream/{sample}_clade_counts.tsv.gz`
+    - Does not modify any existing output.
+    - Module is called directly in the DOWNSTREAM workflow. If we need more modules for clade counting in the future, will create a subworkflow.
+    - Updated docs to include the addition.
 
 # v2.10.0.1
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
