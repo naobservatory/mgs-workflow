@@ -116,6 +116,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
+            assert process.errorReport.contains("Error: Missing required column 'seq_id' in reads file: test-reads-missing-seq-id.tsv")
         }
     }
 
@@ -135,6 +136,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
+            assert process.errorReport.contains("Error: Missing required column 'prim_align_dup_exemplar' in reads file: test-reads-missing-exemplar.tsv")
         }
     }
 
@@ -154,6 +156,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
+            assert process.errorReport.contains("Error: Missing required column 'aligner_taxid_lca' in reads file: test-reads-missing-taxid.tsv")
         }
     }
 
@@ -173,6 +176,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
+            assert process.errorReport.contains("Error: Missing required column 'taxid' in taxonomy file: test-taxonomy-missing-taxid.tsv")
         }
     }
 
@@ -192,6 +196,7 @@ nextflow_process {
         then {
             assert process.failed
             assert process.exitStatus == 1
+            assert process.errorReport.contains("Error: Missing required column 'parent_taxid' in taxonomy file: test-taxonomy-missing-parent.tsv")
         }
     }
 
