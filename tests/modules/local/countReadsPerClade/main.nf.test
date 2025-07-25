@@ -28,57 +28,37 @@ nextflow_process {
             assert path(process.out.output[0][1]).exists()
             assert path(process.out.input[0][1]).exists()
             
-            // Parse the gzipped output TSV
+            // Parse the gzipped output TSV and expected output TSV
             def output_tsv = path(process.out.output[0][1]).csv(sep: "\t", decompress: true)
+            def expected_tsv = path("${projectDir}/test-data/toy-data/count-reads-per-clade/expected-output.tsv").csv(sep: "\t")
             
-            // Should have 4 rows (header + 4 taxids: 0, 1, 2, 3)
-            assert output_tsv.rowCount == 4
+            // Should have same number of rows as expected
+            assert output_tsv.rowCount == expected_tsv.rowCount
             
-            // Check header columns
-            def expected_columns = ["taxid", "parent_taxid", "reads_direct_total", "reads_direct_dedup", "reads_clade_total", "reads_clade_dedup"]
-            assert output_tsv.columnNames == expected_columns
+            // Check header columns match
+            assert output_tsv.columnNames == expected_tsv.columnNames
             
-            // Convert to map for easier validation
-            def rows_by_taxid = [:]
+            // Convert both to maps for easier comparison
+            def output_rows_by_taxid = [:]
             output_tsv.rows.each { row ->
-                rows_by_taxid[row.taxid] = row
+                output_rows_by_taxid[row.taxid] = row
             }
             
-            // Validate taxid 0 (root)
-            def row0 = rows_by_taxid[0]
-            assert row0 != null
-            assert row0.parent_taxid == "."
-            assert row0.reads_direct_total == 0
-            assert row0.reads_direct_dedup == 0
-            assert row0.reads_clade_total == 6
-            assert row0.reads_clade_dedup == 4
+            def expected_rows_by_taxid = [:]
+            expected_tsv.rows.each { row ->
+                expected_rows_by_taxid[row.taxid] = row
+            }
             
-            // Validate taxid 1
-            def row1 = rows_by_taxid[1]
-            assert row1 != null
-            assert row1.parent_taxid == "0"
-            assert row1.reads_direct_total == 3
-            assert row1.reads_direct_dedup == 2
-            assert row1.reads_clade_total == 6
-            assert row1.reads_clade_dedup == 4
-            
-            // Validate taxid 2
-            def row2 = rows_by_taxid[2]
-            assert row2 != null
-            assert row2.parent_taxid == "1"
-            assert row2.reads_direct_total == 1
-            assert row2.reads_direct_dedup == 1
-            assert row2.reads_clade_total == 1
-            assert row2.reads_clade_dedup == 1
-            
-            // Validate taxid 3
-            def row3 = rows_by_taxid[3]
-            assert row3 != null
-            assert row3.parent_taxid == "1"
-            assert row3.reads_direct_total == 2
-            assert row3.reads_direct_dedup == 1
-            assert row3.reads_clade_total == 2
-            assert row3.reads_clade_dedup == 1
+            // Compare each row
+            expected_rows_by_taxid.each { taxid, expected_row ->
+                def output_row = output_rows_by_taxid[taxid]
+                assert output_row != null, "Missing taxid ${taxid} in output"
+                assert output_row.parent_taxid == expected_row.parent_taxid
+                assert output_row.reads_direct_total == expected_row.reads_direct_total
+                assert output_row.reads_direct_dedup == expected_row.reads_direct_dedup
+                assert output_row.reads_clade_total == expected_row.reads_clade_total
+                assert output_row.reads_clade_dedup == expected_row.reads_clade_dedup
+            }
         }
     }
 
