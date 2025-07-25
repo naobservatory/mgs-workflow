@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Generate clade counts for a taxonomic tree.
 
 Take a table of reads with LCA assignments and a table of (child, parent) taxid pairs
@@ -10,6 +11,7 @@ import argparse
 import bz2
 import csv
 import gzip
+import sys
 from collections import Counter, defaultdict
 from collections.abc import Iterator
 
@@ -261,10 +263,39 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    direct_counts_total, direct_counts_dedup = count_direct_reads_per_taxid(
-        read_tsv(args.reads)
-    )
-    tree = build_tree(read_tsv(args.taxdb))
+
+    try:
+        direct_counts_total, direct_counts_dedup = count_direct_reads_per_taxid(
+            read_tsv(args.reads)
+        )
+    except KeyError as e:
+        missing_column = e.args[0]
+        print(
+            f"Error: Missing required column '{missing_column}' "
+            f"in reads file: {args.reads}",
+            file=sys.stderr,
+        )
+        print(
+            "Required columns for reads file: "
+            "seq_id, prim_align_dup_exemplar, aligner_taxid_lca",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        tree = build_tree(read_tsv(args.taxdb))
+    except KeyError as e:
+        missing_column = e.args[0]
+        print(
+            f"Error: Missing required column '{missing_column}' "
+            f"in taxonomy file: {args.taxdb}",
+            file=sys.stderr,
+        )
+        print(
+            "Required columns for taxonomy file: taxid, parent_taxid", file=sys.stderr
+        )
+        sys.exit(1)
+
     clade_counts_total = get_clade_counts(direct_counts_total, tree)
     clade_counts_dedup = get_clade_counts(direct_counts_dedup, tree)
     write_output_tsv(

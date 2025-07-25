@@ -22,6 +22,11 @@
             - CONCATENATE_TSVS_ACROSS_SPECIES -> CONCATENATE_TSVS_ACROSS_SELECTED_TAXID
 - Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
 - Updated SORT_FASTQ to sort alphanumerically
+- Added module COUNT_READS_PER_CLADE to DOWNSTREAM, which counts the number of lca-assigned reads in each viral clade.
+    - Module creates a new output file `results_downstream/{sample}_clade_counts.tsv.gz`
+    - Does not modify any existing output.
+    - Module is called directly in the DOWNSTREAM workflow. If we need more modules for clade counting in the future, will create a subworkflow.
+    - Updated docs to include the addition.
 
 # v2.10.0.1
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
