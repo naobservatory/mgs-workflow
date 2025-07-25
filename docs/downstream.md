@@ -28,7 +28,7 @@ F --> H(Validation hits TSV)
 F --> I(BLAST results TSV)
 G --> L[COUNT_READS_PER_CLADE]
 E --> L
-L --> M(Read count TSVs)
+L --> M(Clade count TSVs)
 subgraph "Data preparation"
 C
 D
