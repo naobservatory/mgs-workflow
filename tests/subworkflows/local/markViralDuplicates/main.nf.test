@@ -50,8 +50,8 @@ nextflow_workflow {
             assert tab_out.rowCount == tab_in.rowCount
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
-            assert tab_out.columnNames == tab_in.columnNames + ["aligner_dup_exemplar"]
-            assert tab_meta.columnNames == ["aligner_genome_id_all", "aligner_dup_exemplar", "aligner_dup_count", "aligner_dup_pairwise_match_frac"]
+            assert tab_out.columnNames == tab_in.columnNames + ["prim_align_dup_exemplar"]
+            assert tab_meta.columnNames == ["prim_align_genome_id_all", "prim_align_dup_exemplar", "prim_align_dup_count", "prim_align_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -61,11 +61,11 @@ nextflow_workflow {
             }
             // Output stats should be consistent (not checking correctness here)
             for (r in tab_meta.rows) {
-                def exemplar = r["aligner_dup_exemplar"]
+                def exemplar = r["prim_align_dup_exemplar"]
                 assert exemplar in tab_out.columns["seq_id"] // Exemplar should be a real read
-                assert r["aligner_dup_count"] == tab_out.columns["aligner_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
+                assert r["prim_align_dup_count"] == tab_out.columns["prim_align_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
             }
-            assert tab_meta.columns["aligner_dup_count"].sum() == tab_out.rowCount
+            assert tab_meta.columns["prim_align_dup_count"].sum() == tab_out.rowCount
         }
     }
 
@@ -92,8 +92,8 @@ nextflow_workflow {
             assert tab_out.rowCount == tab_in.rowCount
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
-            assert tab_out.columnNames == tab_in.columnNames + ["aligner_dup_exemplar"]
-            assert tab_meta.columnNames == ["aligner_genome_id_all", "aligner_dup_exemplar", "aligner_dup_count", "aligner_dup_pairwise_match_frac"]
+            assert tab_out.columnNames == tab_in.columnNames + ["prim_align_dup_exemplar"]
+            assert tab_meta.columnNames == ["prim_align_genome_id_all", "prim_align_dup_exemplar", "prim_align_dup_count", "prim_align_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -103,11 +103,11 @@ nextflow_workflow {
             }
             // Output stats should be consistent (not checking correctness here)
             for (r in tab_meta.rows) {
-                def exemplar = r["aligner_dup_exemplar"]
+                def exemplar = r["prim_align_dup_exemplar"]
                 assert exemplar in tab_out.columns["seq_id"] // Exemplar should be a real read
-                assert r["aligner_dup_count"] == tab_out.columns["aligner_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
+                assert r["prim_align_dup_count"] == tab_out.columns["prim_align_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
             }
-            assert tab_meta.columns["aligner_dup_count"].sum() == tab_out.rowCount
+            assert tab_meta.columns["prim_align_dup_count"].sum() == tab_out.rowCount
         }
     }
 
@@ -134,8 +134,8 @@ nextflow_workflow {
             assert tab_out.rowCount == tab_in.rowCount
             assert tab_out.columnCount == tab_in.columnCount + 1
             // Output should have expected headers
-            assert tab_out.columnNames == tab_in.columnNames + ["aligner_dup_exemplar"]
-            assert tab_meta.columnNames == ["aligner_genome_id_all", "aligner_dup_exemplar", "aligner_dup_count", "aligner_dup_pairwise_match_frac"]
+            assert tab_out.columnNames == tab_in.columnNames + ["prim_align_dup_exemplar"]
+            assert tab_meta.columnNames == ["prim_align_genome_id_all", "prim_align_dup_exemplar", "prim_align_dup_count", "prim_align_dup_pairwise_match_frac"]
             // Output should contain expected sequence IDs
             assert tab_in.columns["seq_id"].toSorted() == tab_out.columns["seq_id"].toSorted()
             def line_mapping = tab_out.columns["seq_id"].collect{ element -> tab_in.columns["seq_id"].indexOf(element) }
@@ -145,11 +145,11 @@ nextflow_workflow {
             }
             // Output stats should be consistent (not checking correctness here)
             for (r in tab_meta.rows) {
-                def exemplar = r["aligner_dup_exemplar"]
+                def exemplar = r["prim_align_dup_exemplar"]
                 assert exemplar in tab_out.columns["seq_id"] // Exemplar should be a real read
-                assert r["aligner_dup_count"] == tab_out.columns["aligner_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
+                assert r["prim_align_dup_count"] == tab_out.columns["prim_align_dup_exemplar"].count(exemplar) // Dup counts should match exemplar assignments
             }
-            assert tab_meta.columns["aligner_dup_count"].sum() == tab_out.rowCount
+            assert tab_meta.columns["prim_align_dup_count"].sum() == tab_out.rowCount
         }
     }
 
