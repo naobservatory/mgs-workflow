@@ -13,8 +13,11 @@ process KRAKEN {
         exec 200>/scratch/kraken_db.lock
         flock -x 200
         if [ ! -f /scratch/kraken_db/download_complete.txt ]; then
-            #aws s3 cp --recursive s3://nao-mgs-index/20250404/output/results/kraken_db /scratch/kraken_db && touch /scratch/kraken_db/download_complete.txt
-            cp -r /fsx/20250404_index_output/results/kraken_db /scratch/kraken_db && touch /scratch/kraken_db/download_complete.txt
+            aws configure set default.s3.max_concurrent_requests 20
+            aws configure set default.s3.multipart_threshold 64MB
+            aws configure set default.s3.multipart_chunksize 16MB
+            aws s3 cp --recursive s3://nao-mgs-index/20250404/output/results/kraken_db /scratch/kraken_db && touch /scratch/kraken_db/download_complete.txt
+            #cp -r /fsx/20250404_index_output/results/kraken_db /scratch/kraken_db && touch /scratch/kraken_db/download_complete.txt
         fi
         flock -u 200
         # Define input/output
