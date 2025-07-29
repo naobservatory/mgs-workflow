@@ -12,8 +12,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     && ./aws/install \
     && rm -rf awscliv2.zip aws/
 
-# Install Kraken2 v2.1.3 and s5cmd via conda-forge/bioconda
-RUN mamba install -c bioconda kraken2=2.1.3 -y && \
-    mamba install -c conda-forge s5cmd -y && \
+# Install bowtie2 and samtools 
+RUN mamba install -c bioconda blast=2.16.0 -y && \
     mamba clean -a
 
