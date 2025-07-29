@@ -10,7 +10,7 @@ process KRAKEN {
         tuple val(sample), path("${sample}_in.fastq.gz"), emit: input
     shell:
         '''
-        download-db.sh s3://nao-mgs-index/20250404/output/results/kraken_db
+        ${projectDir}/bin/download-db.sh s3://nao-mgs-index/20250404/output/results/kraken_db
         #cp -r /fsx/20250404_index_output/results/kraken_db /scratch/kraken_db && touch /scratch/kraken_db/download_complete.txt
         # Define input/output
         out=!{sample}.output
