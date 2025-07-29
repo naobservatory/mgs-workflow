@@ -18,6 +18,8 @@ S3_PATH="$1"
 DB_NAME=$(basename "${S3_PATH}")
 LOCAL_PATH="/scratch/${DB_NAME}"
 
+mkdir -p /scratch
+
 # Create lock file path
 LOCK_FILE="/scratch/${DB_NAME}.lock"
 COMPLETION_FILE="${LOCAL_PATH}/download_complete.txt"
