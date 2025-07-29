@@ -1,7 +1,7 @@
 // Create a minimap2 index
 process MINIMAP2_INDEX {
     label "max"
-    label "minimap2"
+    label "minimap2_samtools"
     input:
         path(reference_fasta)
         val(outdir)
@@ -27,7 +27,7 @@ process MINIMAP2 {
     label "minimap2_samtools"
     input:
         tuple val(sample), path(reads)
-        path(index_dir)
+        val(index_dir)
         val(suffix)
         val(remove_sq)
         val(alignment_params)
@@ -39,9 +39,11 @@ process MINIMAP2 {
     shell:
         '''
         set -eou pipefail
+        # Download Minimap2 index if not already present
+        download-db.sh !{index_dir}
         # Prepare inputs
         reads="!{reads}"
-        idx="!{index_dir}/mm2_index.mmi"
+        idx_dir_name=\$(basename "!{index_dir}")
         sam="!{sample}_!{suffix}_minimap2_mapped.sam.gz"
         al="!{sample}_!{suffix}_minimap2_mapped.fastq.gz"
         un="!{sample}_!{suffix}_minimap2_unmapped.fastq.gz"
@@ -52,7 +54,7 @@ process MINIMAP2 {
         #   - Second branch (samtools view -u -F 4 -) filters SAM to aligned reads and saves FASTQ
         #   - Third branch (samtools view -h -F 4 -) also filters SAM to aligned reads and saves SAM
         zcat ${reads} \
-            | minimap2 -a !{alignment_params} ${idx} /dev/fd/0 \
+            | minimap2 -a !{alignment_params} /scratch/${idx_dir_name}/mm2_index.mmi /dev/fd/0 \
             | tee \
                 >(samtools view -u -f 4 - \
                     | samtools fastq - | gzip -c > ${un}) \

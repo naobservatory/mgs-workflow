@@ -5,7 +5,7 @@ process BOWTIE2 {
     label "small"
     input:
         tuple val(sample), path(reads_interleaved)
-        path(index_dir)
+        val(index_dir)
         val(par_string)
         val(suffix)
         val(remove_sq)
@@ -19,12 +19,14 @@ process BOWTIE2 {
     shell:
         '''
         set -euo pipefail
+        # Download Bowtie2 index if not already present
+        download-db.sh !{index_dir}
         # Prepare inputs
-        idx="!{index_dir}/bt2_index"
+        idx_dir_name=\$(basename "!{index_dir}")
         sam="!{sample}_!{suffix}_bowtie2_mapped.sam.gz"
         al="!{sample}_!{suffix}_bowtie2_mapped.fastq.gz"
         un="!{sample}_!{suffix}_bowtie2_unmapped.fastq.gz"
-        io="-x ${idx} !{interleaved ? "--interleaved" : ""} -"
+        io="-x /scratch/${idx_dir_name} !{interleaved ? "--interleaved" : ""} -"
         par="--threads !{task.cpus} !{par_string}"
         # Set SAM flags based on whether data is paired-end or single-end
         # For paired-end: flag 12 = read unmapped (4) + mate unmapped (8)
@@ -67,7 +69,7 @@ process BOWTIE2 {
 
 // Generate a Bowtie2 index from an input file
 process BOWTIE2_INDEX {
-    label "Bowtie2"
+    label "bowtie2_samtools"
     label "max"
     input:
         path(reference_fasta)

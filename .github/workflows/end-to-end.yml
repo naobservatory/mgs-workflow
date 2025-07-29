@@ -11,6 +11,9 @@ jobs:
   test-index:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
 
     steps:
       - name: Configure AWS CLI
@@ -45,8 +48,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-        AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
+    
     steps:
       - name: Configure AWS CLI
         run: |
@@ -79,7 +83,10 @@ jobs:
   test-run-output-ont:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
+    
     steps:
       - name: Configure AWS CLI
         run: |
@@ -113,7 +120,10 @@ jobs:
   test-validation:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
+    
     steps:
       - name: Configure AWS CLI
         run: |
@@ -146,7 +156,10 @@ jobs:
   test-downstream-output:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
+    
     steps:
       - name: Configure AWS CLI
         run: |

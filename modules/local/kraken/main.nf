@@ -11,8 +11,8 @@ process KRAKEN {
         tuple val(sample), path("${sample}_in.fastq.gz"), emit: input
     shell:
         '''
+        # Download Kraken2 database if not already present
         download-db.sh !{db_path}
-        #cp -r /fsx/20250404_index_output/results/kraken_db /scratch/kraken_db && touch /scratch/kraken_db/download_complete.txt
         # Define input/output
         out=!{sample}.output
         report=!{sample}.report
