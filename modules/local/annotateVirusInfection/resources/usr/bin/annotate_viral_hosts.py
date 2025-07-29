@@ -1,27 +1,32 @@
 #!/usr/bin/env python
 
-#=======================================================================
+# =======================================================================
 # Preamble
-#=======================================================================
+# =======================================================================
 
 # Import libraries
 import pandas as pd
-import subprocess
-from typing import Dict, Set, List
+from pathlib import Path
 import argparse
 from collections import defaultdict
+from typing import override
 import logging
+from logging import LogRecord
 from datetime import datetime, timezone
+
 
 # Configure logging
 class UTCFormatter(logging.Formatter):
-    def formatTime(self, record, datefmt=None):
+    @override
+    def formatTime(self, record: LogRecord, datefmt: str | None = None) -> str:
         dt = datetime.fromtimestamp(record.created, timezone.utc)
-        return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+        return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 handler = logging.StreamHandler()
-formatter = UTCFormatter('[%(asctime)s] %(message)s')
+formatter = UTCFormatter("[%(asctime)s] %(message)s")
 handler.setFormatter(formatter)
 logger.handlers.clear()
 logger.addHandler(handler)
@@ -33,42 +38,40 @@ MATCH = 1
 UNCLEAR = 2
 CONSISTENT = 3
 UNRESOLVED = -1
+MAYBE_INCONSISTENT = -2
 
-#=======================================================================
+# =======================================================================
 # Auxiliary functions
-#=======================================================================
+# =======================================================================
 
-def get_virus_host_mapping(db_path: str) -> Dict[str, Set[str]]:
+
+def get_virus_host_mapping(db_path: str) -> dict[str, set[str]]:
     """
     Import a TSV from Virus-Host-DB and extract virus/host info into
     a dictionary.
-
     Args:
         db_path (str): Path to the Virus-Host-DB TSV File.
-
     Returns:
-        Dict[str, Set[str]]: A dictionary mapping virus taxids to
+        dict[str, set[str]]: A dictionary mapping virus taxids to
             sets of host taxids.
     """
     logger.info("Importing Virus-Host-DB.")
     df = pd.read_csv(db_path, sep="\t", dtype=str)
-    df_cleaned = df.loc[df["host tax id"].notnull()]
     logger.info("Generating mapping from Virus-Host-DB.")
     mapping = df.groupby("virus tax id")["host tax id"].apply(set).to_dict()
     return mapping
 
-def expand_taxid(taxid: str, nodes: pd.DataFrame) -> Set[str]:
+
+def expand_taxid(taxid: str, nodes: pd.DataFrame) -> set[str]:
     """
     Given a starting taxid and an NCBI nodes DataFrame, return a set of
     all taxids descended from that starting taxid (including itself).
-
     Args:
         taxid (str): Ancestral taxid as a numeric string.
         nodes (pd.DataFrame): A DataFrame generated from an NCBI nodes DMP
             file giving the parent taxid of each taxid within the NCBI
-
     Returns:
-        Set[str]: Set of descendant taxids, including the original
+        set[str]: set of descendant taxids, including the original
             ancestor.
     """
     taxids_old = {taxid}
@@ -80,77 +83,79 @@ def expand_taxid(taxid: str, nodes: pd.DataFrame) -> Set[str]:
         taxids_new = taxids_old.union(taxids_desc)
     return taxids_new
 
-def get_host_taxids(hosts: Dict[str, str], nodes: pd.DataFrame) -> Dict[str, Set[str]]:
+
+def get_host_taxids(hosts: dict[str, str], nodes: pd.DataFrame) -> dict[str, set[str]]:
     """
     Given a dictionary mapping host group names to host ancestor taxids,
     return a dictionary instead mapping those host names to sets of
     descendant taxids.
-
     Args:
-        hosts (Dict[str, str]): A dictionary mapping string names for
+        hosts (dict[str, str]): A dictionary mapping string names for
             host taxa (e.g. "human", "vertebrate") to ancestral taxids
             as numeric strings (e.g. "9606", "7742").
         nodes (pd.DataFrame): A DataFrame generated from an NCBI nodes DMP
             file giving the parent taxid of each taxid within the NCBI
             taxonomy structure.
-
     Returns:
-        Dict[str, Set[str]]: A dictionary mapping those same string
+        dict[str, set[str]]: A dictionary mapping those same string
             names to sets of descendant taxids returned by
             expand_taxid().
     """
     logger.info("Generating host taxid dictionary from input TSV.")
-    host_dict_out = dict()
+    host_dict_out: dict[str, set[str]] = dict()
     for k in hosts.keys():
         host_dict_out[k] = expand_taxid(hosts[k], nodes)
         n_desc = len(host_dict_out[k])
-        logger.info(f"\tFound {n_desc} descendant taxids for host group \"{k}\" (taxid {hosts[k]}).")
+        logger.info(
+            f'\tFound {n_desc} descendant taxids for host group "{k}" (taxid {hosts[k]}).'
+        )
     logger.info("Host taxid dictionary construction complete.")
     return host_dict_out
 
-def build_virus_tree(viral_taxa_df: pd.DataFrame) -> Dict[str, Set[str]]:
+
+def build_virus_tree(viral_taxa_df: pd.DataFrame) -> dict[str, set[str]]:
     """
     Build a dictionary representing the viral taxonomic tree from a
     viral taxa DataFrame.
-
     Args:
         viral_taxa_df (pd.DataFrame): DataFrame containing viral
             taxa information. Must have taxid and parent_taxid
             columns.
-
     Returns:
-        Dict[str, Set[str]]: A dictionary mapping virus taxids 
+        dict[str, set[str]]: A dictionary mapping virus taxids
             to sets of their child taxids.
     """
     logger.info("Generating viral parent-child tree from viral taxa DB.")
-    tree = defaultdict(set)
+    tree: dict[str, set[str]] = defaultdict(set)
     for _, row in viral_taxa_df.iterrows():
-        tree[row['parent_taxid']].add(row['taxid'])
+        tree[row["parent_taxid"]].add(row["taxid"])
     logger.info("Viral parent-child tree generation complete.")
     return tree
 
-def mark_direct_infections(virus_taxids: pd.Series,
-                           host_taxids: Set[str],
-                           virus_host_mapping: Dict[str, Set[str]]) -> pd.Series:
+
+def mark_direct_infections(
+    virus_taxids: pd.Series,
+    host_taxids: set[str],
+    virus_host_mapping: dict[str, set[str]],
+) -> pd.Series:
     """For a given set of host taxids, check whether each virus taxid in a
     series is directly marked as infecting any of those host taxids,
     according to Virus-Host-DB. Doesn't consider the infection status of
     ancestral or descendant taxids.
-
     Args:
         virus_taxids (pd.Series): Series of virus taxids to check.
-        host_taxids (Set[str]): Series of host taxids to check against.
+        host_taxids (set[str]): Series of host taxids to check against.
             Should be expanded to include all descendant taxids using
             netch_descendants().
-        virus_host_mapping (Dict[str, Set[str]]): Mapping of virus
+        virus_host_mapping (dict[str, set[str]]): Mapping of virus
             taxids to host taxids, generated using
             get_virus_host_mapping().
-
     Returns:
         pd.Series: Integer series giving direct infection status of each
             viral taxid in virus_taxids.
     """
-    def check_direct_infection(virus_taxid):
+
+    def check_direct_infection(virus_taxid: str) -> int:
         if virus_taxid in virus_host_mapping:
             # Return 1 if the virus's hosts overlap with the specified host taxids
             # otherwise return 0
@@ -158,31 +163,34 @@ def mark_direct_infections(virus_taxids: pd.Series,
                 return MATCH
             else:
                 return INCONSISTENT
-        return UNRESOLVED # Indicates not in mapping; needs special handling downstream
+        return UNRESOLVED  # Indicates not in mapping; needs special handling downstream
+
     statuses = virus_taxids.apply(check_direct_infection)
     return pd.Series(statuses.values, index=virus_taxids)
 
-def add_descendants(virus_tree: Dict[str, Set[str]],
-                    taxids_start: Set[str]) -> Set[str]:
+
+def add_descendants(
+    virus_tree: dict[str, set[str]], taxids_start: set[str]
+) -> set[str]:
     """
     Given a viral taxonomy tree and a set of starting taxids, return a set
     containing those taxids and all their descendants.
-
     Args:
-        virus_tree (Dict[str, Set[str]]): Viral taxonomic tree,
+        virus_tree (dict[str, set[str]]): Viral taxonomic tree,
             generated from a viral DB using build_virus_tree().
-        taxids_start (Set[str]): Initial set of taxa for which to find
+        taxids_start (set[str]): Initial set of taxa for which to find
             descendants.
-
     Returns:
-        Set[str]: Expanded set of taxids including taxids_start and all
+        set[str]: Expanded set of taxids including taxids_start and all
             their descendants.
     """
-    def expand_taxids(taxids):
+
+    def expand_taxids(taxids: set[str]) -> set[str]:
         new_taxids = set(taxids)
         for taxid in taxids:
             new_taxids.update(virus_tree.get(taxid, set()))
         return new_taxids
+
     taxids = taxids_start
     taxids_new = expand_taxids(taxids)
     while taxids_new > taxids:
@@ -190,18 +198,18 @@ def add_descendants(virus_tree: Dict[str, Set[str]],
         taxids_new = expand_taxids(taxids)
     return taxids_new
 
-def mark_descendant_infections(virus_tree: Dict[str, Set[str]],
-                               statuses: pd.Series) -> pd.Series:
+
+def mark_descendant_infections(
+    virus_tree: dict[str, set[str]], statuses: pd.Series
+) -> pd.Series:
     """
     Given a series of infection statuses, propagate statuses
     from each taxid to its descendants and return a new status series.
-
     Args:
-        virus_tree (Dict[str, Set[str]]): Viral taxonomic tree,
+        virus_tree (dict[str, set[str]]): Viral taxonomic tree,
             generated from a viral DB using build_virus_tree().
         statuses (pd.Series): Integer series of infection statuses
             for virus_taxids.
-
     Returns:
         pd.Series: Integer series of updated infection statuses.
     """
@@ -217,34 +225,47 @@ def mark_descendant_infections(virus_tree: Dict[str, Set[str]],
     # they are not already marked MATCH
     taxids_consistent = set(statuses.index[statuses == CONSISTENT])
     taxids_consistent_expanded = add_descendants(virus_tree, taxids_consistent)
-    assert statuses[statuses.index.isin(taxids_consistent_expanded)] \
-        .isin([INCONSISTENT,UNCLEAR]).sum() == 0, \
+    assert (
+        statuses[statuses.index.isin(taxids_consistent_expanded)]
+        .isin([INCONSISTENT, UNCLEAR])
+        .sum()
+        == 0
+    ), (
         "Some taxids marked as CONSISTENT have descendants marked as INCONSISTENT or UNCLEAR."
-    statuses[statuses.index.isin(taxids_consistent_expanded) & ~statuses.isin([MATCH])] = CONSISTENT
-    # Descendants of a taxid marked UNCLEAR should be marked UNCLEAR iff they are marked UNRESOLVED
+    )
+    statuses[
+        statuses.index.isin(taxids_consistent_expanded) & ~statuses.isin([MATCH])
+    ] = CONSISTENT
+    # Descendants of a taxid marked UNCLEAR should be marked UNCLEAR iff they are marked UNRESOLVED or MAYBE_INCONSISTENT
+    # Do not overwrite descendants that are already marked INCONSISTENT
     taxids_unclear = set(statuses.index[statuses == UNCLEAR])
     taxids_unclear_expanded = add_descendants(virus_tree, taxids_unclear)
-    statuses[statuses.index.isin(taxids_unclear_expanded) & statuses.isin([UNRESOLVED])] = UNCLEAR
+    statuses[
+        statuses.index.isin(taxids_unclear_expanded)
+        & statuses.isin([UNRESOLVED, MAYBE_INCONSISTENT])
+    ] = UNCLEAR
     # After this, there should be no taxids marked UNRESOLVED
     assert statuses.isin([UNRESOLVED]).sum() == 0, "Some taxids are still unresolved."
+    assert statuses.isin([MAYBE_INCONSISTENT]).sum() == 0, (
+        "Some taxids are still maybe inconsistent."
+    )
     return statuses
 
-def exclude_infections(virus_tree: Dict[str, Set[str]],
-                       statuses: pd.Series,
-                       exclude_taxids: List[str]) -> pd.Series:
+
+def exclude_infections(
+    virus_tree: dict[str, set[str]], statuses: pd.Series, exclude_taxids: list[str]
+) -> pd.Series:
     """
     Given a taxonomy tree, a series of infection status generated by
     mark_descendant_infections(), and a set of taxids to exclude,
     assign all taxids descended from those taxids a status of INCONSISTENT.
-
     Args:
-        virus_tree (Dict[str, Set[str]]): Viral taxonomic tree,
+        virus_tree (dict[str, set[str]]): Viral taxonomic tree,
             generated from a viral DB using build_virus_tree().
         statuses (pd.Series): Integer series of infection statuses
             for virus_taxids.
-        exclude_taxids (List[str]): List of virus taxids to exclude from
+        exclude_taxids (list[str]): list of virus taxids to exclude from
             host annotation (i.e. to force to mark as non-infecting).
-
     Returns:
         pd.Series: Integer series of updated infection statuses.
     """
@@ -252,16 +273,16 @@ def exclude_infections(virus_tree: Dict[str, Set[str]],
     statuses[statuses.index.isin(exclude_taxids_expanded)] = INCONSISTENT
     return statuses
 
-def mark_ancestor_infections_single(virus_taxid: str,
-                                    virus_df: pd.DataFrame,
-                                    virus_tree: Dict[str, Set[str]]) -> pd.DataFrame:
+
+def mark_ancestor_infections_single(
+    virus_taxid: str, virus_df: pd.DataFrame, virus_tree: dict[str, set[str]]
+) -> pd.DataFrame:
     """
     Given a single viral taxid of interest, a DataFrame giving current
     infection statuses for each of a set of viral taxids, and
-    a mapping of each taxid to its children, conduct a recrusive, 
+    a mapping of each taxid to its children, conduct a recrusive,
     memoized tree search to determine the infection of the focal taxid
     based on the infection statuses of its descendants.
-
     Args:
         virus_taxid (str): Specific viral taxid whose status to check.
         virus_df (pd.DataFrame): DataFrame with a column "taxid" giving
@@ -269,21 +290,23 @@ def mark_ancestor_infections_single(virus_taxid: str,
             their currently-assigned infection status (0, 1 or 2),
             and a boolean column "checked" indicating whether its status
             has been checked and assigned by this function.
-        virus_tree (Dict[str, Set[str]]): Viral taxonomic tree
+        virus_tree (dict[str, set[str]]): Viral taxonomic tree
             generated from a viral DB using build_virus_tree(),
             mapping each taxid to a set of its child taxids.
-
     Returns:
-        pd.DataFrame: An updated DataFrame in the same format as 
+        pd.DataFrame: An updated DataFrame in the same format as
             virus_df.
     """
+
     # Define auxiliary functions
-    def set_checked(taxid, df):
-        df.loc[taxid,"checked"] = True
+    def set_checked(taxid: str, df: pd.DataFrame) -> pd.DataFrame:
+        df.loc[taxid, "checked"] = True
         return df
-    def set_status(taxid, df, value):
-        df.loc[taxid,"status"] = value
+
+    def set_status(taxid: str, df: pd.DataFrame, value: int) -> pd.DataFrame:
+        df.loc[taxid, "status"] = value
         return set_checked(taxid, df)
+
     # Before passing to this function, already confirmed that taxid
     # has children and is unresolved, so start by getting children
     children = virus_df.loc[list(virus_tree[virus_taxid])]
@@ -300,19 +323,21 @@ def mark_ancestor_infections_single(virus_taxid: str,
         # If any child is marked UNCLEAR, mark this taxid as UNCLEAR
         elif child_statuses.isin([UNCLEAR]).any():
             return set_status(virus_taxid, virus_df, UNCLEAR)
-        # If there are both children marked INCONSISTENT and marked [MATCH or CONSISTENT},
+        # If there are both children marked [INCONSISTENT or MAYBE_INCONSISTENT] and marked [MATCH or CONSISTENT],
         # mark this taxid as UNCLEAR
-        elif (child_statuses.isin([INCONSISTENT]).any() and
-              child_statuses.isin([MATCH,CONSISTENT]).any()):
+        elif (
+            child_statuses.isin([INCONSISTENT, MAYBE_INCONSISTENT]).any()
+            and child_statuses.isin([MATCH, CONSISTENT]).any()
+        ):
             return set_status(virus_taxid, virus_df, UNCLEAR)
-        # If any child is marked INCONSISTENT, retain any existing mark of INCONSISTENT
-        # on the parent node, otherwise mark UNCLEAR
-        elif (child_statuses == INCONSISTENT).any():
+        # If any child is marked [INCONSISTENT or MAYBE_INCONSISTENT], retain any existing mark of INCONSISTENT
+        # on the parent node, otherwise mark MAYBE_INCONSISTENT
+        elif (child_statuses.isin([INCONSISTENT, MAYBE_INCONSISTENT])).any():
             # If parent is marked INCONSISTENT, keep current status
             if virus_df.loc[virus_taxid]["status"] == INCONSISTENT:
                 return set_checked(virus_taxid, virus_df)
-            # Otherwise, mark as UNCLEAR
-            return set_status(virus_taxid, virus_df, UNCLEAR)
+            # Otherwise, mark as MAYBE_INCONSISTENT
+            return set_status(virus_taxid, virus_df, MAYBE_INCONSISTENT)
         # Otherwise, mark as CONSISTENT
         # This covers all mixtures of MATCH, UNRESOLVED and CONSISTENT
         else:
@@ -323,21 +348,19 @@ def mark_ancestor_infections_single(virus_taxid: str,
         virus_df = mark_ancestor_infections_single(child, virus_df, virus_tree)
     return mark_ancestor_infections_single(virus_taxid, virus_df, virus_tree)
 
-def mark_ancestor_infections(virus_taxids: pd.Series,
-                             virus_tree: Dict[str, Set[str]],
-                             statuses: pd.Series) -> pd.Series:
+
+def mark_ancestor_infections(
+    virus_tree: dict[str, set[str]], statuses: pd.Series
+) -> pd.Series:
     """
     Given a series of infection statuses, propagate statuses
     to ancestor taxa and return a new status series.
-
     Args:
-        virus_taxids (pd.Series): Series of virus taxids to check.
-        virus_tree (Dict[str, Set[str]]): Viral taxonomic tree
+        virus_tree (dict[str, set[str]]): Viral taxonomic tree
             generated from a viral DB using build_virus_tree(),
             mapping each taxid to a set of its child taxids.
         statuses (pd.Series): Integer series of direct infection statuses
             for virus_taxids.
-
     Returns:
         pd.Series: Integer series of updated infection statuses.
     """
@@ -357,11 +380,14 @@ def mark_ancestor_infections(virus_taxids: pd.Series,
             df = mark_ancestor_infections_single(taxid, df, virus_tree)
     return df["status"]
 
-def check_infection(virus_taxids: pd.Series,
-                    host_taxids: Set[str],
-                    virus_tree: Dict[str, Set[str]],
-                    virus_host_mapping: Dict[str, Set[str]],
-                    hard_exclude_taxids: List[str]) -> pd.Series:
+
+def check_infection(
+    virus_taxids: pd.Series,
+    host_taxids: set[str],
+    virus_tree: dict[str, set[str]],
+    virus_host_mapping: dict[str, set[str]],
+    hard_exclude_taxids: list[str],
+) -> pd.Series:
     """
     For a single set of host taxids, classify each virus taxid in a series
     according to its infection status for that host set and return an integer
@@ -390,22 +416,20 @@ def check_infection(virus_taxids: pd.Series,
     If a taxon is included in hard_exclude_taxids, it and all descendants
     are marked 0 regardless of Virus-Host-DB; this is intended to account
     for misannotated taxa.
-
     Args:
         virus_taxids (pd.Series): Series of virus taxids to check.
-        host_taxids (Set[str]): Series of host taxids to check against.
+        host_taxids (set[str]): Series of host taxids to check against.
             Should be expanded to include all descendant taxids using
             expand_taxid().
-        virus_tree (Dict[str, Set[str]]): Viral taxonomic tree,
+        virus_tree (dict[str, set[str]]): Viral taxonomic tree,
             generated from a viral DB using build_virus_tree().
-        virus_host_mapping (Dict[str, Set[str]]): Mapping of virus
+        virus_host_mapping (dict[str, set[str]]): Mapping of virus
             taxids to host taxids, generated using
             get_virus_host_mapping().
-        hard_exclude_taxids (List[str]): List of virus taxids to hard-exclude
+        hard_exclude_taxids (list[str]): list of virus taxids to hard-exclude
             from host annotation (i.e. to force to mark as non-infecting).
-
     Returns:
-        pd.Series: Four-state integer series of infection statuses for each viral 
+        pd.Series: Four-state integer series of infection statuses for each viral
             taxid in virus_taxids.
     """
     # Start by marking direct infections
@@ -420,38 +444,39 @@ def check_infection(virus_taxids: pd.Series,
     statuses = exclude_infections(virus_tree, statuses, hard_exclude_taxids)
     # Expand to ancestors
     logger.info("\tPropagating infection status to ancestor taxids.")
-    statuses = mark_ancestor_infections(virus_taxids, virus_tree, statuses)
+    statuses = mark_ancestor_infections(virus_tree, statuses)
     # Expand to descendants
     logger.info("\tPropagating infection status to descendant taxids.")
     statuses = mark_descendant_infections(virus_tree, statuses)
     logger.info("\tInfection status inference complete.")
     return statuses
 
-def annotate_virus_db_single(virus_db: pd.DataFrame,
-                             host_name: str,
-                             host_taxids: Set[str],
-                             virus_tree: Dict[str, Set[str]],
-                             virus_host_mapping: Dict[str, Set[str]],
-                             hard_exclude_taxids: List[str]) -> pd.DataFrame:
+
+def annotate_virus_db_single(
+    virus_db: pd.DataFrame,
+    host_name: str,
+    host_taxids: set[str],
+    virus_tree: dict[str, set[str]],
+    virus_host_mapping: dict[str, set[str]],
+    hard_exclude_taxids: list[str],
+) -> pd.DataFrame:
     """
     Annotate a DataFrame of virus taxa with infection status information
     for a specified host taxon.
-
     Args:
         virus_db (pd.DataFrame): DataFrame with columns indicating taxid
             and parent taxid for each virus.
         host_name (str): String name for host taxon of interest, used to
             label infection status column.
-        host_taxids (Set[str]): Expanded set of taxids within host taxon,
+        host_taxids (set[str]): Expanded set of taxids within host taxon,
             generated with get_host_taxids().
-        virus_tree (Dict[str, Set[str]]): Dictionary giving viral
+        virus_tree (dict[str, set[str]]): dictionary giving viral
             taxonomic structure, generated with build_virus_tree().
-        virus_host_mapping (Dict[str, Set[str]]): Mapping of virus
+        virus_host_mapping (dict[str, set[str]]): Mapping of virus
             taxids to host taxids, generated using
             get_virus_host_mapping().
-        hard_exclude_taxids (List[str]): List of virus taxids to hard-exclude
+        hard_exclude_taxids (list[str]): list of virus taxids to hard-exclude
             from host annotation (i.e. to force to mark as non-infecting).
-
     Returns:
         pd.DataFrame: Copy of virus_db with an additional column giving
             infection status for the specified host taxon.
@@ -459,37 +484,43 @@ def annotate_virus_db_single(virus_db: pd.DataFrame,
 
     # Get infection statuses
     logger.info(f"Inferring infection statuses for {host_name}-infecting viruses.")
-    statuses = check_infection(virus_db["taxid"], host_taxids, virus_tree,
-                               virus_host_mapping, hard_exclude_taxids)
+    statuses = check_infection(
+        virus_db["taxid"],
+        host_taxids,
+        virus_tree,
+        virus_host_mapping,
+        hard_exclude_taxids,
+    )
     logger.info(f"Infection statuses for {host_name}-infecting viruses inferred.")
     # Annotate DB with infection statuses and return
     virus_db.set_index("taxid", inplace=True, drop=False)
     virus_db["infection_status_" + host_name] = statuses
-    #virus_db.reset_index(inplace=True, drop=True)
+    # virus_db.reset_index(inplace=True, drop=True)
     logger.info(f"Virus DB annotated with {host_name}-infection status.")
     return virus_db
 
-def annotate_virus_db(virus_db: pd.DataFrame,
-                      host_mapping: Dict[str, Set[str]],
-                      virus_host_mapping: Dict[str, Set[str]],
-                      hard_exclude_taxids: List[str]) -> pd.DataFrame:
+
+def annotate_virus_db(
+    virus_db: pd.DataFrame,
+    host_mapping: dict[str, set[str]],
+    virus_host_mapping: dict[str, set[str]],
+    hard_exclude_taxids: list[str],
+) -> pd.DataFrame:
     """
     Given a DataFrame of virus taxa (including taxids and parent taxids)
     and another of host taxa (including names and taxids) add a column
     to the former for each taxid in the latter indicating infection
     status for each virus.
-
     Args:
         virus_db (pd.DataFrame): DataFrame with columns indicating taxid
             and parent taxid for each virus.
-        host_mapping (Dict[str, Set[str]]): Mapping of host names (e.g.
+        host_mapping (dict[str, set[str]]): Mapping of host names (e.g.
             "human", "bird") to sets of member taxids.
-        virus_host_mapping (Dict[str, Set[str]]): Mapping of virus
+        virus_host_mapping (dict[str, set[str]]): Mapping of virus
             taxids to host taxids, generated using
             get_virus_host_mapping().
-        hard_exclude_taxids (List[str]): List of virus taxids to hard-exclude
+        hard_exclude_taxids (list[str]): list of virus taxids to hard-exclude
             from host annotation (i.e. to force to mark as non-infecting).
-
     Returns:
         pd.DataFrame: Copy of virus_db with additional columns giving
             infection status for each taxon in host_db.
@@ -498,32 +529,60 @@ def annotate_virus_db(virus_db: pd.DataFrame,
     virus_tree = build_virus_tree(virus_db)
     # Add annotations for each host group
     for k in host_mapping.keys():
-        virus_db = annotate_virus_db_single(virus_db, k, host_mapping[k],
-                                            virus_tree, virus_host_mapping,
-                                            hard_exclude_taxids)
+        virus_db = annotate_virus_db_single(
+            virus_db,
+            k,
+            host_mapping[k],
+            virus_tree,
+            virus_host_mapping,
+            hard_exclude_taxids,
+        )
     return virus_db
 
-#=======================================================================
+
+# =======================================================================
 # Main function
-#=======================================================================
+# =======================================================================
+
 
 def main():
     logger.info("Initializing script.")
     # Define argument parsing
-    parser = argparse.ArgumentParser(description="Annotate a viral TSV with host infection status.")
-    parser.add_argument("virus_db", help="Path to TSV of virus taxids and tree structure.")
-    parser.add_argument("host_db", help="Path to TSV of target host taxids and names.")
-    parser.add_argument("infection_db", help="Path to TSV from Virus-Host DB giving host information.")
-    parser.add_argument("nodes_db", help="Path to NCBI taxonomy nodes file.")
-    parser.add_argument("hard_exclude_taxids", help="Space-delimited list of viral taxids to hard-exclude from host annotation.")
-    parser.add_argument("output_db", help="Output path for host-annotated TSV.")
+    parser = argparse.ArgumentParser(
+        description="Annotate a viral TSV with host infection status."
+    )
+    _ = parser.add_argument(
+        "virus_db", type=Path, help="Path to TSV of virus taxids and tree structure."
+    )
+    _ = parser.add_argument(
+        "host_db", type=Path, help="Path to TSV of target host taxids and names."
+    )
+    _ = parser.add_argument(
+        "infection_db",
+        type=Path,
+        help="Path to TSV from Virus-Host DB giving host information.",
+    )
+    _ = parser.add_argument(
+        "nodes_db", type=Path, help="Path to NCBI taxonomy nodes file."
+    )
+    _ = parser.add_argument(
+        "hard_exclude_taxids",
+        type=str,
+        help="Space-delimited list of viral taxids to hard-exclude from host annotation.",
+    )
+    _ = parser.add_argument(
+        "output_db", type=Path, help="Output path for host-annotated TSV."
+    )
     args = parser.parse_args()
     # Import inputs
     logger.info("Importing input TSVs.")
     virus_db = pd.read_csv(args.virus_db, sep="\t", dtype=str)
     host_db = pd.read_csv(args.host_db, sep="\t", dtype=str)
-    nodes_db = pd.read_csv(args.nodes_db, sep="\t", dtype=str, header=None
-                           ).iloc[:,[0,2]].rename(columns={0:"taxid",2:"parent_taxid"})
+    nodes_db = (
+        pd.read_csv(args.nodes_db, sep="\t", dtype=str, header=None)
+        .iloc[:, [0, 2]]
+        .rename(columns={0: "taxid", 2: "parent_taxid"})
+    )
     virus_host_mapping = get_virus_host_mapping(args.infection_db)
     hard_exclude_taxids = args.hard_exclude_taxids.split(" ")
     # Prepare dictionary of host taxids
@@ -531,13 +590,14 @@ def main():
     host_dict_full = get_host_taxids(host_dict_single, nodes_db)
     # Add annotations
     logger.info("Initializing infection-state annotation.")
-    output_db = annotate_virus_db(virus_db, host_dict_full, virus_host_mapping, 
-                                  hard_exclude_taxids)
+    output_db = annotate_virus_db(
+        virus_db, host_dict_full, virus_host_mapping, hard_exclude_taxids
+    )
     # Write output
     logger.info("Writing output.")
-    output_db.to_csv(args.output_db, sep="\t", index=False,
-                     na_rep="NA", header=True)
+    output_db.to_csv(args.output_db, sep="\t", index=False, na_rep="NA", header=True)
     logger.info("Script complete.")
+
 
 if __name__ == "__main__":
     main()
