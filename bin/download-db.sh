@@ -12,7 +12,8 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-S3_PATH="$1"
+# Normalize S3 path (remove double slashes, preserve s3:// protocol)
+S3_PATH=$(echo "$1" | sed 's|///*|/|g' | sed 's|s3:/|s3://|')
 
 # Extract database name from S3 path (last component)
 DB_NAME=$(basename "${S3_PATH}")
