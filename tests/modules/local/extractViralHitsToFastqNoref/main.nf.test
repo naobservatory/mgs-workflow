@@ -21,8 +21,8 @@ nextflow_process {
                     '''
                 }
             }
-            run("EXTRACT_VIRAL_READS_SHORT_LCA", alias: "EXTRACT_VIRAL_READS_SHORT") {
-                script "subworkflows/local/extractViralReadsShortLca/main.nf"
+            run("EXTRACT_VIRAL_READS_SHORT", alias: "EXTRACT_VIRAL_READS_SHORT") {
+                script "subworkflows/local/extractViralReadsShort/main.nf"
                 process {
                     '''
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet
@@ -99,8 +99,8 @@ nextflow_process {
                     '''
                 }
             }
-            run("EXTRACT_VIRAL_READS_ONT_LCA", alias: "EXTRACT_VIRAL_READS_ONT") {
-                script "subworkflows/local/extractViralReadsONTLca/main.nf"
+            run("EXTRACT_VIRAL_READS_ONT", alias: "EXTRACT_VIRAL_READS_ONT") {
+                script "subworkflows/local/extractViralReadsONT/main.nf"
                 process {
                     '''
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet

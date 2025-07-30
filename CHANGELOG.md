@@ -1,18 +1,32 @@
 # v3.0.0.0-dev
-- Made new processes and subworkflows in preparation for introducing LCA to our pipeline:
-    - Updated column names for output viral hits table in EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_SHORT_ONT to make them more user-friendly
+- Completed integration of LCA into the MGS Workflow:
+    - Integrated changes from EXTRACT_VIRAL_READS_SHORT_LCA into EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT_LCA into EXTRACT_VIRAL_READS_ONT, getting rid of the distinction of 'LCA'
+    - Updated column names for output viral hits table to make them more user-friendly
         - Updated LCA_TSV to allow user to pass in empty prefix
-        - Removed "_all" and "total" strings from LCA_TSV to improve readability
-        - Planned to return LCA_TSV output and PROCESS_VIRAL_{MINIMAP2,BOWTIE2}_SAM output as intermediates once LCA has been completely integrated
-    - Added column to track the status of whether an alignment is primary, secondary, or supplementary in PROCESS_VIRAL_{MINIMAP2,BOWTIE2}_SAM
-    - Created new temporary workflow, EXTRACT_VIRAL_READS_ONT_LCA, that will eventually replace EXTRACT_VIRAL_READS_ONT which makes MINIMAP2 run with multiple alignments, then runs LCA on this output
-    - Updating docs to reflect new output as a result of LCA
-    - Updating DOWNSTREAM and RUN_VALIDATION to be compatible with EXTRACT_VIRAL_READS_SHORT_LCA and EXTRACT_VIRAL_READS_ONT_LCA
-        - Changed SPLIT_VIRAL_TSV_BY_SPECIES to be SPLIT_VIRAL_TSV_BY_SELECTED_TAXID, CONCATENATE_FILES_ACROSS_SPECIES to be CONCATENATE_FILES_ACROSS_SELECTED_TAXID, and CONCATENATE_TSVS_ACROSS_SPECIES to be CONCATENATE_TSVS_ACROSS_SELECTED_TAXID because of the new way that we group reads; specifically, we partition reads into taxid groups using the following rule: if a read's LCA assignment is at the species level or lower, group it by the species level taxid; otherwise, group the read by the raw LCA taxid. 
-        - Updated DOWNSTREAM docs
-        - Updated DOWNSTREAM and RUN_VALIDATION to use LCA versions of output from RUN workflow such that the tests can run correctly. These files/changes will temporarily have the word "lca" in them, but that will be removed once the LCA migration is complete.
+        - Updated LCA_TSV to add no suffix for statistics related to natural alignments, and changed the suffix for statistics related to all alignments from "_all" to "_combined"
+    - Updated the intermediate files returned from the RUN workflow
+        - Removed `virus_hits_all.tsv.gz` as it's no longer applicable to the current workflow
+        - Added two new files, `aligner_hits_all.tsv.gz` and `lca_hits_all.tsv.gz`, whose descriptions can be found in `docs/output.md` and `docs/lca_intermeidates.md`
+    - Updated the documentation:
+        - Added a new file, `docs/lca.md`, which describes how our LCA algorithm works 
+        - Added a new file, `docs/lca_intermediates.md`, which describes the columns in the new intermediate files produced by LCA in the RUN workflow
+        - Updated `docs/run.md` and `docs/virus_hits_final.md` to reflect of the changes of the LCA integration
+    - Updated EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT to be compatible with DOWNSTREAM
+        - Added a column to track the status of whether an alignment is primary, secondary, or supplementary in PROCESS_VIRAL_{MINIMAP2,BOWTIE2}_SAM
+        - Created a new subworkflow, `PROCESS_LCA_ALIGNER_OUTPUT`, where we add the primary alignment information to the LCA output, and create `aligner_hits_all.tsv.gz`, `lca_hits_all.tsv.gz`, and `virus_hits_final.tsv.gz`.
+    - Updated DOWNSTREAM and RUN_VALIDATION to be compatible with EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT
+        - Updated the references to column names
+        - Added support for DOWNSTREAM to be run on reads that have a taxid assignment above the species level (see `docs/downstream.md` for more), and updated process/subworkflow names to reflect this:
+            - SPLIT_VIRAL_TSV_BY_SPECIES -> SPLIT_VIRAL_TSV_BY_SELECTED_TAXID
+            - CONCATENATE_FILES_ACROSS_SPECIES -> CONCATENATE_FILES_ACROSS_SELECTED_TAXID
+            - CONCATENATE_TSVS_ACROSS_SPECIES -> CONCATENATE_TSVS_ACROSS_SELECTED_TAXID
 - Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
 - Updated SORT_FASTQ to sort alphanumerically
+- Added module COUNT_READS_PER_CLADE to DOWNSTREAM, which counts the number of lca-assigned reads in each viral clade.
+    - Module creates a new output file `results_downstream/{sample}_clade_counts.tsv.gz`
+    - Does not modify any existing output.
+    - Module is called directly in the DOWNSTREAM workflow. If we need more modules for clade counting in the future, will create a subworkflow.
+    - Updated docs to include the addition.
 - Updated Github Actions to retry downloading nf-test since it often fails today download on the first try due to a 403 error
 
 # v2.10.0.1

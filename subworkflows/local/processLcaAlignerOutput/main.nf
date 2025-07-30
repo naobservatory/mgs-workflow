@@ -45,10 +45,10 @@ workflow PROCESS_LCA_ALIGNER_OUTPUT {
         renamed_ch = REHEAD_TSV(selected_ch.output, old_cols, new_cols)
         // Step 7: Combine outputs
         aligner_combined_ch = aligner_labeled_tsv.output.map{ _sample, file -> file }.collect().ifEmpty([])
-        aligner_concat_ch = CONCATENATE_ALIGNER(aligner_combined_ch, "aligner_final")
+        aligner_concat_ch = CONCATENATE_ALIGNER(aligner_combined_ch, "aligner_hits_all")
         lca_labeled_ch = ADD_SAMPLE_COLUMN_LCA(lca_tsv, "sample", "viral_lca")
         lca_combined_ch = lca_labeled_ch.output.map{ _sample, file -> file }.collect().ifEmpty([])
-        lca_concat_ch = CONCATENATE_LCA(lca_combined_ch, "lca_final")
+        lca_concat_ch = CONCATENATE_LCA(lca_combined_ch, "lca_hits_all")
         label_combined_ch = renamed_ch.output.map{ _sample, file -> file }.collect().ifEmpty([])
         concat_ch = CONCATENATE_VIRAL_HITS(label_combined_ch, "virus_hits_final")
     emit:
