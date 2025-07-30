@@ -1,14 +1,11 @@
 # v3.0.0.0
 
 ### Breaking changes
-- Completed integration of lowest common ancestor (LCA) taxonomic assignment:
-    - Integrated changes from EXTRACT_VIRAL_READS_SHORT_LCA into EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT_LCA into EXTRACT_VIRAL_READS_ONT, getting rid of the distinction of 'LCA'
-    - Updated column names for output viral hits table to make them more user-friendly
-        - Updated LCA_TSV to allow user to pass in empty prefix
-        - Updated LCA_TSV to add no suffix for statistics related to natural alignments, and changed the suffix for statistics related to all alignments from "_all" to "_combined"
-    - Updated the intermediate files returned from the RUN workflow
-        - Removed `virus_hits_all.tsv.gz` as it's no longer applicable to the current workflow
-        - Added two new files, `aligner_hits_all.tsv.gz` and `lca_hits_all.tsv.gz`, whose descriptions can be found in `docs/output.md` and `docs/lca_intermediates.md`
+- Changed `RUN` workflow viral taxonomic assignment from Kraken2 + aligner ensemble to aligner-only with multiple alignments + LCA algorithm:
+    - Replaces `virus_hits_all.tsv.gz` with two new intermediate files: `aligner_hits_all.tsv.gz` (all viral alignments) and `lca_hits_all.tsv.gz` (LCA-processed reads)
+    - Updates `virus_hits_final.tsv.gz` columns: removes Kraken2 columns, adds `aligner_` prefix columns for LCA assignments and `prim_align_` prefix columns for primary alignment details
+    - Integrates EXTRACT_VIRAL_READS_SHORT_LCA functionality directly into EXTRACT_VIRAL_READS_SHORT (similarly for ONT)
+    - No changes to input files or parameters required
 - Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
 
 ### Other changes
@@ -17,19 +14,20 @@
     - creates a new clade count output file `results_downstream/{sample}_clade_counts.tsv.gz`
     - does not modify any existing output.
     - is called directly in the DOWNSTREAM workflow. If we need more modules for clade counting in the future, will create a subworkflow.
-- Updated EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT to be compatible with DOWNSTREAM
-    - Added a column to track the status of whether an alignment is primary, secondary, or supplementary in PROCESS_VIRAL_{MINIMAP2,BOWTIE2}_SAM
-    - Created a new subworkflow, `PROCESS_LCA_ALIGNER_OUTPUT`, where we add the primary alignment information to the LCA output, and create `aligner_hits_all.tsv.gz`, `lca_hits_all.tsv.gz`, and `virus_hits_final.tsv.gz`.
-- Updated DOWNSTREAM and RUN_VALIDATION to be compatible with EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT
-    - Added support for DOWNSTREAM to be run on reads that have a taxid assignment above the species level (see `docs/downstream.md` for more), and updated process/subworkflow names to reflect this:
-        - SPLIT_VIRAL_TSV_BY_SPECIES -> SPLIT_VIRAL_TSV_BY_SELECTED_TAXID
-        - CONCATENATE_FILES_ACROSS_SPECIES -> CONCATENATE_FILES_ACROSS_SELECTED_TAXID
-        - CONCATENATE_TSVS_ACROSS_SPECIES -> CONCATENATE_TSVS_ACROSS_SELECTED_TAXID
+- Updated EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT for DOWNSTREAM compatibility:
+    - Adds primary/secondary/supplementary alignment status tracking to enable duplicate marking in DOWNSTREAM
+    - Creates PROCESS_LCA_ALIGNER_OUTPUT subworkflow to merge alignment information with LCA output
+    - Ensures `virus_hits_final.tsv.gz` contains necessary columns for downstream duplicate analysis
+- Updated DOWNSTREAM to handle LCA assignments above species level for BLAST validation:
+    - Previously grouped reads by species taxid for BLAST validation, but LCA can assign reads to genus/family/higher ranks
+    - Now groups reads by species taxid assignment if below species level, or by LCA taxid assignment if above species level
+    - Renamed processes from "_SPECIES" to "_SELECTED_TAXID" to reflect this broader taxonomic grouping
+    - Also updated RUN_VALIDATION to accept the new LCA output format
 - Updated SORT_FASTQ to sort alphanumerically
-- Updated docs
-    - Added a new file, `docs/lca.md`, which describes how our LCA algorithm works 
-    - Added a new file, `docs/lca_intermediates.md`, which describes the columns in the new intermediate files produced by LCA in the RUN workflow
-    - Updated `docs/run.md` and `docs/virus_hits_final.md` to reflect of the changes of the LCA integration
+- Updated documentation for LCA integration:
+    - Added `docs/lca.md` explaining the LCA algorithm and how it assigns taxonomic IDs to reads with multiple viral alignments
+    - Added `docs/lca_intermediates.md` documenting the columns in new intermediate files (`aligner_hits_all.tsv.gz` and `lca_hits_all.tsv.gz`)
+    - Updated `docs/run.md` and `docs/virus_hits_final.md` with new column descriptions and workflow changes
 
 # v2.10.0.1
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
