@@ -1,5 +1,5 @@
-# v3.0.0.0-dev
-- Completed integration of LCA into the MGS Workflow:
+# v3.0.0.0
+- Completed integration of lowest common ancestor (LCA) taxonomic assignment into the MGS Workflow:
     - Integrated changes from EXTRACT_VIRAL_READS_SHORT_LCA into EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT_LCA into EXTRACT_VIRAL_READS_ONT, getting rid of the distinction of 'LCA'
     - Updated column names for output viral hits table to make them more user-friendly
         - Updated LCA_TSV to allow user to pass in empty prefix
@@ -20,13 +20,12 @@
             - SPLIT_VIRAL_TSV_BY_SPECIES -> SPLIT_VIRAL_TSV_BY_SELECTED_TAXID
             - CONCATENATE_FILES_ACROSS_SPECIES -> CONCATENATE_FILES_ACROSS_SELECTED_TAXID
             - CONCATENATE_TSVS_ACROSS_SPECIES -> CONCATENATE_TSVS_ACROSS_SELECTED_TAXID
-- Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
+- Added clade counting to DOWNSTREAM. Added and documented a module COUNT_READS_PER_CLADE, which counts the number of LCA-assigned reads in each viral clade. This module:
+    - creates a new clade count output file `results_downstream/{sample}_clade_counts.tsv.gz`
+    - does not modify any existing output.
+    - is called directly in the DOWNSTREAM workflow. If we need more modules for clade counting in the future, will create a subworkflow.
 - Updated SORT_FASTQ to sort alphanumerically
-- Added module COUNT_READS_PER_CLADE to DOWNSTREAM, which counts the number of lca-assigned reads in each viral clade.
-    - Module creates a new output file `results_downstream/{sample}_clade_counts.tsv.gz`
-    - Does not modify any existing output.
-    - Module is called directly in the DOWNSTREAM workflow. If we need more modules for clade counting in the future, will create a subworkflow.
-    - Updated docs to include the addition.
+- Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
 
 # v2.10.0.1
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
