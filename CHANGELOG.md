@@ -13,6 +13,7 @@
         - Updated DOWNSTREAM and RUN_VALIDATION to use LCA versions of output from RUN workflow such that the tests can run correctly. These files/changes will temporarily have the word "lca" in them, but that will be removed once the LCA migration is complete.
 - Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
 - Updated SORT_FASTQ to sort alphanumerically
+- Updated Github Actions to retry downloading nf-test since it often fails today download on the first try due to a 403 error
 
 # v2.10.0.1
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
