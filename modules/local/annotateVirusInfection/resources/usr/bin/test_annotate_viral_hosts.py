@@ -1,4 +1,36 @@
 #!/usr/bin/env python
+"""
+Test suite for the mark_ancestor_infections_single function.
+
+This file tests the core logic of viral host infection status propagation from
+child taxa to parent taxa. The function being tested determines a parent taxon's 
+infection status based on its children's statuses, implementing the inference 
+rules described in docs/annotation.md.
+
+How to read this file:
+1. Start with the test classes at the bottom - they show the actual test cases
+2. Each test class covers a specific category of conditional statements in the function
+3. The helper functions at the top generate test case combinations
+4. Comments track which state combinations remain untested after each test
+
+Key concepts:
+- Parent nodes can only have initial states of UNRESOLVED (-1) or INCONSISTENT (0)
+  (MATCH nodes are pre-marked as "checked" and never processed by this function)
+- Child nodes can have any of the six states: UNRESOLVED, MATCH, INCONSISTENT,
+  CONSISTENT, UNCLEAR, or MAYBE_INCONSISTENT
+- The "Untested before/after" comments help track test coverage progression
+
+Note: Additional integration testing exists in tests/modules/local/annotateVirusInfection/main.nf.test,
+but comprehensive unit testing is being migrated to this file.
+
+State meanings:
+- MATCH (1): Confirmed to infect the host
+- INCONSISTENT (0): Confirmed NOT to infect the host
+- CONSISTENT (3): Likely infects (has MATCH descendants, no INCONSISTENT ones)
+- UNCLEAR (2): Uncertain (has both MATCH and INCONSISTENT descendants)
+- UNRESOLVED (-1): No data available (temporary state)
+- MAYBE_INCONSISTENT (-2): Has INCONSISTENT descendants (temporary state)
+"""
 
 # =======================================================================
 # Preamble
@@ -28,7 +60,7 @@ StateTuple: TypeAlias = tuple[State, ...]
 
 
 class DataFrameFactory(Protocol):
-    """Protocol for the dataframe factory fixture."""
+    """Protocol for the dataframe factory fixture. Mainly used for type hinting."""
 
     def __call__(
         self,
@@ -93,12 +125,11 @@ def generate_mixed_state_cases(
     return test_cases
 
 
-def inconsistent_propagation_logic(
-    children: StateTuple, initial_parent: State
-) -> State:
-    if initial_parent == INCONSISTENT and (
-        INCONSISTENT in children or MAYBE_INCONSISTENT in children
-    ):
+def inconsistent_propagation_logic(_: StateTuple, initial_parent: State) -> State:
+    # We ignore children states because for this test case, all children are 
+    # UNRESOLVED, MAYBE_INCONSISTENT, or INCONSISTENT. In this scenario,
+    # only the parent's initial state determines the outcome.
+    if initial_parent == INCONSISTENT:
         return INCONSISTENT
     return MAYBE_INCONSISTENT
 
@@ -183,6 +214,7 @@ def dataframe_factory() -> DataFrameFactory:
 
 
 class TestUniformChildStates:
+    # Untested before: All combinations
     @pytest.mark.parametrize(
         "child_state,expected_parent",
         [
@@ -211,7 +243,6 @@ class TestUniformChildStates:
         df = dataframe_factory(
             parent_status=UNRESOLVED,
             child_statuses=child_statuses,
-            checked_states={"parent1": False},
         )
         # Act
         result_df = mark_ancestor_infections_single("parent1", df, virus_taxonomy_tree)
@@ -219,8 +250,11 @@ class TestUniformChildStates:
         assert result_df.loc["parent1", "checked"]
         assert result_df.loc["parent1", "status"] == expected_parent
 
+    # Untested after: All combinations where children have different states
+
 
 class TestUnclearStatePropagation:
+    # Untested before: All mixed child state combinations
     @pytest.mark.parametrize(
         "child1,child2,child3", generate_combinations_with_state(UNCLEAR)
     )
@@ -246,6 +280,8 @@ class TestUnclearStatePropagation:
         assert result_df.loc["parent1", "checked"]
         assert result_df.loc["parent1", "status"] == UNCLEAR
 
+    # Untested after: Mixed states without any UNCLEAR children
+
     @pytest.mark.parametrize("child1,child2,child3", generate_conflict_combinations())
     def test_conflicting_states_make_parent_unclear(
         self,
@@ -269,9 +305,13 @@ class TestUnclearStatePropagation:
         assert result_df.loc["parent1", "checked"]
         assert result_df.loc["parent1", "status"] == UNCLEAR
 
+    # Untested after: Mixed states without UNCLEAR children AND without conflicting positive/negative evidence
+
 
 class TestMixedStatePropagation:
     """Test propagation rules for mixed child states."""
+
+    # Untested before: Mixed states without UNCLEAR children AND without conflicting positive/negative evidence
 
     @pytest.mark.parametrize(
         "child1,child2,child3,initial_parent,expected_parent",
@@ -307,6 +347,8 @@ class TestMixedStatePropagation:
             f"but got {result_df.loc['parent1', 'status']}"
         )
 
+    # Untested after: Mixed states with only positive evidence (MATCH/CONSISTENT/UNRESOLVED)
+
     @pytest.mark.parametrize(
         "child1,child2,child3,initial_parent,expected_parent",
         consistent_propagation_cases,
@@ -337,6 +379,8 @@ class TestMixedStatePropagation:
         # Assert
         assert result_df.loc["parent1", "checked"]
         assert result_df.loc["parent1", "status"] == expected_parent
+
+    # Untested after: All major logic branches tested for mark_ancestor_infections_single
 
 
 # =======================================================================

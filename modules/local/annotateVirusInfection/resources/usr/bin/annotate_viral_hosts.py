@@ -280,7 +280,7 @@ def mark_ancestor_infections_single(
     """
     Given a single viral taxid of interest, a DataFrame giving current
     infection statuses for each of a set of viral taxids, and
-    a mapping of each taxid to its children, conduct a recrusive,
+    a mapping of each taxid to its children, conduct a recursive,
     memoized tree search to determine the infection of the focal taxid
     based on the infection statuses of its descendants.
     Args:
@@ -336,7 +336,10 @@ def mark_ancestor_infections_single(
             # If parent is marked INCONSISTENT, keep current status
             if virus_df.loc[virus_taxid]["status"] == INCONSISTENT:
                 return set_checked(virus_taxid, virus_df)
-            # Otherwise, mark as MAYBE_INCONSISTENT
+            # Otherwise, mark as MAYBE_INCONSISTENT. The parent must be UNRESOLVED since:
+            # - MATCH nodes are already checked and excluded from this function
+            # - CONSISTENT is not an initial state (only UNRESOLVED, MATCH, or INCONSISTENT are)
+            # - We only pass UNRESOLVED and INCONSISTENT nodes to this function
             return set_status(virus_taxid, virus_df, MAYBE_INCONSISTENT)
         # Otherwise, mark as CONSISTENT
         # This covers all mixtures of MATCH, UNRESOLVED and CONSISTENT
