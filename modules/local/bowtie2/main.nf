@@ -20,7 +20,7 @@ process BOWTIE2 {
         '''
         set -euo pipefail
         # Download Bowtie2 index if not already present
-        download-db.sh !{index_dir}
+        download-db.sh !{index_dir} !{params.db_download_timeout}
         # Prepare inputs
         idx_dir_name=\$(basename "!{index_dir}")
         sam="!{sample}_!{suffix}_bowtie2_mapped.sam.gz"

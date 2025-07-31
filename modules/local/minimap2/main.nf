@@ -40,7 +40,7 @@ process MINIMAP2 {
         '''
         set -eou pipefail
         # Download Minimap2 index if not already present
-        download-db.sh !{index_dir}
+        download-db.sh !{index_dir} !{params.db_download_timeout}
         # Prepare inputs
         reads="!{reads}"
         idx_dir_name=\$(basename "!{index_dir}")

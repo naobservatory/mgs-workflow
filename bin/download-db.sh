@@ -1,16 +1,19 @@
 #!/bin/bash
 
 # Script to safely download databases with file locking
-# Usage: download-db.sh <s3_path>
-# Example: download-db.sh s3://nao-mgs-index/20250404/output/results/kraken_db
+# Usage: download-db.sh <s3_path> [timeout_seconds]
+# Example: download-db.sh s3://nao-mgs-index/20250404/output/results/kraken_db 1200
 
 set -euo pipefail
 
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <s3_path>"
-    echo "Example: $0 s3://nao-mgs-index/20250404/output/results/kraken_db"
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+    echo "Usage: $0 <s3_path> [timeout_seconds]"
+    echo "Example: $0 s3://nao-mgs-index/20250404/output/results/kraken_db 1200"
     exit 1
 fi
+
+# Set timeout (use provided value or no timeout if not specified)
+TIMEOUT_SECONDS=${2:-""}
 
 # Normalize S3 path (remove double slashes, preserve s3:// protocol)
 temp="${1#s3://}" # Remove s3:// prefix
@@ -38,7 +41,11 @@ trap cleanup EXIT ERR INT TERM
 
 # Acquire exclusive lock
 exec 200>"${LOCK_FILE}"
-flock -x -w 1200 200 || { echo "Timed out waiting for lock"; exit 1; }
+if [ -n "$TIMEOUT_SECONDS" ]; then
+    flock -x -w "$TIMEOUT_SECONDS" 200 || { echo "Timed out waiting for lock after $TIMEOUT_SECONDS seconds"; exit 1; }
+else
+    flock -x 200
+fi
 
 # Check if database already downloaded
 if [ ! -f "${COMPLETION_FILE}" ]; then

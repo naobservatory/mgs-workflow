@@ -14,7 +14,7 @@ process BLASTN {
     shell:
         '''
         # Download BLAST database if not already present
-        download-db.sh !{blast_db_dir}
+        download-db.sh !{blast_db_dir} !{params.db_download_timeout}
         # Set up command
         db_name=\$(basename "!{blast_db_dir}")
         io="-db /scratch/${db_name}/!{db_prefix}"

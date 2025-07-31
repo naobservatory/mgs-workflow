@@ -12,7 +12,7 @@ process KRAKEN {
     shell:
         '''
         # Download Kraken2 database if not already present
-        download-db.sh !{db_path}
+        download-db.sh !{db_path} !{params.db_download_timeout}
         # Define input/output
         out=!{sample}.output
         report=!{sample}.report
