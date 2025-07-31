@@ -25,6 +25,15 @@ mkdir -p /scratch
 LOCK_FILE="/scratch/${DB_NAME}.lock"
 COMPLETION_FILE="${LOCAL_PATH}/download_complete.txt"
 
+# We want to make sure lock is released even if the script exits unexpectedly
+# Note that the trap will also handle release on successful completion
+cleanup() {
+  flock -u 200 || true
+  exec 200>&- 
+}
+trap cleanup EXIT ERR INT TERM
+
+
 # Acquire exclusive lock
 exec 200>"${LOCK_FILE}"
 flock -x 200
@@ -45,6 +54,3 @@ if [ ! -f "${COMPLETION_FILE}" ]; then
 else
     echo "${DB_NAME} already downloaded"
 fi
-
-# Release lock
-flock -u 200
