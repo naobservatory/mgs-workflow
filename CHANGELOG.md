@@ -29,6 +29,16 @@
     - Updated docs to include the addition.
 - Fixed bug in ANNOTATE_VIRUS_INFECTION that incorrectly assigned viruses as potentially infecting specific hosts when they did not, and added a pytest to verify that functionality.
 - Updated Github Actions to retry downloading nf-test since it often fails to download on the first try due to a 403 error
+- Added caching of large reference files to reduce AWS Batch loading times:
+    - Implemented for Kraken2 and BLAST databases and Minimap2 and Bowtie2 indexes. 
+    - When using the AWS Batch executor, we now mount a directory (`/scratch`) in every container.
+        - This allows processes on the same compute node to share reference files.
+    - At the beginning of the KRAKEN2, BLAST, MINIMAP2, and BOWTIE2 processes, we now:
+         - Check if relevant reference files are already cached; if not, download then to `/scratch`:
+         - Use file locking (via the Unix utility `flock`) to prevent simultaneous downloads of the same database.
+         - This logic is implemented in the shared bash script `bin/download-db.sh`.
+- Added new Dockerfiles (custom containers required for the above caching), along with the utility script `bin/build-push-docker.sh` to build and push to Dockerhub.
+- Updated `docs/installation.md` and `docs/usage.md` to explain caching of new reference files and to document how to update docker images.
 
 # v2.10.0.1
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
