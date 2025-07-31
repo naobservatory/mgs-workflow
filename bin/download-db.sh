@@ -13,7 +13,9 @@ if [ $# -ne 1 ]; then
 fi
 
 # Normalize S3 path (remove double slashes, preserve s3:// protocol)
-S3_PATH=$(echo "$1" | sed 's|///*|/|g' | sed 's|s3:/|s3://|')
+temp="${1#s3://}" # Remove s3:// prefix
+temp="${temp//\/\/*/\/}"  # Replace multiple slashes with single
+S3_PATH="s3://${temp#/}"  # Remove leading slash and add protocol
 
 # Extract database name from S3 path (last component)
 DB_NAME=$(basename "${S3_PATH}")
@@ -36,7 +38,7 @@ trap cleanup EXIT ERR INT TERM
 
 # Acquire exclusive lock
 exec 200>"${LOCK_FILE}"
-flock -x 200
+flock -x -w 1200 200 || { echo "Timed out waiting for lock"; exit 1; }
 
 # Check if database already downloaded
 if [ ! -f "${COMPLETION_FILE}" ]; then
@@ -48,7 +50,7 @@ if [ ! -f "${COMPLETION_FILE}" ]; then
     aws configure set default.s3.multipart_chunksize 16MB
     
     # Download database
-    aws s3 cp --recursive "${S3_PATH}" "${LOCAL_PATH}" && touch "${COMPLETION_FILE}"
+    aws s3 sync "${S3_PATH}" "${LOCAL_PATH}" && touch "${COMPLETION_FILE}"
     
     echo "Download of ${DB_NAME} completed"
 else
