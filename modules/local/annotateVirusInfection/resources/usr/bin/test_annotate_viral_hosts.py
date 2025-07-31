@@ -1,27 +1,38 @@
 #!/usr/bin/env python
 """
-Test suite for the mark_ancestor_infections_single function.
+Comprehensive test suite for the annotate_viral_hosts module.
 
-This file tests the core logic of viral host infection status propagation from
-child taxa to parent taxa. The function being tested determines a parent taxon's 
-infection status based on its children's statuses, implementing the inference 
-rules described in docs/annotation.md.
+This file tests the viral host infection annotation pipeline, which determines
+whether viruses infect specific host taxa based on Virus-Host DB data and 
+taxonomic relationships.
 
-How to read this file:
-1. Start with the test classes at the bottom - they show the actual test cases
-2. Each test class covers a specific category of conditional statements in the function
-3. The helper functions at the top generate test case combinations
-4. Comments track which state combinations remain untested after each test
+Test Organization:
+- Test classes are grouped by the function they test
+- TestMarkAncestorInfectionsSingle: Core propagation logic from children to parents
+- TestMarkDirectInfections: Initial infection status assignment
+- TestExpandTaxid: Taxonomic tree expansion
+- TestBuildVirusTree: Virus taxonomy structure creation
+- TestMarkDescendantInfections: Propagation from parents to descendants
+- TestAddDescendants: Helper for expanding taxid sets
+- TestExcludeInfections: Handling special exclusion cases
+- TestMarkAncestorInfections: Wrapper orchestrating ancestor marking
+- TestGetHostTaxids: Host taxonomy expansion
+- TestGetVirusHostMapping: Virus-Host DB parsing
+- TestAnnotateVirusDbSingle: Single host annotation function
 
-Key concepts:
+Note: Tests for check_infection and annotate_virus_db have been omitted as they would
+require extensive mocking of complex dependencies without providing significant value
+beyond the existing tests of their component functions. Integration testing for these
+functions exists in tests/modules/local/annotateVirusInfection/main.nf.test.
+
+Key concepts for mark_ancestor_infections_single:
 - Parent nodes can only have initial states of UNRESOLVED (-1) or INCONSISTENT (0)
   (MATCH nodes are pre-marked as "checked" and never processed by this function)
 - Child nodes can have any of the six states: UNRESOLVED, MATCH, INCONSISTENT,
   CONSISTENT, UNCLEAR, or MAYBE_INCONSISTENT
 - The "Untested before/after" comments help track test coverage progression
-
-Note: Additional integration testing exists in tests/modules/local/annotateVirusInfection/main.nf.test,
-but comprehensive unit testing is being migrated to this file.
+- Helper functions at the top generate test case combinations
+- Comments track which state combinations remain untested after each test
 
 State meanings:
 - MATCH (1): Confirmed to infect the host
@@ -48,6 +59,11 @@ from annotate_viral_hosts import (
     build_virus_tree,
     mark_descendant_infections,
     add_descendants,
+    exclude_infections,
+    mark_ancestor_infections,
+    get_host_taxids,
+    get_virus_host_mapping,
+    annotate_virus_db_single,
     INCONSISTENT,
     MATCH,
     UNCLEAR,
@@ -211,6 +227,52 @@ def dataframe_factory() -> DataFrameFactory:
         return df
 
     return create_dataframe
+
+
+@pytest.fixture
+def host_taxonomy_nodes() -> pd.DataFrame:
+    """Create a test NCBI nodes DataFrame for host taxonomy.
+    
+    Structure:
+    9606 (human)
+    ├── 741158
+    └── 63221
+    
+    7742 (vertebrate)
+    ├── 1476529
+    ├── 7776
+    └── 2662825
+    """
+    nodes_data = [
+        {"taxid": "9606", "parent_taxid": "0"},  # Human root
+        {"taxid": "741158", "parent_taxid": "9606"},
+        {"taxid": "63221", "parent_taxid": "9606"},
+        {"taxid": "7742", "parent_taxid": "0"},  # Vertebrate root
+        {"taxid": "1476529", "parent_taxid": "7742"},
+        {"taxid": "7776", "parent_taxid": "7742"},
+        {"taxid": "2662825", "parent_taxid": "7742"},
+    ]
+    return pd.DataFrame(nodes_data)
+
+
+@pytest.fixture  
+def sample_virus_db() -> pd.DataFrame:
+    """Create a sample virus database for testing."""
+    return pd.DataFrame({
+        "taxid": ["v1", "v2", "v3"],
+        "parent_taxid": ["0", "0", "0"],
+    })
+
+
+@pytest.fixture
+def sample_virus_tree() -> dict[str, set[str]]:
+    """Create a sample virus tree for testing."""
+    return {
+        "0": {"v1", "v2", "v3"},
+        "v1": set(),
+        "v2": set(), 
+        "v3": set(),
+    }
 
 
 # =======================================================================
@@ -1390,6 +1452,357 @@ class TestMarkDescendantInfections:
         assert result["v4"] == UNCLEAR  # Inherits from UNCLEAR root
         assert result["v41"] == UNCLEAR  # Changed from MAYBE_INCONSISTENT
         assert result["v42"] == UNCLEAR  # Changed from UNRESOLVED
+
+
+# =======================================================================
+# Tests for add_descendants
+# =======================================================================
+
+class TestAddDescendants:
+    """Test the add_descendants helper function."""
+
+    def test_basic_expansion(self) -> None:
+        """Test that function adds all descendants correctly."""
+        # Arrange
+        virus_tree = {
+            "1": {"2", "3"},
+            "2": {"4", "5"},
+            "3": {"6"},
+            "4": set(),
+            "5": set(),
+            "6": {"7", "8"},
+            "7": set(),
+            "8": set(),
+        }
+        taxids_start = {"1"}
+        
+        # Act
+        result = add_descendants(virus_tree, taxids_start)
+        
+        # Assert
+        expected = {"1", "2", "3", "4", "5", "6", "7", "8"}
+        assert result == expected
+
+    def test_no_descendants(self) -> None:
+        """Test that function returns input set unchanged when no descendants."""
+        # Arrange
+        virus_tree = {
+            "1": set(),
+            "2": set(),
+            "3": set(),
+        }
+        taxids_start = {"1", "2"}
+        
+        # Act
+        result = add_descendants(virus_tree, taxids_start)
+        
+        # Assert
+        assert result == taxids_start
+
+    def test_empty_input(self) -> None:
+        """Test that function returns empty set for empty input."""
+        # Arrange
+        virus_tree = {
+            "1": {"2", "3"},
+            "2": set(),
+            "3": set(),
+        }
+        taxids_start = set()
+        
+        # Act
+        result = add_descendants(virus_tree, taxids_start)
+        
+        # Assert
+        assert result == set()
+
+    def test_multiple_starting_taxids(self) -> None:
+        """Test expansion from multiple starting points."""
+        # Arrange
+        virus_tree = {
+            "1": {"2", "3"},
+            "2": {"4"},
+            "3": {"5"},
+            "4": set(),
+            "5": set(),
+            "6": {"7", "8"},
+            "7": set(),
+            "8": set(),
+        }
+        taxids_start = {"1", "6"}
+        
+        # Act
+        result = add_descendants(virus_tree, taxids_start)
+        
+        # Assert
+        expected = {"1", "2", "3", "4", "5", "6", "7", "8"}
+        assert result == expected
+
+
+# =======================================================================
+# Tests for exclude_infections
+# =======================================================================
+
+class TestExcludeInfections:
+    """Test the exclude_infections function."""
+
+    def test_valid_exclusions(self) -> None:
+        """Test that taxids and descendants are marked INCONSISTENT."""
+        # Arrange
+        virus_tree = {
+            "1": {"2", "3"},
+            "2": {"4", "5"},
+            "3": set(),
+            "4": set(),
+            "5": set(),
+        }
+        statuses = pd.Series({
+            "1": MATCH,
+            "2": MATCH,
+            "3": UNCLEAR,
+            "4": CONSISTENT,
+            "5": UNRESOLVED,
+        })
+        exclude_taxids = ["2"]  # Should exclude 2, 4, and 5
+        
+        # Act
+        result = exclude_infections(virus_tree, statuses.copy(), exclude_taxids)
+        
+        # Assert
+        assert result["1"] == MATCH  # Not excluded
+        assert result["2"] == INCONSISTENT  # Excluded
+        assert result["3"] == UNCLEAR  # Not excluded
+        assert result["4"] == INCONSISTENT  # Descendant of excluded
+        assert result["5"] == INCONSISTENT  # Descendant of excluded
+
+    def test_empty_exclude_list(self) -> None:
+        """Test that empty exclude list results in no changes."""
+        # Arrange
+        virus_tree = {
+            "1": {"2", "3"},
+            "2": set(),
+            "3": set(),
+        }
+        statuses = pd.Series({
+            "1": MATCH,
+            "2": CONSISTENT,
+            "3": UNCLEAR,
+        })
+        exclude_taxids = []
+        
+        # Act
+        result = exclude_infections(virus_tree, statuses.copy(), exclude_taxids)
+        
+        # Assert
+        pd.testing.assert_series_equal(result, statuses)
+
+    def test_exclude_with_deep_hierarchy(self) -> None:
+        """Test exclusion propagates through deep hierarchy."""
+        # Arrange
+        virus_tree = {
+            "1": {"2"},
+            "2": {"3"},
+            "3": {"4"},
+            "4": {"5"},
+            "5": set(),
+        }
+        statuses = pd.Series({
+            "1": MATCH,
+            "2": MATCH,
+            "3": MATCH,
+            "4": MATCH,
+            "5": MATCH,
+        })
+        exclude_taxids = ["2"]
+        
+        # Act
+        result = exclude_infections(virus_tree, statuses.copy(), exclude_taxids)
+        
+        # Assert
+        assert result["1"] == MATCH  # Not excluded
+        assert result["2"] == INCONSISTENT  # Excluded
+        assert result["3"] == INCONSISTENT  # Descendant
+        assert result["4"] == INCONSISTENT  # Descendant
+        assert result["5"] == INCONSISTENT  # Descendant
+
+
+# =======================================================================
+# Tests for mark_ancestor_infections
+# =======================================================================
+
+class TestMarkAncestorInfections:
+    """Test the mark_ancestor_infections wrapper function."""
+
+    def test_all_nodes_processed(self) -> None:
+        """Test that all nodes are marked as checked after processing."""
+        # Arrange
+        virus_tree = {
+            "1": {"2", "3"},
+            "2": {"4", "5"},
+            "3": set(),
+            "4": set(),
+            "5": set(),
+        }
+        statuses = pd.Series({
+            "1": UNRESOLVED,
+            "2": UNRESOLVED,
+            "3": MATCH,
+            "4": INCONSISTENT,
+            "5": MATCH,
+        })
+        
+        # Act
+        result = mark_ancestor_infections(virus_tree, statuses)
+        
+        # Assert
+        # All nodes should have been processed
+        # Node 2 should be UNCLEAR (has both MATCH and INCONSISTENT children)
+        # Node 1 should be UNCLEAR (has UNCLEAR child)
+        assert result["1"] == UNCLEAR
+        assert result["2"] == UNCLEAR
+        assert result["3"] == MATCH
+        assert result["4"] == INCONSISTENT
+        assert result["5"] == MATCH
+
+    def test_initial_state_preserved(self) -> None:
+        """Test that MATCH and childless nodes are preserved."""
+        # Arrange
+        virus_tree = {
+            "1": {"2", "3"},
+            "2": set(),
+            "3": set(),
+            "4": set(),  # Isolated node
+        }
+        statuses = pd.Series({
+            "1": MATCH,  # Should be preserved
+            "2": INCONSISTENT,
+            "3": UNRESOLVED,
+            "4": UNCLEAR,  # Childless, should be preserved
+        })
+        
+        # Act
+        result = mark_ancestor_infections(virus_tree, statuses)
+        
+        # Assert
+        assert result["1"] == MATCH  # Preserved
+        assert result["2"] == INCONSISTENT  # Preserved
+        assert result["3"] == UNRESOLVED  # Preserved (childless)
+        assert result["4"] == UNCLEAR  # Preserved (childless)
+
+
+# =======================================================================
+# Tests for get_host_taxids
+# =======================================================================
+
+class TestGetHostTaxids:
+    """Test the get_host_taxids function."""
+
+    def test_multiple_hosts(self, host_taxonomy_nodes) -> None:
+        """Test that each host is expanded correctly."""
+        # Arrange
+        hosts = {
+            "human": "9606",
+            "vertebrate": "7742",
+        }
+        
+        # Act
+        result = get_host_taxids(hosts, host_taxonomy_nodes)
+        
+        # Assert
+        assert result["human"] == {"9606", "741158", "63221"}
+        assert result["vertebrate"] == {"7742", "1476529", "7776", "2662825"}
+
+    def test_empty_input(self) -> None:
+        """Test that empty input returns empty dictionary."""
+        # Arrange
+        hosts = {}
+        nodes = pd.DataFrame()
+        
+        # Act
+        result = get_host_taxids(hosts, nodes)
+        
+        # Assert
+        assert result == {}
+
+
+# =======================================================================
+# Tests for get_virus_host_mapping
+# =======================================================================
+
+class TestGetVirusHostMapping:
+    """Test the get_virus_host_mapping function."""
+
+    def test_valid_tsv(self, tmp_path) -> None:
+        """Test reading valid TSV returns correct mapping."""
+        # Arrange
+        tsv_content = "virus tax id\thost tax id\n1\t100\n1\t101\n2\t200\n3\t300"
+        tsv_file = tmp_path / "virus_host.tsv"
+        tsv_file.write_text(tsv_content)
+        
+        # Act
+        result = get_virus_host_mapping(str(tsv_file))
+        
+        # Assert
+        assert result["1"] == {"100", "101"}
+        assert result["2"] == {"200"}
+        assert result["3"] == {"300"}
+
+    def test_duplicate_entries(self, tmp_path) -> None:
+        """Test that duplicate entries are handled correctly."""
+        # Arrange
+        tsv_content = "virus tax id\thost tax id\n1\t100\n1\t100\n1\t101\n2\t200"
+        tsv_file = tmp_path / "virus_host.tsv"
+        tsv_file.write_text(tsv_content)
+        
+        # Act
+        result = get_virus_host_mapping(str(tsv_file))
+        
+        # Assert
+        assert result["1"] == {"100", "101"}  # Duplicates removed
+        assert result["2"] == {"200"}
+
+    def test_empty_file(self, tmp_path) -> None:
+        """Test that empty file returns empty dictionary."""
+        # Arrange
+        tsv_content = "virus tax id\thost tax id"  # Header only
+        tsv_file = tmp_path / "virus_host.tsv"
+        tsv_file.write_text(tsv_content)
+        
+        # Act
+        result = get_virus_host_mapping(str(tsv_file))
+        
+        # Assert
+        assert result == {}
+
+
+# =======================================================================
+# Tests for annotate_virus_db_single
+# =======================================================================
+
+class TestAnnotateVirusDbSingle:
+    """Test the annotate_virus_db_single function."""
+
+    def test_column_naming(self, sample_virus_db, sample_virus_tree, monkeypatch) -> None:
+        """Test that infection status column is named correctly."""
+        # Mock check_infection since it's a complex function with many dependencies
+        def mock_check_infection(virus_taxids, host_taxids, virus_tree, virus_host_mapping, hard_exclude):
+            return pd.Series([MATCH, INCONSISTENT, UNCLEAR], index=virus_taxids)
+        
+        monkeypatch.setattr("annotate_viral_hosts.check_infection", mock_check_infection)
+        
+        # Arrange
+        host_name = "human"
+        host_taxids = {"9606"}
+        virus_host_mapping = {}
+        hard_exclude = []
+        
+        # Act
+        result = annotate_virus_db_single(
+            sample_virus_db, host_name, host_taxids, sample_virus_tree, virus_host_mapping, hard_exclude
+        )
+        
+        # Assert
+        assert "infection_status_human" in result.columns
+        assert list(result["infection_status_human"]) == [MATCH, INCONSISTENT, UNCLEAR]
 
 
 # =======================================================================
