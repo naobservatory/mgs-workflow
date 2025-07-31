@@ -16,8 +16,8 @@ process BLASTN {
         # Download BLAST database if not already present
         download-db.sh !{blast_db_dir}
         # Set up command
-        db_name=\$(basename "!{db_path}")
-        io="-db /scratch/!{blast_db_dir}/!{db_prefix}"
+        db_name=\$(basename "!{blast_db_dir}")
+        io="-db /scratch/${db_name}/!{db_prefix}"
         par="-perc_identity !{perc_id} -max_hsps 5 -num_alignments 250 -qcov_hsp_perc !{qcov_hsp_perc} -num_threads !{task.cpus}"
         fmt="6 qseqid sseqid sgi staxid qlen evalue bitscore qcovs length pident mismatch gapopen sstrand qstart qend sstart send"
         # Run BLAST
