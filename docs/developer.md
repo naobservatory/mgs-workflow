@@ -133,7 +133,7 @@ aws s3 cp /path/to/my_dataset s3://nao-testing/my_dataset/ --acl public-read
 
 ### Running tests
 
-To run the tests locally, you need to make sure that you have a powerful enough compute instance (at least 4 cores, 14GB of RAM, and 32GB of storage). On AWS EC2, we recommend the `m5.xlarge`. Note that you may want a more powerful instance when running tests in parallel (as described below).
+To run the tests locally, you need to make sure that you have a powerful enough compute instance (at least 4 cores, 14GB of RAM, and 32GB of storage). On AWS EC2, we recommend the `m5.2xlarge`. Note that you may want a more powerful instance when running tests in parallel (as described below).
 
 To run specific tests, you can specify the tests by filename or by tag. Individual tests generally complete quickly (seconds to minutes):
 ```
