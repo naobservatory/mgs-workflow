@@ -27,6 +27,8 @@
     - Does not modify any existing output.
     - Module is called directly in the DOWNSTREAM workflow. If we need more modules for clade counting in the future, will create a subworkflow.
     - Updated docs to include the addition.
+- Fixed bug in ANNOTATE_VIRUS_INFECTION that incorrectly assigned viruses as potentially infecting specific hosts when they did not, and added a pytest to verify that functionality.
+- Updated Github Actions to retry downloading nf-test since it often fails to download on the first try due to a 403 error
 
 # v2.10.0.1
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.

@@ -38,7 +38,11 @@ jobs:
 
       - name: Install nf-test
         run: |
-          wget -qO- https://get.nf-test.com | bash
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download nf-test..."
+            wget -qO- https://get.nf-test.com | bash && break
+            sleep 10
+          done
           sudo mv nf-test /usr/local/bin/
 
       - name: Run index workflow
@@ -74,7 +78,11 @@ jobs:
 
       - name: Install nf-test
         run: |
-          wget -qO- https://get.nf-test.com | bash
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download nf-test..."
+            wget -qO- https://get.nf-test.com | bash && break
+            sleep 10
+          done
           sudo mv nf-test /usr/local/bin/
 
       - name: Run run workflow (short read)
@@ -110,7 +118,11 @@ jobs:
 
       - name: Install nf-test
         run: |
-          wget -qO- https://get.nf-test.com | bash
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download nf-test..."
+            wget -qO- https://get.nf-test.com | bash && break
+            sleep 10
+          done
           sudo mv nf-test /usr/local/bin/
 
       - name: Run run workflow (ONT)
@@ -147,7 +159,11 @@ jobs:
 
       - name: Install nf-test
         run: |
-          wget -qO- https://get.nf-test.com | bash
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download nf-test..."
+            wget -qO- https://get.nf-test.com | bash && break
+            sleep 10
+          done
           sudo mv nf-test /usr/local/bin/
 
       - name: Run run_validation workflow
@@ -183,7 +199,11 @@ jobs:
 
       - name: Install nf-test
         run: |
-          wget -qO- https://get.nf-test.com | bash
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download nf-test..."
+            wget -qO- https://get.nf-test.com | bash && break
+            sleep 10
+          done
           sudo mv nf-test /usr/local/bin/
 
       - name: Run DOWNSTREAM workflow and check output
