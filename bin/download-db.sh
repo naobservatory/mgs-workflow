@@ -15,10 +15,8 @@ fi
 # Set timeout (use provided value or no timeout if not specified)
 TIMEOUT_SECONDS=${2:-""}
 
-# Normalize S3 path (remove double slashes, preserve s3:// protocol)
-temp="${1#s3://}" # Remove s3:// prefix
-temp="${temp//\/\/*/\/}"  # Replace multiple slashes with single
-S3_PATH="s3://${temp#/}"  # Remove leading slash and add protocol
+# Normalize S3 path (replace consecutive slashes with a single slash, then add double slash in s3:// protocol back in)
+S3_PATH=$(echo "$1" | sed -e 's|///*|/|g' -e 's|^s3:/|s3://|')
 
 # Extract database name from S3 path (last component)
 DB_NAME=$(basename "${S3_PATH}")
