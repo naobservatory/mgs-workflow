@@ -78,7 +78,6 @@
 - Add set -eou pipefail to all ONT processes with pipes; make MASK_FASTQ_READS robust to empty files; add empty file tests for MASK_FASTQ_READS and MINIMAP2
 
 # v2.9.0.2
-
 - Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
     - Implemented VALIDATE_CLUSTER_REPRESENTATIVES subworkflow for comparing Bowtie2 and BLAST-LCA assignments, including new SELECT_TSV_COLUMNS and COMPUTE_TAXID_DISTANCE processes
     - Implemented PROPAGATE_VALIDATION_INFORMATION subworkflow to merge cluster-representative validation information back into raw hits TSV
