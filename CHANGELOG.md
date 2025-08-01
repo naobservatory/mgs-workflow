@@ -29,6 +29,7 @@
     - Updated docs to include the addition.
 - Fixed bug in ANNOTATE_VIRUS_INFECTION that incorrectly assigned viruses as potentially infecting specific hosts when they did not, and added a pytest to verify that functionality.
 - Updated Github Actions to retry downloading nf-test since it often fails to download on the first try due to a 403 error
+- Increased resources for PROCESS_VIRAL_MINIMAP2_SAM to avoid frequent out-of-memory errors
 - Added caching of large reference files to reduce AWS Batch loading times:
     - Implemented for Kraken2 and BLAST databases and Minimap2 and Bowtie2 indexes. 
     - When using the AWS Batch executor, we now mount a directory (`/scratch`) in every container.
