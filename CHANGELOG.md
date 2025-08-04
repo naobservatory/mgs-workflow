@@ -29,6 +29,8 @@
     - Updated docs to include the addition.
 - Fixed bug in ANNOTATE_VIRUS_INFECTION that incorrectly assigned viruses as potentially infecting specific hosts when they did not, and added a pytest to verify that functionality.
 - Updated Github Actions to retry downloading nf-test since it often fails to download on the first try due to a 403 error
+- Increased resources for PROCESS_VIRAL_MINIMAP2_SAM to avoid frequent out-of-memory errors
+- Fixed line iteration bug in tests for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATA
 - Added more unit tests in the pytest file for ANNOTATE_VIRUS_INFECTION.
 
 # v2.10.0.1
