@@ -70,18 +70,10 @@ if [ ! -f "${COMPLETION_FILE}" ]; then
         aws configure set default.s3.multipart_threshold 64MB
         aws configure set default.s3.multipart_chunksize 16MB
         
-        # Download database
         aws s3 sync "${SOURCE_PATH}" "${LOCAL_PATH}" && touch "${COMPLETION_FILE}"
     else
         echo "Copying ${DB_NAME} from ${SOURCE_PATH} to ${LOCAL_PATH}..."
         
-        # Check if source exists
-        if [ ! -e "${SOURCE_PATH}" ]; then
-            echo "Error: Source path ${SOURCE_PATH} does not exist"
-            exit 1
-        fi
-        
-        # Copy database recursively
         cp -r "${SOURCE_PATH}/." "${LOCAL_PATH}" && touch "${COMPLETION_FILE}"
     fi
     
