@@ -1,6 +1,7 @@
 # Developer guide
 This section is solely for developers of the pipeline. We thank you greatly for your work! It includes guidance on:
 - Coding style
+- Containers
 - Testing
 - GitHub issues
 - Pull requests (PRs)
@@ -30,7 +31,6 @@ These guidelines represent best practices to implement in new code, though some 
     - All processes should emit their input (for testing validation); use `ln -s` to link the input to the output.
     - Most processes have two output channels, `input` and `output`. If a process emits multiple types of output, use meaningful emit names describing the output types (e.g. `match`, `nomatch`, and `log` from `process BBDUK`).
     - Most, but not all, processes are *labeled* (input is a tuple of a sample name and file path). If input is labeled, output should also be labeled.
-- Containers: We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
 - Naming:
     - Use `lower_snake_case` for variable and channel names.
     - Use `UPPER_SNAKE_CASE` for process, subworkflow, and workflow names.
@@ -61,6 +61,13 @@ These guidelines represent best practices to implement in new code, though some 
     - Type hints are encouraged but not currently required.
     - Linting is encouraged (our go-to tool is `ruff`), but not currently required. 
     
+## Containers
+Containers: We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
+
+If your process needs a custom container, create a new Dockerfile in the `docker` directory. The name should have the prefix `nao-` followed by a descriptive name containing lowercase letters and hyphens, e.g. `docker/nao-blast-awscli.Dockerfile`
+
+Build and push the custom containers using the script `bin/build-push-docker.sh`. (This should be done by a repo maintainer as it requires being logged in to DockerHub with the securebio username.) 
+
 ## Testing
 
 All tests use the [nf-test](https://www.nf-test.com/) framework. (We do not currently have any unit tests of Python/Rust/R scripts.)
@@ -134,6 +141,13 @@ aws s3 cp /path/to/my_dataset s3://nao-testing/my_dataset/ --acl public-read
 ### Running tests
 
 To run the tests locally, you need to make sure that you have a powerful enough compute instance (at least 4 cores, 14GB of RAM, and 32GB of storage). On AWS EC2, we recommend the `m5.xlarge`. Note that you may want a more powerful instance when running tests in parallel (as described below).
+
+> [!NOTE]
+> Before running tests, to allow access to testing datasets/indexes on AWS, you will need to set up AWS credentials as described in [installation.md](installation.md), and then export them as described in the installation doc: 
+>
+> ```
+> eval "$(aws configure export-credentials --format env)"
+> ``
 
 To run specific tests, you can specify the tests by filename or by tag. Individual tests generally complete quickly (seconds to minutes):
 ```
