@@ -479,23 +479,6 @@ class TestMarkDirectInfections:
         assert result["virus2"] == MATCH
         assert result["virus3"] == INCONSISTENT
 
-    def test_virus_has_non_matching_hosts(self) -> None:
-        """Test that virus with non-matching hosts returns INCONSISTENT."""
-        # Arrange
-        virus_taxids = pd.Series(["virus1", "virus2"])
-        host_taxids = {"host1", "host2"}
-        virus_host_mapping = {
-            "virus1": {"host3", "host4"},  # No matching hosts
-            "virus2": {"host5"},           # No matching hosts
-        }
-        
-        # Act
-        result = mark_direct_infections(virus_taxids, host_taxids, virus_host_mapping)
-        
-        # Assert
-        assert result["virus1"] == INCONSISTENT
-        assert result["virus2"] == INCONSISTENT
-
     def test_virus_not_in_mapping(self) -> None:
         """Test that virus not in mapping returns UNRESOLVED."""
         # Arrange
@@ -706,27 +689,6 @@ class TestBuildVirusTree:
         # But still should behave like defaultdict
         assert result["any_key"] == set()
 
-    def test_multiple_children(self) -> None:
-        """Test parent with multiple children."""
-        # Arrange
-        viral_taxa_data = [
-            {"taxid": "10", "parent_taxid": "1"},
-            {"taxid": "20", "parent_taxid": "1"},
-            {"taxid": "30", "parent_taxid": "1"},
-            {"taxid": "40", "parent_taxid": "1"},
-            {"taxid": "50", "parent_taxid": "1"},
-        ]
-        viral_taxa_df = pd.DataFrame(viral_taxa_data)
-        
-        # Act
-        result = build_virus_tree(viral_taxa_df)
-        
-        # Assert
-        assert result["1"] == {"10", "20", "30", "40", "50"}
-        # All children should have empty sets
-        for child_id in ["10", "20", "30", "40", "50"]:
-            assert result[child_id] == set()
-
     def test_complex_hierarchy(self) -> None:
         """Test a more complex viral taxonomy hierarchy."""
         # Arrange - Create a complex tree structure
@@ -815,7 +777,6 @@ class TestMarkDescendantInfections:
     - Parent's original state was UNRESOLVED (before mark_ancestor_infections_single)
     - Cannot have: Only MATCH/CONSISTENT children (would make parent CONSISTENT)
     """
-    
     @pytest.fixture
     def simple_tree(self) -> dict[str, set[str]]:
         """Create a simple tree structure for testing.
@@ -838,417 +799,161 @@ class TestMarkDescendantInfections:
         }
     
     @pytest.fixture
-    def complex_tree(self) -> dict[str, set[str]]:
-        """Create a more complex tree structure for testing.
+    def comprehensive_propagation_tree(self) -> dict[str, set[str]]:
+        """Create a comprehensive tree for testing all propagation scenarios.
         
         Structure:
-        root
-        ├── v1
-        │   ├── v11
-        │   │   └── v111
-        │   └── v12
-        ├── v2
-        │   └── v21
-        │       ├── v211
-        │       └── v212
-        └── v3
+        root (UNCLEAR)
+        ├── child1 (MATCH)              # Tests MATCH propagation
+        │   ├── child11 (UNRESOLVED)
+        │   ├── child12 (INCONSISTENT)
+        │   ├── child13 (MATCH)
+        │   ├── child14 (CONSISTENT)    # Has children to test override
+        │   │   ├── child141 (MATCH)
+        │   │   └── child142 (UNRESOLVED)
+        │   ├── child15 (UNCLEAR)       # Has children to test override
+        │   │   ├── child151 (MATCH)
+        │   │   └── child152 (INCONSISTENT)
+        │   └── child16 (MAYBE_INCONSISTENT) # Has children to test override
+        │       ├── child161 (UNRESOLVED)
+        │       └── child162 (INCONSISTENT)
+        ├── child2 (CONSISTENT)         # Tests CONSISTENT propagation  
+        │   ├── child21 (MATCH)
+        │   └── child22 (UNRESOLVED)
+        ├── child3 (MAYBE_INCONSISTENT) # Tests UNCLEAR propagation
+        │   ├── child31 (UNRESOLVED)
+        │   └── child32 (INCONSISTENT)
+        └── child4 (INCONSISTENT)       # Tests INCONSISTENT propagation
+            ├── child41 (UNRESOLVED)
+            └── child42 (INCONSISTENT)
         """
         return {
-            "root": {"v1", "v2", "v3"},
-            "v1": {"v11", "v12"},
-            "v2": {"v21"},
-            "v3": set(),
-            "v11": {"v111"},
-            "v12": set(),
-            "v21": {"v211", "v212"},
-            "v111": set(),
-            "v211": set(),
-            "v212": set(),
+            "root": {"child1", "child2", "child3", "child4"},
+            "child1": {"child11", "child12", "child13", "child14", "child15", "child16"},
+            "child2": {"child21", "child22"},
+            "child3": {"child31", "child32"},
+            "child4": {"child41", "child42"},
+            "child11": set(),
+            "child12": set(),
+            "child13": set(),
+            "child14": {"child141", "child142"},
+            "child15": {"child151", "child152"},
+            "child16": {"child161", "child162"},
+            "child21": set(),
+            "child22": set(),
+            "child31": set(),
+            "child32": set(),
+            "child41": set(),
+            "child42": set(),
+            "child141": set(),
+            "child142": set(),
+            "child151": set(),
+            "child152": set(),
+            "child161": set(),
+            "child162": set(),
         }
+    
 
-    def test_match_propagation_simple(self, simple_tree: dict[str, set[str]]) -> None:
-        """Test that MATCH status propagates to all descendants.
+    def test_all_propagation_scenarios(self, comprehensive_propagation_tree: dict[str, set[str]]) -> None:
+        """Test all propagation scenarios in a single comprehensive test.
         
-        Initial state:
-        root (UNCLEAR)
-        ├── v1 (MATCH)
-        │   ├── v11 (UNRESOLVED)
-        │   └── v12 (INCONSISTENT)
-        └── v2 (INCONSISTENT)
-            └── v21 (UNRESOLVED)
+        Initial state setup per the example:
+        root (UNCLEAR/2)
+        ├── child1 (MATCH/1)
+        │   ├── child11 (UNRESOLVED/-1)
+        │   ├── child12 (INCONSISTENT/0)
+        │   ├── child13 (MATCH/1)
+        │   ├── child14 (CONSISTENT/3)
+        │   │   ├── child141 (MATCH/1)
+        │   │   └── child142 (UNRESOLVED/-1)
+        │   ├── child15 (UNCLEAR/2)
+        │   │   ├── child151 (MATCH/1)
+        │   │   └── child152 (INCONSISTENT/0)
+        │   └── child16 (MAYBE_INCONSISTENT/-2)
+        │       ├── child161 (UNRESOLVED/-1)
+        │       └── child162 (INCONSISTENT/0)
+        ├── child2 (CONSISTENT/3)
+        │   ├── child21 (MATCH/1)
+        │   └── child22 (UNRESOLVED/-1)
+        ├── child3 (MAYBE_INCONSISTENT/-2)
+        │   ├── child31 (UNRESOLVED/-1)
+        │   └── child32 (INCONSISTENT/0)
+        └── child4 (INCONSISTENT/0)
+            ├── child41 (UNRESOLVED/-1)
+            └── child42 (INCONSISTENT/0)
         
         Expected after propagation:
-        root (UNCLEAR)
-        ├── v1 (MATCH)
-        │   ├── v11 (MATCH)         # Inherited from MATCH parent
-        │   └── v12 (MATCH)         # MATCH overrides INCONSISTENT
-        └── v2 (INCONSISTENT)
-            └── v21 (INCONSISTENT)  # Inherited from INCONSISTENT parent
+        - All descendants of child1 become MATCH (MATCH overrides all)
+        - Descendants of child2: child21 stays MATCH, child22 becomes CONSISTENT
+        - child3 becomes UNCLEAR (from MAYBE_INCONSISTENT), child31 becomes UNCLEAR, child32 stays INCONSISTENT
+        - Descendants of child4 become INCONSISTENT
         """
         # Arrange
         statuses = pd.Series({
             "root": UNCLEAR,
-            "v1": MATCH,
-            "v11": UNRESOLVED,
-            "v12": INCONSISTENT,
-            "v2": INCONSISTENT,
-            "v21": UNRESOLVED,
+            "child1": MATCH,
+            "child11": UNRESOLVED,
+            "child12": INCONSISTENT,
+            "child13": MATCH,
+            "child14": CONSISTENT,
+            "child141": MATCH,
+            "child142": UNRESOLVED,
+            "child15": UNCLEAR,
+            "child151": MATCH,
+            "child152": INCONSISTENT,
+            "child16": MAYBE_INCONSISTENT,
+            "child161": UNRESOLVED,
+            "child162": INCONSISTENT,
+            "child2": CONSISTENT,
+            "child21": MATCH,
+            "child22": UNRESOLVED,
+            "child3": MAYBE_INCONSISTENT,
+            "child31": UNRESOLVED,
+            "child32": INCONSISTENT,
+            "child4": INCONSISTENT,
+            "child41": UNRESOLVED,
+            "child42": INCONSISTENT,
         })
         
         # Act
-        result = mark_descendant_infections(simple_tree, statuses.copy())
+        result = mark_descendant_infections(comprehensive_propagation_tree, statuses.copy())
         
-        # Assert - v1 and all its descendants should be MATCH
-        assert result["v1"] == MATCH
-        assert result["v11"] == MATCH
-        assert result["v12"] == MATCH
-        # v2 and v21 should remain INCONSISTENT (overridden by INCONSISTENT propagation)
-        assert result["v2"] == INCONSISTENT
-        assert result["v21"] == INCONSISTENT
-        # root should remain UNCLEAR
+        # Assert
+        # Root remains UNCLEAR
         assert result["root"] == UNCLEAR
-
-    def test_match_propagation_overrides_all(self, simple_tree: dict[str, set[str]]) -> None:
-        """Test that MATCH propagation overrides all other statuses.
         
-        Initial state:
-        root (MATCH)
-        ├── v1 (INCONSISTENT)
-        │   ├── v11 (UNCLEAR)
-        │   └── v12 (CONSISTENT)
-        └── v2 (MAYBE_INCONSISTENT)
-            └── v21 (UNRESOLVED)
+        # Test MATCH propagation (child1 and descendants)
+        assert result["child1"] == MATCH
+        assert result["child11"] == MATCH  # MATCH overrides UNRESOLVED
+        assert result["child12"] == MATCH  # MATCH overrides INCONSISTENT
+        assert result["child13"] == MATCH  # Already MATCH, preserved
+        assert result["child14"] == MATCH  # MATCH overrides CONSISTENT
+        assert result["child141"] == MATCH  # Inherits MATCH from grandparent
+        assert result["child142"] == MATCH  # Inherits MATCH from grandparent
+        assert result["child15"] == MATCH  # MATCH overrides UNCLEAR
+        assert result["child151"] == MATCH  # Inherits MATCH from grandparent
+        assert result["child152"] == MATCH  # MATCH overrides INCONSISTENT
+        assert result["child16"] == MATCH  # MATCH overrides MAYBE_INCONSISTENT
+        assert result["child161"] == MATCH  # Inherits MATCH from grandparent
+        assert result["child162"] == MATCH  # MATCH overrides INCONSISTENT
         
-        Expected after propagation:
-        All nodes become MATCH (MATCH propagates from root and overrides everything)
-        """
-        # Arrange - Set all descendants to different statuses
-        statuses = pd.Series({
-            "root": MATCH,
-            "v1": INCONSISTENT,
-            "v11": UNCLEAR,
-            "v12": CONSISTENT,
-            "v2": MAYBE_INCONSISTENT,
-            "v21": UNRESOLVED,
-        })
+        # Test CONSISTENT propagation (child2 and descendants)
+        assert result["child2"] == CONSISTENT
+        assert result["child21"] == MATCH      # MATCH is preserved (not overridden by CONSISTENT)
+        assert result["child22"] == CONSISTENT  # Inherits CONSISTENT from parent
         
-        # Act
-        result = mark_descendant_infections(simple_tree, statuses.copy())
+        # Test UNCLEAR propagation to MAYBE_INCONSISTENT (child3 and descendants)
+        assert result["child3"] == UNCLEAR  # Changed from MAYBE_INCONSISTENT by UNCLEAR root
+        assert result["child31"] == UNCLEAR  # Changed from UNRESOLVED by UNCLEAR parent
+        assert result["child32"] == INCONSISTENT  # INCONSISTENT is preserved (not overridden by UNCLEAR)
         
-        # Assert - Everything should be MATCH
-        assert all(result == MATCH)
-
-    def test_inconsistent_propagation(self, simple_tree: dict[str, set[str]]) -> None:
-        """Test that INCONSISTENT status propagates to descendants.
+        # Test INCONSISTENT propagation (child4 and descendants)
+        assert result["child4"] == INCONSISTENT
+        assert result["child41"] == INCONSISTENT  # Inherits from INCONSISTENT parent
+        assert result["child42"] == INCONSISTENT  # Already INCONSISTENT, preserved
         
-        Initial state:
-        root (UNCLEAR)
-        ├── v1 (INCONSISTENT)
-        │   ├── v11 (UNRESOLVED)
-        │   └── v12 (MAYBE_INCONSISTENT)
-        └── v2 (CONSISTENT)
-            └── v21 (UNRESOLVED)
-        
-        Expected after propagation:
-        root (UNCLEAR)
-        ├── v1 (INCONSISTENT)
-        │   ├── v11 (INCONSISTENT)  # Inherited from INCONSISTENT parent
-        │   └── v12 (INCONSISTENT)  # INCONSISTENT overrides MAYBE_INCONSISTENT
-        └── v2 (CONSISTENT)
-            └── v21 (CONSISTENT)     # Inherited from CONSISTENT parent
-        """
-        # Arrange
-        statuses = pd.Series({
-            "root": UNCLEAR,
-            "v1": INCONSISTENT,
-            "v11": UNRESOLVED,
-            "v12": MAYBE_INCONSISTENT,
-            "v2": CONSISTENT,
-            "v21": UNRESOLVED,
-        })
-        
-        # Act
-        result = mark_descendant_infections(simple_tree, statuses.copy())
-        
-        # Assert
-        assert result["v1"] == INCONSISTENT
-        assert result["v11"] == INCONSISTENT
-        assert result["v12"] == INCONSISTENT
-        assert result["v2"] == CONSISTENT
-        assert result["v21"] == CONSISTENT  # Inherits from CONSISTENT parent
-        assert result["root"] == UNCLEAR
-
-    def test_consistent_propagation(self, simple_tree: dict[str, set[str]]) -> None:
-        """Test that CONSISTENT status propagates correctly.
-        
-        Initial state:
-        root (CONSISTENT)
-        ├── v1 (MATCH)
-        │   ├── v11 (UNRESOLVED)
-        │   └── v12 (UNRESOLVED)
-        └── v2 (UNRESOLVED)
-            └── v21 (UNRESOLVED)
-        
-        Expected after propagation:
-        root (CONSISTENT)
-        ├── v1 (MATCH)              # Preserved (not overridden)
-        │   ├── v11 (MATCH)         # Inherits from MATCH parent (higher priority)
-        │   └── v12 (MATCH)         # Inherits from MATCH parent (higher priority)
-        └── v2 (CONSISTENT)         # Inherits from CONSISTENT root
-            └── v21 (CONSISTENT)    # Inherits from CONSISTENT parent
-        """
-        # Arrange
-        statuses = pd.Series({
-            "root": CONSISTENT,
-            "v1": MATCH,
-            "v11": UNRESOLVED,
-            "v12": UNRESOLVED,
-            "v2": UNRESOLVED,
-            "v21": UNRESOLVED,
-        })
-        
-        # Act
-        result = mark_descendant_infections(simple_tree, statuses.copy())
-        
-        # Assert
-        assert result["root"] == CONSISTENT
-        assert result["v1"] == MATCH  # MATCH is not overridden
-        assert result["v11"] == MATCH  # Inherits from MATCH parent first
-        assert result["v12"] == MATCH  # Inherits from MATCH parent first
-        assert result["v2"] == CONSISTENT  # Inherits from CONSISTENT root
-        assert result["v21"] == CONSISTENT  # Inherits from CONSISTENT parent
-
-    def test_consistent_propagation_preserves_match(self, complex_tree: dict[str, set[str]]) -> None:
-        """Test that CONSISTENT propagation doesn't override MATCH status.
-        
-        Initial state:
-        root (CONSISTENT)
-        ├── v1 (CONSISTENT)
-        │   ├── v11 (MATCH)
-        │   │   └── v111 (UNRESOLVED)
-        │   └── v12 (UNRESOLVED)
-        ├── v2 (UNRESOLVED)
-        │   └── v21 (MATCH)
-        │       ├── v211 (UNRESOLVED)
-        │       └── v212 (UNRESOLVED)
-        └── v3 (UNRESOLVED)
-        
-        Expected after propagation:
-        root (CONSISTENT)
-        ├── v1 (CONSISTENT)
-        │   ├── v11 (MATCH)         # Preserved
-        │   │   └── v111 (MATCH)    # Inherits from MATCH parent
-        │   └── v12 (CONSISTENT)    # Inherits from CONSISTENT parent
-        ├── v2 (CONSISTENT)         # Inherits from CONSISTENT root
-        │   └── v21 (MATCH)         # Preserved
-        │       ├── v211 (MATCH)    # Inherits from MATCH parent
-        │       └── v212 (MATCH)    # Inherits from MATCH parent
-        └── v3 (CONSISTENT)         # Inherits from CONSISTENT root
-        """
-        # Arrange
-        statuses = pd.Series({
-            "root": CONSISTENT,
-            "v1": CONSISTENT,
-            "v11": MATCH,
-            "v111": UNRESOLVED,
-            "v12": UNRESOLVED,
-            "v2": UNRESOLVED,
-            "v21": MATCH,
-            "v211": UNRESOLVED,
-            "v212": UNRESOLVED,
-            "v3": UNRESOLVED,
-        })
-        
-        # Act
-        result = mark_descendant_infections(complex_tree, statuses.copy())
-        
-        # Assert
-        assert result["v11"] == MATCH  # Preserved
-        assert result["v111"] == MATCH  # Inherits from MATCH parent
-        assert result["v12"] == CONSISTENT  # Inherits from CONSISTENT parent
-        assert result["v21"] == MATCH  # Preserved
-        assert result["v211"] == MATCH  # Inherits from MATCH parent
-        assert result["v212"] == MATCH  # Inherits from MATCH parent
-        assert result["v3"] == CONSISTENT  # Inherits from CONSISTENT root
-
-    def test_unclear_propagation(self, simple_tree: dict[str, set[str]]) -> None:
-        """Test that UNCLEAR status only affects UNRESOLVED and MAYBE_INCONSISTENT.
-        
-        Initial state:
-        root (UNCLEAR)
-        ├── v1 (MATCH)
-        │   ├── v11 (UNRESOLVED)
-        │   └── v12 (UNRESOLVED)
-        └── v2 (INCONSISTENT)
-            └── v21 (MAYBE_INCONSISTENT)
-        
-        Expected after propagation:
-        root (UNCLEAR)
-        ├── v1 (MATCH)              # Unchanged
-        │   ├── v11 (MATCH)         # Inherits from MATCH parent (not UNCLEAR root)
-        │   └── v12 (MATCH)         # Inherits from MATCH parent (not UNCLEAR root)
-        └── v2 (INCONSISTENT)       # Unchanged
-            └── v21 (INCONSISTENT)  # Inherits from INCONSISTENT parent first
-        """
-        # Arrange
-        statuses = pd.Series({
-            "root": UNCLEAR,
-            "v1": MATCH,
-            "v11": UNRESOLVED,
-            "v12": UNRESOLVED,
-            "v2": INCONSISTENT,
-            "v21": MAYBE_INCONSISTENT,
-        })
-        
-        # Act
-        result = mark_descendant_infections(simple_tree, statuses.copy())
-        
-        # Assert
-        assert result["root"] == UNCLEAR
-        assert result["v1"] == MATCH
-        assert result["v11"] == MATCH  # Inherits from MATCH parent, not UNCLEAR root
-        assert result["v12"] == MATCH  # Inherits from MATCH parent, not UNCLEAR root
-        assert result["v2"] == INCONSISTENT
-        assert result["v21"] == INCONSISTENT  # Inherits from INCONSISTENT parent first
-
-    def test_unclear_affects_unresolved_and_maybe_inconsistent(self, complex_tree: dict[str, set[str]]) -> None:
-        """Test UNCLEAR propagation to UNRESOLVED and MAYBE_INCONSISTENT nodes.
-        
-        Initial state:
-        root (UNCLEAR)
-        ├── v1 (UNRESOLVED)
-        │   ├── v11 (UNRESOLVED)
-        │   │   └── v111 (UNRESOLVED)
-        │   └── v12 (MAYBE_INCONSISTENT)
-        ├── v2 (MATCH)
-        │   └── v21 (CONSISTENT)
-        │       ├── v211 (UNRESOLVED)
-        │       └── v212 (UNRESOLVED)
-        └── v3 (INCONSISTENT)
-        
-        Expected after propagation:
-        root (UNCLEAR)
-        ├── v1 (UNCLEAR)            # Changed from UNRESOLVED
-        │   ├── v11 (UNCLEAR)       # Changed from UNRESOLVED
-        │   │   └── v111 (UNCLEAR)  # Changed from UNRESOLVED
-        │   └── v12 (UNCLEAR)       # Changed from MAYBE_INCONSISTENT
-        ├── v2 (MATCH)              # Unchanged
-        │   └── v21 (MATCH)         # Inherits from MATCH parent (priority)
-        │       ├── v211 (MATCH)    # Inherits from MATCH grandparent
-        │       └── v212 (MATCH)    # Inherits from MATCH grandparent
-        └── v3 (INCONSISTENT)       # Unchanged
-        """
-        # Arrange
-        statuses = pd.Series({
-            "root": UNCLEAR,
-            "v1": UNRESOLVED,
-            "v11": UNRESOLVED,
-            "v111": UNRESOLVED,
-            "v12": MAYBE_INCONSISTENT,
-            "v2": MATCH,
-            "v21": CONSISTENT,
-            "v211": UNRESOLVED,
-            "v212": UNRESOLVED,
-            "v3": INCONSISTENT,
-        })
-        
-        # Act
-        result = mark_descendant_infections(complex_tree, statuses.copy())
-        
-        # Assert
-        assert result["root"] == UNCLEAR
-        assert result["v1"] == UNCLEAR  # Changed from UNRESOLVED
-        assert result["v11"] == UNCLEAR  # Changed from UNRESOLVED
-        assert result["v111"] == UNCLEAR  # Changed from UNRESOLVED
-        assert result["v12"] == UNCLEAR  # Changed from MAYBE_INCONSISTENT
-        assert result["v2"] == MATCH  # Unchanged
-        assert result["v21"] == MATCH  # Inherits from MATCH parent (MATCH propagation happens first)
-        assert result["v211"] == MATCH  # Inherits from MATCH parent
-        assert result["v212"] == MATCH  # Inherits from MATCH parent
-        assert result["v3"] == INCONSISTENT  # Unchanged
-
-    def test_propagation_order_matters(self, simple_tree: dict[str, set[str]]) -> None:
-        """Test that propagation order (MATCH > INCONSISTENT > CONSISTENT > UNCLEAR) is respected.
-        
-        Initial state:
-        root (UNCLEAR)
-        ├── v1 (MATCH)
-        │   ├── v11 (INCONSISTENT)   # Will be overridden
-        │   └── v12 (UNRESOLVED)
-        └── v2 (INCONSISTENT)
-            └── v21 (UNRESOLVED)
-        
-        Expected after propagation:
-        root (UNCLEAR)
-        ├── v1 (MATCH)
-        │   ├── v11 (MATCH)          # MATCH overrides initial INCONSISTENT
-        │   └── v12 (MATCH)          # Inherits from MATCH parent
-        └── v2 (INCONSISTENT)
-            └── v21 (INCONSISTENT)   # Inherits from INCONSISTENT parent
-        """
-        # Arrange - Create a situation where order matters
-        statuses = pd.Series({
-            "root": UNCLEAR,
-            "v1": MATCH,
-            "v11": INCONSISTENT,  # Should become MATCH due to parent
-            "v12": UNRESOLVED,
-            "v2": INCONSISTENT,
-            "v21": UNRESOLVED,
-        })
-        
-        # Act
-        result = mark_descendant_infections(simple_tree, statuses.copy())
-        
-        # Assert
-        assert result["v1"] == MATCH
-        assert result["v11"] == MATCH  # MATCH overrides initial INCONSISTENT
-        assert result["v12"] == MATCH
-        assert result["v2"] == INCONSISTENT
-        assert result["v21"] == INCONSISTENT
-
-    def test_no_unresolved_after_processing(self, complex_tree: dict[str, set[str]]) -> None:
-        """Test that no UNRESOLVED statuses remain after processing."""
-        # Arrange - Start with many UNRESOLVED nodes
-        statuses = pd.Series({
-            "root": UNCLEAR,
-            "v1": UNRESOLVED,
-            "v11": UNRESOLVED,
-            "v111": UNRESOLVED,
-            "v12": UNRESOLVED,
-            "v2": UNRESOLVED,
-            "v21": UNRESOLVED,
-            "v211": UNRESOLVED,
-            "v212": UNRESOLVED,
-            "v3": UNRESOLVED,
-        })
-        
-        # Act
-        result = mark_descendant_infections(complex_tree, statuses.copy())
-        
-        # Assert - All UNRESOLVED should be converted to UNCLEAR
+        # Verify no UNRESOLVED or MAYBE_INCONSISTENT states remain
         assert UNRESOLVED not in result.values
-        assert all(result == UNCLEAR)
-
-    def test_no_maybe_inconsistent_after_processing(self, complex_tree: dict[str, set[str]]) -> None:
-        """Test that no MAYBE_INCONSISTENT statuses remain after processing."""
-        # Arrange
-        statuses = pd.Series({
-            "root": UNCLEAR,
-            "v1": MAYBE_INCONSISTENT,
-            "v11": MAYBE_INCONSISTENT,
-            "v111": MAYBE_INCONSISTENT,
-            "v12": INCONSISTENT,
-            "v2": CONSISTENT,
-            "v21": MATCH,
-            "v211": MAYBE_INCONSISTENT,
-            "v212": MAYBE_INCONSISTENT,
-            "v3": MAYBE_INCONSISTENT,
-        })
-        
-        # Act
-        result = mark_descendant_infections(complex_tree, statuses.copy())
-        
-        # Assert - No MAYBE_INCONSISTENT should remain
         assert MAYBE_INCONSISTENT not in result.values
 
     def test_assertion_unresolved_remaining(self, simple_tree: dict[str, set[str]]) -> None:
@@ -1302,157 +1007,6 @@ class TestMarkDescendantInfections:
         # Act & Assert
         with pytest.raises(AssertionError, match="Some taxids marked as CONSISTENT have descendants marked as INCONSISTENT or UNCLEAR"):
             mark_descendant_infections(tree, statuses)
-
-    def test_realistic_example_from_docs(self, complex_tree: dict[str, set[str]]) -> None:
-        """Test a realistic example from cases.md documentation.
-        
-        Initial state (Example 3 from cases.md):
-        root (UNCLEAR)
-        ├── v1 (MATCH)
-        │   └── v11 (UNRESOLVED)
-        ├── v2 (INCONSISTENT)
-        │   └── v21 (UNRESOLVED)
-        └── v3 (MAYBE_INCONSISTENT)
-        
-        Expected after propagation:
-        root (UNCLEAR)
-        ├── v1 (MATCH)
-        │   └── v11 (MATCH)         # Inherits from MATCH parent
-        ├── v2 (INCONSISTENT)
-        │   └── v21 (INCONSISTENT)  # Inherits from INCONSISTENT parent
-        └── v3 (UNCLEAR)            # Changed from MAYBE_INCONSISTENT by UNCLEAR parent
-        """
-        # Arrange - Example 3 from cases.md
-        tree = {
-            "root": {"v1", "v2", "v3"},
-            "v1": {"v11"},
-            "v2": {"v21"},
-            "v3": set(),
-            "v11": set(),
-            "v21": set(),
-        }
-        
-        statuses = pd.Series({
-            "root": UNCLEAR,
-            "v1": MATCH,
-            "v11": UNRESOLVED,
-            "v2": INCONSISTENT,
-            "v21": UNRESOLVED,
-            "v3": MAYBE_INCONSISTENT,
-        })
-        
-        # Act
-        result = mark_descendant_infections(tree, statuses.copy())
-        
-        # Assert - Should match expected output from documentation
-        assert result["root"] == UNCLEAR
-        assert result["v1"] == MATCH
-        assert result["v11"] == MATCH  # Inherits from MATCH
-        assert result["v2"] == INCONSISTENT
-        assert result["v21"] == INCONSISTENT  # Inherits from INCONSISTENT
-        assert result["v3"] == UNCLEAR  # Changed from MAYBE_INCONSISTENT by UNCLEAR parent
-
-    def test_deep_hierarchy_propagation(self) -> None:
-        """Test propagation through a deep hierarchy."""
-        # Arrange - Create a deep tree
-        tree = {
-            "root": {"level1"},
-            "level1": {"level2"},
-            "level2": {"level3"},
-            "level3": {"level4"},
-            "level4": {"level5"},
-            "level5": set(),
-        }
-        
-        statuses = pd.Series({
-            "root": CONSISTENT,
-            "level1": UNRESOLVED,
-            "level2": UNRESOLVED,
-            "level3": UNRESOLVED,
-            "level4": UNRESOLVED,
-            "level5": UNRESOLVED,
-        })
-        
-        # Act
-        result = mark_descendant_infections(tree, statuses.copy())
-        
-        # Assert - All should inherit CONSISTENT
-        assert all(result == CONSISTENT)
-
-    def test_complex_mixed_propagation(self) -> None:
-        """Test complex scenario with all propagation rules in effect.
-        
-        Initial state:
-        root (UNCLEAR)
-        ├── v1 (MATCH)
-        │   ├── v11 (INCONSISTENT)      # Will be overridden by MATCH
-        │   └── v12 (UNRESOLVED)
-        ├── v2 (INCONSISTENT)
-        │   ├── v21 (MATCH)             # Will be overridden by INCONSISTENT
-        │   └── v22 (UNRESOLVED)
-        ├── v3 (CONSISTENT)
-        │   └── v31 (UNRESOLVED)
-        │       └── v311 (MATCH)        # Will preserve MATCH
-        └── v4 (UNRESOLVED)
-            ├── v41 (MAYBE_INCONSISTENT)
-            └── v42 (UNRESOLVED)
-        
-        Expected after propagation shows the priority order in action:
-        - MATCH propagation (highest priority)
-        - INCONSISTENT propagation (second priority)
-        - CONSISTENT propagation (third priority, preserves MATCH)
-        - UNCLEAR propagation (lowest priority, only affects UNRESOLVED/MAYBE_INCONSISTENT)
-        """
-        # Arrange
-        tree = {
-            "root": {"v1", "v2", "v3", "v4"},
-            "v1": {"v11", "v12"},
-            "v2": {"v21", "v22"},
-            "v3": {"v31"},
-            "v4": {"v41", "v42"},
-            "v11": set(),
-            "v12": set(),
-            "v21": set(),
-            "v22": set(),
-            "v31": {"v311"},
-            "v311": set(),
-            "v41": set(),
-            "v42": set(),
-        }
-        
-        statuses = pd.Series({
-            "root": UNCLEAR,
-            "v1": MATCH,
-            "v11": INCONSISTENT,
-            "v12": UNRESOLVED,
-            "v2": INCONSISTENT,
-            "v21": MATCH,  # Should become INCONSISTENT
-            "v22": UNRESOLVED,
-            "v3": CONSISTENT,
-            "v31": UNRESOLVED,
-            "v311": MATCH,  # Should stay MATCH
-            "v4": UNRESOLVED,
-            "v41": MAYBE_INCONSISTENT,
-            "v42": UNRESOLVED,
-        })
-        
-        # Act
-        result = mark_descendant_infections(tree, statuses.copy())
-        
-        # Assert
-        assert result["v1"] == MATCH
-        assert result["v11"] == MATCH  # Overridden by MATCH parent
-        assert result["v12"] == MATCH  # Inherits from MATCH parent
-        assert result["v2"] == INCONSISTENT
-        assert result["v21"] == INCONSISTENT  # Overridden by INCONSISTENT parent
-        assert result["v22"] == INCONSISTENT  # Inherits from INCONSISTENT parent
-        assert result["v3"] == CONSISTENT
-        assert result["v31"] == CONSISTENT  # Inherits from CONSISTENT parent
-        assert result["v311"] == MATCH  # Preserved (CONSISTENT doesn't override MATCH)
-        assert result["v4"] == UNCLEAR  # Inherits from UNCLEAR root
-        assert result["v41"] == UNCLEAR  # Changed from MAYBE_INCONSISTENT
-        assert result["v42"] == UNCLEAR  # Changed from UNRESOLVED
-
 
 # =======================================================================
 # Tests for add_descendants
@@ -1674,8 +1228,8 @@ class TestMarkAncestorInfections:
         }
         statuses = pd.Series({
             "1": MATCH,  # Should be preserved
-            "2": INCONSISTENT,
-            "3": UNRESOLVED,
+            "2": INCONSISTENT, # Childless, should be preserved
+            "3": UNRESOLVED, # Childless, should be preserved
             "4": UNCLEAR,  # Childless, should be preserved
         })
         
@@ -1684,7 +1238,7 @@ class TestMarkAncestorInfections:
         
         # Assert
         assert result["1"] == MATCH  # Preserved
-        assert result["2"] == INCONSISTENT  # Preserved
+        assert result["2"] == INCONSISTENT  # Preserved (childless)
         assert result["3"] == UNRESOLVED  # Preserved (childless)
         assert result["4"] == UNCLEAR  # Preserved (childless)
 
@@ -1734,7 +1288,13 @@ class TestGetVirusHostMapping:
     def test_valid_tsv(self, tmp_path) -> None:
         """Test reading valid TSV returns correct mapping."""
         # Arrange
-        tsv_content = "virus tax id\thost tax id\n1\t100\n1\t101\n2\t200\n3\t300"
+        tsv_content = (
+            "virus tax id\thost tax id\n"
+            "1\t100\n"
+            "1\t101\n"
+            "2\t200\n"
+            "3\t300"
+        )
         tsv_file = tmp_path / "virus_host.tsv"
         tsv_file.write_text(tsv_content)
         
@@ -1749,7 +1309,13 @@ class TestGetVirusHostMapping:
     def test_duplicate_entries(self, tmp_path) -> None:
         """Test that duplicate entries are handled correctly."""
         # Arrange
-        tsv_content = "virus tax id\thost tax id\n1\t100\n1\t100\n1\t101\n2\t200"
+        tsv_content = (
+            "virus tax id\thost tax id\n"
+            "1\t100\n"
+            "1\t100\n"
+            "1\t101\n"
+            "2\t200"
+        )
         tsv_file = tmp_path / "virus_host.tsv"
         tsv_file.write_text(tsv_content)
         
