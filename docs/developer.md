@@ -62,7 +62,7 @@ These guidelines represent best practices to implement in new code, though some 
     - Linting is encouraged (our go-to tool is `ruff`), but not currently required. 
     
 ## Containers
-Containers: We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
+We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
 
 If your process needs a custom container, create a new Dockerfile in the `docker` directory. The name should have the prefix `nao-` followed by a descriptive name containing lowercase letters and hyphens, e.g. `docker/nao-blast-awscli.Dockerfile`
 

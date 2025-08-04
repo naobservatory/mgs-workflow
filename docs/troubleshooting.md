@@ -47,5 +47,5 @@ If you still keep running into this same issue, you may consider contacting Seqe
 ## Automatic reference file caching
 - With the `standard`/`batch` profiles, the pipeline implements automatic caching of large reference files in the `/scratch/` directory 
 - This generally causes no problems, but is something to be aware of:
-     - The default `/scratch/` directory on AWS EC2 instances works fine in our experiment, but if you are seeing `/scratch` directory permissions or space issues, you may have to customize the `/scratch/` directory with a UserData script in your EC2 launch template.
+     - The default `/scratch/` directory on AWS EC2 instances works fine in our experience, but if you are seeing `/scratch` directory permissions or space issues, you may have to customize the `/scratch/` directory with a UserData script in your EC2 launch template.
      - To turn off caching, you can always remove the `aws.batch.volumes = ['/scratch:/scratch']` line from the relevant profile.
