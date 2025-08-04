@@ -60,7 +60,9 @@ The algorithm uses two temporary states during processing that are never present
 
 1. **`UNRESOLVED` (-1):** Taxa that are not found in the Virus-Host DB. This is a placeholder used during the initial marking phase to indicate that we have no direct evidence about this taxon's infection status. These are replaced with the appropriate status either during the upward or downward propagation described below.
 
-2. **`MAYBE_INCONSISTENT` (-2):** A special intermediate state used during the upward propagation phase. This state is assigned to parent taxa that have at least one **`INCONSISTENT`** child (where the other children are **`UNRESOLVED`**, **`INCONSISTENT`**, or **`MAYBE_INCONSISTENT`**) but are not themselves directly marked as **`INCONSISTENT`** in the database. This prevents premature assignment of the **`UNCLEAR`** (2) status and allows the algorithm to correctly propagate **`INCONSISTENT`** status downward in Phase 3 when appropriate. Without this intermediate state, the algorithm could incorrectly mark entire clades as **`UNCLEAR`** when they should be **`INCONSISTENT`**. For detailed examples and edge cases, see this [SecureBio private doc](https://docs.google.com/document/d/1j_V6Kjt4c9Iwx9bsnYixhX2dJv6tIIsFKeBBfvGls8U/edit?usp=sharing).
+2. **`MAYBE_INCONSISTENT` (-2):** A special intermediate state used during the upward propagation phase. This state is assigned to parent taxa that have at least one **`INCONSISTENT`** child (where the other children are **`UNRESOLVED`**, **`INCONSISTENT`**, or **`MAYBE_INCONSISTENT`**) but are not themselves directly marked as **`INCONSISTENT`** in the database. This prevents premature assignment of the **`UNCLEAR`** (2) status and allows the algorithm to correctly propagate **`INCONSISTENT`** status downward in Phase 3 when appropriate. Without this intermediate state, the algorithm could incorrectly mark entire clades as **`UNCLEAR`** when they should be **`INCONSISTENT`**[^3].
+
+[^3]: For detailed examples and edge cases, see this [SecureBio private doc](https://docs.google.com/document/d/1j_V6Kjt4c9Iwx9bsnYixhX2dJv6tIIsFKeBBfvGls8U/edit?usp=sharing).
 
 ### Phase 1: Initialization
 
