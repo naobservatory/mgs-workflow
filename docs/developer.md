@@ -1,6 +1,7 @@
 # Developer guide
 This section is solely for developers of the pipeline. We thank you greatly for your work! It includes guidance on:
 - Coding style
+- Containers
 - Testing
 - GitHub issues
 - Pull requests (PRs)
@@ -30,7 +31,6 @@ These guidelines represent best practices to implement in new code, though some 
     - All processes should emit their input (for testing validation); use `ln -s` to link the input to the output.
     - Most processes have two output channels, `input` and `output`. If a process emits multiple types of output, use meaningful emit names describing the output types (e.g. `match`, `nomatch`, and `log` from `process BBDUK`).
     - Most, but not all, processes are *labeled* (input is a tuple of a sample name and file path). If input is labeled, output should also be labeled.
-- Containers: We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
 - Naming:
     - Use `lower_snake_case` for variable and channel names.
     - Use `UPPER_SNAKE_CASE` for process, subworkflow, and workflow names.
@@ -60,6 +60,13 @@ These guidelines represent best practices to implement in new code, though some 
     - Loosely follow PEP 8 conventions.
     - Type hints are encouraged but not currently required.
     - Linting is encouraged (our go-to tool is `ruff`), but not currently required. 
+    
+## Containers
+We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
+
+If your process needs a custom container, create a new Dockerfile in the `docker` directory. The name should have the prefix `nao-` followed by a descriptive name containing lowercase letters and hyphens, e.g. `docker/nao-blast-awscli.Dockerfile`
+
+Build and push the custom containers using the script `bin/build-push-docker.sh`. (This should be done by a repo maintainer as it requires being logged in to DockerHub with the securebio username.) 
     
 ## Testing
 
