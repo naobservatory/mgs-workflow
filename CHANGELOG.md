@@ -40,7 +40,7 @@
          - Use file locking (via the Unix utility `flock`) to prevent simultaneous downloads of the same database.
          - This logic is implemented in the shared bash script `bin/download-db.sh`.
 - Added new Dockerfiles (custom containers required for the above caching), along with the utility script `bin/build-push-docker.sh` to build and push to Dockerhub.
-- Updated `docs/installation.md` and `docs/usage.md` to explain caching of new reference files and to document how to update docker images.
+- Updated documentation to explain caching of new reference files and to document how to update docker images.
 
 # v2.10.0.1
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
