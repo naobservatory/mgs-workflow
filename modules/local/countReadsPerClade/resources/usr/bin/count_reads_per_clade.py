@@ -240,7 +240,9 @@ def write_output_tsv(
         writer.writeheader()
 
         # Write rows in depth-first order
-        def dfs(node: TaxId, parent=".") -> None:
+        # If a node does not have a parent, set it to be 1: the root of the
+        # NCBI taxonomy
+        def dfs(node: TaxId, parent=1) -> None:
             row = {
                 "group": group,
                 "taxid": node,
