@@ -262,25 +262,29 @@ def test_count_direct_reads_per_taxid():
             "aligner_taxid_lca": "100",
             "seq_id": "read1",
             "prim_align_dup_exemplar": "read1",
+            "group": "sample1",
         },  # not duplicate
         {
             "aligner_taxid_lca": "100",
             "seq_id": "read2",
             "prim_align_dup_exemplar": "read1",
+            "group": "sample1",
         },  # duplicate
         {
             "aligner_taxid_lca": "200",
             "seq_id": "read3",
             "prim_align_dup_exemplar": "read3",
+            "group": "sample1",
         },  # not duplicate
         {
             "aligner_taxid_lca": "100",
             "seq_id": "read4",
             "prim_align_dup_exemplar": "read4",
+            "group": "sample1",
         },  # not duplicate
     ]
 
-    total, dedup = count_direct_reads_per_taxid(iter(read_data))
+    total, dedup = count_direct_reads_per_taxid(iter(read_data), "sample1")
 
     # Total counts: taxid 100 has 3 reads, taxid 200 has 1 read
     assert total[100] == 3
@@ -292,23 +296,67 @@ def test_count_direct_reads_per_taxid():
 
     # Test with custom taxid field
     read_data = [
-        {"custom_taxid": "50", "seq_id": "read1", "prim_align_dup_exemplar": "read1"}
+        {
+            "custom_taxid": "50",
+            "seq_id": "read1",
+            "prim_align_dup_exemplar": "read1",
+            "group": "test_group",
+        }
     ]
     total, dedup = count_direct_reads_per_taxid(
-        iter(read_data), taxid_field="custom_taxid"
+        iter(read_data), "test_group", taxid_field="custom_taxid"
     )
     assert total[50] == 1
     assert dedup[50] == 1
 
     # Test with empty data
-    total, dedup = count_direct_reads_per_taxid(iter([]))
+    total, dedup = count_direct_reads_per_taxid(iter([]), "empty_group")
     assert len(total) == 0
     assert len(dedup) == 0
 
     # Test return types are Counters
-    total, dedup = count_direct_reads_per_taxid(iter([]))
+    total, dedup = count_direct_reads_per_taxid(iter([]), "empty_group")
     assert isinstance(total, Counter)
     assert isinstance(dedup, Counter)
+
+
+def test_count_direct_reads_per_taxid_group_validation():
+    """Test that count_direct_reads_per_taxid validates group field correctly."""
+    # Test that assertion fails when group doesn't match
+    read_data_with_wrong_group = [
+        {
+            "aligner_taxid_lca": "100",
+            "seq_id": "read1",
+            "prim_align_dup_exemplar": "read1",
+            "group": "wrong_group",
+        }
+    ]
+
+    with pytest.raises(
+        AssertionError, match="Expected group 'expected_group', found 'wrong_group'"
+    ):
+        count_direct_reads_per_taxid(read_data_with_wrong_group, "expected_group")
+
+    # Test with mixed groups (should fail on first mismatch)
+    read_data_mixed = [
+        {
+            "aligner_taxid_lca": "100",
+            "seq_id": "read1",
+            "prim_align_dup_exemplar": "read1",
+            "group": "correct_group",
+        },
+        {
+            "aligner_taxid_lca": "200",
+            "seq_id": "read2",
+            "prim_align_dup_exemplar": "read2",
+            "group": "wrong_group",
+        },
+    ]
+
+    with pytest.raises(
+        AssertionError, match="Expected group 'correct_group', found 'wrong_group'"
+    ):
+        count_direct_reads_per_taxid(read_data_mixed, "correct_group")
 
 
 def test_get_clade_counts():
