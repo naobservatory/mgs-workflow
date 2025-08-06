@@ -1,4 +1,4 @@
-seq_id	prim_align_genome_id_all	prim_align_ref_start	prim_align_ref_start_rev	prim_align_query_qual	prim_align_query_qual_rev	exemplar_exp_0	exemplar_exp_1	exemplar_exp_2
+seq_id	prim_align_genome_id_all	prim_align_ref_start	prim_align_ref_start_rev	query_qual	query_qual_rev	exemplar_exp_0	exemplar_exp_1	exemplar_exp_2
 grp_a_0	g0/g1	50	150	JJJJJJ	JJJJJJ	grp_a_0	grp_a_0	grp_a_0
 grp_a_1	g0/g1	50	150	JJJJJJ	JJJJJJ	grp_a_0	grp_a_0	grp_a_0
 grp_a_2	g1/g0	150	50	JJJJJJ	JJJJJJ	grp_a_0	grp_a_0	grp_a_0
