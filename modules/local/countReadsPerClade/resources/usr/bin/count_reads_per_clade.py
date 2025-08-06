@@ -16,6 +16,8 @@ from collections import Counter, defaultdict
 from collections.abc import Iterator
 
 TaxId = int
+# NCBI taxonomy root node - has itself as parent
+ROOT: TaxId = 1
 # Tree as adjacency list mapping parents to children
 Tree = defaultdict[TaxId, set[TaxId]]
 
@@ -124,7 +126,9 @@ def build_tree(
             msg = f"Child taxid {child} appears multiple times in taxdb"
             raise ValueError(msg)
         children.add(child)
-        tree[parent].add(child)
+        # Handle NCBI root: ROOT has itself as parent, don't add it as a child of itself
+        if not (child == ROOT and parent == ROOT):
+            tree[parent].add(child)
     if detect_cycle(tree):
         msg = "Cycle detected in taxdb"
         raise ValueError(msg)
@@ -240,7 +244,9 @@ def write_output_tsv(
         writer.writeheader()
 
         # Write rows in depth-first order
-        def dfs(node: TaxId, parent=".") -> None:
+        # If a node does not have a parent, set it to be ROOT: the root of the
+        # NCBI taxonomy
+        def dfs(node: TaxId, parent=ROOT) -> None:
             row = {
                 "group": group,
                 "taxid": node,
