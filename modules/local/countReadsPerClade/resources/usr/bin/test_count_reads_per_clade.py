@@ -218,9 +218,18 @@ def test_build_tree_duplicate_child_error():
 
 def test_build_tree_cycle_error():
     """Test that build_tree raises an error when there are cycles in the tree."""
-    # Simple self-loop
+    # NCBI root (taxid 1 with parent_taxid 1) should NOT raise an error
     tax_data = [
         {"taxid": "1", "parent_taxid": "1"},
+    ]
+    # This should work without raising an error
+    result = build_tree(iter(tax_data))
+    # Root should have no children since it doesn't add itself as a child
+    assert result == {}
+    
+    # Self-loop with non-root taxid should still be an error
+    tax_data = [
+        {"taxid": "2", "parent_taxid": "2"},
     ]
     with pytest.raises(ValueError, match="Cycle detected in taxdb"):
         build_tree(iter(tax_data))
@@ -357,6 +366,23 @@ def test_count_direct_reads_per_taxid_group_validation():
         AssertionError, match="Expected group 'correct_group', found 'wrong_group'"
     ):
         count_direct_reads_per_taxid(read_data_mixed, "correct_group")
+
+
+def test_build_tree_ncbi_root():
+    """Test that build_tree handles NCBI root (taxid 1, parent_taxid 1) correctly."""
+    # Test NCBI root with children
+    tax_data = [
+        {"taxid": "1", "parent_taxid": "1"},  # NCBI root
+        {"taxid": "2", "parent_taxid": "1"},  # Child of root
+        {"taxid": "3", "parent_taxid": "1"},  # Another child of root
+    ]
+    result = build_tree(iter(tax_data))
+    expected = {1: {2, 3}}
+    assert result == expected
+    
+    # Test that root is correctly identified
+    root_nodes = roots(result)
+    assert root_nodes == {1}
 
 
 def test_get_clade_counts():
