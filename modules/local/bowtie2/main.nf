@@ -67,7 +67,7 @@ process BOWTIE2 {
 
 // Generate a Bowtie2 index from an input file
 process BOWTIE2_INDEX {
-    label "Bowtie2"
+    label "bowtie2_samtools"
     label "max"
     input:
         path(reference_fasta)

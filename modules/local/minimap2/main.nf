@@ -1,7 +1,7 @@
 // Create a minimap2 index
 process MINIMAP2_INDEX {
     label "max"
-    label "minimap2"
+    label "minimap2_samtools"
     input:
         path(reference_fasta)
         val(outdir)

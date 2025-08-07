@@ -4,6 +4,7 @@
 - Updated Github Actions to retry downloading nf-test since it often fails to download on the first try due to a 403 error
 - Increased resources for PROCESS_VIRAL_MINIMAP2_SAM to avoid frequent out-of-memory errors
 - Fixed line iteration bug in tests for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATA
+- Added new Dockerfiles (custom containers that will be required for caching of large reference files), along with the utility script `bin/build-push-docker.sh` to build and push to Dockerhub.
 
 # v3.0.0.0
 
