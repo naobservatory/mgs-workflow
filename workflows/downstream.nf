@@ -31,7 +31,7 @@ workflow DOWNSTREAM {
         MARK_VIRAL_DUPLICATES(group_ch, params.aln_dup_deviation)
         // Prepare inputs for clade counting and validating taxonomic assignments
         viral_db_path = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
-        viral_db = Channel.of(viral_db_path)
+        viral_db = channel.value(viral_db_path)
         dup_ch = MARK_VIRAL_DUPLICATES.out.dup.map{ label, tab, _stats -> [label, tab] }
         // 4. Generate clade counts
         COUNT_READS_PER_CLADE(dup_ch, viral_db)

@@ -28,7 +28,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Nextflow latest (stable)
+      - name: Setup Nextflow (25.4.3)
         uses: nf-core/setup-nextflow@v1
         with:
           version: "25.4.3"
@@ -65,7 +65,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Nextflow latest (stable)
+      - name: Setup Nextflow (25.4.3)
         uses: nf-core/setup-nextflow@v1
         with:
           version: "25.4.3"
@@ -102,7 +102,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Nextflow latest (stable)
+      - name: Setup Nextflow (25.4.3)
         uses: nf-core/setup-nextflow@v1
         with:
           version: "25.4.3"
@@ -140,7 +140,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Nextflow latest (stable)
+      - name: Setup Nextflow (25.4.3)
         uses: nf-core/setup-nextflow@v1
         with:
           version: "25.4.3"
@@ -177,7 +177,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Nextflow latest (stable)
+      - name: Setup Nextflow (25.4.3)
         uses: nf-core/setup-nextflow@v1
         with:
           version: "25.4.3"

@@ -16,6 +16,8 @@ from collections import Counter, defaultdict
 from collections.abc import Iterator
 
 TaxId = int
+# NCBI taxonomy root node - has itself as parent
+ROOT: TaxId = 1
 # Tree as adjacency list mapping parents to children
 Tree = defaultdict[TaxId, set[TaxId]]
 
@@ -69,15 +71,19 @@ def is_duplicate(read: dict[str, str]) -> bool:
 
 def count_direct_reads_per_taxid(
     data: Iterator[dict[str, str]],
+    group: str,
     taxid_field: str = "aligner_taxid_lca",
+    group_field: str = "group",
 ) -> tuple[Counter[TaxId], Counter[TaxId]]:
-    """Count total and deduplicated reads per taxonomic ID.
+    """Count total and deduplicated reads per taxonomic ID, validating group.
 
     These are reads assigned directly to the tax ID, not including descendent counts.
 
     Args:
         data: Iterator of read records as dictionaries
+        group: Expected group identifier for validation
         taxid_field: Field name containing the taxonomic ID
+        group_field: Field name containing the group
 
     Returns:
         Tuple of (total_counts, deduplicated_counts) as Counters
@@ -86,6 +92,8 @@ def count_direct_reads_per_taxid(
     total: Counter[TaxId] = Counter()
     dedup: Counter[TaxId] = Counter()
     for read in data:
+        read_group = read[group_field]
+        assert read_group == group, f"Expected group '{group}', found '{read_group}'"
         taxid = int(read[taxid_field])
         total[taxid] += 1
         if not is_duplicate(read):
@@ -118,7 +126,9 @@ def build_tree(
             msg = f"Child taxid {child} appears multiple times in taxdb"
             raise ValueError(msg)
         children.add(child)
-        tree[parent].add(child)
+        # Handle NCBI root: ROOT has itself as parent, don't add it as a child of itself
+        if not (child == ROOT and parent == ROOT):
+            tree[parent].add(child)
     if detect_cycle(tree):
         msg = "Cycle detected in taxdb"
         raise ValueError(msg)
@@ -201,6 +211,7 @@ def get_clade_counts(direct_counts: Counter[TaxId], tree: Tree) -> Counter[TaxId
 
 def write_output_tsv(
     output_path: str,
+    group: str,
     tree: Tree,
     direct_counts_total: Counter[TaxId],
     direct_counts_dedup: Counter[TaxId],
@@ -211,6 +222,7 @@ def write_output_tsv(
 
     Args:
         output_path: Path to output TSV file
+        group: Group identifier to include in output
         tree: Taxonomic tree structure
         direct_counts_total: Total directly assigned read counts per taxonomic ID
         direct_counts_dedup: Deduplicated directly assigned read counts per taxonomic ID
@@ -220,6 +232,7 @@ def write_output_tsv(
     """
     with open_by_suffix(output_path, "w") as outfile:
         fieldnames = [
+            "group",
             "taxid",
             "parent_taxid",
             "reads_direct_total",
@@ -231,8 +244,11 @@ def write_output_tsv(
         writer.writeheader()
 
         # Write rows in depth-first order
-        def dfs(node: TaxId, parent=".") -> None:
+        # If a node does not have a parent, set it to be ROOT: the root of the
+        # NCBI taxonomy
+        def dfs(node: TaxId, parent=ROOT) -> None:
             row = {
+                "group": group,
                 "taxid": node,
                 "parent_taxid": parent,
                 "reads_direct_total": direct_counts_total[node],
@@ -258,6 +274,13 @@ def parse_args() -> argparse.Namespace:
         help="Path to taxonomy database with taxid and parent_taxid.",
     )
     parser.add_argument("--output", help="Path to output TSV.")
+    parser.add_argument(
+        "--group",
+        help=(
+            "Group identifier. "
+            "The `group` column of the read TSV must match this in every row."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -266,7 +289,7 @@ def main() -> None:
 
     try:
         direct_counts_total, direct_counts_dedup = count_direct_reads_per_taxid(
-            read_tsv(args.reads)
+            read_tsv(args.reads), args.group
         )
     except KeyError as e:
         missing_column = e.args[0]
@@ -277,7 +300,7 @@ def main() -> None:
         )
         print(
             "Required columns for reads file: "
-            "seq_id, prim_align_dup_exemplar, aligner_taxid_lca",
+            "seq_id, prim_align_dup_exemplar, aligner_taxid_lca, group",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -300,6 +323,7 @@ def main() -> None:
     clade_counts_dedup = get_clade_counts(direct_counts_dedup, tree)
     write_output_tsv(
         args.output,
+        args.group,
         tree,
         direct_counts_total,
         direct_counts_dedup,
