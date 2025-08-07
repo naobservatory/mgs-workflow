@@ -27,12 +27,13 @@ Main heading represents the folder name, and subheadings represent a description
 - `pipeline-version-index.txt`: Version of the pipeline used to generate the specified index directory (copied from index directory).
 - `pipeline-version.txt`: Version of the pipeline used to run the workflow (copied from repository).
 - `time.txt`: Start time of the run.
-- `trace.txt`: Tab delimited log of all the information for each task run in the pipeline including runtime, memory usage, exit status, etc. Can be used to create an execution timeline using the the script `bin/plot-timeline-script.R` after the pipeline has finished running. More information regarding the trace file format can be found [here](https://www.nextflow.io/docs/latest/reports.html#trace-file).
+- `trace_<timestamp>.tsv`: Tab delimited log of all the information for each task run in the pipeline including runtime, memory usage, exit status, etc. Can be used to create an execution timeline using the the script `bin/plot-timeline-script.R` after the pipeline has finished running. More information regarding the trace file format can be found [here](https://www.nextflow.io/docs/latest/reports.html#trace-file).
 
 ### `intermediates/`
 
-- `virus_hits_all.tsv.gz`: Complete list of putative viral reads identified by the EXTRACT_VIRAL_READS subworkflow, prior to filtering with FILTER_VIRUS_READS. (Note: this is not currently produced for ONT data.)
 - `virus_hits_final.fastq.gz`: Filtered viral hits in FASTQ format.
+- `aligner_hits_all.tsv.gz`: List of all putative viral alignments (primary, secondary and supplementary) from the aligner used in the `RUN` workflow (bowtie2 for EXTRACT_VIRAL_READS_SHORT or minimap2 for EXTRACT_VIRAL_READS_ONT) with modified columns from the [SAM specification](https://samtools.github.io/hts-specs/SAMv1.pdf).
+- `lca_hits_all.tsv.gz`: List of putative viral reads after having applied LCA to `aligner_hits_all.tsv.gz`, along with columns representing summary statistics.
 - `reads/raw_viral/*`: Directory containing raw reads corresponding to those reads that survive initial viral screening with BBDuk. (Note: this is not currently produced for ONT data.)
 
 ### `results/`
@@ -52,7 +53,7 @@ Main heading represents the folder name, and subheadings represent a description
 - `subset_qc_quality_sequence_stats.tsv.gz`: Per-sequence read-quality statistics calculated by FASTQC for subset sample before and after adapter trimming, given as the number of reads (`n_sequences`) with a given mean Phred score (`mean_phred_score`) for each read in the read pair (`read_pair`).
 
 #### Viral identification
-- `virus_hits_final.tsv.gz`: TSV output from EXTRACT_VIRAL_READS, giving information about each read pair assigned to a host-infecting virus. See [virus_hits_final.md](./virus_hits_final.md) for documentation of column names.
+- `virus_hits_final.tsv.gz`: TSV output from EXTRACT_VIRAL_READS, giving information about each read pair assigned to a host-infecting virus, using the LCA taxid assignment as the source of truth. Contains both LCA-based taxonomic assignments (columns with `aligner_` prefix) that utilize multiple alignments per read, and read sequence information plus primary alignment details (columns with `prim_align_` prefix) for the DOWNSTREAM workflow. See [virus_hits_final.md](./virus_hits_final.md) for documentation of column names.
 
 #### Taxonomic identification
 - `bracken_reports_merged.tsv.gz`: Bracken output reports in TSV format, labeled by sample and ribosomal status, for subset samples produced by SUBSET_TRIM.

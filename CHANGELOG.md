@@ -1,10 +1,41 @@
+# v3.0.0.0
+
+### Breaking changes
+
+- Changed `RUN` workflow viral taxonomic assignment from Kraken2 + aligner ensemble to aligner-only with multiple alignments + LCA algorithm:
+    - Replaces `virus_hits_all.tsv.gz` with two new intermediate files: `aligner_hits_all.tsv.gz` (all viral alignments) and `lca_hits_all.tsv.gz` (LCA-processed reads)
+    - Updates `virus_hits_final.tsv.gz` columns: removes Kraken2 columns, adds `aligner_` prefix columns for LCA assignments and `prim_align_` prefix columns for primary alignment details
+    - Integrates EXTRACT_VIRAL_READS_SHORT_LCA functionality directly into EXTRACT_VIRAL_READS_SHORT (similarly for ONT)
+    - No changes to input files or parameters required
+- Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
+
+### Other changes
+
+- Added clade counting to DOWNSTREAM. Added a module COUNT_READS_PER_CLADE, which counts the number of LCA-assigned reads in each viral clade. This module:
+    - creates a new clade count output file `results_downstream/{sample}_clade_counts.tsv.gz`
+    - does not modify any existing output.
+    - is called directly in the DOWNSTREAM workflow. If we need more modules for clade counting in the future, will create a subworkflow.
+- Updated EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT for DOWNSTREAM compatibility:
+    - Adds primary/secondary/supplementary alignment status tracking to enable duplicate marking in DOWNSTREAM
+    - Creates PROCESS_LCA_ALIGNER_OUTPUT subworkflow to merge alignment information with LCA output
+    - Ensures `virus_hits_final.tsv.gz` contains necessary columns for downstream duplicate analysis
+- Updated DOWNSTREAM to handle LCA assignments above species level for BLAST validation:
+    - Previously grouped reads by species taxid for BLAST validation, but LCA can assign reads to genus/family/higher ranks
+    - Now groups reads by species taxid assignment if below species level, or by LCA taxid assignment if above species level
+    - Renamed processes from "_SPECIES" to "_SELECTED_TAXID" to reflect this broader taxonomic grouping
+    - Also updated RUN_VALIDATION to accept the new LCA output format
+- Updated SORT_FASTQ to sort alphanumerically
+- Updated documentation for LCA integration:
+    - Added `docs/lca.md` explaining the LCA algorithm and how it assigns taxonomic IDs to reads with multiple viral alignments
+    - Added `docs/lca_intermediates.md` documenting the columns in new intermediate files (`aligner_hits_all.tsv.gz` and `lca_hits_all.tsv.gz`)
+    - Updated `docs/run.md` and `docs/virus_hits_final.md` with new column descriptions and workflow changes
+
 # v2.10.0.1
 - Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
 - Made separate run_illumina.config and run_ont.config files to record correct BLAST defaults for each.
 
 # v2.10.0.0
-- Moved all outputs to main workflow for compatibility with Nextflow 25.04.
-    - Note that we are not compliant with the new strict syntax yet. 
+- Moved all outputs to main workflow for compatibility with Nextflow 25.04, and made pipeline compliant with new strict syntax. 
     - Pipeline is now *incompatible* with Nextflow 24.
 - Changed column names in `virus_hits_final.tsv` for consistency between Illumina and ONT output:
     - Added `docs/virus_hits_final.md` with full documentation of column names.
@@ -33,6 +64,7 @@
         - Changed Bowtie2 to run with multiple alignments.
         - Conducted contaminant and score filtering of Bowtie2 reads before running LCA.
         - Removed the TAXONOMY subworkflow (effectively removing our usage of Kraken2 in identifying viral reads).
+        - Updated EXTRACT_VIRAL_READS_SHORT_LCA such that the output viral hits table is compatible with the DOWNSTREAM workflow
 - Other updates:
     - Added developer documentation (docs/developer.md).
     - Switched to a defined release from [VirusHostDB](https://www.genome.jp/virushostdb), as the previous link (https://www.genome.jp/virushostdb/virushostdb.tsv) is currently broken.

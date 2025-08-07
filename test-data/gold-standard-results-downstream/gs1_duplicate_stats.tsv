@@ -1,4 +1,4 @@
-aligner_genome_id_all	aligner_dup_exemplar	aligner_dup_count	aligner_dup_pairwise_match_frac
+prim_align_genome_id_all	prim_align_dup_exemplar	prim_align_dup_count	prim_align_dup_pairwise_match_frac
 NC_001897.1	SRR12204849.147306033	1	1
 NC_001918.1	SRR12204850.120094795	1	1
 NC_001943.1	SRR12204734.146348965	1	1

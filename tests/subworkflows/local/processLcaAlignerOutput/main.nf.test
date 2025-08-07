@@ -1,0 +1,463 @@
+nextflow_workflow {
+
+    name "Test Workflow PROCESS_LCA_ALIGNER_OUTPUT"
+    script "subworkflows/local/processLcaAlignerOutput/main.nf"
+    workflow "PROCESS_LCA_ALIGNER_OUTPUT"
+    config "tests/configs/run.config"
+    tag "subworkflow"
+    tag "process_lca_aligner_output"
+
+    def validateOutputStructure = { outputData, colsNoPrefix, colsAddPrefix, columnPrefix ->
+        assert outputData.columnCount > 0
+        assert outputData.rowCount > 0
+        
+        for (col in colsNoPrefix) {
+            assert col in outputData.columns.keySet()
+        }
+        
+        for (col in colsAddPrefix) {
+            assert "${columnPrefix}${col}".toString() in outputData.columns.keySet()
+        }
+        
+        assert outputData.columnCount == colsNoPrefix.size() + colsAddPrefix.size()
+    }
+
+    def validateJoinIntegrity = { outputSeqIds, lcaSeqIds, alignerSeqIds ->
+        for (seqId in outputSeqIds) {
+            assert seqId in lcaSeqIds
+            assert seqId in alignerSeqIds
+        }
+    }
+
+    def getPrimaryAlignmentSeqIds = { alignerData ->
+        def primaryAlignerSeqIds = []
+        for (int i = 0; i < alignerData.rowCount; i++) {
+            if (alignerData.columns["classification"][i] == "primary") {
+                primaryAlignerSeqIds.add(alignerData.columns["seq_id"][i])
+            }
+        }
+        return primaryAlignerSeqIds.toSet()
+    }
+
+    def validateDataIntegrity = { outputData, lcaData, alignerData, colsNoPrefix, colsAddPrefix, columnPrefix ->
+        for (int i = 0; i < outputData.rowCount; i++) {
+            def seqId = outputData.columns["seq_id"][i]
+            
+            def lcaIndex = lcaData.columns["seq_id"].findIndexOf { it == seqId }
+            
+            def alignerIndex = -1
+            for (int j = 0; j < alignerData.rowCount; j++) {
+                if (alignerData.columns["seq_id"][j] == seqId && alignerData.columns["classification"][j] == "primary") {
+                    alignerIndex = j
+                    break
+                }
+            }
+            
+            for (col in colsNoPrefix) {
+                if (col in lcaData.columns.keySet()) {
+                    assert outputData.columns[col][i] == lcaData.columns[col][lcaIndex]
+                }
+            }
+            
+            for (col in colsAddPrefix) {
+                if (col in alignerData.columns.keySet()) {
+                    def prefixedCol = "${columnPrefix}${col}".toString()
+                    assert outputData.columns[prefixedCol][i] == alignerData.columns[col][alignerIndex]
+                }
+            }
+        }
+    }
+
+    test("Should run without failures on Bowtie2 output") {
+        tag "expect_success"
+        tag "bowtie2"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/samplesheet.csv"
+                    input[1] = "illumina"
+                    input[2] = false
+                    """
+                }
+            }
+            run("INTERLEAVE_FASTQ") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    '''
+                }
+            }
+            run("BOWTIE2") {
+                    script "modules/local/bowtie2/main.nf"
+                    process {
+                        '''
+                        input[0] = INTERLEAVE_FASTQ.out.output 
+                        input[1] = "${params.ref_dir}/results/bt2-virus-index"
+                        input[2] = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
+                        input[3] = "virus"
+                        input[4] = true
+                        input[5] = false
+                        input[6] = true
+                        '''
+                    }
+            }
+            run("SORT_FILE") {
+                script "modules/local/sortFile/main.nf"
+                process {
+                    '''
+                    input[0] = BOWTIE2.out.sam
+                    input[1] = "-t\\$\'\\t\' -k1,1"
+                    input[2] = "sam"
+                    '''
+                }
+            }
+            run("SORT_FASTQ"){
+                script "modules/local/sortFastq/main.nf"
+                process {
+                    '''
+                    input[0] = INTERLEAVE_FASTQ.out.output
+                    '''
+                }
+
+            }
+            run("FILTER_VIRAL_SAM"){
+                script "modules/local/filterViralSam/main.nf"
+                process {
+                    '''
+                    input[0] = SORT_FILE.out.output.combine(SORT_FASTQ.out.output, by: 0)
+                    input[1] = 5
+                    '''
+                }
+            }
+            run("PROCESS_VIRAL_BOWTIE2_SAM") {
+                script "modules/local/processViralBowtie2Sam/main.nf"
+                process {
+                    '''
+                    input[0] = FILTER_VIRAL_SAM.out.sam
+                    input[1] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
+                    input[2] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                    input[3] = true
+                    '''
+                }
+            }
+            run("LCA_TSV") {
+                script "modules/local/lcaTsv/main.nf"
+                process {
+                    '''
+                    input[0] = PROCESS_VIRAL_BOWTIE2_SAM.out.output
+                    input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
+                    input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
+                    input[3] = "seq_id"
+                    input[4] = "taxid"
+                    input[5] = "length_normalized_score"
+                    input[6] = "12908"
+                    input[7] = "aligner"
+                    '''
+                }
+            }
+
+        }
+        when {
+            params {
+                col_keep_no_prefix = ["seq_id", "sample", "aligner_taxid_lca"]
+                col_keep_add_prefix = ["genome_id_all"]
+                column_prefix = "prim_align_"
+            }
+            workflow {
+                """
+                input[0] = LCA_TSV.out.output
+                input[1] = PROCESS_VIRAL_BOWTIE2_SAM.out.output
+                input[2] = params.col_keep_no_prefix
+                input[3] = params.col_keep_add_prefix
+                input[4] = params.column_prefix
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            
+            def lcaData = path(workflow.out.lca_tsv[0]).csv(sep: "\t", decompress: true)
+            def alignerData = path(workflow.out.aligner_tsv[0]).csv(sep: "\t", decompress: true)
+            def outputData = path(workflow.out.viral_hits_tsv[0]).csv(sep: "\t", decompress: true)
+            
+            def colsNoPrefix = params.col_keep_no_prefix
+            def colsAddPrefix = params.col_keep_add_prefix
+            
+            validateOutputStructure(outputData, colsNoPrefix, colsAddPrefix, params.column_prefix)
+            
+            def outputSeqIds = outputData.columns["seq_id"].toSet()
+            def lcaSeqIds = lcaData.columns["seq_id"].toSet()
+            def alignerSeqIds = alignerData.columns["seq_id"].toSet()
+            validateJoinIntegrity(outputSeqIds, lcaSeqIds, alignerSeqIds)
+            
+            def primaryAlignerSeqIdsSet = getPrimaryAlignmentSeqIds(alignerData)
+            def expectedSeqIds = primaryAlignerSeqIdsSet.intersect(lcaSeqIds)
+            assert outputSeqIds == expectedSeqIds
+            
+            validateDataIntegrity(outputData, lcaData, alignerData, colsNoPrefix, colsAddPrefix, params.column_prefix)
+        }
+    }
+
+    test("Should run without failures on Minimap2 output") {
+        tag "expect_success"
+        tag "minimap2"
+        setup {
+            run("LOAD_SAMPLESHEET") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/ont-samplesheet.csv"
+                    input[1] = "ont"
+                    input[2] = false
+                    """
+                }
+            }
+            run("INTERLEAVE_FASTQ") {
+                script "modules/local/interleaveFastq/main.nf"
+                process {
+                    '''
+                    input[0] = LOAD_SAMPLESHEET.out.samplesheet
+                    '''
+                }
+            }
+            run("MINIMAP2") {
+                    script "modules/local/minimap2/main.nf"
+                    process {
+                        '''
+                        input[0] = INTERLEAVE_FASTQ.out.output 
+                        input[1] = "${params.ref_dir}/results/mm2-virus-index"
+                        input[2] = "virus"
+                        input[3] = false
+                        input[4] = "-N 10"
+                        '''
+                    }
+                }
+            run("PROCESS_VIRAL_MINIMAP2_SAM") {
+                script "modules/local/processViralMinimap2Sam/main.nf"
+                process {
+                    '''
+                    input[0] = MINIMAP2.out.sam.join(INTERLEAVE_FASTQ.out.output)
+                    input[1] = "${params.ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
+                    input[2] = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
+                    '''
+                }
+            }
+            run("SORT_TSV") {
+                script "modules/local/sortTsv/main.nf"
+                process {
+                    '''
+                    input[0] = PROCESS_VIRAL_MINIMAP2_SAM.out.output
+                    input[1] = "seq_id"
+                    '''
+                }
+
+            }
+            run("LCA_TSV") {
+                script "modules/local/lcaTsv/main.nf"
+                process {
+                    '''
+                    input[0] = SORT_TSV.out.sorted
+                    input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
+                    input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
+                    input[3] = "seq_id"
+                    input[4] = "taxid"
+                    input[5] = "length_normalized_score"
+                    input[6] = "12908"
+                    input[7] = "aligner"
+                    '''
+                }
+            }
+
+        }
+        when {
+            params {
+                col_keep_no_prefix = ["seq_id", "sample", "aligner_taxid_lca"]
+                col_keep_add_prefix = ["genome_id_all"]
+                column_prefix = "prim_align_"
+            }
+            workflow {
+                """
+                input[0] = LCA_TSV.out.output
+                input[1] = SORT_TSV.out.sorted
+                input[2] = params.col_keep_no_prefix
+                input[3] = params.col_keep_add_prefix
+                input[4] = params.column_prefix
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            
+            def lcaData = path(workflow.out.lca_tsv[0]).csv(sep: "\t", decompress: true)
+            def alignerData = path(workflow.out.aligner_tsv[0]).csv(sep: "\t", decompress: true)
+            def outputData = path(workflow.out.viral_hits_tsv[0]).csv(sep: "\t", decompress: true)
+            
+            def colsNoPrefix = params.col_keep_no_prefix
+            def colsAddPrefix = params.col_keep_add_prefix
+            
+            validateOutputStructure(outputData, colsNoPrefix, colsAddPrefix, params.column_prefix)
+            
+            def outputSeqIds = outputData.columns["seq_id"].toSet()
+            def lcaSeqIds = lcaData.columns["seq_id"].toSet()
+            def alignerSeqIds = alignerData.columns["seq_id"].toSet()
+            validateJoinIntegrity(outputSeqIds, lcaSeqIds, alignerSeqIds)
+            
+            def primaryAlignerSeqIdsSet = getPrimaryAlignmentSeqIds(alignerData)
+            def expectedSeqIds = primaryAlignerSeqIdsSet.intersect(lcaSeqIds)
+            assert outputSeqIds == expectedSeqIds
+            
+            validateDataIntegrity(outputData, lcaData, alignerData, colsNoPrefix, colsAddPrefix, params.column_prefix)
+        }
+    }
+
+
+    test("Should handle empty input files") {
+        tag "empty_input"
+        tag "expect_success"
+        
+        setup {
+            run("COPY_FILE_BARE", alias: "COPY_LCA_EMPTY") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/toy-data/empty_file.txt"
+                    input[1] = "empty_lca.txt"
+                    '''
+                }
+            }
+            run("GZIP_FILE", alias: "GZIP_LCA_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(COPY_LCA_EMPTY.out)
+                    '''
+                }
+            }
+            run("COPY_FILE_BARE", alias: "COPY_BOWTIE_EMPTY") {
+                script "modules/local/copyFile/main.nf"
+                process {
+                    '''
+                    input[0] = "${projectDir}/test-data/toy-data/empty_file.txt"
+                    input[1] = "empty_bowtie.txt"
+                    '''
+                }
+            }
+            run("GZIP_FILE", alias: "GZIP_BOWTIE_EMPTY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(COPY_BOWTIE_EMPTY.out)
+                    '''
+                }
+            }
+        }
+
+        when {
+            params {
+                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca"]
+                col_keep_add_prefix = ["genome_id_all"]
+                column_prefix = "prim_align_"
+            }
+            workflow {
+                """
+                input[0] = GZIP_LCA_EMPTY.out
+                input[1] = GZIP_BOWTIE_EMPTY.out
+                input[2] = params.col_keep_no_prefix
+                input[3] = params.col_keep_add_prefix
+                input[4] = params.column_prefix
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            
+            def outputFile = path(workflow.out.viral_hits_tsv[0])
+            assert outputFile.exists()
+            
+            def outputLines = outputFile.linesGzip.size()
+            assert outputLines == 0
+        }
+    }
+    test("Should handle file with header only") {
+        tag "empty_input"
+        tag "header_only"
+        tag "expect_success"
+        
+        setup {
+            run("GZIP_FILE", alias: "GZIP_BOWTIE2_SAM_PROCESSED_HEADER_ONLY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/process-lca-aligner/header-only-bowtie2-sam-processed.tsv"))
+                    '''
+                }
+            }
+            run("GZIP_FILE", alias: "GZIP_LCA_HEADER_ONLY") {
+                script "modules/local/gzipFile/main.nf"
+                process {
+                    '''
+                    input[0] = Channel.of("test")
+                        | combine(Channel.of("${projectDir}/test-data/toy-data/process-lca-aligner/header-only-lca.tsv"))
+                    '''
+                }
+            }
+        }
+
+        when {
+            params {
+                col_keep_no_prefix = ["seq_id", "aligner_taxid_lca", "aligner_taxid_top", 
+                                      "aligner_length_normalized_score_mean", "aligner_taxid_lca_combined",
+                                      "aligner_n_assignments_combined", "aligner_length_normalized_score_mean_combined",
+                                      "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
+                                      "aligner_length_normalized_score_mean_artificial"]
+                col_keep_add_prefix = ["genome_id_all", "taxid_all", "fragment_length", 
+                                       "best_alignment_score", "best_alignment_score_rev",
+                                       "edit_distance", "edit_distance_rev", "ref_start", 
+                                       "ref_start_rev", "query_len", "query_len_rev",
+                                       "query_seq", "query_seq_rev", "query_rc", 
+                                       "query_rc_rev", "query_qual", "query_qual_rev", 
+                                       "pair_status"]
+                column_prefix = "prim_align_"
+            }
+            workflow {
+                """
+                input[0] = GZIP_LCA_HEADER_ONLY.out
+                input[1] = GZIP_BOWTIE2_SAM_PROCESSED_HEADER_ONLY.out
+                input[2] = params.col_keep_no_prefix
+                input[3] = params.col_keep_add_prefix
+                input[4] = params.column_prefix
+                 """
+            }
+        }
+
+        then {
+            assert workflow.success
+            
+            def outputFile = path(workflow.out.viral_hits_tsv[0])
+            assert outputFile.exists()
+            
+            def outputLines = outputFile.linesGzip
+            assert outputLines.size() == 1
+
+            def colsNoPrefix = params.col_keep_no_prefix
+            def colsAddPrefix = params.col_keep_add_prefix
+            
+            for (col in colsNoPrefix) {
+                outputLines.contains(col)
+            }
+            
+            for (col in colsAddPrefix) {
+                outputLines.contains("${params.column_prefix}${col}".toString())
+            }
+        }
+    }
+}

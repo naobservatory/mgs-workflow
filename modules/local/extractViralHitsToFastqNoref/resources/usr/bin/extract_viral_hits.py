@@ -6,7 +6,6 @@ import time
 import datetime
 import gzip
 import bz2
-import os
 
 def print_log(message):
     print("[", datetime.datetime.now(), "]  ", message, sep="")

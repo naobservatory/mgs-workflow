@@ -37,13 +37,13 @@ workflow TAXONOMY {
         kraken_headers = "pc_reads_total,n_reads_clade,n_reads_direct,n_minimizers_total,n_minimizers_distinct,rank,taxid,name"
         kraken_head_ch = HEAD_KRAKEN_REPORTS(kraken_ch.report, kraken_headers, "kraken_report")
         kraken_label_ch = LABEL_KRAKEN_REPORTS(kraken_head_ch.output, "sample", "kraken_report")
-        kraken_combined_ch = kraken_label_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
+        kraken_combined_ch = kraken_label_ch.output.map{ _sample, file -> file }.collect().ifEmpty([])
         kraken_merge_ch = CONCATENATE_KRAKEN_REPORTS(kraken_combined_ch, "kraken_reports")
         // Run Bracken and munge reports
         bracken_ch = BRACKEN(kraken_ch.report, kraken_db_ch, classification_level, bracken_threshold) // NB: Not streamed
         bracken_rehead_ch = REHEAD_BRACKEN(bracken_ch, "taxonomy_id,taxonomy_lvl,kraken_assigned_reads", "taxid,rank,kraken2_assigned_reads")
         bracken_label_ch = LABEL_BRACKEN(bracken_rehead_ch.output, "sample", "bracken")
-        bracken_combined_ch = bracken_label_ch.output.map{ sample, file -> file }.collect().ifEmpty([])
+        bracken_combined_ch = bracken_label_ch.output.map{ _sample, file -> file }.collect().ifEmpty([])
         bracken_merge_ch = CONCATENATE_BRACKEN(bracken_combined_ch, "bracken")
     emit:
         input_reads = reads_ch

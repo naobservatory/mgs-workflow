@@ -55,8 +55,8 @@ nextflow_process {
         }
     }
 
-    test("Should fail when input file is empty (no header)"){
-        tag "expect_failed"
+    test("Should succeed when input file is empty (no header)"){
+        tag "expect_success"
         tag "empty_input"
         when {
             params {
@@ -73,10 +73,11 @@ nextflow_process {
             }
         }
         then {
-            assert process.failed
-            assert process.exitStatus == 1
-            assert !process.errorReport.contains("ValueError: Field not found in header")
-            assert process.errorReport.contains("ValueError: No header to select fields from.")
+            // Should run without failures
+            assert process.success
+            // Output file should be empty
+            def outputFile = path(process.out.output[0][1])
+            assert outputFile.text == ""
         }
     }
 

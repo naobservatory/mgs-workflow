@@ -10,6 +10,7 @@ include { LOAD_DOWNSTREAM_DATA } from "../subworkflows/local/loadDownstreamData"
 include { PREPARE_GROUP_TSVS } from "../subworkflows/local/prepareGroupTsvs"
 include { MARK_VIRAL_DUPLICATES } from "../subworkflows/local/markViralDuplicates"
 include { VALIDATE_VIRAL_ASSIGNMENTS } from "../subworkflows/local/validateViralAssignments"
+include { COUNT_READS_PER_CLADE } from "../modules/local/countReadsPerClade"
 include { COPY_FILE_BARE as COPY_VERSION } from "../modules/local/copyFile"
 include { COPY_FILE_BARE as COPY_INPUT } from "../modules/local/copyFile"
 
@@ -28,10 +29,13 @@ workflow DOWNSTREAM {
         group_ch = PREPARE_GROUP_TSVS.out.groups
         // 3. Mark duplicates
         MARK_VIRAL_DUPLICATES(group_ch, params.aln_dup_deviation)
-        // 4. Validate taxonomic assignments
+        // Prepare inputs for clade counting and validating taxonomic assignments
         viral_db_path = "${params.ref_dir}/results/total-virus-db-annotated.tsv.gz"
-        viral_db = Channel.of(viral_db_path)
-        dup_ch = MARK_VIRAL_DUPLICATES.out.dup.map{ label, tab, stats -> [label, tab] }
+        viral_db = channel.value(viral_db_path)
+        dup_ch = MARK_VIRAL_DUPLICATES.out.dup.map{ label, tab, _stats -> [label, tab] }
+        // 4. Generate clade counts
+        COUNT_READS_PER_CLADE(dup_ch, viral_db)
+        // 5. Validate taxonomic assignments
         VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db,
             params.validation_cluster_identity, 15, params.validation_n_clusters,
             params.ref_dir, params.blast_db_prefix,
@@ -52,5 +56,8 @@ workflow DOWNSTREAM {
        input_downstream = params_ch.mix(input_file_ch)
        logging_downstream = time_ch.mix(version_ch)
        intermediates_downstream = VALIDATE_VIRAL_ASSIGNMENTS.out.blast_results
-       results_downstream = MARK_VIRAL_DUPLICATES.out.dup.mix(VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits)
+       results_downstream = MARK_VIRAL_DUPLICATES.out.dup.mix(
+                                COUNT_READS_PER_CLADE.out.output,
+                                VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits
+                            )
 }    

@@ -2,9 +2,6 @@
 | WORKFLOW: PREPROCESSING, TAXONMIC PROFILING AND HUMAN VIRUS ANALYSIS ON SHORT-READ MGS DATA (EITHER SINGLE-END OR PAIRED-END) |
 ***********************************************************************************************/
 
-import groovy.json.JsonOutput
-import java.time.LocalDateTime
-
 /***************************
 | MODULES AND SUBWORKFLOWS |
 ***************************/
@@ -43,7 +40,6 @@ workflow RUN {
 
     // Setting reference paths
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
-    blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet and check platform
     LOAD_SAMPLESHEET(params.sample_sheet, params.platform, false)
@@ -56,18 +52,20 @@ workflow RUN {
 
     // Extract and count human-viral reads
     if ( params.platform == "ont" ) {
-        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir)
+        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.taxid_artificial)
         hits_fastq = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_ONT.out.hits_final
-        hits_unfiltered = Channel.empty()
+        inter_lca = EXTRACT_VIRAL_READS_ONT.out.inter_lca
+        inter_aligner = EXTRACT_VIRAL_READS_ONT.out.inter_minimap2
         bbduk_match = Channel.empty()
         bbduk_trimmed = Channel.empty()
      } else {
-        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
-            params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, params.bt2_score_threshold,
+            params.adapters, params.cutadapt_error_rate, "1", "24", "viral", params.taxid_artificial)
         hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
-        hits_unfiltered = EXTRACT_VIRAL_READS_SHORT.out.hits_unfiltered
+        inter_lca = EXTRACT_VIRAL_READS_SHORT.out.inter_lca
+        inter_aligner = EXTRACT_VIRAL_READS_SHORT.out.inter_bowtie
         bbduk_match = EXTRACT_VIRAL_READS_SHORT.out.bbduk_match
         bbduk_trimmed = EXTRACT_VIRAL_READS_SHORT.out.bbduk_trimmed
     }
@@ -103,7 +101,7 @@ workflow RUN {
     index_compatibility_ch = COPY_INDEX_COMPAT(Channel.fromPath(index_min_pipeline_version_path), index_min_pipeline_version_newpath)
 
     // Prepare other publishing variables
-    params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
+    params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "params-run.json")
     time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
     pipeline_version_newpath = pipeline_version_path.getFileName().toString()
@@ -119,7 +117,7 @@ workflow RUN {
     emit:
         input_run = index_params_ch.mix(samplesheet_ch, adapters_ch, params_ch)
         logging_run = index_pipeline_version_ch.mix(index_compatibility_ch, time_ch, version_ch, pipeline_compatibility_ch)
-        intermediates_run = hits_unfiltered.mix(hits_fastq)
+        intermediates_run = hits_fastq.mix(inter_lca, inter_aligner)
         reads_raw_viral = bbduk_match
         reads_trimmed_viral = bbduk_trimmed
         // Lots of results; split across 2 channels (QC, and other)
