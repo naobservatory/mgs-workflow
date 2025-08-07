@@ -41,10 +41,10 @@ workflow EXTRACT_VIRAL_READS_ONT {
                               "aligner_length_normalized_score_mean", "aligner_taxid_lca_combined",
                               "aligner_n_assignments_combined", "aligner_length_normalized_score_mean_combined",
                               "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
-                              "aligner_length_normalized_score_mean_artificial"]
+                              "aligner_length_normalized_score_mean_artificial", "query_len", "query_seq",  
+                               "query_qual"]
         col_keep_add_prefix = ["genome_id_all", "taxid_all", "best_alignment_score", "edit_distance",  
-                               "ref_start", "query_len", "query_seq",  
-                               "query_rc", "query_qual"]
+                               "ref_start", "query_rc"]
         // Filter reads by length and quality scores
         filtered_ch = FILTLONG(reads_ch, 50, 15000, 90)
         // Mask non-complex read sections

@@ -53,6 +53,7 @@ nextflow_process {
             expected_rows_by_taxid.each { taxid, expected_row ->
                 def output_row = output_rows_by_taxid[taxid]
                 assert output_row != null, "Missing taxid ${taxid} in output"
+                assert output_row.group == expected_row.group
                 assert output_row.parent_taxid == expected_row.parent_taxid
                 assert output_row.reads_direct_total == expected_row.reads_direct_total
                 assert output_row.reads_direct_dedup == expected_row.reads_direct_dedup
@@ -95,7 +96,7 @@ nextflow_process {
             
             // Check header is correct
             def header = lines[0]
-            def expected_header = "taxid\tparent_taxid\treads_direct_total\treads_direct_dedup\treads_clade_total\treads_clade_dedup"
+            def expected_header = "group\ttaxid\tparent_taxid\treads_direct_total\treads_direct_dedup\treads_clade_total\treads_clade_dedup"
             assert header == expected_header
         }
     }
@@ -197,6 +198,46 @@ nextflow_process {
             assert process.failed
             assert process.exitStatus == 1
             assert process.errorReport.contains("Error: Missing required column 'parent_taxid' in taxonomy file: test-taxonomy-missing-parent.tsv")
+        }
+    }
+
+    test("Should fail when reads file missing group column") {
+        tag "expect_failed"
+        tag "missing_columns"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("test")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/count-reads-per-clade/test-reads-missing-group.tsv"))
+                input[1] = "${projectDir}/test-data/toy-data/count-reads-per-clade/test-taxonomy.tsv"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("Error: Missing required column 'group' in reads file: test-reads-missing-group.tsv")
+        }
+    }
+
+    test("Should fail when group doesn't match reads file") {
+        tag "expect_failed"
+        tag "group_mismatch"
+        when {
+            params {}
+            process {
+                '''
+                input[0] = Channel.of("wrong_group")
+                    | combine(Channel.of("${projectDir}/test-data/toy-data/count-reads-per-clade/test-reads.tsv"))
+                input[1] = "${projectDir}/test-data/toy-data/count-reads-per-clade/test-taxonomy.tsv"
+                '''
+            }
+        }
+        then {
+            assert process.failed
+            assert process.exitStatus == 1
+            assert process.errorReport.contains("Expected group 'wrong_group', found 'test'")
         }
     }
 
