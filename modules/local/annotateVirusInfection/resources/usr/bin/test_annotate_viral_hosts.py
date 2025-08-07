@@ -825,14 +825,17 @@ class TestMarkDescendantInfections:
         │   └── child32 (INCONSISTENT)
         └── child4 (INCONSISTENT)       # Tests INCONSISTENT propagation
             ├── child41 (UNRESOLVED)
-            └── child42 (INCONSISTENT)
+            ├── child42 (INCONSISTENT)
+            └── child43 (MAYBE_INCONSISTENT) # Test INCONSISTENT overrides MAYBE_INCONSISTENT
+                ├── child431 (INCONSISTENT)
+                └── child432 (UNRESOLVED)
         """
         return {
             "root": {"child1", "child2", "child3", "child4"},
             "child1": {"child11", "child12", "child13", "child14", "child15", "child16"},
             "child2": {"child21", "child22"},
             "child3": {"child31", "child32"},
-            "child4": {"child41", "child42"},
+            "child4": {"child41", "child42", "child43"},
             "child11": set(),
             "child12": set(),
             "child13": set(),
@@ -845,12 +848,15 @@ class TestMarkDescendantInfections:
             "child32": set(),
             "child41": set(),
             "child42": set(),
+            "child43": {"child431", "child432"},
             "child141": set(),
             "child142": set(),
             "child151": set(),
             "child152": set(),
             "child161": set(),
             "child162": set(),
+            "child431": set(),
+            "child432": set(),
         }
     
 
@@ -880,7 +886,10 @@ class TestMarkDescendantInfections:
         │   └── child32 (INCONSISTENT/0)
         └── child4 (INCONSISTENT/0)
             ├── child41 (UNRESOLVED/-1)
-            └── child42 (INCONSISTENT/0)
+            ├── child42 (INCONSISTENT/0)
+            └── child43 (MAYBE_INCONSISTENT/-2)
+                ├── child431 (INCONSISTENT/0)
+                └── child432 (UNRESOLVED/-1)
         
         Expected after propagation:
         - All descendants of child1 become MATCH (MATCH overrides all)
@@ -913,6 +922,9 @@ class TestMarkDescendantInfections:
             "child4": INCONSISTENT,
             "child41": UNRESOLVED,
             "child42": INCONSISTENT,
+            "child43": MAYBE_INCONSISTENT,
+            "child431": INCONSISTENT,
+            "child432": UNRESOLVED,
         })
         
         # Act
@@ -951,6 +963,9 @@ class TestMarkDescendantInfections:
         assert result["child4"] == INCONSISTENT
         assert result["child41"] == INCONSISTENT  # Inherits from INCONSISTENT parent
         assert result["child42"] == INCONSISTENT  # Already INCONSISTENT, preserved
+        assert result["child43"] == INCONSISTENT  # INCONSISTENT overrides MAYBE_INCONSISTENT
+        assert result["child431"] == INCONSISTENT  # Already INCONSISTENT, preserved
+        assert result["child432"] == INCONSISTENT  # INCONSISTENT overrides UNRESOLVED
         
         # Verify no UNRESOLVED or MAYBE_INCONSISTENT states remain
         assert UNRESOLVED not in result.values
