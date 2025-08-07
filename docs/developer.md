@@ -220,7 +220,7 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
 7. **Request review** from a maintainer on your changes. Current maintainers are jeffkaufman, willbradshaw, katherine-stansifer, and harmonbhasin. 
     - Make sure to assign the PR to the desired reviewer so that they see your PR (put them in the "Assignees" section on GitHub as well as in the "Reviewers" section).
         - If the reviewer is not satisfied and requests changes, they should then change the "Assignee" to be the person who originally submitted the code. This may result in a few loops of "Assignee" being switched between the reviewer and the author.
-9. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch! 
+8. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch! 
 
 
 ## New releases
