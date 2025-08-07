@@ -142,6 +142,13 @@ aws s3 cp /path/to/my_dataset s3://nao-testing/my_dataset/ --acl public-read
 
 To run the tests locally, you need to make sure that you have a powerful enough compute instance (at least 4 cores, 14GB of RAM, and 32GB of storage). On AWS EC2, we recommend the `m5.2xlarge`. Note that you may want a more powerful instance when running tests in parallel (as described below).
 
+> [!NOTE]
+> Before running tests, to allow access to testing datasets/indexes on AWS, you will need to set up AWS credentials as described in [installation.md](installation.md), and then export them as described in the installation doc: 
+>
+> ```
+> eval "$(aws configure export-credentials --format env)"
+> ``
+
 To run specific tests, you can specify the tests by filename or by tag. Individual tests generally complete quickly (seconds to minutes):
 ```
 nf-test test tests/main.test.nf # Runs all tests in the main.test.nf file

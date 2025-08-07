@@ -4,19 +4,21 @@ process KRAKEN {
     label "kraken_resources"
     input:
         tuple val(sample), path(reads)
-        path db_path
+        val db_path
     output:
         tuple val(sample), path("${sample}.output.gz"), emit: output
         tuple val(sample), path("${sample}.report.gz"), emit: report
         tuple val(sample), path("${sample}_in.fastq.gz"), emit: input
     shell:
         '''
+        # Download Kraken2 database if not already present
+        download-db.sh !{db_path} !{params.db_download_timeout}
         # Define input/output
-        db=!{db_path}
         out=!{sample}.output
         report=!{sample}.report
         # Define parameters
-        par="--db ${db} --use-names --report-minimizer-data --threads !{task.cpus} --report ${report}"
+        db_name=\$(basename "!{db_path}")
+        par="--db /scratch/\${db_name} --use-names --report-minimizer-data --threads !{task.cpus} --report ${report} --memory-mapping"
         # Run Kraken
         zcat !{reads} | kraken2 ${par} /dev/fd/0 > ${out}
         # Make empty output files if needed

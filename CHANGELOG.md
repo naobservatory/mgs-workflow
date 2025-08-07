@@ -4,7 +4,16 @@
 - Updated Github Actions to retry downloading nf-test since it often fails to download on the first try due to a 403 error
 - Increased resources for PROCESS_VIRAL_MINIMAP2_SAM to avoid frequent out-of-memory errors
 - Fixed line iteration bug in tests for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATA
-- Added new Dockerfiles (custom containers that will be required for caching of large reference files), along with the utility script `bin/build-push-docker.sh` to build and push to Dockerhub.
+- Added caching of large reference files to reduce AWS Batch loading times:
+    - Implemented for Kraken2 and BLAST databases and Minimap2 and Bowtie2 indexes. 
+    - When using the AWS Batch executor, we now mount a directory (`/scratch`) in every container.
+        - This allows processes on the same compute node to share reference files.
+    - At the beginning of the KRAKEN2, BLAST, MINIMAP2, and BOWTIE2 processes, we now:
+         - Check if relevant reference files are already cached; if not, download then to `/scratch`:
+         - Use file locking (via the Unix utility `flock`) to prevent simultaneous downloads of the same database.
+         - This logic is implemented in the shared bash script `bin/download-db.sh`.
+- Added new Dockerfiles (custom containers required for the above caching), along with the utility script `bin/build-push-docker.sh` to build and push to Dockerhub.
+- Updated documentation to explain caching of new reference files and to document how to update docker images.
 
 # v3.0.0.0
 
