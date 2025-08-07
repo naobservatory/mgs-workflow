@@ -1,4 +1,4 @@
-seq_id	prim_align_genome_id_all	prim_align_ref_start	prim_align_ref_start_rev	prim_align_query_qual	prim_align_query_qual_rev	exemplar_exp_0	exemplar_exp_1	exemplar_exp_2	dup_comment
+seq_id	prim_align_genome_id_all	prim_align_ref_start	prim_align_ref_start_rev	query_qual	query_qual_rev	exemplar_exp_0	exemplar_exp_1	exemplar_exp_2	dup_comment
 grp_1_0	test_gid_1	1	100	IIIIII	IIIIII	grp_1_1	grp_1_1	grp_1_1	Exact duplicate with grp_1_1
 grp_1_1	test_gid_1	1	100	JJJJJJ	JJJJJJ	grp_1_1	grp_1_1	grp_1_1	Group 1 exemplar
 grp_1_2	test_gid_1	100	1	JJJJJJ	JJJJJJ	grp_1_1	grp_1_1	grp_1_1	RC duplicate with grp_1_1

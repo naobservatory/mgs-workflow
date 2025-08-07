@@ -133,7 +133,7 @@ aws s3 cp /path/to/my_dataset s3://nao-testing/my_dataset/ --acl public-read
 
 ### Running tests
 
-To run the tests locally, you need to make sure that you have a powerful enough compute instance (at least 4 cores, 14GB of RAM, and 32GB of storage). On AWS EC2, we recommend the `m5.xlarge`. Note that you may want a more powerful instance when running tests in parallel (as described below).
+To run the tests locally, you need to make sure that you have a powerful enough compute instance (at least 4 cores, 14GB of RAM, and 32GB of storage). On AWS EC2, we recommend the `m5.2xlarge`. Note that you may want a more powerful instance when running tests in parallel (as described below).
 
 To run specific tests, you can specify the tests by filename or by tag. Individual tests generally complete quickly (seconds to minutes):
 ```
@@ -213,13 +213,14 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
     - If you make any changes that affect the output of the pipeline, list/describe the changes that occurred in the pull request. 
 3. **Update the `CHANGELOG.md` file** with the changes that you are making, and update the `pipeline-version.txt` file with the new version number.
     - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `master`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions both in `CHANGELOG.md` and in `pipeline-version.txt`, and should only be removed when preparing to merge to `master`.
-4. **Pass automated tests on GitHub Actions**. These run automatically when you open a pull request.
-5. **Write a meaningful description** of your changes in the PR description and give it a meaningful title. 
+4. **Update the expected-output-{run,downstream}.txt files** with any changes to the output of the RUN or DOWNSTREAM workflows.
+5. **Pass automated tests on GitHub Actions**. These run automatically when you open a pull request.
+6. **Write a meaningful description** of your changes in the PR description and give it a meaningful title. 
     - In comments, feel free to flag any open questions or places where you need careful review. 
-6. **Request review** from a maintainer on your changes. Current maintainers are jeffkaufman, willbradshaw, katherine-stansifer, and harmonbhasin. 
+7. **Request review** from a maintainer on your changes. Current maintainers are jeffkaufman, willbradshaw, katherine-stansifer, and harmonbhasin. 
     - Make sure to assign the PR to the desired reviewer so that they see your PR (put them in the "Assignees" section on GitHub as well as in the "Reviewers" section).
         - If the reviewer is not satisfied and requests changes, they should then change the "Assignee" to be the person who originally submitted the code. This may result in a few loops of "Assignee" being switched between the reviewer and the author.
-7. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch! 
+8. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch! 
 
 
 ## New releases
