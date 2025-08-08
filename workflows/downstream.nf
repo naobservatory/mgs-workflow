@@ -27,6 +27,7 @@ workflow DOWNSTREAM {
         // 2. Add group information, partition into per-group TSVs
         PREPARE_GROUP_TSVS(input_ch)
         group_ch = PREPARE_GROUP_TSVS.out.groups
+        zero_vv_logs_ch = PREPARE_GROUP_TSVS.out.zero_vv_logs
         // 3. Mark duplicates
         MARK_VIRAL_DUPLICATES(group_ch, params.aln_dup_deviation)
         // Prepare inputs for clade counting and validating taxonomic assignments
@@ -58,6 +59,7 @@ workflow DOWNSTREAM {
        intermediates_downstream = VALIDATE_VIRAL_ASSIGNMENTS.out.blast_results
        results_downstream = MARK_VIRAL_DUPLICATES.out.dup.mix(
                                 COUNT_READS_PER_CLADE.out.output,
-                                VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits
+                                VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits,
+                                zero_vv_logs_ch
                             )
 }    

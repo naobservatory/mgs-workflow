@@ -1,0 +1,6 @@
+seq_id	sample	aligner_taxid_lca	aligner_taxid_top	aligner_length_normalized_score_mean	prim_align_genome_id_all	prim_align_taxid_all
+read_1	SampleA	1239565	1239565	29.86	NC_030922.1	1239565
+read_2	SampleA	36427	36427	32.74	NC_007574.1	36427
+read_3	SampleB	568715	568715	45.55	NC_011400.1	568715
+read_4	SampleB	1239565	1239565	44.35	NC_030922.1	1239565
+read_5	SampleD	36427	36427	38.92	NC_007574.1	36427

@@ -1,4 +1,8 @@
-# v3.0.0.0-dev
+# v3.0.0.1-dev
+
+- Updated DOWNSTREAM workflow to work on viral hits tables where a sample has no viral hits, but is in the grouping specification.
+
+# v3.0.0.0
 - Completed integration of LCA into the MGS Workflow:
     - Integrated changes from EXTRACT_VIRAL_READS_SHORT_LCA into EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT_LCA into EXTRACT_VIRAL_READS_ONT, getting rid of the distinction of 'LCA'
     - Updated column names for output viral hits table to make them more user-friendly
