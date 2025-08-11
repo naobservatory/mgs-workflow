@@ -20,23 +20,15 @@ include { CONVERT_FASTQ_FASTA } from "../../../modules/local/convertFastqFasta"
 workflow CLUSTER_VIRAL_ASSIGNMENTS {
     take:
         reads_ch // Single-end or interleaved FASTQ sequences
-        params_map // Map containing clustering parameters
+        cluster_identity // Identity threshold for VSEARCH clustering
+        cluster_min_len // Minimum sequence length for VSEARCH clustering
+        n_clusters // Number of cluster representatives to validate for each species
         single_end // Is the input read data single-ended (true) or interleaved (false)?
     main:
-        // Extract parameters from map
-        cluster_identity = params_map.cluster_identity
-        cluster_min_len = params_map.cluster_min_len
-        n_clusters = params_map.n_clusters
-        
         // 1. Merge and join interleaved sequences to produce a single sequence per input pair
         merge_ch = MERGE_JOIN_READS(reads_ch, single_end)
         // 2. Cluster merged reads
-        vsearch_params = [
-            identity_threshold: cluster_identity,
-            identity_method: 0,
-            min_seq_length: cluster_min_len
-        ]
-        cluster_ch = VSEARCH_CLUSTER(merge_ch.single_reads, vsearch_params)
+        cluster_ch = VSEARCH_CLUSTER(merge_ch.single_reads, cluster_identity, 0, cluster_min_len)
         // 3. Extract clustering information and representative IDs
         cluster_info_ch = PROCESS_VSEARCH_CLUSTER_OUTPUT(cluster_ch.summary, n_clusters, "vsearch")
         // 4. Extract representative sequences for the N largest clusters for each species

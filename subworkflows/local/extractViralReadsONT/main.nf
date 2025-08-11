@@ -25,12 +25,9 @@ include { PROCESS_LCA_ALIGNER_OUTPUT } from "../../../subworkflows/local/process
 workflow EXTRACT_VIRAL_READS_ONT {
     take:
         reads_ch
-        params_map
+        ref_dir
+        taxid_artificial
     main:
-        // Extract parameters from map
-        ref_dir = params_map.ref_dir
-        taxid_artificial = params_map.taxid_artificial
-        
         // Get reference_paths
         minimap2_virus_index = "${ref_dir}/results/mm2-virus-index"
         minimap2_human_index = "${ref_dir}/results/mm2-human-index"
@@ -91,15 +88,12 @@ workflow EXTRACT_VIRAL_READS_ONT {
         ]
         lca_ch = LCA_TSV(processed_minimap2_sorted_ch.sorted, nodes_db, names_db, lca_params)
         // Process LCA and Minimap2 columns
-        lca_aligner_params = [
-            col_keep_no_prefix: col_keep_no_prefix,
-            col_keep_add_prefix: col_keep_add_prefix,
-            column_prefix: "prim_align_"
-        ]
         processed_ch = PROCESS_LCA_ALIGNER_OUTPUT(
             lca_ch.output,
             processed_minimap2_sorted_ch.sorted,
-            lca_aligner_params
+            col_keep_no_prefix,
+            col_keep_add_prefix,
+            "prim_align_"
         )
         // Pull out clean reads from mapped reads to feed into BLAST
         virus_fastq_ch = virus_minimap2_ch.reads_mapped

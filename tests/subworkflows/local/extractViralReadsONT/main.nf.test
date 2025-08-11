@@ -26,12 +26,9 @@ nextflow_workflow {
         when {
             workflow {
                 '''
-                def ont_params = [
-                    ref_dir: params.ref_dir,
-                    taxid_artificial: "81077"
-                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = ont_params
+                input[1] = params.ref_dir
+                input[2] = "81077"
                 '''
             }
         }
@@ -82,12 +79,9 @@ nextflow_workflow {
             
             workflow {
                 '''
-                def ont_params = [
-                    ref_dir: params.ref_dir,
-                    taxid_artificial: "81077"
-                ]
                 input[0] = GZIP_EMPTY_FORWARD.out
-                input[1] = ont_params
+                input[1] = params.ref_dir
+                input[2] = "81077"
                 '''
             }
         }

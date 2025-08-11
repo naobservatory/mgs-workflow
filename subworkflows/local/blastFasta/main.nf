@@ -23,10 +23,17 @@ include { LCA_TSV } from "../../../modules/local/lcaTsv"
 workflow BLAST_FASTA {
     take:
         query_fasta // Fasta of sequences to align
-        params_map // Map containing all parameters
+        ref_dir // Path to reference directory containing BLAST DB
+        params_map // Map containing other parameters: 
+                   // blast_db_prefix: Prefix for BLAST reference DB files (e.g. "nt")
+                   // perc_id: Minimum %ID required for BLAST to return an alignment
+                   // qcov_hsp_perc: Minimum query coverage required for BLAST to return an alignment
+                   // blast_max_rank: Only keep alignments that are in the top-N for that query by bitscore
+                   // blast_min_frac: Only keep alignments that have at least this fraction of the best bitscore for that query
+                   // taxid_artificial: Parent taxid for artificial sequences in NCBI taxonomy
+                   // lca_prefix: Prefix for LCA column names (e.g. "blast")
     main:
         // Extract parameters from map
-        ref_dir = params_map.ref_dir
         blast_db_prefix = params_map.blast_db_prefix
         perc_id = params_map.perc_id
         qcov_hsp_perc = params_map.qcov_hsp_perc

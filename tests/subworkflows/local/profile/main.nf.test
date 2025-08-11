@@ -27,17 +27,17 @@ nextflow_workflow {
             workflow {
                 '''
                 def profile_params = [
-                    ref_dir: "${params.ref_dir}",
                     min_kmer_fraction: "0.4",
                     k: "27",
                     ribo_suffix: "ribo",
                     bracken_threshold: "1",
-                    platform: "illumina"
+                    platform: "illumina",
                 ]
                 input[0] = GZIP_FILE.out
                 input[1] = "${params.ref_dir}/results/kraken_db"
-                input[2] = profile_params
-                input[3] = Channel.of(true)
+                input[2]: params.ref_dir
+                input[3]: Channel.of(true)
+                input[4] = profile_params
                 '''
             }
         }

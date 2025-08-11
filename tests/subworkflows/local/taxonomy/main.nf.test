@@ -109,12 +109,14 @@ nextflow_workflow {
                 '''
                 def taxonomy_params = [
                     classification_level: "D",
-                    bracken_threshold: "5"
+                    bracken_threshold: "5",
+                    single_end: true
+=
                 ]
                 input[0] = COPY_FILE.out
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = taxonomy_params
-                input[3] = LOAD_SAMPLESHEET.out.single_end
+                // input[3] = LOAD_SAMPLESHEET.out.single_end
                 '''
             }
         }

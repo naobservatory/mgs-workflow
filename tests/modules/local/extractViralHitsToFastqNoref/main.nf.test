@@ -26,7 +26,6 @@ nextflow_process {
                 process {
                     '''
                     def short_params = [
-                        ref_dir: params.ref_dir,
                         aln_score_threshold: params.bt2_score_threshold,
                         adapter_path: params.adapters,
                         cutadapt_error_rate: params.cutadapt_error_rate,
@@ -36,7 +35,8 @@ nextflow_process {
                         taxid_artificial: "81077"
                     ]
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                    input[1] = short_params
+                    input[1] = params.ref_dir
+                    input[2] = short_params
                     '''
                 }
             }
@@ -106,12 +106,9 @@ nextflow_process {
                 script "subworkflows/local/extractViralReadsONT/main.nf"
                 process {
                     '''
-                    def ont_params = [
-                        ref_dir: params.ref_dir,
-                        taxid_artificial: "81077"
-                    ]
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                    input[1] = ont_params
+                    input[1] = params.ref_dir
+                    input[2] = "81077"
                     '''
                 }
             }

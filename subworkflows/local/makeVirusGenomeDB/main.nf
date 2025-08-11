@@ -16,17 +16,24 @@ include { MASK_GENOME_FASTA } from "../../../modules/local/maskGenomeFasta"
 workflow MAKE_VIRUS_GENOME_DB {
     take:
         ncbi_viral_params // Parameters for downloading genomic sequences from NCBI's GenBank or RefSeq databases
+                          // Any additional sequence-specific options can be provided here, supplementing the default download settings.
         virus_db // TSV giving taxonomic structure and host infection status of virus taxids
-        params_map // Map containing all parameters
+        other_params // Map containing: 
+                     // - patterns_exclude: File of sequence header patterns to exclude from genome DB
+                     // - host_taxa: Tuple of host taxa to include
+                     // - adapters: FASTA file of adapters to maskkmer length to use for bbduk adapater masking in referenceK-mer size for masking low-complexity regions
+                     // - hdist: hdist (allowed mismatches) to use for bbduk adapter masking
+                     // - entropy: entropy cutoff for bbduk filtering of low-complexity regions
+                     // - polyx_len: minimum length of polyX runs to filter out with bbduk
     main:
         // Extract parameters from map
-        patterns_exclude = params_map.patterns_exclude
-        host_taxa = params_map.host_taxa
-        adapters = params_map.adapters
-        k = params_map.k
-        hdist = params_map.hdist
-        entropy = params_map.entropy
-        polyx_len = params_map.polyx_len
+        patterns_exclude = other_params.patterns_exclude
+        host_taxa = other_params.host_taxa
+        adapters = other_params.adapters
+        k = other_params.k
+        hdist = other_params.hdist
+        entropy = other_params.entropy
+        polyx_len = other_params.polyx_len
         
         // 1. Download viral Genbank
         dl_ch = DOWNLOAD_VIRAL_NCBI(ncbi_viral_params)

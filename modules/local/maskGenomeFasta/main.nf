@@ -5,7 +5,7 @@ process MASK_GENOME_FASTA {
     input:
         path(filtered_genomes)
         path(adapters)
-        val(params_map)
+        val(params_map) // k, hdist, entropy, polyx_len, name_pattern
     output:
         path("${name_pattern}-masked.fasta.gz"), emit: masked
 		path("${name_pattern}-mask-adapters-entropy.stats.txt"), emit: log1

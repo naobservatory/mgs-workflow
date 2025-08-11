@@ -6,32 +6,27 @@ process BOWTIE2 {
     input:
         tuple val(sample), path(reads_interleaved)
         path(index_dir)
-        val(params_map)
+        val(params_map) // par_string, suffix, remove_sq, debug, interleaved
     output:
-        tuple val(sample), path("${sample}_${suffix}_bowtie2_mapped.sam.gz"), emit: sam
-        tuple val(sample), path("${sample}_${suffix}_bowtie2_mapped.fastq.gz"), emit: reads_mapped
-        tuple val(sample), path("${sample}_${suffix}_bowtie2_unmapped.fastq.gz"), emit: reads_unmapped
-        tuple val(sample), path("${sample}_${suffix}_bowtie2_in.fastq.gz"), emit: input
+        tuple val(sample), path("${sample}_${params_map.suffix}_bowtie2_mapped.sam.gz"), emit: sam
+        tuple val(sample), path("${sample}_${params_map.suffix}_bowtie2_mapped.fastq.gz"), emit: reads_mapped
+        tuple val(sample), path("${sample}_${params_map.suffix}_bowtie2_unmapped.fastq.gz"), emit: reads_unmapped
+        tuple val(sample), path("${sample}_${params_map.suffix}_bowtie2_in.fastq.gz"), emit: input
     shell:
         '''
         set -euo pipefail
-        # Extract parameters from map
-        par_string="!{params_map.par_string}"
         suffix="!{params_map.suffix}"
-        remove_sq=!{params_map.remove_sq}
-        debug=!{params_map.debug}
-        interleaved=!{params_map.interleaved}
         # Prepare inputs
         idx="!{index_dir}/bt2_index"
         sam="!{sample}_${suffix}_bowtie2_mapped.sam.gz"
         al="!{sample}_${suffix}_bowtie2_mapped.fastq.gz"
         un="!{sample}_${suffix}_bowtie2_unmapped.fastq.gz"
-        io="-x ${idx} $([ "${interleaved}" = "true" ] && echo "--interleaved" || echo "") -"
-        par="--threads !{task.cpus} ${par_string}"
+        io="-x ${idx} !{params_map.interleaved ? "--interleaved" : ""} -"
+        par="--threads !{task.cpus} !{params_map.par_string}"
         # Set SAM flags based on whether data is paired-end or single-end
         # For paired-end: flag 12 = read unmapped (4) + mate unmapped (8)
         # For single-end: flag 4 = read unmapped
-        unmapped_flag="$([ "${interleaved}" = "true" ] && echo "12" || echo "4")"
+        unmapped_flag="!{params_map.interleaved ? "12" : "4"}"
         # Run pipeline
         # Outputs a SAM file for all reads, which is then partitioned based on alignment status
         #   - First branch (samtools view -u -f ${unmapped_flag} -) filters SAM to unmapped reads:
@@ -46,23 +41,23 @@ process BOWTIE2 {
         zcat !{reads_interleaved} \\
             | bowtie2 ${par} ${io} \\
             | tee \\
-                $([ "${debug}" = "true" ] && echo ">(gzip -c > test_all.sam.gz)" || echo "") \\
+                !{ params_map.debug ? ">(gzip -c > test_all.sam.gz)" : "" } \\
                 >(samtools view -u -f ${unmapped_flag} - \\
-                    $([ "${debug}" = "true" ] && echo "| tee >(samtools view -h - | gzip -c > test_unmapped.sam.gz)" || echo "") \\
+                    !{ params_map.debug ? "| tee >(samtools view -h - | gzip -c > test_unmapped.sam.gz)" : "" } \\
                     | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
                         -0 /dev/stdout -s /dev/stdout -N - \\
                     | sed '1~4 s/\\/\\([12]\\)\$/ \\1/' \\
                     | gzip -c > ${un}) \\
                 >(samtools view -u -G ${unmapped_flag} - \\
-                    $([ "${debug}" = "true" ] && echo "| tee >(samtools view -h - | gzip -c > test_mapped.sam.gz)" || echo "") \\
+                    !{ params_map.debug ? "| tee >(samtools view -h - | gzip -c > test_mapped.sam.gz)" : "" } \\
                     | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
                         -0 /dev/stdout -s /dev/stdout -N - \\
                     | sed '1~4 s/\\/\\([12]\\)\$/ \\1/' \\
                     | gzip -c > ${al}) \\
             | samtools view -h -G ${unmapped_flag} - \\
-            $([ "${remove_sq}" = "true" ] && echo "| grep -v '^@SQ'" || echo "") | gzip -c > ${sam}
+            !{ params_map.remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
         # Move input files for testing
-        in2="!{sample}_!{suffix}_bowtie2_in.fastq.gz"
+        in2="!{sample}_${suffix}_bowtie2_in.fastq.gz"
         ln -s !{reads_interleaved} ${in2}
         '''
 }

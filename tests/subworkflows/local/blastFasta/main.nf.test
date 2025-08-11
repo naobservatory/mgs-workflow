@@ -59,7 +59,6 @@ nextflow_workflow {
             workflow {
                 '''
                 def blast_fasta_params = [
-                    ref_dir: params.ref_dir,
                     blast_db_prefix: params.blast_db_prefix,
                     perc_id: params.perc_id,
                     qcov_hsp_perc: params.qcov_hsp_perc,
@@ -69,7 +68,8 @@ nextflow_workflow {
                     lca_prefix: params.lca_prefix
                 ]
                 input[0] = CONVERT_FASTQ_FASTA.out.output
-                input[1] = blast_fasta_params
+                input[1] = params.ref_dir
+                input[2] = blast_fasta_params
                 '''
             }
         }
@@ -159,7 +159,6 @@ nextflow_workflow {
             workflow {
                 '''
                 def blast_fasta_params = [
-                    ref_dir: params.ref_dir,
                     blast_db_prefix: params.blast_db_prefix,
                     perc_id: params.perc_id,
                     qcov_hsp_perc: params.qcov_hsp_perc,
@@ -169,7 +168,8 @@ nextflow_workflow {
                     lca_prefix: params.lca_prefix
                 ]
                 input[0] = CONVERT_FASTQ_FASTA.out.output
-                input[1] = blast_fasta_params
+                input[1] = params.ref_dir
+                input[2] = blast_fasta_params
                 '''
             }
         }
@@ -259,7 +259,6 @@ nextflow_workflow {
             workflow {
                 '''
                 def blast_fasta_params = [
-                    ref_dir: params.ref_dir,
                     blast_db_prefix: params.blast_db_prefix,
                     perc_id: params.perc_id,
                     qcov_hsp_perc: params.qcov_hsp_perc,
@@ -269,7 +268,8 @@ nextflow_workflow {
                     lca_prefix: params.lca_prefix
                 ]
                 input[0] = CONVERT_FASTQ_FASTA.out.output
-                input[1] = blast_fasta_params
+                input[1] = params.ref_dir
+                input[2] = blast_fasta_params
                 '''
             }
         }
@@ -340,7 +340,6 @@ nextflow_workflow {
             workflow {
                 '''
                 def blast_fasta_params = [
-                    ref_dir: params.ref_dir,
                     blast_db_prefix: params.blast_db_prefix,
                     perc_id: params.perc_id,
                     qcov_hsp_perc: params.qcov_hsp_perc,
@@ -350,7 +349,8 @@ nextflow_workflow {
                     lca_prefix: params.lca_prefix
                 ]
                 input[0] = GZIP_FILE.out
-                input[1] = blast_fasta_params
+                input[1] = params.ref_dir
+                input[2] = blast_fasta_params
                 '''
             }
         }

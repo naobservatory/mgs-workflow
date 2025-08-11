@@ -26,10 +26,10 @@ include { PROCESS_LCA_ALIGNER_OUTPUT } from "../../../subworkflows/local/process
 workflow EXTRACT_VIRAL_READS_SHORT {
     take:
         reads_ch
-        params_map
+        ref_dir
+        params_map // aln_score_threshold, adapter_path, cutadapt_error_rate, min_kmer_hits, k, bbduk_suffix, taxid_artificial
     main:
         // Extract parameters from map
-        ref_dir = params_map.ref_dir
         aln_score_threshold = params_map.aln_score_threshold
         adapter_path = params_map.adapter_path
         cutadapt_error_rate = params_map.cutadapt_error_rate
@@ -114,15 +114,12 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         ]
         lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db, lca_params)
         // 9. Process LCA and Bowtie2 columns
-        lca_aligner_params = [
-            col_keep_no_prefix: col_keep_no_prefix,
-            col_keep_add_prefix: col_keep_add_prefix,
-            column_prefix: "prim_align_"
-        ]
         processed_ch = PROCESS_LCA_ALIGNER_OUTPUT(
             lca_ch.output,
             bowtie2_tsv_ch.output,
-            lca_aligner_params
+            col_keep_no_prefix,
+            col_keep_add_prefix,
+            "prim_align_"
         )
         // 10. Extract filtered virus hits in FASTQ format
         fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ _sample, file -> file }.collect().ifEmpty([])
