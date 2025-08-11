@@ -28,14 +28,9 @@ workflow INDEX {
         start_time = new Date()
         start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
         // Build viral taxonomy and infection DB
-        virus_taxonomy_params = [
-            taxonomy_url: params.taxonomy_url,
-            virus_host_db_url: params.virus_host_db_url,
-            host_taxon_db: params.host_taxon_db,
-            virus_taxid: params.virus_taxid,
-            hard_exclude_taxids: params.viral_taxids_exclude_hard
-        ]
-        MAKE_VIRUS_TAXONOMY_DB(virus_taxonomy_params)
+        MAKE_VIRUS_TAXONOMY_DB(params.taxonomy_url, params.virus_host_db_url,
+            params.host_taxon_db, params.virus_taxid,
+            params.viral_taxids_exclude_hard)
         // Get reference DB of viral genomes of interest
         virus_genome_params = [
             patterns_exclude: params.genome_patterns_exclude,

@@ -16,9 +16,9 @@ include { INTERLEAVE_FASTQ } from "../../../modules/local/interleaveFastq"
 
 workflow SUBSET_TRIM {
     take:
-      reads_ch
-      params_map
-      single_end
+        reads_ch
+        single_end
+        params_map // n_reads, adapter_path, platform, random_seed
     main:
         // Extract parameters from map
         n_reads = params_map.n_reads

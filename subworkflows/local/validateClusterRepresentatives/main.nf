@@ -30,13 +30,10 @@ workflow VALIDATE_CLUSTER_REPRESENTATIVES {
     take:
         hits_tsv // Viral hits TSV, including seq_id and original taxid assignment
         lca_tsv // LCA TSV from validation against core_nt
-        params_map // Map containing reference paths and distance configuration
+        ref_dir // Path to reference directory containing taxonomy information
+        distance_params // Map specifying input taxid fields and output distance fields
     main:
-        // Extract parameters from map
-        ref_dir = params_map.ref_dir
-        distance_params = params_map.distance_params
-        
-        // Get reference paths
+        // 0. Get reference paths
         nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
         // 1. Prepare inputs for joining
         // Subset hits TSV to only seq_id and taxid columns

@@ -24,13 +24,10 @@ workflow TAXONOMY {
     take:
         reads_ch // Should be interleaved for paired-end data
         kraken_db_ch
-        params_map // classification_level, bracken_threshold, single_end
+        classification_level
+        bracken_threshold
+        single_end
     main:
-        // Extract parameters from map
-        classification_level = params_map.classification_level
-        bracken_threshold = params_map.bracken_threshold
-        single_end = params_map.single_end
-        
         // Merge and join interleaved sequences to produce a single sequence per input pair
         merge_ch = MERGE_JOIN_READS(reads_ch, single_end)
         single_read_ch = merge_ch.single_reads

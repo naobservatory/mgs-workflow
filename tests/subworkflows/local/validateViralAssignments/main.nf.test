@@ -49,7 +49,6 @@ nextflow_workflow {
                     cluster_identity: params.validation_cluster_identity,
                     cluster_min_len: 15,
                     n_clusters: params.n_clusters,
-                    ref_dir: params.ref_dir,
                     blast_db_prefix: params.blast_db_prefix,
                     perc_id: params.blast_perc_id,
                     qcov_hsp_perc: params.blast_qcov_hsp_perc,
@@ -59,7 +58,8 @@ nextflow_workflow {
                 ]
                 input[0] = PREPARE_GROUP_TSVS.out.groups // groups
                 input[1] = COPY_FILE_BARE.out // db
-                input[2] = validation_params
+                input[2] = params.ref_dir
+                input[3] = validation_params
                 '''
             }
         }
@@ -111,7 +111,6 @@ nextflow_workflow {
                     cluster_identity: params.validation_cluster_identity,
                     cluster_min_len: 15,
                     n_clusters: params.n_clusters,
-                    ref_dir: params.ref_dir,
                     blast_db_prefix: params.blast_db_prefix,
                     perc_id: params.blast_perc_id,
                     qcov_hsp_perc: params.blast_qcov_hsp_perc,
@@ -121,7 +120,8 @@ nextflow_workflow {
                 ]
                 input[0] = PREPARE_GROUP_TSVS.out.groups // groups
                 input[1] = COPY_FILE_BARE.out // db
-                input[2] = validation_params
+                input[2] = params.ref_dir
+                input[3] = validation_params
                 '''
             }
         }

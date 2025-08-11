@@ -14,14 +14,11 @@ nextflow_workflow {
             }
             workflow {
                 '''
-                def virus_taxonomy_params = [
-                    taxonomy_url: params.taxonomy_url,
-                    virus_host_db_url: params.virus_host_db_url,
-                    host_taxon_db: params.host_taxon_db,
-                    virus_taxid: params.virus_taxid,
-                    hard_exclude_taxids: params.viral_taxids_exclude_hard
-                ]
-                input[0] = virus_taxonomy_params
+                input[0] = params.taxonomy_url
+                input[1] = params.virus_host_db_url
+                input[2] = params.host_taxon_db
+                input[3] = params.virus_taxid
+                input[4] = params.viral_taxids_exclude_hard
                 '''
             }
         }

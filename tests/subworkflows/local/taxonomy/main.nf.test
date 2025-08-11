@@ -35,14 +35,11 @@ nextflow_workflow {
             }
             workflow {
                 '''
-                def taxonomy_params = [
-                    classification_level: "D",
-                    bracken_threshold: "5"
-                ]
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/kraken_db"
-                input[2] = taxonomy_params
-                input[3] = LOAD_SAMPLESHEET.out.single_end
+                input[2] = "D"
+                input[3] = "5"
+                input[4] = LOAD_SAMPLESHEET.out.single_end
                 '''
             }
         }
@@ -107,16 +104,11 @@ nextflow_workflow {
             params {}
             workflow {
                 '''
-                def taxonomy_params = [
-                    classification_level: "D",
-                    bracken_threshold: "5",
-                    single_end: true
-=
-                ]
                 input[0] = COPY_FILE.out
                 input[1] = "${params.ref_dir}/results/kraken_db"
-                input[2] = taxonomy_params
-                // input[3] = LOAD_SAMPLESHEET.out.single_end
+                input[2] = "D"
+                input[3] = "5"
+                input[4] = LOAD_SAMPLESHEET.out.single_end
                 '''
             }
         }
@@ -171,14 +163,11 @@ nextflow_workflow {
             params {}
             workflow {
                 '''
-                def taxonomy_params = [
-                    classification_level: "D",
-                    bracken_threshold: "5"
-                ]
                 input[0] = GZIP_EMPTY.out
                 input[1] = "${params.ref_dir}/results/kraken_db"
-                input[2] = taxonomy_params
-                input[3] = Channel.of(true)
+                input[2] = "D"
+                input[3] = "5"
+                input[4] = Channel.of(true)
                 '''
             }
         }

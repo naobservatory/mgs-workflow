@@ -52,11 +52,7 @@ workflow RUN {
 
     // Extract and count human-viral reads
     if ( params.platform == "ont" ) {
-        ont_params = [
-            ref_dir: params.ref_dir,
-            taxid_artificial: params.taxid_artificial
-        ]
-        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, ont_params)
+        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.taxid_artificial)
         hits_fastq = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_ONT.out.hits_final
         inter_lca = EXTRACT_VIRAL_READS_ONT.out.inter_lca
@@ -65,7 +61,6 @@ workflow RUN {
         bbduk_trimmed = Channel.empty()
      } else {
         short_params = [
-            ref_dir: params.ref_dir,
             aln_score_threshold: params.bt2_score_threshold,
             adapter_path: params.adapters,
             cutadapt_error_rate: params.cutadapt_error_rate,
@@ -74,7 +69,7 @@ workflow RUN {
             bbduk_suffix: "viral",
             taxid_artificial: params.taxid_artificial
         ]
-        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, short_params)
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, short_params)
         hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
         inter_lca = EXTRACT_VIRAL_READS_SHORT.out.inter_lca
@@ -85,7 +80,6 @@ workflow RUN {
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
         blast_viral_params = [
-            ref_dir: params.ref_dir,
             blast_db_prefix: params.blast_db_prefix,
             read_fraction: params.blast_viral_fraction,
             blast_max_rank: params.blast_max_rank,
@@ -95,7 +89,7 @@ workflow RUN {
             qcov_hsp_perc: params.blast_qcov_hsp_perc,
             taxid_artificial: params.taxid_artificial
         ]
-        BLAST_VIRAL(hits_fastq, blast_viral_params)
+        BLAST_VIRAL(hits_fastq, params.ref_dir, blast_viral_params)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
         blast_reads_ch = BLAST_VIRAL.out.subset_reads
     } else {
@@ -110,21 +104,20 @@ workflow RUN {
         platform: params.platform,
         random_seed: params.random_seed
     ]
-    SUBSET_TRIM(samplesheet_ch, subset_trim_params, single_end_ch)
+    SUBSET_TRIM(samplesheet_ch, single_end_ch, subset_trim_params)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end_ch)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
     profile_params = [
-        ref_dir: params.ref_dir,
         min_kmer_fraction: "0.4",
         k: "27",
         ribo_suffix: "ribo",
         bracken_threshold: params.bracken_threshold,
         platform: params.platform
     ]
-    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, profile_params, single_end_ch)
+    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, single_end_ch, profile_params)
 
     // Get index files for publishing
     index_params_path = file("${params.ref_dir}/input/index-params.json")

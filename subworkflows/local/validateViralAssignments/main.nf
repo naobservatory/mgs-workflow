@@ -32,13 +32,22 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
     take:
         groups // Labeled viral hit TSVs partitioned by group
         db // Viral taxonomy DB
-        params_map // Map containing all parameters
+        ref_dir // Path to reference directory containing BLAST DB
+        params_map // Map containing parameters:
+                   // - cluster_identity: Identity threshold for VSEARCH clustering
+                   // - cluster_min_len: Minimum sequence length for VSEARCH clustering
+                   // - n_clusters: Number of cluster representatives to validate for each specie
+                   // - blast_db_prefix: Prefix for BLAST reference DB files (e.g. "nt")
+                   // - perc_id: Minimum %ID required for BLAST to return an alignment
+                   // - qcov_hsp_perc: Minimum query coverage required for BLAST to return an alignment
+                   // - blast_max_rank: Only keep alignments that are in the top-N for that query by bitscore
+                   // - blast_min_frac: Only keep alignments that have at least this fraction of the best bitscore for that query
+                   // - taxid_artificial: Parent taxid for artificial sequences in NCBI taxonomy
     main:
         // Extract parameters from map
         cluster_identity = params_map.cluster_identity
         cluster_min_len = params_map.cluster_min_len
         n_clusters = params_map.n_clusters
-        ref_dir = params_map.ref_dir
         blast_db_prefix = params_map.blast_db_prefix
         perc_id = params_map.perc_id
         qcov_hsp_perc = params_map.qcov_hsp_perc
@@ -49,18 +58,13 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         // 1. Split viral hits TSV by species
         split_ch = SPLIT_VIRAL_TSV_BY_SELECTED_TAXID(groups, db)
         // 2. Cluster sequences within species and obtain representatives of largest clusters
-        cluster_params = [
-            cluster_identity: cluster_identity,
-            cluster_min_len: cluster_min_len,
-            n_clusters: n_clusters
-        ]
-        cluster_ch = CLUSTER_VIRAL_ASSIGNMENTS(split_ch.fastq, cluster_params, Channel.of(false))
+        cluster_ch = CLUSTER_VIRAL_ASSIGNMENTS(split_ch.fastq, cluster_identity,
+            cluster_min_len, n_clusters, Channel.of(false))
         // 3. Concatenate data across species (prepare for group-level BLAST)
         concat_fasta_ch = CONCATENATE_FILES_ACROSS_SELECTED_TAXID(cluster_ch.fasta, "cluster_reps")
         concat_cluster_ch = CONCATENATE_TSVS_ACROSS_SELECTED_TAXID(cluster_ch.tsv, "cluster_info")
         // 4. Run BLAST on concatenated cluster representatives (single job per group)
         blast_fasta_params = [
-            ref_dir: ref_dir,
             blast_db_prefix: blast_db_prefix,
             perc_id: perc_id,
             qcov_hsp_perc: qcov_hsp_perc,
@@ -69,7 +73,7 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             taxid_artificial: taxid_artificial,
             lca_prefix: "validation"
         ]
-        blast_ch = BLAST_FASTA(concat_fasta_ch.output, blast_fasta_params)
+        blast_ch = BLAST_FASTA(concat_fasta_ch.output, ref_dir, blast_fasta_params)
         // 5. Validate original group hits against concatenated BLAST results
         distance_params = [
             taxid_field_1: "aligner_taxid_lca",
@@ -77,11 +81,8 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
             distance_field_1: "validation_distance_aligner",
             distance_field_2: "validation_distance_validation"
         ]
-        validate_params = [
-            ref_dir: ref_dir,
-            distance_params: distance_params
-        ]
-        validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(groups, blast_ch.lca, validate_params)
+        validate_ch = VALIDATE_CLUSTER_REPRESENTATIVES(groups, blast_ch.lca,
+            ref_dir, distance_params)
         // 6. Propagate validation information back to individual hits
         propagate_ch = PROPAGATE_VALIDATION_INFORMATION(groups, concat_cluster_ch.output,
             validate_ch.output, "aligner_taxid_lca")

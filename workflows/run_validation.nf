@@ -37,7 +37,6 @@ workflow RUN_VALIDATION {
 
         // BLAST validation on host-viral reads
         blast_viral_params = [
-            ref_dir: params.ref_dir,
             blast_db_prefix: params.blast_db_prefix,
             read_fraction: params.blast_viral_fraction,
             blast_max_rank: params.blast_max_rank,
@@ -47,7 +46,7 @@ workflow RUN_VALIDATION {
             qcov_hsp_perc: params.blast_qcov_hsp_perc,
             taxid_artificial: params.taxid_artificial
         ]
-        BLAST_VIRAL(fastq_ch, blast_viral_params)
+        BLAST_VIRAL(fastq_ch, params.ref_dir, blast_viral_params)
 
         // Prepare results for publishing
         params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))

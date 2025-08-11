@@ -40,7 +40,6 @@ workflow DOWNSTREAM {
             cluster_identity: params.validation_cluster_identity,
             cluster_min_len: 15,
             n_clusters: params.validation_n_clusters,
-            ref_dir: params.ref_dir,
             blast_db_prefix: params.blast_db_prefix,
             perc_id: params.blast_perc_id,
             qcov_hsp_perc: params.blast_qcov_hsp_perc,
@@ -48,7 +47,7 @@ workflow DOWNSTREAM {
             blast_min_frac: params.blast_min_frac,
             taxid_artificial: params.taxid_artificial
         ]
-        VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db, validation_params)
+        VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db, params.ref_dir, validation_params)
         // Publish results
         params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
         params_ch = Channel.of(params_str).collectFile(name: "params-downstream.json")

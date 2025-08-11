@@ -42,8 +42,8 @@ nextflow_workflow {
                     random_seed: ""
                 ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = subset_trim_params
-                input[2] = LOAD_SAMPLESHEET.out.single_end
+                input[1] = LOAD_SAMPLESHEET.out.single_end
+                input[2] = subset_trim_params
                 '''
             }
         }
@@ -111,8 +111,8 @@ nextflow_workflow {
                     random_seed: ""
                 ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = subset_trim_params
-                input[2] = LOAD_SAMPLESHEET.out.single_end
+                input[1] = LOAD_SAMPLESHEET.out.single_end
+                input[2] = subset_trim_params
                 '''
             }
         }
@@ -174,8 +174,8 @@ nextflow_workflow {
                     random_seed: ""
                 ]
                 input[0] = GZIP_FILE.out
-                input[1] = subset_trim_params
-                input[2] = Channel.of(true)
+                input[1] = Channel.of(true)
+                input[2] = subset_trim_params
                 """
             }
         }
