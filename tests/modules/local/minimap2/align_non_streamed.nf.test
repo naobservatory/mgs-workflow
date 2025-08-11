@@ -27,11 +27,14 @@ nextflow_process {
             params {}
             process {
                 '''
+                params_map = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: ""
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-other-index"
-                input[2] = "test"
-                input[3] = false
-                input[4] = ""
+                input[2] = params_map
                 '''
             }
         }

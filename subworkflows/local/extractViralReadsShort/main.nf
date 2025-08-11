@@ -26,15 +26,18 @@ include { PROCESS_LCA_ALIGNER_OUTPUT } from "../../../subworkflows/local/process
 workflow EXTRACT_VIRAL_READS_SHORT {
     take:
         reads_ch
-        ref_dir
-        aln_score_threshold
-        adapter_path
-        cutadapt_error_rate
-        min_kmer_hits
-        k
-        bbduk_suffix
-        taxid_artificial
+        params_map
     main:
+        // Extract parameters from map
+        ref_dir = params_map.ref_dir
+        aln_score_threshold = params_map.aln_score_threshold
+        adapter_path = params_map.adapter_path
+        cutadapt_error_rate = params_map.cutadapt_error_rate
+        min_kmer_hits = params_map.min_kmer_hits
+        k = params_map.k
+        bbduk_suffix = params_map.bbduk_suffix
+        taxid_artificial = params_map.taxid_artificial
+        
         // Get reference paths
         viral_genome_path = "${ref_dir}/results/virus-genomes-masked.fasta.gz"
         genome_meta_path = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
@@ -56,20 +59,43 @@ workflow EXTRACT_VIRAL_READS_SHORT {
                                "edit_distance", "edit_distance_rev", "ref_start", 
                                "ref_start_rev", "query_rc", "query_rc_rev", "pair_status"]
          // 1. Run initial screen against viral genomes with BBDuk
-        bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
+        bbduk_params = [
+            min_kmer_hits: min_kmer_hits,
+            k: k,
+            suffix: bbduk_suffix
+        ]
+        bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, bbduk_params)
         // 2. Carry out stringent adapter removal with FASTP and Cutadapt
         fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
         adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
         // 3. Run Bowtie2 against a viral database and process output
         par_virus = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
-        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, 
-            par_virus, "virus", true, false, true)
+        bowtie2_virus_params = [
+            par_string: par_virus,
+            suffix: "virus",
+            remove_sq: true,
+            debug: false,
+            interleaved: true
+        ]
+        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, bowtie2_virus_params)
         // 4. Filter contaminants
         par_contaminants = "--local --very-sensitive-local"
-        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path,
-            par_contaminants, "human", false, false, true)
-        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path,
-            par_contaminants, "other", false, false, true)
+        bowtie2_human_params = [
+            par_string: par_contaminants,
+            suffix: "human",
+            remove_sq: false,
+            debug: false,
+            interleaved: true
+        ]
+        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, bowtie2_human_params)
+        bowtie2_other_params = [
+            par_string: par_contaminants,
+            suffix: "other",
+            remove_sq: false,
+            debug: false,
+            interleaved: true
+        ]
+        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, bowtie2_other_params)
         // 5. Sort SAM and FASTQ files before filtering
         bowtie2_sam_sorted_ch = SORT_FILE(bowtie2_ch.sam, "-t\$\'\\t\' -k1,1", "sam")
         other_fastq_sorted_ch = SORT_FASTQ(other_bt2_ch.reads_unmapped)
@@ -79,16 +105,24 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         // 7. Convert SAM to TSV
         bowtie2_tsv_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_filtered_ch.sam, genome_meta_path, virus_db_path, true)
         // 8. Run LCA
-        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db,
-            "seq_id", "taxid", "length_normalized_score", taxid_artificial,
-            "aligner")
+        lca_params = [
+            group_field: "seq_id",
+            taxid_field: "taxid",
+            score_field: "length_normalized_score",
+            taxid_artificial: taxid_artificial,
+            prefix: "aligner"
+        ]
+        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db, lca_params)
         // 9. Process LCA and Bowtie2 columns
+        lca_aligner_params = [
+            col_keep_no_prefix: col_keep_no_prefix,
+            col_keep_add_prefix: col_keep_add_prefix,
+            column_prefix: "prim_align_"
+        ]
         processed_ch = PROCESS_LCA_ALIGNER_OUTPUT(
             lca_ch.output,
             bowtie2_tsv_ch.output,
-            col_keep_no_prefix,
-            col_keep_add_prefix,
-            "prim_align_"
+            lca_aligner_params
         )
         // 10. Extract filtered virus hits in FASTQ format
         fastq_unfiltered_collect = other_bt2_ch.reads_unmapped.map{ _sample, file -> file }.collect().ifEmpty([])

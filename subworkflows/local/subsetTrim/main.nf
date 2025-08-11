@@ -17,12 +17,15 @@ include { INTERLEAVE_FASTQ } from "../../../modules/local/interleaveFastq"
 workflow SUBSET_TRIM {
     take:
       reads_ch
-      n_reads
-      adapter_path
+      params_map
       single_end
-      platform
-      random_seed
     main:
+        // Extract parameters from map
+        n_reads = params_map.n_reads
+        adapter_path = params_map.adapter_path
+        platform = params_map.platform
+        random_seed = params_map.random_seed
+        
         // Split single-end value channel into two branches, one of which will be empty
         single_end_check = single_end.branch{
             single: it

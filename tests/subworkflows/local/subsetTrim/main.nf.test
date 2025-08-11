@@ -35,12 +35,15 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def subset_trim_params = [
+                    n_reads: params.n_reads,
+                    adapter_path: params.adapters,
+                    platform: "illumina",
+                    random_seed: ""
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = params.n_reads
-                input[2] = params.adapters
-                input[3] = LOAD_SAMPLESHEET.out.single_end
-                input[4] = "illumina"
-                input[5] = ""
+                input[1] = subset_trim_params
+                input[2] = LOAD_SAMPLESHEET.out.single_end
                 '''
             }
         }
@@ -101,12 +104,15 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def subset_trim_params = [
+                    n_reads: params.n_reads,
+                    adapter_path: params.adapters,
+                    platform: "illumina",
+                    random_seed: ""
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                input[1] = params.n_reads
-                input[2] = params.adapters
-                input[3] = LOAD_SAMPLESHEET.out.single_end
-                input[4] = "illumina"
-                input[5] = ""
+                input[1] = subset_trim_params
+                input[2] = LOAD_SAMPLESHEET.out.single_end
                 '''
             }
         }
@@ -161,12 +167,15 @@ nextflow_workflow {
             }
             workflow {
                 """
+                def subset_trim_params = [
+                    n_reads: params.n_reads,
+                    adapter_path: params.adapters,
+                    platform: "illumina",
+                    random_seed: ""
+                ]
                 input[0] = GZIP_FILE.out
-                input[1] = params.n_reads
-                input[2] = params.adapters
-                input[3] = Channel.of(true)
-                input[4] = "illumina"
-                input[5] = ""
+                input[1] = subset_trim_params
+                input[2] = Channel.of(true)
                 """
             }
         }

@@ -5,16 +5,18 @@ process MASK_GENOME_FASTA {
     input:
         path(filtered_genomes)
         path(adapters)
-		val(k)
-		val(hdist)
-		val(entropy)
-		val(polyx_len)
-        val(name_pattern)
+        val(params_map)
     output:
         path("${name_pattern}-masked.fasta.gz"), emit: masked
 		path("${name_pattern}-mask-adapters-entropy.stats.txt"), emit: log1
 		path("${name_pattern}-mask-polyx.stats.txt"), emit: log2
 	script:
+	// Extract parameters from map
+	k = params_map.k
+	hdist = params_map.hdist
+	entropy = params_map.entropy
+	polyx_len = params_map.polyx_len
+	name_pattern = params_map.name_pattern
 	// Groovy runs first – build the poly-X literal once
 	def polyx = ['A','C','G','T'].collect { it * (polyx_len as int) }.join(',')
 	"""

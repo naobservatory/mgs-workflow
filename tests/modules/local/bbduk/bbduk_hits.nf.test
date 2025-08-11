@@ -28,11 +28,14 @@ nextflow_process {
             }
             process {
                 '''
+                params_map = [
+                    min_kmer_hits: "1",
+                    k: "24",
+                    suffix: "viral"
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/virus-genomes-masked.fasta.gz"
-                input[2] = "1"
-                input[3] = "24"
-                input[4] = "viral"
+                input[2] = params_map
                 '''
             }
         }

@@ -15,12 +15,15 @@ include { ANNOTATE_VIRUS_INFECTION } from "../../../modules/local/annotateVirusI
 
 workflow MAKE_VIRUS_TAXONOMY_DB {
     take:
-        taxonomy_url // URL pointing to NCBI taxonomy files
-        virus_host_db_url // URL pointing to Virus-Host-DB
-        host_taxon_db // TSV giving host taxa to annotate infection status
-        virus_taxid // Top-level taxid for viruses as a whole
-        hard_exclude_taxids // Virus taxids to hard-exclude from host annotation
+        params_map // Map containing all parameters
     main:
+        // Extract parameters from map
+        taxonomy_url = params_map.taxonomy_url
+        virus_host_db_url = params_map.virus_host_db_url
+        host_taxon_db = params_map.host_taxon_db
+        virus_taxid = params_map.virus_taxid
+        hard_exclude_taxids = params_map.hard_exclude_taxids
+        
         // Get NCBI taxonomy
         dl_ch = DOWNLOAD_NCBI_TAXONOMY(taxonomy_url)
         ext_ch = EXTRACT_NCBI_TAXONOMY(dl_ch)

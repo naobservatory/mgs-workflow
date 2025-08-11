@@ -28,11 +28,25 @@ workflow INDEX {
         start_time = new Date()
         start_time_str = start_time.format("YYYY-MM-dd HH:mm:ss z (Z)")
         // Build viral taxonomy and infection DB
-        MAKE_VIRUS_TAXONOMY_DB(params.taxonomy_url, params.virus_host_db_url,
-            params.host_taxon_db, params.virus_taxid,
-            params.viral_taxids_exclude_hard)
+        virus_taxonomy_params = [
+            taxonomy_url: params.taxonomy_url,
+            virus_host_db_url: params.virus_host_db_url,
+            host_taxon_db: params.host_taxon_db,
+            virus_taxid: params.virus_taxid,
+            hard_exclude_taxids: params.viral_taxids_exclude_hard
+        ]
+        MAKE_VIRUS_TAXONOMY_DB(virus_taxonomy_params)
         // Get reference DB of viral genomes of interest
-        MAKE_VIRUS_GENOME_DB(params.ncbi_viral_params, MAKE_VIRUS_TAXONOMY_DB.out.db, params.genome_patterns_exclude, params.host_taxa_screen, params.adapters, "20", "3", "0.5", "10")
+        virus_genome_params = [
+            patterns_exclude: params.genome_patterns_exclude,
+            host_taxa: params.host_taxa_screen,
+            adapters: params.adapters,
+            k: "20",
+            hdist: "3",
+            entropy: "0.5",
+            polyx_len: "10"
+        ]
+        MAKE_VIRUS_GENOME_DB(params.ncbi_viral_params, MAKE_VIRUS_TAXONOMY_DB.out.db, virus_genome_params)
         // Build alignment indices
         JOIN_RIBO_REF(params.ssu_url, params.lsu_url)
         MAKE_VIRUS_INDEX(MAKE_VIRUS_GENOME_DB.out.fasta)

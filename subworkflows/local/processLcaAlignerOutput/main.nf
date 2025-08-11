@@ -23,10 +23,13 @@ workflow PROCESS_LCA_ALIGNER_OUTPUT {
     take:
         lca_tsv        // Output from LCA_TSV process
         aligner_tsv    // Output from PROCESS_VIRAL_{MINIMAP2,BOWTIE2}_SAM
-        col_keep_no_prefix // Columns to keep without prefix
-        col_keep_add_prefix // Columns to keep with prefix
-        column_prefix  // Prefix to add to specified columns
+        params_map     // Map containing column configuration parameters
     main:
+        // Extract parameters from map
+        col_keep_no_prefix = params_map.col_keep_no_prefix
+        col_keep_add_prefix = params_map.col_keep_add_prefix
+        column_prefix = params_map.column_prefix
+        
         // Step 1: Sort LCA tsv by seq_id (aligner_tsv is already sorted)
         lca_sorted_ch = SORT_LCA(lca_tsv, "seq_id")
         // Step 2: Add sample column to aligner TSV

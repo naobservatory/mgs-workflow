@@ -4,9 +4,7 @@ process VSEARCH_CLUSTER {
     label "vsearch"
     input:
         tuple val(sample), path(reads) // Single-end or merged reads
-        val(identity_threshold) // Minimum required identity (0.0-1.0) required for two sequences to cluster together
-        val(identity_method) // Method for calculating identity (see VSEARCH documentation)
-        val(min_seq_length) // Minimum sequence length required by VSEARCH
+        val(params_map) // Map containing clustering parameters
     output:
         tuple val(sample), path("${sample}_vsearch_reps.fasta.gz"), emit: reps
         tuple val(sample), path("${sample}_vsearch_summary.tsv.gz"), emit: summary
@@ -14,12 +12,16 @@ process VSEARCH_CLUSTER {
         tuple val(sample), path("input_${reads}"), emit: input
     shell:
         '''
+        # Extract parameters from map
+        identity_threshold="!{params_map.identity_threshold}"
+        identity_method="!{params_map.identity_method}"
+        min_seq_length="!{params_map.min_seq_length}"
         # Define paths and parameters
         or=!{sample}_vsearch_reps.fasta
         os=!{sample}_vsearch_summary.tsv
         log=!{sample}_vsearch_log.txt
         io="--log ${log} --centroids ${or} --uc ${os} --cluster_fast !{reads}"
-        par="--threads !{task.cpus} --id !{identity_threshold} --iddef !{identity_method} --minseqlength !{min_seq_length}"
+        par="--threads !{task.cpus} --id ${identity_threshold} --iddef ${identity_method} --minseqlength ${min_seq_length}"
         # Add decompression if necessary
         par="${par}!{reads.endsWith(".gz") ? ' --gzip_decompress' : ''}"
         # Execute

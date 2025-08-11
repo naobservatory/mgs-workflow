@@ -33,16 +33,19 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def blast_viral_params = [
+                    ref_dir: params.ref_dir,
+                    blast_db_prefix: params.blast_db_prefix,
+                    read_fraction: params.blast_frac,
+                    blast_max_rank: params.max_rank,
+                    blast_min_frac: params.min_frac,
+                    random_seed: "",
+                    perc_id: params.perc_id,
+                    qcov_hsp_perc: params.qcov_hsp_perc,
+                    taxid_artificial: params.taxid_artificial
+                ]
                 input[0] = GZIP_FILE.out.collect{it[1]}
-                input[1] = params.ref_dir
-                input[2] = params.blast_db_prefix
-                input[3] = params.blast_frac
-                input[4] = params.max_rank
-                input[5] = params.min_frac
-                input[6] = ""
-                input[7] = params.perc_id
-                input[8] = params.qcov_hsp_perc
-                input[9] = params.taxid_artificial
+                input[1] = blast_viral_params
                 '''
             }
         }
@@ -99,16 +102,19 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def blast_viral_params = [
+                    ref_dir: params.ref_dir,
+                    blast_db_prefix: params.blast_db_prefix,
+                    read_fraction: params.blast_frac,
+                    blast_max_rank: params.max_rank,
+                    blast_min_frac: params.min_frac,
+                    random_seed: "",
+                    perc_id: params.perc_id,
+                    qcov_hsp_perc: params.qcov_hsp_perc,
+                    taxid_artificial: params.taxid_artificial
+                ]
                 input[0] = INTERLEAVE_FASTQ.out.output.collect{it[1]}
-                input[1] = params.ref_dir
-                input[2] = params.blast_db_prefix
-                input[3] = params.blast_frac
-                input[4] = params.max_rank
-                input[5] = params.min_frac
-                input[6] = ""
-                input[7] = params.perc_id
-                input[8] = params.qcov_hsp_perc
-                input[9] = params.taxid_artificial
+                input[1] = blast_viral_params
                 '''
             }
         }
@@ -202,16 +208,19 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def blast_viral_params = [
+                    ref_dir: params.ref_dir,
+                    blast_db_prefix: params.blast_db_prefix,
+                    read_fraction: params.blast_frac,
+                    blast_max_rank: params.max_rank,
+                    blast_min_frac: params.min_frac,
+                    random_seed: "",
+                    perc_id: params.perc_id,
+                    qcov_hsp_perc: params.qcov_hsp_perc,
+                    taxid_artificial: params.taxid_artificial
+                ]
                 input[0] = COPY_FILE.out.collect{it[1]}
-                input[1] = params.ref_dir
-                input[2] = params.blast_db_prefix
-                input[3] = params.blast_frac
-                input[4] = params.max_rank
-                input[5] = params.min_frac
-                input[6] = ""
-                input[7] = params.perc_id
-                input[8] = params.qcov_hsp_perc
-                input[9] = params.taxid_artificial
+                input[1] = blast_viral_params
                 '''
             }
         }
@@ -305,16 +314,19 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def blast_viral_params = [
+                    ref_dir: params.ref_dir,
+                    blast_db_prefix: params.blast_db_prefix,
+                    read_fraction: params.blast_frac,
+                    blast_max_rank: params.max_rank,
+                    blast_min_frac: params.min_frac,
+                    random_seed: "",
+                    perc_id: params.perc_id,
+                    qcov_hsp_perc: params.qcov_hsp_perc,
+                    taxid_artificial: params.taxid_artificial
+                ]
                 input[0] = COPY_FILE.out.collect{it[1]}
-                input[1] = params.ref_dir
-                input[2] = params.blast_db_prefix
-                input[3] = params.blast_frac
-                input[4] = params.max_rank
-                input[5] = params.min_frac
-                input[6] = ""
-                input[7] = params.perc_id
-                input[8] = params.qcov_hsp_perc
-                input[9] = params.taxid_artificial
+                input[1] = blast_viral_params
                 '''
             }
         }
