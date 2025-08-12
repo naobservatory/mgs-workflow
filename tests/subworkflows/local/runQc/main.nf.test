@@ -26,9 +26,9 @@ nextflow_workflow {
                 process {
                     '''
                     def subset_trim_params = [
-                        n_reads: 49
+                        n_reads: 49,
                         adapter_path: params.adapters,
-                        platform: "illumina"
+                        platform: "illumina",
                         random_seed: ""
                     ]
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet
@@ -87,9 +87,9 @@ nextflow_workflow {
                 process {
                     '''
                     def subset_trim_params = [
-                        n_reads: 49
+                        n_reads: 49,
                         adapter_path: params.adapters,
-                        platform: "illumina"
+                        platform: "illumina",
                         random_seed: ""
                     ]
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet

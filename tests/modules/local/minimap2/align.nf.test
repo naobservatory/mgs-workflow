@@ -33,7 +33,6 @@ nextflow_process {
             }
             process {
                 '''
-
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
                 input[2] = params.params_map
@@ -169,7 +168,7 @@ nextflow_process {
                     remove_sq: false,
                     alignment_params: ""
                 ]
-            }
+	    }
             process {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
@@ -223,6 +222,7 @@ nextflow_process {
                     remove_sq: false,
                     alignment_params: ""
                 ]
+            }
             process {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
@@ -295,7 +295,7 @@ nextflow_process {
                 '''
                 input[0] = GZIP_FILE.out
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
-                input[2] = params_map
+                input[2] = params.params_map
                 '''
             }
         }

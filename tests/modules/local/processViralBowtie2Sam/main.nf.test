@@ -97,8 +97,8 @@ nextflow_process {
                     def params_map = [
                         par_string: "--local --very-sensitive-local --score-min G,0.1,19",
                         suffix: "virus",
-                        remove_sq: true
-                        debug: true
+                        remove_sq: true,
+                        debug: true,
                         interleaved: false
                     ]
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet
