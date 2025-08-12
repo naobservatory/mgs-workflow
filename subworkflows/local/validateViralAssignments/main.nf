@@ -34,12 +34,12 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         db // Viral taxonomy DB
         ref_dir // Path to reference directory containing BLAST DB
         params_map // Map containing parameters:
-                   // - cluster_identity: Identity threshold for VSEARCH clustering
+                   // - validation_cluster_identity: Identity threshold for VSEARCH clustering
                    // - cluster_min_len: Minimum sequence length for VSEARCH clustering
-                   // - n_clusters: Number of cluster representatives to validate for each specie
+                   // - validation_n_clusters: Number of cluster representatives to validate for each specie
                    // - blast_db_prefix: Prefix for BLAST reference DB files (e.g. "nt")
-                   // - perc_id: Minimum %ID required for BLAST to return an alignment
-                   // - qcov_hsp_perc: Minimum query coverage required for BLAST to return an alignment
+                   // - blast_perc_id: Minimum %ID required for BLAST to return an alignment
+                   // - blast_qcov_hsp_perc: Minimum query coverage required for BLAST to return an alignment
                    // - blast_max_rank: Only keep alignments that are in the top-N for that query by bitscore
                    // - blast_min_frac: Only keep alignments that have at least this fraction of the best bitscore for that query
                    // - taxid_artificial: Parent taxid for artificial sequences in NCBI taxonomy
@@ -47,8 +47,8 @@ workflow VALIDATE_VIRAL_ASSIGNMENTS {
         // 1. Split viral hits TSV by species
         split_ch = SPLIT_VIRAL_TSV_BY_SELECTED_TAXID(groups, db)
         // 2. Cluster sequences within species and obtain representatives of largest clusters
-        cluster_ch = CLUSTER_VIRAL_ASSIGNMENTS(split_ch.fastq, params_map.cluster_identity,
-            params_map.cluster_min_len, params_map.n_clusters, Channel.of(false))
+        cluster_ch = CLUSTER_VIRAL_ASSIGNMENTS(split_ch.fastq, params_map.validation_cluster_identity,
+            params_map.cluster_min_len, params_map.validation_n_clusters, Channel.of(false))
         // 3. Concatenate data across species (prepare for group-level BLAST)
         concat_fasta_ch = CONCATENATE_FILES_ACROSS_SELECTED_TAXID(cluster_ch.fasta, "cluster_reps")
         concat_cluster_ch = CONCATENATE_TSVS_ACROSS_SELECTED_TAXID(cluster_ch.tsv, "cluster_info")

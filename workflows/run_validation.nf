@@ -36,16 +36,8 @@ workflow RUN_VALIDATION {
         }
 
         // BLAST validation on host-viral reads
-        blast_viral_params = [
-            blast_db_prefix: params.blast_db_prefix,
-            read_fraction: params.blast_viral_fraction,
-            blast_max_rank: params.blast_max_rank,
-            blast_min_frac: params.blast_min_frac,
-            random_seed: params.random_seed,
-            perc_id: params.blast_perc_id,
-            qcov_hsp_perc: params.blast_qcov_hsp_perc,
-            taxid_artificial: params.taxid_artificial
-        ]
+        def blast_viral_params = params.collectEntries { k, v -> [k, v] }
+        blast_viral_params["read_fraction"] = params.blast_viral_fraction // rename to match subworkflow input
         BLAST_VIRAL(fastq_ch, params.ref_dir, blast_viral_params)
 
         // Prepare results for publishing

@@ -60,15 +60,11 @@ workflow RUN {
         bbduk_match = Channel.empty()
         bbduk_trimmed = Channel.empty()
      } else {
-        short_params = [
-            aln_score_threshold: params.bt2_score_threshold,
-            adapter_path: params.adapters,
-            cutadapt_error_rate: params.cutadapt_error_rate,
-            min_kmer_hits: "1",
-            k: "24",
-            bbduk_suffix: "viral",
-            taxid_artificial: params.taxid_artificial
-        ]
+        def short_params = params.collectEntries { k, v -> [k, v] }
+        short_params["aln_score_threshold"] = params.bt2_score_threshold // rename to match
+        short_params["min_kmer_hits"] = "1"
+        short_params["bbduk_suffix"] = "viral"
+        short_params["k"] = "24" 
         EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, short_params)
         hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
@@ -79,17 +75,9 @@ workflow RUN {
     }
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
-        blast_viral_params = [
-            blast_db_prefix: params.blast_db_prefix,
-            read_fraction: params.blast_viral_fraction,
-            blast_max_rank: params.blast_max_rank,
-            blast_min_frac: params.blast_min_frac,
-            random_seed: params.random_seed,
-            perc_id: params.blast_perc_id,
-            qcov_hsp_perc: params.blast_qcov_hsp_perc,
-            taxid_artificial: params.taxid_artificial
-        ]
-        BLAST_VIRAL(hits_fastq, params.ref_dir, blast_viral_params)
+        def blast_viral_params = params.collectEntries { k, v -> [k, v] }
+        blast_viral_params["read_fraction"] = params.blast_viral_fraction // rename to match subworkflow input
+        BLAST_VIRAL(fastq_ch, params.ref_dir, blast_viral_params)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
         blast_reads_ch = BLAST_VIRAL.out.subset_reads
     } else {
@@ -98,12 +86,7 @@ workflow RUN {
     }
 
     // Subset reads to target number, and trim adapters
-    subset_trim_params = [
-        n_reads: params.n_reads_profile,
-        adapter_path: params.adapters,
-        platform: params.platform,
-        random_seed: params.random_seed
-    ]
+    def subset_trim_params = params.collectEntries { k, v -> [k, v] }
     SUBSET_TRIM(samplesheet_ch, single_end_ch, subset_trim_params)
 
     // Run QC on subset reads before and after adapter trimming

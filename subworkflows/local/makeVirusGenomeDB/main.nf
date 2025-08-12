@@ -19,8 +19,8 @@ workflow MAKE_VIRUS_GENOME_DB {
                           // Any additional sequence-specific options can be provided here, supplementing the default download settings.
         virus_db // TSV giving taxonomic structure and host infection status of virus taxids
         other_params // Map containing: 
-                     // - patterns_exclude: File of sequence header patterns to exclude from genome DB
-                     // - host_taxa: Tuple of host taxa to include
+                     // - genome_patterns_exclude: File of sequence header patterns to exclude from genome DB
+                     // - host_taxa_screen: Tuple of host taxa to include
                      // - adapters: FASTA file of adapters to maskkmer length to use for bbduk adapater masking in referenceK-mer size for masking low-complexity regions
                      // - hdist: hdist (allowed mismatches) to use for bbduk adapter masking
                      // - entropy: entropy cutoff for bbduk filtering of low-complexity regions
@@ -29,13 +29,13 @@ workflow MAKE_VIRUS_GENOME_DB {
         // 1. Download viral Genbank
         dl_ch = DOWNLOAD_VIRAL_NCBI(ncbi_viral_params)
         // 2. Filter genome metadata by taxid to identify genomes to retain
-        meta_ch = FILTER_VIRAL_GENBANK_METADATA(dl_ch.metadata, virus_db, other_params.host_taxa, "virus-genome")
+        meta_ch = FILTER_VIRAL_GENBANK_METADATA(dl_ch.metadata, virus_db, other_params.host_taxa_screen, "virus-genome")
         // 3. Add genome IDs to Genbank metadata file
         gid_ch = ADD_GENBANK_GENOME_IDS(meta_ch.db, dl_ch.genomes, "virus-genome")
         // 4. Concatenate matching genomes
         concat_ch = CONCATENATE_GENOME_FASTA(dl_ch.genomes, meta_ch.path)
         // 5. Filter to remove undesired/contaminated genomes
-        filter_ch = FILTER_GENOME_FASTA(concat_ch, other_params.patterns_exclude, "virus-genomes-filtered")
+        filter_ch = FILTER_GENOME_FASTA(concat_ch, other_params.genome_patterns_exclude, "virus-genomes-filtered")
 	// 6. Mask to remove adapters, low-entropy regions, and polyX
 	mask_params = other_params + [name_pattern: "virus-genomes"]
 	mask_ch = MASK_GENOME_FASTA(filter_ch, other_params.adapters, mask_params)

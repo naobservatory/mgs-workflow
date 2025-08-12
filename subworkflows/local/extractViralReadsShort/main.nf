@@ -27,7 +27,7 @@ workflow EXTRACT_VIRAL_READS_SHORT {
     take:
         reads_ch
         ref_dir
-        params_map // aln_score_threshold, adapter_path, cutadapt_error_rate, min_kmer_hits, k, bbduk_suffix, taxid_artificial
+        params_map // aln_score_threshold, adapters, cutadapt_error_rate, min_kmer_hits, k, bbduk_suffix, taxid_artificial
     main:
         // Get reference paths
         viral_genome_path = "${ref_dir}/results/virus-genomes-masked.fasta.gz"
@@ -53,36 +53,25 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         bbduk_params = params_map
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, bbduk_params)
         // 2. Carry out stringent adapter removal with FASTP and Cutadapt
-        fastp_ch = FASTP(bbduk_ch.fail, params_map.adapter_path, true)
-        adapt_ch = CUTADAPT(fastp_ch.reads, params_map.adapter_path, params_map.cutadapt_error_rate)
+        fastp_ch = FASTP(bbduk_ch.fail, params_map.adapters, true)
+        adapt_ch = CUTADAPT(fastp_ch.reads, params_map.adapters, params_map.cutadapt_error_rate)
         // 3. Run Bowtie2 against a viral database and process output
-        par_virus = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
-        bowtie2_virus_params = [
-            par_string: par_virus,
-            suffix: "virus",
+        def bowtie_base_params = [
             remove_sq: true,
             debug: false,
             interleaved: true
         ]
+        par_virus = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
+        bowtie2_virus_params = bowtie_base_params + [par_string: par_virus, suffix: "virus"]
         bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, bowtie2_virus_params)
+
         // 4. Filter contaminants
         par_contaminants = "--local --very-sensitive-local"
-        bowtie2_human_params = [
-            par_string: par_contaminants,
-            suffix: "human",
-            remove_sq: false,
-            debug: false,
-            interleaved: true
-        ]
+        bowtie2_human_params = bowtie_base_params + [par_string: par_contaminants, suffix: "human"]
         human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, bowtie2_human_params)
-        bowtie2_other_params = [
-            par_string: par_contaminants,
-            suffix: "other",
-            remove_sq: false,
-            debug: false,
-            interleaved: true
-        ]
+        bowtie2_other_params = bowtie_base_params + [par_string: par_contaminants, suffix: "other"]
         other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, bowtie2_other_params)
+
         // 5. Sort SAM and FASTQ files before filtering
         bowtie2_sam_sorted_ch = SORT_FILE(bowtie2_ch.sam, "-t\$\'\\t\' -k1,1", "sam")
         other_fastq_sorted_ch = SORT_FASTQ(other_bt2_ch.reads_unmapped)

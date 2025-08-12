@@ -17,7 +17,7 @@ workflow BLAST_VIRAL {
         viral_fastq // Interleaved or single-end
         ref_dir // Path to reference directory containing BLAST DB
         params_map // Map containing other parameters: blast_db_prefix (Prefix for BLAST reference DB files e.g. "nt"), read_fraction
-                   // blast_max_rank, blast_min_frac, random_seed, perc_id, qcov_hsp_perc, taxid_artificial
+                   // blast_max_rank, blast_min_frac, random_seed, blast_perc_id, blast_qcov_hsp_perc, taxid_artificial
     main:
         // 1. Subset viral reads for BLAST
         reads_in = Channel.of("merged")

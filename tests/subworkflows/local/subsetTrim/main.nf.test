@@ -36,8 +36,8 @@ nextflow_workflow {
             workflow {
                 '''
                 def subset_trim_params = [
-                    n_reads: params.n_reads,
-                    adapter_path: params.adapters,
+                    n_reads_profile: params.n_reads_profile,
+                    adapters: params.adapters,
                     platform: "illumina",
                     random_seed: ""
                 ]
@@ -105,8 +105,8 @@ nextflow_workflow {
             workflow {
                 '''
                 def subset_trim_params = [
-                    n_reads: params.n_reads,
-                    adapter_path: params.adapters,
+                    n_reads_profile: params.n_reads,
+                    adapters: params.adapters,
                     platform: "illumina",
                     random_seed: ""
                 ]
@@ -168,8 +168,8 @@ nextflow_workflow {
             workflow {
                 """
                 def subset_trim_params = [
-                    n_reads: params.n_reads,
-                    adapter_path: params.adapters,
+                    n_reads_profile: params.n_reads,
+                    adapters: params.adapters,
                     platform: "illumina",
                     random_seed: ""
                 ]
