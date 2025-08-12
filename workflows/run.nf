@@ -77,7 +77,7 @@ workflow RUN {
     if ( params.blast_viral_fraction > 0 ) {
         def blast_viral_params = params.collectEntries { k, v -> [k, v] }
         blast_viral_params["read_fraction"] = params.blast_viral_fraction // rename to match subworkflow input
-        BLAST_VIRAL(fastq_ch, params.ref_dir, blast_viral_params)
+        BLAST_VIRAL(hits_fastq, params.ref_dir, blast_viral_params)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
         blast_reads_ch = BLAST_VIRAL.out.subset_reads
     } else {

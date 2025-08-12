@@ -29,14 +29,8 @@ workflow PROFILE {
         single_end
         params_map // min_kmer_fraction, k, ribo_suffix, bracken_threshold, platform
     main:
-        // Extract parameters from map
-        min_kmer_fraction = params_map.min_kmer_fraction
-        k = params_map.k
-        ribo_suffix = params_map.ribo_suffix
-        bracken_threshold = params_map.bracken_threshold
-        platform = params_map.platform
         // Separate ribosomal reads
-        if (platform == "ont") {
+        if (params_map.platform == "ont") {
             ribo_ref = "${ref_dir}/results/mm2-ribo-index"
             ribo_minimap2_params = [
                 suffix: params_map.ribo_suffix,
@@ -54,8 +48,8 @@ workflow PROFILE {
             noribo_in = ribo_ch.nomatch
         }
         // Run taxonomic profiling separately on ribo and non-ribo reads
-        tax_ribo_ch = TAXONOMY_RIBO(ribo_in, kraken_db_ch, "D", bracken_threshold, single_end)
-        tax_noribo_ch = TAXONOMY_NORIBO(noribo_in, kraken_db_ch, "D", bracken_threshold, single_end)
+        tax_ribo_ch = TAXONOMY_RIBO(ribo_in, kraken_db_ch, "D", params_map.bracken_threshold, single_end)
+        tax_noribo_ch = TAXONOMY_NORIBO(noribo_in, kraken_db_ch, "D", params_map.bracken_threshold, single_end)
 
         // Add ribosomal status to output TSVs
         kr_ribo = ADD_KRAKEN_RIBO(tax_ribo_ch.kraken_reports, "ribosomal", "TRUE", "ribo")

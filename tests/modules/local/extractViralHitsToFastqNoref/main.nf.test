@@ -27,7 +27,7 @@ nextflow_process {
                     '''
                     def short_params = [
                         aln_score_threshold: params.bt2_score_threshold,
-                        adapter_path: params.adapters,
+                        adapters: params.adapters,
                         cutadapt_error_rate: params.cutadapt_error_rate,
                         min_kmer_hits: "1",
                         k: "24",

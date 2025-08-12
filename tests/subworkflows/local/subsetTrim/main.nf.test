@@ -36,7 +36,7 @@ nextflow_workflow {
             workflow {
                 '''
                 def subset_trim_params = [
-                    n_reads_profile: params.n_reads_profile,
+                    n_reads_profile: params.n_reads,
                     adapters: params.adapters,
                     platform: "illumina",
                     random_seed: ""
