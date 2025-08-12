@@ -33,22 +33,13 @@ workflow BLAST_FASTA {
                    // taxid_artificial: Parent taxid for artificial sequences in NCBI taxonomy
                    // lca_prefix: Prefix for LCA column names (e.g. "blast")
     main:
-        // Extract parameters from map
-        blast_db_prefix = params_map.blast_db_prefix
-        perc_id = params_map.perc_id
-        qcov_hsp_perc = params_map.qcov_hsp_perc
-        blast_max_rank = params_map.blast_max_rank
-        blast_min_frac = params_map.blast_min_frac
-        taxid_artificial = params_map.taxid_artificial
-        lca_prefix = params_map.lca_prefix
-        
         // Get reference paths
-        blast_db_dir = "${ref_dir}/results/${blast_db_prefix}"
+        blast_db_dir = "${ref_dir}/results/${params_map.blast_db_prefix}"
         nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
         names_db = "${ref_dir}/results/taxonomy-names.dmp"
         // 1. Run BLAST
-        blast_ch = BLAST(query_fasta, blast_db_dir, blast_db_prefix,
-            perc_id, qcov_hsp_perc)
+        blast_ch = BLAST(query_fasta, blast_db_dir, params_map.blast_db_prefix,
+            params_map.perc_id, params_map.qcov_hsp_perc)
         // 2. Filter BLAST output to only one row per query/subject combination
         sort_str_1 = "-t\$\'\\t\' -k1,1 -k2,2 -k7,7nr -k9,9nr" // Sort by query, subject, bitscore, length
         sort_ch_1 = SORT_BLAST_1(blast_ch.output, sort_str_1, "blast")
@@ -56,14 +47,14 @@ workflow BLAST_FASTA {
         // 3. Filter BLAST output to only high-scoring alignments within each query
         sort_str_2 = "-t\$\'\\t\' -k1,1 -k7,7nr" // Sort by query and bitscore only
         sort_ch_2 = SORT_BLAST_2(filter_ch_1.output, sort_str_2, "blast")
-        filter_ch_2 = FILTER_BLAST(sort_ch_2.output, blast_max_rank, blast_min_frac).output // Filter on relative bitscores
+        filter_ch_2 = FILTER_BLAST(sort_ch_2.output, params_map.blast_max_rank, params_map.blast_min_frac).output // Filter on relative bitscores
         // 4. Apply LCA to BLAST output
         lca_params = [
             group_field: "qseqid",
             taxid_field: "staxid",
             score_field: "bitscore",
-            taxid_artificial: taxid_artificial,
-            prefix: lca_prefix
+            taxid_artificial: params_map.taxid_artificial,
+            prefix: params_map.lca_prefix
         ]
         lca_ch = LCA_TSV(filter_ch_2, nodes_db, names_db, lca_params).output
     emit:

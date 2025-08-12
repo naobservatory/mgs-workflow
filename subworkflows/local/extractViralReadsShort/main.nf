@@ -29,15 +29,6 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         ref_dir
         params_map // aln_score_threshold, adapter_path, cutadapt_error_rate, min_kmer_hits, k, bbduk_suffix, taxid_artificial
     main:
-        // Extract parameters from map
-        aln_score_threshold = params_map.aln_score_threshold
-        adapter_path = params_map.adapter_path
-        cutadapt_error_rate = params_map.cutadapt_error_rate
-        min_kmer_hits = params_map.min_kmer_hits
-        k = params_map.k
-        bbduk_suffix = params_map.bbduk_suffix
-        taxid_artificial = params_map.taxid_artificial
-        
         // Get reference paths
         viral_genome_path = "${ref_dir}/results/virus-genomes-masked.fasta.gz"
         genome_meta_path = "${ref_dir}/results/virus-genome-metadata-gid.tsv.gz"
@@ -59,15 +50,11 @@ workflow EXTRACT_VIRAL_READS_SHORT {
                                "edit_distance", "edit_distance_rev", "ref_start", 
                                "ref_start_rev", "query_rc", "query_rc_rev", "pair_status"]
          // 1. Run initial screen against viral genomes with BBDuk
-        bbduk_params = [
-            min_kmer_hits: min_kmer_hits,
-            k: k,
-            suffix: bbduk_suffix
-        ]
+        bbduk_params = params_map
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, bbduk_params)
         // 2. Carry out stringent adapter removal with FASTP and Cutadapt
-        fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
-        adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
+        fastp_ch = FASTP(bbduk_ch.fail, params_map.adapter_path, true)
+        adapt_ch = CUTADAPT(fastp_ch.reads, params_map.adapter_path, params_map.cutadapt_error_rate)
         // 3. Run Bowtie2 against a viral database and process output
         par_virus = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
         bowtie2_virus_params = [
@@ -101,7 +88,7 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         other_fastq_sorted_ch = SORT_FASTQ(other_bt2_ch.reads_unmapped)
         // 6. Consolidated viral SAM filtering: keep contaminant-free reads, applies score threshold, adds missing mates
         bowtie2_ch_combined = bowtie2_sam_sorted_ch.output.combine(other_fastq_sorted_ch.output, by: 0)
-        bowtie2_filtered_ch = FILTER_VIRAL_SAM(bowtie2_ch_combined, aln_score_threshold)
+        bowtie2_filtered_ch = FILTER_VIRAL_SAM(bowtie2_ch_combined, params_map.aln_score_threshold)
         // 7. Convert SAM to TSV
         bowtie2_tsv_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_filtered_ch.sam, genome_meta_path, virus_db_path, true)
         // 8. Run LCA
@@ -109,7 +96,7 @@ workflow EXTRACT_VIRAL_READS_SHORT {
             group_field: "seq_id",
             taxid_field: "taxid",
             score_field: "length_normalized_score",
-            taxid_artificial: taxid_artificial,
+            taxid_artificial: params_map.taxid_artificial,
             prefix: "aligner"
         ]
         lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db, lca_params)

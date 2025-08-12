@@ -25,35 +25,20 @@ workflow MAKE_VIRUS_GENOME_DB {
                      // - hdist: hdist (allowed mismatches) to use for bbduk adapter masking
                      // - entropy: entropy cutoff for bbduk filtering of low-complexity regions
                      // - polyx_len: minimum length of polyX runs to filter out with bbduk
-    main:
-        // Extract parameters from map
-        patterns_exclude = other_params.patterns_exclude
-        host_taxa = other_params.host_taxa
-        adapters = other_params.adapters
-        k = other_params.k
-        hdist = other_params.hdist
-        entropy = other_params.entropy
-        polyx_len = other_params.polyx_len
-        
+    main:        
         // 1. Download viral Genbank
         dl_ch = DOWNLOAD_VIRAL_NCBI(ncbi_viral_params)
         // 2. Filter genome metadata by taxid to identify genomes to retain
-        meta_ch = FILTER_VIRAL_GENBANK_METADATA(dl_ch.metadata, virus_db, host_taxa, "virus-genome")
+        meta_ch = FILTER_VIRAL_GENBANK_METADATA(dl_ch.metadata, virus_db, other_params.host_taxa, "virus-genome")
         // 3. Add genome IDs to Genbank metadata file
         gid_ch = ADD_GENBANK_GENOME_IDS(meta_ch.db, dl_ch.genomes, "virus-genome")
         // 4. Concatenate matching genomes
         concat_ch = CONCATENATE_GENOME_FASTA(dl_ch.genomes, meta_ch.path)
         // 5. Filter to remove undesired/contaminated genomes
-        filter_ch = FILTER_GENOME_FASTA(concat_ch, patterns_exclude, "virus-genomes-filtered")
+        filter_ch = FILTER_GENOME_FASTA(concat_ch, other_params.patterns_exclude, "virus-genomes-filtered")
 	// 6. Mask to remove adapters, low-entropy regions, and polyX
-	mask_params = [
-		k: k,
-		hdist: hdist,
-		entropy: entropy,
-		polyx_len: polyx_len,
-		name_pattern: "virus-genomes"
-	]
-	mask_ch = MASK_GENOME_FASTA(filter_ch, adapters, mask_params)
+	mask_params = other_params + [name_pattern: "virus-genomes"]
+	mask_ch = MASK_GENOME_FASTA(filter_ch, other_params.adapters, mask_params)
     emit:
         fasta = mask_ch.masked
         metadata = gid_ch

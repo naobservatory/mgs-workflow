@@ -94,7 +94,7 @@ nextflow_workflow {
                     script "modules/local/bowtie2/main.nf"
                     process {
                         '''
-                        params_map = [
+                        def params_map = [
                             par_string: "--local --very-sensitive-local --score-min G,0.1,19 -k 10",
                             suffix: "virus",
                             remove_sq: true,
@@ -150,7 +150,7 @@ nextflow_workflow {
                 script "modules/local/lcaTsv/main.nf"
                 process {
                     '''
-                    params_map = [
+                    def params_map = [
                         group_field: "seq_id",
                         taxid_field: "taxid",
                         score_field: "length_normalized_score",
@@ -234,7 +234,7 @@ nextflow_workflow {
                     script "modules/local/minimap2/main.nf"
                     process {
                         '''
-                        params_map = [
+                        def params_map = [
                             suffix: "virus",
                             remove_seq: false,
                             alignment_params: "-N 10"
@@ -270,7 +270,7 @@ nextflow_workflow {
                 script "modules/local/lcaTsv/main.nf"
                 process {
                     '''
-                    params_map = [
+                    def params_map = [
                         group_field: "seq_id",
                         taxid_field: "taxid",
                         score_field: "length_normalized_score", 

@@ -34,11 +34,14 @@ nextflow_process {
                 script "modules/local/minimap2/main.nf"
                 process {
                     '''
+                    def params_map = [
+                        suffix: "virus",
+                        remove_sq: false,
+                        alignment_params: ""
+                    ]
                     input[0] = MASK_FASTQ_READS.out.masked
                     input[1] = "${params.ref_dir}/results/mm2-virus-index"
-                    input[2] = "virus"
-                    input[3] = false
-                    input[4] = ""
+                    input[2] = params_map
                     '''
                 }
             }

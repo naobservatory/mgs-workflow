@@ -39,7 +39,7 @@ workflow PROFILE {
         if (platform == "ont") {
             ribo_ref = "${ref_dir}/results/mm2-ribo-index"
             ribo_minimap2_params = [
-                suffix: ribo_suffix,
+                suffix: params_map.ribo_suffix,
                 remove_sq: false,
                 alignment_params: ""
             ]
@@ -48,12 +48,7 @@ workflow PROFILE {
             noribo_in = ribo_ch.reads_unmapped
         } else {
             ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
-            ribo_bbduk_params = [
-                min_kmer_fraction: min_kmer_fraction,
-                k: k,
-                suffix: ribo_suffix,
-                interleaved: single_end.map{!it}
-            ]
+            ribo_bbduk_params = params_map + [interleaved: single_end.map{!it}]
             ribo_ch = BBDUK(reads_ch, ribo_path, ribo_bbduk_params)
             ribo_in = ribo_ch.match
             noribo_in = ribo_ch.nomatch

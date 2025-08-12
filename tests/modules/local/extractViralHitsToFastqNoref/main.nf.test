@@ -42,7 +42,6 @@ nextflow_process {
             }
         }
         when {
-            params {}
             process {
                 '''
                 input[0] = Channel.of("test").combine(EXTRACT_VIRAL_READS_SHORT.out.hits_final)
@@ -114,7 +113,6 @@ nextflow_process {
             }
         }
         when {
-            params {}
             process {
                 '''
                 input[0] = Channel.of("test").combine(EXTRACT_VIRAL_READS_ONT.out.hits_final)

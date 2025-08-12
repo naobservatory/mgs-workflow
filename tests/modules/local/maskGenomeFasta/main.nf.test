@@ -21,9 +21,6 @@ nextflow_process {
         }
         when {
             params {
-            }
-            process {
-                '''
                 params_map = [
                     k: 20,
                     hdist: 3,
@@ -31,9 +28,12 @@ nextflow_process {
                     polyx_len: 10,
                     name_pattern: "test-genomes"
                 ]
+            }
+            process {
+                '''
                 input[0] = GZIP_FILE_BARE.out
                 input[1] = "${projectDir}/ref/adapters.fasta"
-                input[2] = params_map
+                input[2] = params.params_map
                 '''
             }
         }
@@ -78,9 +78,6 @@ nextflow_process {
 
         when {
             params {
-            }
-            process {
-                '''
                 params_map = [
                     k: 20,
                     hdist: 3,
@@ -88,9 +85,13 @@ nextflow_process {
                     polyx_len: 20,
                     name_pattern: "param-test"
                 ]
+            }
+            process {
+                '''
+
                 input[0] = GZIP_FILE_BARE.out
                 input[1] = "${projectDir}/ref/adapters.fasta"
-                input[2] = params_map
+                input[2] = params.params_map
                 '''
             }
         }
