@@ -132,6 +132,7 @@ class SamAlignment:
     qual: str  # quality score for sequence
     pair_status: Optional[str]  # pair status
     alignment_score: Optional[int]  # alignment score
+    mate_alignment_score: Optional[int]  # alignment score of the mate
     normalized_score: float | None  # normalized alignment score
     line: str  # original SAM line
     fields: list[str]
@@ -150,12 +151,15 @@ class SamAlignment:
         fields = line.strip().split("\t")
         pair_status = None
         alignment_score = None
+        mate_alignment_score = None
         # Extract YT (pair status) and AS (alignment score) tags
         for field in fields[11:]:
             if field.startswith("YT:Z:"):
                 pair_status = field.split(":")[2]
             elif field.startswith("AS:i:"):
                 alignment_score = int(field.split(":")[2])
+            elif field.startswith("YS:i:"):
+                mate_alignment_score = int(field.split(":")[2])
         return cls(
             qname=fields[0],
             flag=int(fields[1]),
@@ -170,6 +174,7 @@ class SamAlignment:
             qual=fields[10],
             pair_status=pair_status,
             alignment_score=alignment_score,
+            mate_alignment_score=mate_alignment_score,
             normalized_score=None,  # Will be calculated later
             line=line,
             fields=fields,
@@ -313,13 +318,16 @@ def group_other_alignments(
 
     for alignment in alignments:
         # Find a unique key that you can use to group alignments that have mates
+        # To do this we use rname, rnext, pos_min, pos_max, tlen, and alignment_score/mate_alignment_score
+        # as not including all these fields has resulted in grouping errors
         pos_min = min(alignment.pos, alignment.pnext)
         pos_max = max(alignment.pos, alignment.pnext)
-        # Included tlen as I've run into some cases where there are two secondary "CP" alignments
-        # that have the same rname, rnext, pos_min, pos_max, so this was the last variable I could
-        # use to create a unique key
         abs_tlen = abs(alignment.tlen)
-        pair_key = (alignment.rname, alignment.rnext, pos_min, pos_max, abs_tlen)
+        # For paired alignments (CP/DP), both scores must be present
+        assert alignment.alignment_score is not None and alignment.mate_alignment_score is not None, \
+            f"Paired alignment missing scores: AS={alignment.alignment_score}, YS={alignment.mate_alignment_score}"
+        score_key = tuple(sorted((alignment.alignment_score, alignment.mate_alignment_score)))
+        pair_key = (alignment.rname, alignment.rnext, pos_min, pos_max, abs_tlen, score_key)
         # If the key hasn't been seen before, then this alignment is put into a new group, and recieves a new group ID
         if pair_key not in pair_key_to_group:
             pair_key_to_group[pair_key] = group_idx
@@ -339,7 +347,7 @@ def group_secondary_alignments(
 
     Delegates to specialized functions based on the pair status:
     - UP (unpaired) reads: groups by position/mate information
-    - CP (concordant pair) and DP (discordant pair) reads: groups by position, reference, and template length
+    - CP (concordant pair) and DP (discordant pair) reads: groups by position, reference, template length, and alignment/mate alignment scores
 
     Args:
         alignments (list[SamAlignment]): List of SamAlignment objects to group
