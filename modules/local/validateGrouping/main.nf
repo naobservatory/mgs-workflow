@@ -9,7 +9,7 @@ process VALIDATE_GROUPING {
         val(output_label)
     output:
         tuple val(label), path("${label}_${output_label}_validated_${join_field}.tsv.gz"), emit: output
-        tuple val(label), path("${label}_${output_label}_samples_with_zero_viral_hits.tsv"), emit: zero_vv_log
+        tuple val(label), path("${label}_${output_label}_zero_vv_samples.tsv"), emit: zero_vv_log
         tuple val(label), path("input_${input_file}"), path("input_${groups_file}"), emit: input
     shell:
         '''
