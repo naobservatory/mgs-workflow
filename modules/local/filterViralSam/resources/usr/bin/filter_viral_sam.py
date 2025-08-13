@@ -336,6 +336,11 @@ def group_other_alignments(
         group_id = pair_key_to_group[pair_key]
         by_group[group_id].append(alignment)
 
+    # Verify that each group has exactly 2 alignments (one forward, one reverse)
+    for group_id, group_alignments in by_group.items():
+        assert len(group_alignments) == 2, \
+            f"Group {group_id} for CP/DP alignments should have exactly 2 reads (forward/reverse pair), got {len(group_alignments)}"
+    
     return dict(by_group)
 
 
