@@ -54,9 +54,12 @@ workflow PREPARE_GROUP_TSVS {
         partitioned_grouped_ch = partitioned_flattened_ch.groupTuple()
         // 7. Concatenate TSVs for each group
         concat_ch = CONCATENATE_TSVS_LABELED(partitioned_grouped_ch, "grouped").output
+        // 8. Concatenate zero VV logs into single consolidated file
+        zero_vv_log_grouped_ch = zero_vv_log_ch.map { label, file -> ["all_samples", file] }.groupTuple()
+        consolidated_zero_vv_ch = CONCATENATE_TSVS_LABELED(zero_vv_log_grouped_ch, "zero_vv_consolidated").output
     emit:
         groups = concat_ch
-        zero_vv_logs = zero_vv_log_ch
+        zero_vv_logs = consolidated_zero_vv_ch
         test_in = input_files
         test_join = joined_ch
         test_part = partitioned_ch
