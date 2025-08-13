@@ -49,14 +49,12 @@ workflow EXTRACT_VIRAL_READS_SHORT {
                               "aligner_length_normalized_score_mean", "aligner_taxid_lca_combined",
                               "aligner_n_assignments_combined", "aligner_length_normalized_score_mean_combined",
                               "aligner_taxid_lca_artificial", "aligner_n_assignments_artificial", 
-                              "aligner_length_normalized_score_mean_artificial"]
+                              "aligner_length_normalized_score_mean_artificial", "query_len", "query_len_rev",
+                              "query_seq", "query_seq_rev", "query_qual", "query_qual_rev"]
         col_keep_add_prefix = ["genome_id_all", "taxid_all", "fragment_length", 
                                "best_alignment_score", "best_alignment_score_rev",
                                "edit_distance", "edit_distance_rev", "ref_start", 
-                               "ref_start_rev", "query_len", "query_len_rev",
-                               "query_seq", "query_seq_rev", "query_rc", 
-                               "query_rc_rev", "query_qual", "query_qual_rev", 
-                               "pair_status"]
+                               "ref_start_rev", "query_rc", "query_rc_rev", "pair_status"]
          // 1. Run initial screen against viral genomes with BBDuk
         bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
         // 2. Carry out stringent adapter removal with FASTP and Cutadapt

@@ -291,7 +291,7 @@ fn process_header_line(line: &str) -> Result<(Vec<&str>, HashMap<&str, usize>, u
     // Define required header fields
     let required_headers = vec![
         "seq_id", "prim_align_genome_id_all", "prim_align_ref_start", "prim_align_ref_start_rev",
-        "prim_align_query_qual", "prim_align_query_qual_rev"
+        "query_qual", "query_qual_rev"
     ];
     // Build a lookup for required headers
     let mut indices = HashMap::new();
@@ -311,8 +311,8 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>) -> ReadEnt
     let genome_id = &fields[indices["prim_align_genome_id_all"]];
     let ref_start_fwd = parse_int_or_na(&fields[indices["prim_align_ref_start"]]);
     let ref_start_rev = parse_int_or_na(&fields[indices["prim_align_ref_start_rev"]]);
-    let quality_fwd = &fields[indices["prim_align_query_qual"]];
-    let quality_rev = &fields[indices["prim_align_query_qual_rev"]];
+    let quality_fwd = &fields[indices["query_qual"]];
+    let quality_rev = &fields[indices["query_qual_rev"]];
     // Handle split assignments
     let genome_id_sorted: String;
     let aln_start: Option<i32>;

@@ -1,6 +1,7 @@
 # Developer guide
 This section is solely for developers of the pipeline. We thank you greatly for your work! It includes guidance on:
 - Coding style
+- Containers
 - Testing
 - GitHub issues
 - Pull requests (PRs)
@@ -30,7 +31,6 @@ These guidelines represent best practices to implement in new code, though some 
     - All processes should emit their input (for testing validation); use `ln -s` to link the input to the output.
     - Most processes have two output channels, `input` and `output`. If a process emits multiple types of output, use meaningful emit names describing the output types (e.g. `match`, `nomatch`, and `log` from `process BBDUK`).
     - Most, but not all, processes are *labeled* (input is a tuple of a sample name and file path). If input is labeled, output should also be labeled.
-- Containers: We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
 - Naming:
     - Use `lower_snake_case` for variable and channel names.
     - Use `UPPER_SNAKE_CASE` for process, subworkflow, and workflow names.
@@ -60,6 +60,13 @@ These guidelines represent best practices to implement in new code, though some 
     - Loosely follow PEP 8 conventions.
     - Type hints are encouraged but not currently required.
     - Linting is encouraged (our go-to tool is `ruff`), but not currently required. 
+    
+## Containers
+We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
+
+If your process needs a custom container, create a new Dockerfile in the `docker` directory. The name should have the prefix `nao-` followed by a descriptive name containing lowercase letters and hyphens, e.g. `docker/nao-blast-awscli.Dockerfile`
+
+Build and push the custom containers using the script `bin/build-push-docker.sh`. (This should be done by a repo maintainer as it requires being logged in to DockerHub with the securebio username.) 
     
 ## Testing
 
@@ -133,7 +140,7 @@ aws s3 cp /path/to/my_dataset s3://nao-testing/my_dataset/ --acl public-read
 
 ### Running tests
 
-To run the tests locally, you need to make sure that you have a powerful enough compute instance (at least 4 cores, 14GB of RAM, and 32GB of storage). On AWS EC2, we recommend the `m5.xlarge`. Note that you may want a more powerful instance when running tests in parallel (as described below).
+To run the tests locally, you need to make sure that you have a powerful enough compute instance (at least 4 cores, 14GB of RAM, and 32GB of storage). On AWS EC2, we recommend the `m5.2xlarge`. Note that you may want a more powerful instance when running tests in parallel (as described below).
 
 To run specific tests, you can specify the tests by filename or by tag. Individual tests generally complete quickly (seconds to minutes):
 ```
@@ -213,13 +220,14 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
     - If you make any changes that affect the output of the pipeline, list/describe the changes that occurred in the pull request. 
 3. **Update the `CHANGELOG.md` file** with the changes that you are making, and update the `pipeline-version.txt` file with the new version number.
     - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `master`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions both in `CHANGELOG.md` and in `pipeline-version.txt`, and should only be removed when preparing to merge to `master`.
-4. **Pass automated tests on GitHub Actions**. These run automatically when you open a pull request.
-5. **Write a meaningful description** of your changes in the PR description and give it a meaningful title. 
+4. **Update the expected-output-{run,downstream}.txt files** with any changes to the output of the RUN or DOWNSTREAM workflows.
+5. **Pass automated tests on GitHub Actions**. These run automatically when you open a pull request.
+6. **Write a meaningful description** of your changes in the PR description and give it a meaningful title. 
     - In comments, feel free to flag any open questions or places where you need careful review. 
-6. **Request review** from a maintainer on your changes. Current maintainers are jeffkaufman, willbradshaw, katherine-stansifer, and harmonbhasin. 
+7. **Request review** from a maintainer on your changes. Current maintainers are jeffkaufman, willbradshaw, katherine-stansifer, and harmonbhasin. 
     - Make sure to assign the PR to the desired reviewer so that they see your PR (put them in the "Assignees" section on GitHub as well as in the "Reviewers" section).
         - If the reviewer is not satisfied and requests changes, they should then change the "Assignee" to be the person who originally submitted the code. This may result in a few loops of "Assignee" being switched between the reviewer and the author.
-7. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch! 
+8. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch! 
 
 
 ## New releases
