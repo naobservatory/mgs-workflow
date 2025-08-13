@@ -20,7 +20,6 @@ import argparse
 import logging
 import gzip
 import bz2
-from collections import defaultdict
 from datetime import datetime, timezone
 from typing import TextIO
 
@@ -162,7 +161,7 @@ def validate_directional_integrity(virus_hits_ids: set[str], grouping_ids: set[s
     missing_grouping = virus_hits_ids - grouping_ids
     # Find samples with grouping but no virus hits (ZERO VIRAL HITS - OK)
     zero_vv = grouping_ids - virus_hits_ids
-    logger.info(f"Validation results:")
+    logger.info("Validation results:")
     logger.info(f"  - Samples with virus hits: {len(virus_hits_ids)}")
     logger.info(f"  - Samples with grouping: {len(grouping_ids)}")
     logger.info(f"  - Missing grouping (ERROR): {len(missing_grouping)}")

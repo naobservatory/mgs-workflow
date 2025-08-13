@@ -1,4 +1,4 @@
-// Validate that all samples in the grouping file are present in the viral hits table
+// Validate that all samples in the viral hits table have corresponding grouping
 // Filter out the samples from the grouping file that have 0 viral hits
 process VALIDATE_GROUPING {
     label "python"
