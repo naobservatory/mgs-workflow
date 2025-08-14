@@ -1,4 +1,5 @@
 taxid	parent_taxid	rank	exp_species	exp_genus	exp_family
+0	-1	acellular root	NA	NA	NA
 1	0	kingdom	NA	NA	NA
 2	1	phylum	NA	NA	NA
 3	2	class	NA	NA	NA
