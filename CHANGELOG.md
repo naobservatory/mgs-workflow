@@ -1,3 +1,6 @@
+# v2.9.0.7
+- Added bugfix for `RAISE_TAXONOMY_RANKS` to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
+
 # v2.9.0.6
 - Moved all outputs to main workflow for compatibility with Nextflow 25.04. (backported from v2.10.0.0):
     - Note that we are not compliant with the new strict syntax yet.
