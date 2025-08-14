@@ -33,13 +33,16 @@ nextflow_process {
                 script "modules/local/bowtie2/main.nf"
                 process {
                     '''
+                    def params_map = [
+                        par_string: "--local --very-sensitive-local --score-min G,0.1,19",
+                        suffix: "virus",
+                        remove_sq: true,
+                        debug: true,
+                        interleaved: true
+                ]
                     input[0] = INTERLEAVE_FASTQ.out.output
                     input[1] = "${params.ref_dir}/results/bt2-virus-index"
-                    input[2] = "--local --very-sensitive-local --score-min G,0.1,19"
-                    input[3] = "virus"
-                    input[4] = true
-                    input[5] = true
-                    input[6] = true
+                    input[2] = params_map
                     '''
                 }
             }
@@ -91,13 +94,17 @@ nextflow_process {
                 script "modules/local/bowtie2/main.nf"
                 process {
                     '''
+                    def params_map = [
+                        par_string: "--local --very-sensitive-local --score-min G,0.1,19",
+                        suffix: "virus",
+                        remove_sq: true,
+                        debug: true,
+                        interleaved: false
+                    ]
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet
                     input[1] = "${params.ref_dir}/results/bt2-virus-index"
-                    input[2] = "--local --very-sensitive-local --score-min G,0.1,19"
-                    input[3] = "virus"
-                    input[4] = true
-                    input[5] = true
-                    input[6] = false
+                    input[2] = params_map
+
                     '''
                 }
             }
