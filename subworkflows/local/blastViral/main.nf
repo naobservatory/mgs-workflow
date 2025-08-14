@@ -16,28 +16,21 @@ workflow BLAST_VIRAL {
     take:
         viral_fastq // Interleaved or single-end
         ref_dir // Path to reference directory containing BLAST DB
-        blast_db_prefix // Prefix for BLAST reference DB files (e.g. "nt")
-        read_fraction
-        blast_max_rank
-        blast_min_frac
-        random_seed
-        perc_id
-        qcov_hsp_perc
-        taxid_artificial // Parent taxid for artificial sequences in NCBI taxonomy
+        params_map // Map containing other parameters: blast_db_prefix (Prefix for BLAST reference DB files e.g. "nt"), read_fraction
+                   // blast_max_rank, blast_min_frac, random_seed, blast_perc_id, blast_qcov_hsp_perc, taxid_artificial
     main:
         // 1. Subset viral reads for BLAST
         reads_in = Channel.of("merged")
             | combine(viral_fastq)
-        subset_ch = (read_fraction < 1)
-            ? SUBSET_FASTN(reads_in, read_fraction, random_seed).output
+        subset_ch = (params_map.read_fraction < 1)
+            ? SUBSET_FASTN(reads_in, params_map.read_fraction, params_map.random_seed).output
             : reads_in
         subset_sorted_ch = SORT_FASTQ(subset_ch).output
         // 2. Convert to FASTA
         fasta_ch = CONVERT_FASTQ_FASTA(subset_sorted_ch).output
         // 3. Run BLAST and process output
-        blast_ch = BLAST_FASTA(fasta_ch, ref_dir, blast_db_prefix,
-            perc_id, qcov_hsp_perc, blast_max_rank, blast_min_frac,
-            taxid_artificial, "validation")
+        blast_fasta_params = params_map + [lca_prefix: "validation"]
+        blast_ch = BLAST_FASTA(fasta_ch, ref_dir, blast_fasta_params)
         // 4. Rename subset FASTA file for output
         copy_ch = COPY_FILE(fasta_ch, "blast_input_subset.fasta.gz")
     emit:

@@ -26,17 +26,21 @@ nextflow_workflow {
             params {}
             workflow {
                 '''
+                def profile_params = [
+                    min_kmer_fraction: "0.4",
+                    k: "27",
+                    ribo_suffix: "ribo",
+                    bracken_threshold: "1",
+                    platform: "illumina"
+                ]
                 input[0] = GZIP_FILE.out
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "${params.ref_dir}"
-                input[3] = "0.4"
-                input[4] = "27"
-                input[5] = "ribo"
-                input[6] = "1"
-                input[7] = Channel.of(true)
-                input[8] = "illumina"
+                input[3] = Channel.of(true)
+                input[4] = profile_params
                 '''
             }
+
         }
         then {
             // Should run without failures
@@ -84,15 +88,18 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def profile_params = [
+                    min_kmer_fraction: "0.4",
+                    k: "27",
+                    ribo_suffix: "ribo",
+                    bracken_threshold: "1",
+                    platform: "illumina"
+                ]
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "${params.ref_dir}"
-                input[3] = "0.4"
-                input[4] = "27"
-                input[5] = "ribo"
-                input[6] = "1"
-                input[7] = LOAD_SAMPLESHEET.out.single_end
-                input[8] = "illumina"
+                input[3] = LOAD_SAMPLESHEET.out.single_end
+                input[4] = profile_params
                 '''
             }
         }
@@ -130,15 +137,18 @@ nextflow_workflow {
             params {}
             workflow {
                 '''
+                def profile_params = [
+                    min_kmer_fraction: "0.4",
+                    k: "27",
+                    ribo_suffix: "ribo",
+                    bracken_threshold: "1",
+                    platform: "illumina"
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/kraken_db"
-                input[2] = "${params.ref_dir}"
-                input[3] = "0.4"
-                input[4] = "27"
-                input[5] = "ribo"
-                input[6] = "1"
-                input[7] = LOAD_SAMPLESHEET.out.single_end
-                input[8] = "illumina"
+                input[2] ="${params.ref_dir}"
+                input[3] = LOAD_SAMPLESHEET.out.single_end
+                input[4] = profile_params
                 '''
             }
         }
@@ -176,15 +186,18 @@ nextflow_workflow {
             params {}
             workflow {
                 '''
+                def profile_params = [
+                    min_kmer_fraction: "0.4",
+                    k: "27",
+                    ribo_suffix: "ribo",
+                    bracken_threshold: "1",
+                    platform: "ont"
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "${params.ref_dir}"
-                input[3] = "0.4"
-                input[4] = "27"
-                input[5] = "ribo"
-                input[6] = "1"
-                input[7] = LOAD_SAMPLESHEET.out.single_end
-                input[8] = "ont"
+                input[3] = LOAD_SAMPLESHEET.out.single_end
+                input[4] = profile_params
                 '''
             }
         }
