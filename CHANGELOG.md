@@ -5,7 +5,8 @@
 - Increased resources for PROCESS_VIRAL_MINIMAP2_SAM to avoid frequent out-of-memory errors
 - Fixed line iteration bug in tests for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATA
 - Added new Dockerfiles (custom containers that will be required for caching of large reference files), along with the utility script `bin/build-push-docker.sh` to build and push to Dockerhub.
-
+- Added more unit tests in the pytest file for ANNOTATE_VIRUS_INFECTION.
+ 
 # v3.0.0.0
 
 ### Breaking changes
