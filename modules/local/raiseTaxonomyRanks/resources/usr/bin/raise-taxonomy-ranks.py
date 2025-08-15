@@ -29,7 +29,7 @@ logger.addHandler(handler)
 # Define constants
 RANKS = ["subspecies", "species", "subgenus", "genus", "subfamily", "family",
          "suborder", "order", "class", "subphylum", "phylum", "kingdom",
-         "superkingdom"]
+         "superkingdom", "acellular root"]
 
 #=======================================================================
 # Auxiliary functions

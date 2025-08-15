@@ -293,10 +293,10 @@ IIIIIIIIIIIIIIII"""
     
     def test_secondary_alignments_with_score_filtering(self):
         # Secondary alignments (flag >= 256) should be processed separately by reference
-        sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:CP
-read1\t147\tchr1\t200\t60\t50M\t=\t100\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:48\tYT:Z:CP
-read1\t355\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:45\tYT:Z:CP
-read1\t403\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:15\tYT:Z:CP"""
+        sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYS:i:48\tYT:Z:CP
+read1\t147\tchr1\t200\t60\t50M\t=\t100\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:48\tYS:i:50\tYT:Z:CP
+read1\t355\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:45\tYS:i:15\tYT:Z:CP
+read1\t403\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:15\tYS:i:45\tYT:Z:CP"""
         
         filtered_content = """@read1/1
 ACGTACGTACGTACGT
@@ -369,12 +369,12 @@ IIIIIIIIIIIIIIII"""
     def test_multiple_secondary_alignment_pairs(self):
         # Test two pairs of secondary alignments to different references
         # with different score patterns
-        sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYT:Z:CP
-read1\t147\tchr1\t200\t60\t50M\t=\t100\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:48\tYT:Z:CP
-read1\t355\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:45\tYT:Z:CP
-read1\t403\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:42\tYT:Z:CP
-read1\t355\tchr3\t500\t60\t50M\t=\t600\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:25\tYT:Z:CP
-read1\t403\tchr3\t600\t60\t50M\t=\t500\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:20\tYT:Z:CP"""
+        sam_content = """read1\t99\tchr1\t100\t60\t50M\t=\t200\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:50\tYS:i:48\tYT:Z:CP
+read1\t147\tchr1\t200\t60\t50M\t=\t100\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:48\tYS:i:50\tYT:Z:CP
+read1\t355\tchr2\t300\t60\t50M\t=\t400\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:45\tYS:i:42\tYT:Z:CP
+read1\t403\tchr2\t400\t60\t50M\t=\t300\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:42\tYS:i:45\tYT:Z:CP
+read1\t355\tchr3\t500\t60\t50M\t=\t600\t150\tACGTACGTACGTACGT\tIIIIIIIIIIIIIIII\tAS:i:25\tYS:i:20\tYT:Z:CP
+read1\t403\tchr3\t600\t60\t50M\t=\t500\t-150\tTGCATGCATGCATGCA\tIIIIIIIIIIIIIIII\tAS:i:20\tYS:i:25\tYT:Z:CP"""
         
         filtered_content = """@read1/1
 ACGTACGTACGTACGT
@@ -659,6 +659,51 @@ IIIIIIIIIIIIIIII"""
         
         # All reads should have the same qname
         assert all(a.qname == 'read1' for a in alignments)
+
+class TestGrouping:
+    def test_group_concordant_pairs_by_alignment_scores(self):
+        # Test that secondary alignments for concordant paired reads with the same 
+        # reference genome name (rname), alignment position (pos)
+        # reference genome name of the mate (rnext) and template length (tlen) 
+        # get grouped separately with their correct mate
+
+        # Arrange
+        from filter_viral_sam import group_other_alignments
+        alignments = []
+        # Secondary pair 1: TLEN ±147, AS:45/42
+        # Note: forward and reverse reads have different CIGARs
+        line1 = "LH00642:88:22WT2HLT4:4:2351:20319:9912\t339\tEU095850.1\t4575\t255\t19S61M67S\t=\t4575\t147\tACGT\tIIII\tAS:i:45\tYS:i:42\tYT:Z:CP"
+        line2 = "LH00642:88:22WT2HLT4:4:2351:20319:9912\t403\tEU095850.1\t4575\t255\t67S61M19S\t=\t4575\t-147\tTGCA\tIIII\tAS:i:42\tYS:i:45\tYT:Z:CP"
+        # Secondary pair 2: TLEN ±147, AS:43/40        
+        line3 = "LH00642:88:22WT2HLT4:4:2351:20319:9912\t339\tEU095850.1\t4575\t255\t79S61M7S\t=\t4575\t147\tACGT\tIIII\tAS:i:43\tYS:i:40\tYT:Z:CP"
+        line4 = "LH00642:88:22WT2HLT4:4:2351:20319:9912\t403\tEU095850.1\t4575\t255\t7S61M79S\t=\t4575\t-147\tTGCA\tIIII\tAS:i:40\tYS:i:43\tYT:Z:CP"
+        # Secondary pair 3: TLEN ±207, AS:40/38
+        line5 = "LH00642:88:22WT2HLT4:4:2351:20319:9912\t339\tEU095850.1\t4575\t255\t79S61M7S\t=\t4575\t207\tACGT\tIIII\tAS:i:40\tYS:i:38\tYT:Z:CP"
+        line6 = "LH00642:88:22WT2HLT4:4:2351:20319:9912\t403\tEU095850.1\t4575\t255\t7S61M79S\t=\t4575\t-207\tTGCA\tIIII\tAS:i:38\tYS:i:40\tYT:Z:CP"
+        for line in [line1, line2, line3, line4, line5, line6]:
+            alignments.append(SamAlignment.from_sam_line(line))
+        # Act
+        groups = group_other_alignments(alignments)
+        # Assert
+        # Should create exactly 3 groups (3 different pairs)
+        assert len(groups) == 3, f"Expected 3 groups, got {len(groups)}"
+        # Each group should contain exactly 2 alignments (paired reads)
+        for group_id, group_alignments in groups.items():
+            assert len(group_alignments) == 2, f"Group {group_id} should have 2 alignments, got {len(group_alignments)}"
+            # Each group should have one read1 (flag 339) and one read2 (flag 403)
+            flags = sorted([a.flag for a in group_alignments])
+            assert flags == [339, 403], f"Group {group_id} should have flags [339, 403], got {flags}"
+            # Verify that AS and YS scores map correctly between mates
+            # The AS score of read1 should equal the YS score of read2, and vice versa
+            read1 = [a for a in group_alignments if a.flag == 339][0]
+            read2 = [a for a in group_alignments if a.flag == 403][0]
+            assert read1.alignment_score == read2.mate_alignment_score, \
+                f"Group {group_id}: read1 AS ({read1.alignment_score}) != read2 YS ({read2.mate_alignment_score})"
+            assert read2.alignment_score == read1.mate_alignment_score, \
+                f"Group {group_id}: read2 AS ({read2.alignment_score}) != read1 YS ({read1.mate_alignment_score})"
+            # Each group should have matching abs(TLEN) values
+            tlens = [abs(a.tlen) for a in group_alignments]
+            assert tlens[0] == tlens[1], f"Group {group_id} abs(TLEN) mismatch: {tlens}"
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
