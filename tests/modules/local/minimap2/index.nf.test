@@ -40,7 +40,7 @@ nextflow_process {
                 ]
                 input[0] = GZIP_FILE.out
                 input[1] = MINIMAP2_INDEX.out.output
-                input[2] = params.params_map
+                input[2] = minimap2_params
                 '''
             }
         }
