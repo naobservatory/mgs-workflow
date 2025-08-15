@@ -33,11 +33,15 @@ nextflow_process {
                 script "subworkflows/local/taxonomy/main.nf"
                 workflow {
                     '''
+                    def taxonomy_params = [
+                        classification_level: "D", 
+                        bracken_threshold: 5, 
+                        db_download_timeout: params.db_download_timeout
+                    ]
                     input[0] = INTERLEAVE_FASTQ.out.output
                     input[1] = "${params.ref_dir}/results/kraken_db"
-                    input[2] = "D"
-                    input[3] = "5"
-                    input[4] = LOAD_SAMPLESHEET.out.single_end
+                    input[2] = LOAD_SAMPLESHEET.out.single_end
+                    input[3] = taxonomy_params
                     '''
                 }
             }

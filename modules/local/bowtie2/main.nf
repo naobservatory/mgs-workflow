@@ -23,8 +23,8 @@ process BOWTIE2 {
         sam="!{sample}_${suffix}_bowtie2_mapped.sam.gz"
         al="!{sample}_${suffix}_bowtie2_mapped.fastq.gz"
         un="!{sample}_${suffix}_bowtie2_unmapped.fastq.gz"
-        io="-x /scratch/${idx_dir_name}/bt2_index !{parmas_map.interleaved ? "--interleaved" : ""} -"
-        par="--threads !{task.cpus} --mm !{param_maps.par_string}"
+        io="-x /scratch/${idx_dir_name}/bt2_index !{params_map.interleaved ? "--interleaved" : ""} -"
+        par="--threads !{task.cpus} --mm !{params_map.par_string}"
         # Set SAM flags based on whether data is paired-end or single-end
         # For paired-end: flag 12 = read unmapped (4) + mate unmapped (8)
         # For single-end: flag 4 = read unmapped

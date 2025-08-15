@@ -99,7 +99,8 @@ nextflow_workflow {
                             suffix: "virus",
                             remove_sq: true,
                             debug: false,
-                            interleaved: true
+                            interleaved: true,
+                            db_download_timeout: params.db_download_timeout
                         ]
                         input[0] = INTERLEAVE_FASTQ.out.output 
                         input[1] = "${params.ref_dir}/results/bt2-virus-index"
@@ -237,8 +238,8 @@ nextflow_workflow {
                         def params_map = [
                             suffix: "virus",
                             remove_seq: false,
-                            alignment_params: "-N 10"
-
+                            alignment_params: "-N 10", 
+                            db_download_timeout: params.db_download_timeout
                         ]
                         input[0] = INTERLEAVE_FASTQ.out.output 
                         input[1] = "${params.ref_dir}/results/mm2-virus-index"

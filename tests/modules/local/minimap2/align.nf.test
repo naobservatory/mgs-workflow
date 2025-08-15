@@ -25,17 +25,18 @@ nextflow_process {
 
         when {
             params {
-                params_map = [
-                    suffix: "test",
-                    remove_sq: false,
-                    alignment_params: "-N 10"
-                ]
             }
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "-N 10",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
-                input[2] = params.params_map
+                input[2] = minimap2_params
                 '''
             }
         }
@@ -94,17 +95,18 @@ nextflow_process {
 
         when {
             params {
-                params_map = [
-                    suffix: "test",
-                    remove_sq: false,
-                    alignment_params: ""
-                ]
             }
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
-                input[2] = params.params_map
+                input[2] = minimap2_params
                 '''
             }
         }
@@ -163,17 +165,18 @@ nextflow_process {
 
         when {
             params {
-                params_map = [
-                    suffix: "test",
-                    remove_sq: false,
-                    alignment_params: ""
-                ]
 	    }
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-human-index"
-                input[2] = params.params_map
+                input[2] = minimap2_params
                 '''
             }
         }
@@ -217,17 +220,18 @@ nextflow_process {
 
         when {
             params {
-                params_map = [
-                    suffix: "test",
-                    remove_sq: false,
-                    alignment_params: ""
-                ]
             }
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-ribo-index"
-                input[2] = params.params_map
+                input[2] = minimap2_params
                 '''
             }
         }
@@ -285,17 +289,18 @@ nextflow_process {
 
         when {
             params {
-                params_map = [
-                    suffix: "test",
-                    remove_sq: false,
-                    alignment_params: ""
-                ]
             }
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = GZIP_FILE.out
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
-                input[2] = params.params_map
+                input[2] = minimap2_params
                 '''
             }
         }

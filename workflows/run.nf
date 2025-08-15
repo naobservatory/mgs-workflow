@@ -52,7 +52,7 @@ workflow RUN {
 
     // Extract and count human-viral reads
     if ( params.platform == "ont" ) {
-        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.taxid_artificial)
+        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.taxid_artificial, params.db_download_timeout)
         hits_fastq = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_ONT.out.hits_final
         inter_lca = EXTRACT_VIRAL_READS_ONT.out.inter_lca

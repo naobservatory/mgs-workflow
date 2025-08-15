@@ -37,7 +37,8 @@ nextflow_process {
                     def params_map = [
                         suffix: "virus",
                         remove_sq: false,
-                        alignment_params: ""
+                        alignment_params: "",
+                        db_download_timeout: params.db_download_timeout
                     ]
                     input[0] = MASK_FASTQ_READS.out.masked
                     input[1] = "${params.ref_dir}/results/mm2-virus-index"

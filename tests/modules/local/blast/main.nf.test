@@ -41,18 +41,18 @@ nextflow_process {
         tag "expect_success"
         when {
             params {
-                params_map = [
-                    blast_db_prefix: params.blast_db_prefix
-                    blast_perc_id: params.blast_perc_id,
-                    blast_qcov_hsp_perc: params.blast_qcov_hsp_perc,
-                    db_download_timeout: 120 // 2 minutes
-                ]
             }
             process {
                 '''
+                def blast_params = [
+                    blast_db_prefix: params.blast_db_prefix,
+                    blast_perc_id: params.blast_perc_id,
+                    blast_qcov_hsp_perc: params.blast_qcov_hsp_perc,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = CONVERT_FASTQ_FASTA.out.output
                 input[1] = "${params.ref_dir}/results/${params.blast_db_prefix}"
-                input[2] = params.params_map
+                input[2] = blast_params
                 '''
             }
         }

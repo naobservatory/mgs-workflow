@@ -30,7 +30,6 @@ nextflow_workflow {
                 perc_id = 60
                 qcov_hsp_perc = 30
                 taxid_artificial = 81077
-                db_download_timeout = 120 // 2 minutes
             }
             workflow {
                 '''
@@ -101,7 +100,6 @@ nextflow_workflow {
                 perc_id = 60
                 qcov_hsp_perc = 30
                 taxid_artificial = 81077
-                db_download_timeout = 120 // 2 minutes
             }
             workflow {
                 '''
@@ -209,7 +207,6 @@ nextflow_workflow {
                 perc_id = 60
                 qcov_hsp_perc = 30
                 taxid_artificial = 81077
-                db_download_timeout = 120 // 2 minutes
             }
             workflow {
                 '''
@@ -317,7 +314,6 @@ nextflow_workflow {
                 perc_id = 0
                 qcov_hsp_perc = 0
                 taxid_artificial = 81077
-                db_download_timeout = 120 // 2 minutes
             }
             workflow {
                 '''
