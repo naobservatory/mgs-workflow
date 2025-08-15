@@ -6,6 +6,7 @@
 - Fixed line iteration bug in tests for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATA
 - Added new Dockerfiles (custom containers that will be required for caching of large reference files), along with the utility script `bin/build-push-docker.sh` to build and push to Dockerhub.
 - Added more unit tests in the pytest file for ANNOTATE_VIRUS_INFECTION.
+- Added bugfix for `RAISE_TAXONOMY_RANKS` to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
 - Fixed FILTER_VIRAL_SAM grouping bug for concordant pairs with identical positions but different alignment scores
 
 # v3.0.0.0
