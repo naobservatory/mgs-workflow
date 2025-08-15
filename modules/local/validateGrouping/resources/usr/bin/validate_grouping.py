@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 
 """
-Validate grouping file against virus hits file using directional validation.
-
-This script implements asymmetric validation:
-1. ENFORCE: Every sample in virus_hits MUST have corresponding grouping (data integrity)
-2. ALLOW: Samples in grouping without virus hits (zero viral hits - filter out)
+Check that the samples in the grouping file are a superset of the samples in the virus hits file.
+If it's not throw an error; otherwise, write a new grouping file with only samples observed in the hits file,
+and write a list of samples without viral hits.
 
 Usage:
-    validate_grouping.py virus_hits.tsv grouping.tsv join_field validated_grouping.tsv.gz samples_without_vv_hits.tsv
+    validate_grouping.py virus_hits.tsv grouping.tsv validated_grouping.tsv.gz samples_without_vv_hits.tsv
 """
 
 #=======================================================================
@@ -22,6 +20,7 @@ import gzip
 import bz2
 from datetime import datetime, timezone
 from typing import TextIO
+import os
 
 # Configure logging
 class UTCFormatter(logging.Formatter):
@@ -35,8 +34,8 @@ class UTCFormatter(logging.Formatter):
         """Format the time in UTC.
         
         Args:
-            record: LogRecord instance containing the event data
-            datefmt: Date format string (currently unused, UTC format is hardcoded)
+            record (logging.LogRecord): LogRecord instance containing the event data
+            datefmt (str | None): Date format string (currently unused, UTC format is hardcoded)
         
         Returns:
             str: Formatted UTC timestamp string
@@ -61,8 +60,8 @@ def open_by_suffix(filename: str, mode: str = "r") -> TextIO:
     to use, then open the file. Can handle .gz, .bz2, and uncompressed files.
     
     Args:
-        filename: Path to the file to open
-        mode: File open mode (default: "r")
+        filename (str): Path to the file to open
+        mode (str): File open mode (default: "r")
     
     Returns:
         TextIO: File handle for reading or writing
@@ -77,214 +76,179 @@ def open_by_suffix(filename: str, mode: str = "r") -> TextIO:
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments.
     
-    Args:
-        None
-    
     Returns:
         argparse.Namespace: Parsed command-line arguments containing:
             - virus_hits_file: Path to virus hits TSV file
             - grouping_file: Path to grouping TSV file
-            - join_field: Field to validate on
             - validated_output: Path to validated grouping output file
             - samples_without_vv_hits: Path to samples without viral hits log file
     """
     parser = argparse.ArgumentParser(description="Validate grouping file against virus hits file")
-    parser.add_argument("virus_hits_file", help="Path to virus hits TSV file")
-    parser.add_argument("grouping_file", help="Path to grouping TSV file")
-    parser.add_argument("join_field", help="Field to validate on (e.g., 'sample')")
-    parser.add_argument("validated_output", help="Path to validated grouping output file (.tsv.gz)")
-    parser.add_argument("samples_without_vv_hits", help="Path to samples without viral hits log file (.tsv)")
+    parser.add_argument("virus_hits_file", help="Path to virus hits TSV file (must contain a 'sample' column)")
+    parser.add_argument("grouping_file", help="Path to grouping TSV file (columns: group	sample)")
+    parser.add_argument("validated_output", help="Path to validated grouping output file (.tsv or .tsv.gz)")
+    parser.add_argument("samples_without_vv_hits", help="Path to samples-without-viral-hits output (.tsv or .tsv.gz)")
     return parser.parse_args()
 
 #=======================================================================
-# File reading functions
+# Core logic (no per-sample counts needed)
 #=======================================================================
 
-def read_sample_ids_from_file(file_path: str, join_field: str) -> tuple[set[str], list[str]]:
-    """
-    Read sample IDs from a TSV file.
+def _read_grouping(grouping_path: str) -> dict[str, str]:
+    """Load the entire grouping TSV, finding 'group' and 'sample' columns by header.
     
     Args:
-        file_path: Path to the TSV file to read
-        join_field: Name of the field to extract sample IDs from
+        grouping_path (str): Path to the grouping TSV file
     
     Returns:
-        tuple[set[str], list[str]]: A tuple containing:
-            - Set of unique sample IDs found in the file
-            - List of header field names from the file
+        dict[str, str]: Mapping from sample ID to group ID
     
     Raises:
-        ValueError: If the join_field is not found in the file header
+        ValueError: If 'group' or 'sample' columns not found, duplicate samples found, or file is empty
     """
-    sample_ids = set()
+    sample_to_group: dict[str, str] = {}
+    header_idx = None
     
-    with open_by_suffix(file_path) as file_handle:
-        header_line = file_handle.readline().strip()
-        if not header_line:
-            logger.warning(f"File {file_path} is empty")
-            return set(), []
-        header = header_line.split('\t')
-        if join_field not in header:
-            raise ValueError(f"Join field '{join_field}' not found in {file_path}. Available fields: {header}")
-        join_field_index = header.index(join_field)
-        logger.info(f"Reading sample IDs from {file_path}, join field '{join_field}' at index {join_field_index}")
-        for line_num, line in enumerate(file_handle, start=2):
+    with open_by_suffix(grouping_path, 'r') as f:
+        for line in f:
             line = line.strip()
-            fields = line.split('\t')
-            sample_id = fields[join_field_index]
-            sample_ids.add(sample_id)
-        logger.info(f"Found {len(sample_ids)} unique sample IDs in {file_path}")
-        return sample_ids, header
+            if not line:
+                continue
+            parts = line.split('\t')
+            if header_idx is None:
+                header_idx = {name.lower(): i for i, name in enumerate(parts)}
+                if 'group' not in header_idx or 'sample' not in header_idx:
+                    raise ValueError("Grouping file header must contain 'group' and 'sample' columns")
+                continue
+            group = parts[header_idx['group']]
+            sample = parts[header_idx['sample']]
+            if sample in sample_to_group:
+                raise ValueError(f"Duplicate sample in grouping: {sample}")
+            sample_to_group[sample] = group
+    if not sample_to_group:
+        raise ValueError("Grouping file is empty (no data rows)")
+    logger.info(f"Loaded grouping with {len(sample_to_group)} samples")
+    return sample_to_group
 
-#=======================================================================
-# Validation functions
-#=======================================================================
 
-def validate_directional_integrity(virus_hits_ids: set[str], grouping_ids: set[str]) -> tuple[set[str], set[str]]:
-    """
-    Perform directional validation between virus hits and grouping files.
-    
-    This function implements asymmetric validation where samples with virus hits
-    must have grouping (data integrity), but samples with grouping may not have
-    virus hits (zero viral hits).
+def _stream_hits(virus_hits_path: str, sample_to_group: dict[str, str]) -> set[str]:
+    """Stream virus_hits TSV, return set of sample IDs that appeared in virus_hits.
     
     Args:
-        virus_hits_ids: Set of sample IDs from virus hits file
-        grouping_ids: Set of sample IDs from grouping file
+        virus_hits_path (str): Path to the virus hits TSV file
+        sample_to_group (dict[str, str]): Mapping from sample ID to group ID
     
     Returns:
-        tuple[set[str], set[str]]: A tuple containing:
-            - missing_grouping_ids: Samples in virus_hits but not in grouping (ERROR)
-            - zero_vv_ids: Samples in grouping but not in virus_hits (OK - zero viral hits)
-    """
-    # Find samples with virus hits but missing grouping (DATA INTEGRITY ERROR)
-    missing_grouping = virus_hits_ids - grouping_ids
-    # Find samples with grouping but no virus hits (ZERO VIRAL HITS - OK)
-    zero_vv = grouping_ids - virus_hits_ids
-    logger.info("Validation results:")
-    logger.info(f"  - Samples with virus hits: {len(virus_hits_ids)}")
-    logger.info(f"  - Samples with grouping: {len(grouping_ids)}")
-    logger.info(f"  - Missing grouping (ERROR): {len(missing_grouping)}")
-    logger.info(f"  - Zero viral hits (OK): {len(zero_vv)}")
-    if missing_grouping:
-        logger.error(f"Data integrity error: {len(missing_grouping)} samples have virus hits but missing grouping")
-        for sample_id in sorted(missing_grouping):
-            logger.error(f"  - Sample {sample_id} has virus hits but no grouping information")
-    if zero_vv:
-        logger.info(f"Found {len(zero_vv)} samples with zero viral hits (will be excluded from downstream analysis)")
-        for sample_id in sorted(list(zero_vv)[:5]):  # Log first 5
-            logger.info(f"  - Sample {sample_id} has no virus hits (zero viral hits)")
-        if len(zero_vv) > 5:
-            logger.info(f"  - ... and {len(zero_vv) - 5} more")
-    return missing_grouping, zero_vv
-
-#=======================================================================
-# File processing functions
-#=======================================================================
-
-def filter_grouping_file(grouping_file: str, join_field: str, zero_vv_ids: set[str], validated_output: str) -> None:
-    """
-    Create filtered grouping file containing only samples with viral hits.
+        set[str]: Set of sample IDs that appeared in virus_hits
     
-    This function reads the original grouping file and creates a new file
-    that excludes samples with zero viral hits, preserving all other data.
-    
-    Args:
-        grouping_file: Path to original grouping file (may be gzipped)
-        join_field: Field name to filter on (must exist in header)
-        zero_vv_ids: Set of sample IDs to exclude (zero viral hits)
-        validated_output: Path to write filtered grouping file (gzipped if .gz extension)
-    
-    Returns:
-        None
+    Raises:
+        ValueError: If virus hits header does not contain a 'sample' column or if samples are missing from grouping
     """
-    input_handle = open_by_suffix(grouping_file, 'r')
-    output_handle = open_by_suffix(validated_output, 'w')
-    try:
-        header_line = input_handle.readline().strip()
-        header = header_line.split('\t')
-        join_field_index = header.index(join_field)
-        output_handle.write(header_line + '\n')
-        rows_kept = 0
-        rows_excluded = 0
-        for line in input_handle:
+    seen: set[str] = set()
+    header_idx = None
+    total_rows = 0
+    with open_by_suffix(virus_hits_path, 'r') as f:
+        for line in f:
             line = line.strip()
-            fields = line.split('\t')
-            sample_id = fields[join_field_index]
-            if sample_id in zero_vv_ids:
-                rows_excluded += 1
-                logger.debug(f"Excluding sample {sample_id} (zero viral hits)")
-            else:
-                output_handle.write(line + '\n')
-                rows_kept += 1
-        logger.info(f"Filtered grouping file: {rows_kept} rows kept, {rows_excluded} rows excluded")
-    finally:
-        input_handle.close()
-        output_handle.close()
+            if not line:
+                continue
+            parts = line.split('\t')
+            if header_idx is None:
+                header_idx = {name: i for i, name in enumerate(parts)}
+                if 'sample' not in header_idx:
+                    raise ValueError("Virus hits header must contain a 'sample' column")
+                continue
+            total_rows += 1
+            sample = parts[header_idx['sample']]
+            seen.add(sample)
+    logger.info(f"Streamed {total_rows} virus-hit rows; unique samples observed: {len(seen)}")
+    missing = seen - set(sample_to_group.keys())
+    if missing:
+        sorted_missing = sorted(missing)
+        raise ValueError(
+            f"Found {len(missing)} samples present in virus_hits but MISSING from grouping: "
+            f"{', '.join(sorted_missing[:10])}{'...' if len(missing) > 10 else ''}"
+        )
+    return seen
 
-def write_zero_vv_log(zero_vv_ids: set[str], samples_without_vv_hits: str) -> None:
-    """Write zero viral hits log file.
-    
-    Creates a TSV log file documenting samples that have no viral hits.
+def _write_outputs(
+    sample_to_group: dict[str, str],
+    seen_in_hits: set[str],
+    out_new_grouping_path: str,
+    out_no_vv_samples_path: str,
+) -> None:
+    """Write samples with no viral hits (grouping - hits) and new grouping (intersection).
     
     Args:
-        zero_vv_ids: Set of sample IDs with zero viral hits
-        samples_without_vv_hits: Path to write the log file
-    
-    Returns:
-        None
+        sample_to_group (dict[str, str]): Mapping from sample ID to group ID
+        seen_in_hits (set[str]): Set of sample IDs observed in virus hits
+        out_new_grouping_path (str): Path to write validated grouping file
+        out_no_vv_samples_path (str): Path to write samples with no viral hits
     """
-    with open(samples_without_vv_hits, 'w') as f:
-        f.write("sample_id\n")
-        for sample_id in sorted(zero_vv_ids):
-            f.write(f"{sample_id}\n")
-    logger.info(f"Wrote zero viral hits log: {len(zero_vv_ids)} samples to {samples_without_vv_hits}")
+    grouping_samples = set(sample_to_group.keys())
+    samples_no_viral_hits = sorted(grouping_samples - seen_in_hits)
+    with open_by_suffix(out_no_vv_samples_path, 'w') as out_unused:
+        for s in samples_no_viral_hits:
+            out_unused.write(f"{s}\n")
+    logger.info(f"Wrote {len(samples_no_viral_hits)} samples with no viral hits to {out_no_vv_samples_path}")
+    samples_with_viral_hits = sorted(grouping_samples & seen_in_hits)
+    with open_by_suffix(out_new_grouping_path, 'w') as out_group:
+        out_group.write("group\tsample\n")
+        for s in samples_with_viral_hits:
+            out_group.write(f"{sample_to_group[s]}\t{s}\n")
+    logger.info(f"Wrote validated grouping with {len(samples_with_viral_hits)} samples to {out_new_grouping_path}")
+
+
+def validate_grouping(
+    grouping_path: str,
+    virus_hits_path: str,
+    out_no_vv_samples_path: str,
+    out_new_grouping_path: str,
+) -> None:
+    """Validate that samples in grouping file are a superset of samples in virus hits file. Update grouping file to only include samples observed in virus hits.
+    
+    Args:
+        grouping_path (str): Path to the grouping TSV file
+        virus_hits_path (str): Path to the virus hits TSV file
+        out_no_vv_samples_path (str): Path to write samples with no viral hits
+        out_new_grouping_path (str): Path to write validated grouping file
+    
+    Raises:
+        ValueError: If virus hits contain samples missing from grouping
+    """
+    # 1) Load grouping
+    sample_to_group = _read_grouping(grouping_path)
+    # 2) Stream hits and validate that samples are subset of grouping
+    seen_in_hits = _stream_hits(virus_hits_path, sample_to_group)
+    # 3) Write samples with no viral hits to out_no_vv_samples_path and new grouping to out_new_grouping_path
+    _write_outputs(sample_to_group, seen_in_hits, out_new_grouping_path, out_no_vv_samples_path)
+
 
 #=======================================================================
-# Main function
+# Entrypoint
 #=======================================================================
 
 def main() -> None:
-    """Main function implementing directional validation logic.
-    
-    This function orchestrates the validation process:
-    1. Reads sample IDs from both virus hits and grouping files
-    2. Performs directional validation to check data integrity
-    3. Fails if samples with virus hits are missing grouping
-    4. Filters grouping file to exclude zero-VV samples
-    5. Creates log file documenting zero-VV samples
-    
-    Args:
-        None (uses command-line arguments)
-    
-    Returns:
-        None
-    
+    """Parse command-line arguments and call validate_grouping().
+
     Raises:
-        ValueError: If samples with virus hits are missing grouping information
+        ValueError: If validation fails due to missing samples in grouping
     """
     args = parse_args()
-    logger.info("Starting directional validation")
-    logger.info(f"Virus hits file: {args.virus_hits_file}")
-    logger.info(f"Grouping file: {args.grouping_file}")
-    logger.info(f"Join field: {args.join_field}")
-    # Step 1: Read sample IDs from both files
-    virus_hits_ids, _ = read_sample_ids_from_file(args.virus_hits_file, args.join_field)
-    grouping_ids, _ = read_sample_ids_from_file(args.grouping_file, args.join_field)
-    # Step 2: Perform directional validation
-    missing_grouping_ids, zero_vv_ids = validate_directional_integrity(virus_hits_ids, grouping_ids)
-    # Step 3: Check for data integrity errors (FAIL if samples with VVs missing grouping)
-    if missing_grouping_ids:
-        error_msg = f"Validation failed: {len(missing_grouping_ids)} samples with virus hits are missing grouping information"
-        logger.error(error_msg)
-        raise ValueError(error_msg)
-    # Step 4: Filter grouping file to remove zero-VV samples
-    filter_grouping_file(args.grouping_file, args.join_field, zero_vv_ids, args.validated_output)
-    # Step 5: Write zero-VV log for audit trail
-    write_zero_vv_log(zero_vv_ids, args.samples_without_vv_hits)
-    logger.info("Directional validation completed successfully")
-    logger.info(f"Validated grouping file: {args.validated_output}")
-    logger.info(f"Zero VV log file: {args.samples_without_vv_hits}")
+    logger.info("Starting validation")
+    try:
+        validate_grouping(
+            grouping_path=args.grouping_file,
+            virus_hits_path=args.virus_hits_file,
+            out_no_vv_samples_path=args.samples_without_vv_hits,
+            out_new_grouping_path=args.validated_output,
+        )
+    except ValueError as e:
+        logger.error(str(e))
+        raise
+    logger.info("Validation complete")
+
 
 if __name__ == "__main__":
     main()
+

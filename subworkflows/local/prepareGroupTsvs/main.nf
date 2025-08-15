@@ -26,16 +26,14 @@ workflow PREPARE_GROUP_TSVS {
         groups_sorted_ch = SORT_GROUPS(groups_ch, "sample").sorted
         combined_sorted_ch = input_sorted_ch.combine(groups_sorted_ch, by: 0)
         // 2. Validate grouping and filter zero-VV samples
-        validated_grouping_ch = VALIDATE_GROUPING(combined_sorted_ch, "sample", "input").output
+        validated_grouping_ch = VALIDATE_GROUPING(combined_sorted_ch).output
         zero_vv_log_ch = VALIDATE_GROUPING.out.zero_vv_log
-        // 3. Combine input files with validated grouping for joining
-        join_input_ch = input_sorted_ch.combine(validated_grouping_ch, by: 0)
-        // 4. Join with inner join (guaranteed to succeed after validation)
-        joined_ch = JOIN_TSVS(join_input_ch, "sample", "inner", "input").output
+        // 3. Join with inner join (guaranteed to succeed after validation)
+        joined_ch = JOIN_TSVS(validated_grouping_ch, "sample", "inner", "input").output
         joined_sorted_ch = SORT_JOINED_GROUPS(joined_ch, "group").sorted
-        // 5. Partition each TSV by group ID
+        // 4. Partition each TSV by group ID
         partitioned_ch = PARTITION_TSV(joined_sorted_ch, "group").output
-        // 6. Restructure channel so all files with the same group ID are together
+        // 5. Restructure channel so all files with the same group ID are together
         // First rearrange each element from [sample, [paths]] to [[group1, path1], [group2, path2], ...]
         partitioned_flattened_ch = partitioned_ch.flatMap{
             sample, filepaths ->
@@ -53,9 +51,9 @@ workflow PREPARE_GROUP_TSVS {
             }
         // Then rearrange channel to [[group1, [paths]], [group2, [paths]], ...]
         partitioned_grouped_ch = partitioned_flattened_ch.groupTuple()
-        // 7. Concatenate TSVs for each group
+        // 6. Concatenate TSVs for each group
         concat_ch = CONCATENATE_TSVS_LABELED(partitioned_grouped_ch, "grouped").output
-        // 8. Concatenate zero VV logs into single consolidated file
+        // 7. Concatenate zero VV logs into single consolidated file
         zero_vv_log_grouped_ch = zero_vv_log_ch.map { label, file -> ["all_samples", file] }.groupTuple()
         consolidated_zero_vv_ch = CONCATENATE_EMPTY_SAMPLES_LIST(zero_vv_log_grouped_ch, "zero_vv_consolidated").output
     emit:
