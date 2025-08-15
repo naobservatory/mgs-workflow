@@ -36,12 +36,9 @@ workflow DOWNSTREAM {
         // 4. Generate clade counts
         COUNT_READS_PER_CLADE(dup_ch, viral_db)
         // 5. Validate taxonomic assignments
-        VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db,
-            params.validation_cluster_identity, 15, params.validation_n_clusters,
-            params.ref_dir, params.blast_db_prefix,
-            params.blast_perc_id, params.blast_qcov_hsp_perc,
-            params.blast_max_rank, params.blast_min_frac,
-            params.taxid_artificial)
+        def validation_params = params.collectEntries { k, v -> [k, v] }
+        validation_params["cluster_min_len"] = 15
+        VALIDATE_VIRAL_ASSIGNMENTS(dup_ch, viral_db, params.ref_dir, validation_params)
         // Publish results
         params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
         params_ch = Channel.of(params_str).collectFile(name: "params-downstream.json")

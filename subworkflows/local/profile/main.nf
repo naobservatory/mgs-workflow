@@ -25,29 +25,31 @@ workflow PROFILE {
     take:
         reads_ch
         kraken_db_ch
-        ref_dir
-        min_kmer_fraction
-        k
-        ribo_suffix
-        bracken_threshold
+        ref_dir 
         single_end
-        platform
+        params_map // min_kmer_fraction, k, ribo_suffix, bracken_threshold, platform
     main:
         // Separate ribosomal reads
-        if (platform == "ont") {
+        if (params_map.platform == "ont") {
             ribo_ref = "${ref_dir}/results/mm2-ribo-index"
-            ribo_ch = MINIMAP2(reads_ch, ribo_ref, ribo_suffix, false, "")
+            ribo_minimap2_params = [
+                suffix: params_map.ribo_suffix,
+                remove_sq: false,
+                alignment_params: ""
+            ]
+            ribo_ch = MINIMAP2(reads_ch, ribo_ref, ribo_minimap2_params)
             ribo_in = ribo_ch.reads_mapped
             noribo_in = ribo_ch.reads_unmapped
         } else {
             ribo_path = "${ref_dir}/results/ribo-ref-concat.fasta.gz"
-            ribo_ch = BBDUK(reads_ch, ribo_path, min_kmer_fraction, k, ribo_suffix, single_end.map{!it})
+            ribo_bbduk_params = params_map + [interleaved: single_end.map{!it}]
+            ribo_ch = BBDUK(reads_ch, ribo_path, ribo_bbduk_params)
             ribo_in = ribo_ch.match
             noribo_in = ribo_ch.nomatch
         }
         // Run taxonomic profiling separately on ribo and non-ribo reads
-        tax_ribo_ch = TAXONOMY_RIBO(ribo_in, kraken_db_ch, "D", bracken_threshold, single_end)
-        tax_noribo_ch = TAXONOMY_NORIBO(noribo_in, kraken_db_ch, "D", bracken_threshold, single_end)
+        tax_ribo_ch = TAXONOMY_RIBO(ribo_in, kraken_db_ch, "D", params_map.bracken_threshold, single_end)
+        tax_noribo_ch = TAXONOMY_NORIBO(noribo_in, kraken_db_ch, "D", params_map.bracken_threshold, single_end)
 
         // Add ribosomal status to output TSVs
         kr_ribo = ADD_KRAKEN_RIBO(tax_ribo_ch.kraken_reports, "ribosomal", "TRUE", "ribo")
