@@ -5,6 +5,7 @@ process KRAKEN {
     input:
         tuple val(sample), path(reads)
         val db_path
+        val db_download_timeout
     output:
         tuple val(sample), path("${sample}.output.gz"), emit: output
         tuple val(sample), path("${sample}.report.gz"), emit: report
@@ -12,7 +13,7 @@ process KRAKEN {
     shell:
         '''
         # Download Kraken2 database if not already present
-        download-db.sh !{db_path} !{params.db_download_timeout}
+        download-db.sh !{db_path} !{db_download_timeout}
         # Define input/output
         out=!{sample}.output
         report=!{sample}.report

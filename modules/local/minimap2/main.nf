@@ -28,7 +28,7 @@ process MINIMAP2 {
     input:
         tuple val(sample), path(reads)
         val(index_dir)
-        val(params_map) // suffix, remove_sq, alignment_params
+        val(params_map) // suffix, remove_sq, alignment_params, db_download_timeout
     output:
         tuple val(sample), path("${sample}_${params_map.suffix}_minimap2_mapped.sam.gz"), emit: sam
         tuple val(sample), path("${sample}_${params_map.suffix}_minimap2_mapped.fastq.gz"), emit: reads_mapped
@@ -39,7 +39,7 @@ process MINIMAP2 {
         set -eou pipefail
         suffix="!{params_map.suffix}"
         # Download Minimap2 index if not already present
-        download-db.sh !{index_dir} !{params.db_download_timeout}
+        download-db.sh !{index_dir} !{params_map.db_download_timeout}
         # Prepare inputs
         reads="!{reads}"
         idx_dir_name=\$(basename "!{index_dir}")

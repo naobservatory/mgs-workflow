@@ -6,7 +6,7 @@ process BOWTIE2 {
     input:
         tuple val(sample), path(reads_interleaved)
         val(index_dir)
-        val(params_map) // par_string, suffix, remove_sq, debug, interleaved
+        val(params_map) // par_string, suffix, remove_sq, debug, interleaved, db_download_timeout
     output:
         tuple val(sample), path("${sample}_${params_map.suffix}_bowtie2_mapped.sam.gz"), emit: sam
         tuple val(sample), path("${sample}_${params_map.suffix}_bowtie2_mapped.fastq.gz"), emit: reads_mapped
@@ -17,7 +17,7 @@ process BOWTIE2 {
         set -euo pipefail
         suffix="!{params_map.suffix}"
         # Download Bowtie2 index if not already present
-        download-db.sh !{index_dir} !{params.db_download_timeout}
+        download-db.sh !{index_dir} !{params_map.db_download_timeout}
         # Prepare inputs
         idx_dir_name=\$(basename "!{index_dir}")
         sam="!{sample}_${suffix}_bowtie2_mapped.sam.gz"
