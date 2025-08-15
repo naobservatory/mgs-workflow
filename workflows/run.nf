@@ -60,8 +60,12 @@ workflow RUN {
         bbduk_match = Channel.empty()
         bbduk_trimmed = Channel.empty()
      } else {
-        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, params.bt2_score_threshold,
-            params.adapters, params.cutadapt_error_rate, "1", "24", "viral", params.taxid_artificial)
+        def short_params = params.collectEntries { k, v -> [k, v] }
+        short_params["aln_score_threshold"] = params.bt2_score_threshold // rename to match
+        short_params["min_kmer_hits"] = "1"
+        short_params["bbduk_suffix"] = "viral"
+        short_params["k"] = "24" 
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, short_params)
         hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
         inter_lca = EXTRACT_VIRAL_READS_SHORT.out.inter_lca
@@ -71,9 +75,9 @@ workflow RUN {
     }
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
-        BLAST_VIRAL(hits_fastq, params.ref_dir, params.blast_db_prefix,
-            params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed,
-            params.blast_perc_id, params.blast_qcov_hsp_perc, params.taxid_artificial)
+        def blast_viral_params = params.collectEntries { k, v -> [k, v] }
+        blast_viral_params["read_fraction"] = params.blast_viral_fraction // rename to match subworkflow input
+        BLAST_VIRAL(hits_fastq, params.ref_dir, blast_viral_params)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
         blast_reads_ch = BLAST_VIRAL.out.subset_reads
     } else {
@@ -82,16 +86,21 @@ workflow RUN {
     }
 
     // Subset reads to target number, and trim adapters
-    SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
-        params.adapters, single_end_ch,
-        params.platform, params.random_seed)
+    def subset_trim_params = params.collectEntries { k, v -> [k, v] }
+    SUBSET_TRIM(samplesheet_ch, single_end_ch, subset_trim_params)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end_ch)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
-    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-        params.bracken_threshold, single_end_ch, params.platform)
+    profile_params = [
+        min_kmer_fraction: "0.4",
+        k: "27",
+        ribo_suffix: "ribo",
+        bracken_threshold: params.bracken_threshold,
+        platform: params.platform
+    ]
+    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, single_end_ch, profile_params)
 
     // Get index files for publishing
     index_params_path = file("${params.ref_dir}/input/index-params.json")
