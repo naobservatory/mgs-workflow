@@ -52,9 +52,11 @@ workflow DOWNSTREAM {
     emit:
        input_downstream = params_ch.mix(input_file_ch)
        logging_downstream = time_ch.mix(version_ch)
-       intermediates_downstream = VALIDATE_VIRAL_ASSIGNMENTS.out.blast_results
+       intermediates_downstream = VALIDATE_VIRAL_ASSIGNMENTS.out.blast_results.mix(
+                                        PREPARE_GROUP_TSVS.out.zero_vv_logs,
+                                  )
        results_downstream = MARK_VIRAL_DUPLICATES.out.dup.mix(
                                 COUNT_READS_PER_CLADE.out.output,
-                                VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits
+                                VALIDATE_VIRAL_ASSIGNMENTS.out.annotated_hits,
                             )
 }    
