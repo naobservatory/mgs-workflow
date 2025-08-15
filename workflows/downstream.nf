@@ -27,7 +27,6 @@ workflow DOWNSTREAM {
         // 2. Add group information, partition into per-group TSVs
         PREPARE_GROUP_TSVS(input_ch)
         group_ch = PREPARE_GROUP_TSVS.out.groups
-        
         // 3. Mark duplicates
         MARK_VIRAL_DUPLICATES(group_ch, params.aln_dup_deviation)
         // Prepare inputs for clade counting and validating taxonomic assignments
