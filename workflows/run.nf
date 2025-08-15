@@ -93,13 +93,7 @@ workflow RUN {
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end_ch)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
-    profile_params = [
-        min_kmer_fraction: "0.4",
-        k: "27",
-        ribo_suffix: "ribo",
-        bracken_threshold: params.bracken_threshold,
-        platform: params.platform
-    ]
+    def profile_params = params.collectEntries { k, v -> [k, v] } + [min_kmer_fraction: "0.4", k: "27", ribo_suffix: "ribo"]
     PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, single_end_ch, profile_params)
 
     // Get index files for publishing
