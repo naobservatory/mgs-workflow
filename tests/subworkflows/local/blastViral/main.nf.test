@@ -41,7 +41,8 @@ nextflow_workflow {
                     random_seed: "",
                     blast_perc_id: params.perc_id,
                     blast_qcov_hsp_perc: params.qcov_hsp_perc,
-                    taxid_artificial: params.taxid_artificial
+                    taxid_artificial: params.taxid_artificial,
+                    db_download_timeout: params.db_download_timeout
                 ]
                 input[0] = GZIP_FILE.out.collect{it[1]}
                 input[1] = params.ref_dir
@@ -110,7 +111,8 @@ nextflow_workflow {
                     random_seed: "",
                     blast_perc_id: params.perc_id,
                     blast_qcov_hsp_perc: params.qcov_hsp_perc,
-                    taxid_artificial: params.taxid_artificial
+                    taxid_artificial: params.taxid_artificial,
+                    db_download_timeout: params.db_download_timeout
                 ]
                 input[0] = INTERLEAVE_FASTQ.out.output.collect{it[1]}
                 input[1] = params.ref_dir
@@ -216,7 +218,8 @@ nextflow_workflow {
                     random_seed: "",
                     blast_perc_id: params.perc_id,
                     blast_qcov_hsp_perc: params.qcov_hsp_perc,
-                    taxid_artificial: params.taxid_artificial
+                    taxid_artificial: params.taxid_artificial,
+                    db_download_timeout: params.db_download_timeout
                 ]
                 input[0] = COPY_FILE.out.collect{it[1]}
                 input[1] = params.ref_dir
@@ -322,7 +325,8 @@ nextflow_workflow {
                     random_seed: "",
                     blast_perc_id: params.perc_id,
                     blast_qcov_hsp_perc: params.qcov_hsp_perc,
-                    taxid_artificial: params.taxid_artificial
+                    taxid_artificial: params.taxid_artificial,
+                    db_download_timeout: params.db_download_timeout
                 ]
                 input[0] = COPY_FILE.out.collect{it[1]}
                 input[1] = params.ref_dir

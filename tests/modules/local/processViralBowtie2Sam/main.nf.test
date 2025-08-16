@@ -38,7 +38,8 @@ nextflow_process {
                         suffix: "virus",
                         remove_sq: true,
                         debug: true,
-                        interleaved: true
+                        interleaved: true,
+                        db_download_timeout: params.db_download_timeout
                 ]
                     input[0] = INTERLEAVE_FASTQ.out.output
                     input[1] = "${params.ref_dir}/results/bt2-virus-index"
@@ -99,7 +100,8 @@ nextflow_process {
                         suffix: "virus",
                         remove_sq: true,
                         debug: true,
-                        interleaved: false
+                        interleaved: false,
+                        db_download_timeout: params.db_download_timeout
                     ]
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet
                     input[1] = "${params.ref_dir}/results/bt2-virus-index"

@@ -33,6 +33,7 @@ nextflow_process {
                 '''
                 input[0] = COPY_FILE.out
                 input[1] = "${params.ref_dir}/results/kraken_db"
+                input[2] = params.db_download_timeout
                 '''
             }
         }

@@ -27,6 +27,7 @@ workflow EXTRACT_VIRAL_READS_ONT {
         reads_ch
         ref_dir
         taxid_artificial
+        db_download_timeout // Timeout in seconds for database downloads
     main:
         // Get reference_paths
         minimap2_virus_index = "${ref_dir}/results/mm2-virus-index"
@@ -50,27 +51,16 @@ workflow EXTRACT_VIRAL_READS_ONT {
         // Mask non-complex read sections
         masked_ch = MASK_FASTQ_READS(filtered_ch, 25, 0.55)
         // Drop human reads before pathogen identification
-        human_minimap2_params = [
-            suffix: "human",
-            remove_sq: false,
-            alignment_params: ""
-        ]
+        minimap2_base_params = [remove_sq: false, db_download_timeout: db_download_timeout]
+        human_minimap2_params = minimap2_base_params + [suffix: "human", alignment_params: ""]
         human_minimap2_ch = MINIMAP2_HUMAN(masked_ch.masked, minimap2_human_index, human_minimap2_params)
         no_human_ch = human_minimap2_ch.reads_unmapped
         // Identify other contaminants
-        contam_minimap2_params = [
-            suffix: "other",
-            remove_sq: false,
-            alignment_params: ""
-        ]
+        contam_minimap2_params = minimap2_base_params + [suffix: "other", alignment_params: ""]
         contam_minimap2_ch = MINIMAP2_CONTAM(no_human_ch, minimap2_contam_index, contam_minimap2_params)
         no_contam_ch = contam_minimap2_ch.reads_unmapped
         // Identify virus reads with multiple alignments for LCA analysis
-        virus_minimap2_params = [
-            suffix: "virus",
-            remove_sq: false,
-            alignment_params: "-N 10"
-        ]
+        virus_minimap2_params = minimap2_base_params + [suffix: "virus", alignment_params: "-N 10"]
         virus_minimap2_ch = MINIMAP2_VIRUS(no_contam_ch, minimap2_virus_index, virus_minimap2_params)
         virus_sam_ch = virus_minimap2_ch.sam
         // Group cleaned reads and sam files by sample

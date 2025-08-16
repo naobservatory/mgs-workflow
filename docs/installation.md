@@ -37,13 +37,10 @@ aws_access_key_id = <ACCESS_KEY_ID>
 aws_secret_access_key = <SECRET_ACCESS_KEY>
 ```
 
-> [!TIP]
-> If you encounter `AccessDenied` errors after doing this, you may also need to export these keys as environment variables before running Nextflow:
->
-> ```
-> eval "$(aws configure export-credentials --format env)"
-> ```
-
+Then, export the keys as environment variables before running nextflow:
+```
+eval "$(aws configure export-credentials --format env)"
+```
 
 Next, you need to make sure your user is configured to use Docker. To do this, create the `docker` user group and add your current user to it:
 

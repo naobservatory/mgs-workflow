@@ -32,14 +32,14 @@ workflow BLAST_FASTA {
                    // blast_min_frac: Only keep alignments that have at least this fraction of the best bitscore for that query
                    // taxid_artificial: Parent taxid for artificial sequences in NCBI taxonomy
                    // lca_prefix: Prefix for LCA column names (e.g. "blast")
+                   // db_download_timeout: Timeout in seconds for database downloads
     main:
         // Get reference paths
         blast_db_dir = "${ref_dir}/results/${params_map.blast_db_prefix}"
         nodes_db = "${ref_dir}/results/taxonomy-nodes.dmp"
         names_db = "${ref_dir}/results/taxonomy-names.dmp"
         // 1. Run BLAST
-        blast_ch = BLAST(query_fasta, blast_db_dir, params_map.blast_db_prefix,
-            params_map.blast_perc_id, params_map.blast_qcov_hsp_perc)
+        blast_ch = BLAST(query_fasta, blast_db_dir, params_map)
         // 2. Filter BLAST output to only one row per query/subject combination
         sort_str_1 = "-t\$\'\\t\' -k1,1 -k2,2 -k7,7nr -k9,9nr" // Sort by query, subject, bitscore, length
         sort_ch_1 = SORT_BLAST_1(blast_ch.output, sort_str_1, "blast")

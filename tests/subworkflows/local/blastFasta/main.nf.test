@@ -65,7 +65,8 @@ nextflow_workflow {
                     blast_max_rank: params.max_rank,
                     blast_min_frac: params.min_frac,
                     taxid_artificial: params.taxid_artificial,
-                    lca_prefix: params.lca_prefix
+                    lca_prefix: params.lca_prefix,
+                    db_download_timeout: params.db_download_timeout
                 ]
                 input[0] = CONVERT_FASTQ_FASTA.out.output
                 input[1] = params.ref_dir
@@ -155,6 +156,7 @@ nextflow_workflow {
                 qcov_hsp_perc = 30
                 taxid_artificial = 81077
                 lca_prefix = "testprefix"
+
             }
             workflow {
                 '''
@@ -165,7 +167,8 @@ nextflow_workflow {
                     blast_max_rank: params.max_rank,
                     blast_min_frac: params.min_frac,
                     taxid_artificial: params.taxid_artificial,
-                    lca_prefix: params.lca_prefix
+                    lca_prefix: params.lca_prefix,
+                    db_download_timeout: params.db_download_timeout
                 ]
                 input[0] = CONVERT_FASTQ_FASTA.out.output
                 input[1] = params.ref_dir
@@ -255,6 +258,7 @@ nextflow_workflow {
                 qcov_hsp_perc = 0
                 taxid_artificial = 81077
                 lca_prefix = "testprefix"
+
             }
             workflow {
                 '''
@@ -265,7 +269,8 @@ nextflow_workflow {
                     blast_max_rank: params.max_rank,
                     blast_min_frac: params.min_frac,
                     taxid_artificial: params.taxid_artificial,
-                    lca_prefix: params.lca_prefix
+                    lca_prefix: params.lca_prefix,
+                    db_download_timeout: params.db_download_timeout
                 ]
                 input[0] = CONVERT_FASTQ_FASTA.out.output
                 input[1] = params.ref_dir
@@ -336,6 +341,7 @@ nextflow_workflow {
                 qcov_hsp_perc = 30
                 taxid_artificial = 81077
                 lca_prefix = "testprefix"
+
             }
             workflow {
                 '''
@@ -346,7 +352,8 @@ nextflow_workflow {
                     blast_max_rank: params.max_rank,
                     blast_min_frac: params.min_frac,
                     taxid_artificial: params.taxid_artificial,
-                    lca_prefix: params.lca_prefix
+                    lca_prefix: params.lca_prefix,
+                    db_download_timeout: params.db_download_timeout
                 ]
                 input[0] = GZIP_FILE.out
                 input[1] = params.ref_dir

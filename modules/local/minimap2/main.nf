@@ -27,8 +27,8 @@ process MINIMAP2 {
     label "minimap2_samtools"
     input:
         tuple val(sample), path(reads)
-        path(index_dir)
-        val(params_map) // suffix, remove_sq, alignment_params
+        val(index_dir)
+        val(params_map) // suffix, remove_sq, alignment_params, db_download_timeout
     output:
         tuple val(sample), path("${sample}_${params_map.suffix}_minimap2_mapped.sam.gz"), emit: sam
         tuple val(sample), path("${sample}_${params_map.suffix}_minimap2_mapped.fastq.gz"), emit: reads_mapped
@@ -38,9 +38,11 @@ process MINIMAP2 {
         '''
         set -eou pipefail
         suffix="!{params_map.suffix}"
+        # Download Minimap2 index if not already present
+        download-db.sh !{index_dir} !{params_map.db_download_timeout}
         # Prepare inputs
         reads="!{reads}"
-        idx="!{index_dir}/mm2_index.mmi"
+        idx_dir_name=\$(basename "!{index_dir}")
         sam="!{sample}_${suffix}_minimap2_mapped.sam.gz"
         al="!{sample}_${suffix}_minimap2_mapped.fastq.gz"
         un="!{sample}_${suffix}_minimap2_unmapped.fastq.gz"
@@ -51,7 +53,7 @@ process MINIMAP2 {
         #   - Second branch (samtools view -u -F 4 -) filters SAM to aligned reads and saves FASTQ
         #   - Third branch (samtools view -h -F 4 -) also filters SAM to aligned reads and saves SAM
         zcat ${reads} \
-            | minimap2 -a !{params_map.alignment_params} ${idx} /dev/fd/0 \
+            | minimap2 -a !{params_map.alignment_params} /scratch/${idx_dir_name}/mm2_index.mmi /dev/fd/0 \
             | tee \
                 >(samtools view -u -f 4 - \
                     | samtools fastq - | gzip -c > ${un}) \

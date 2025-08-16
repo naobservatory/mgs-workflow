@@ -59,7 +59,8 @@ workflow EXTRACT_VIRAL_READS_SHORT {
         def bowtie_base_params = [
             remove_sq: true,
             debug: false,
-            interleaved: true
+            interleaved: true,
+            db_download_timeout: params_map.db_download_timeout
         ]
         par_virus = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
         bowtie2_virus_params = bowtie_base_params + [par_string: par_virus, suffix: "virus"]
