@@ -18,6 +18,11 @@ include { SORT_FASTQ } from "../../../modules/local/sortFastq"
 include { SORT_FILE } from "../../../modules/local/sortFile"
 include { FILTER_VIRAL_SAM } from "../../../modules/local/filterViralSam"
 include { PROCESS_LCA_ALIGNER_OUTPUT } from "../../../subworkflows/local/processLcaAlignerOutput/"
+include { LCA_TSV } from "../../../modules/local/lcaTsv"
+include { SORT_FASTQ } from "../../../modules/local/sortFastq"
+include { SORT_FILE } from "../../../modules/local/sortFile"
+include { FILTER_VIRAL_SAM } from "../../../modules/local/filterViralSam"
+include { PROCESS_LCA_ALIGNER_OUTPUT } from "../../../subworkflows/local/processLcaAlignerOutput/"
 
 /***********
 | WORKFLOW |

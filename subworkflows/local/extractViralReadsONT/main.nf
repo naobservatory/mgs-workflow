@@ -17,6 +17,13 @@ include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
 include { FILTER_TSV_COLUMN_BY_VALUE } from "../../../modules/local/filterTsvColumnByValue"
 include { PROCESS_LCA_ALIGNER_OUTPUT } from "../../../subworkflows/local/processLcaAlignerOutput/"
 
+include { LCA_TSV } from "../../../modules/local/lcaTsv"
+include { SORT_TSV as SORT_MINIMAP2_VIRAL } from "../../../modules/local/sortTsv"
+include { SORT_TSV as SORT_LCA } from "../../../modules/local/sortTsv"
+include { JOIN_TSVS } from "../../../modules/local/joinTsvs"
+include { FILTER_TSV_COLUMN_BY_VALUE } from "../../../modules/local/filterTsvColumnByValue"
+include { PROCESS_LCA_ALIGNER_OUTPUT } from "../../../subworkflows/local/processLcaAlignerOutput/"
+
 
 /***********
 | WORKFLOW |
