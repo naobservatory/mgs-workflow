@@ -144,7 +144,7 @@ def parse_args():
         "--skip-subcomponents",
         action="store_true",
         help="Skip testing subcomponents of the component. Only applicable if the component is a workflow/subworkflow.",
-        default=False,
+        default=True,
     )
 
     args = parser.parse_args()
