@@ -214,9 +214,9 @@ To contribute to the pipeline, start by creating a new branch off of `dev`. Bran
 
 **Components:**
 - `branch_type`: The type of work (see below)
-- `owner_name`: Your first name
+- `owner_name`: Your first name or developer handle
 - `issue_id`: The GitHub issue number (required for all branches - if an issue doesn't exist, create one first)
-- `description`: Short description (2-4 words, hyphen-separated)
+- `description`: Short description (2-4 words, [kebab-case](https://developer.mozilla.org/en-US/docs/Glossary/Kebab_case))
 
 **Branch types:**
 - `feature`: New functionality or enhancements
