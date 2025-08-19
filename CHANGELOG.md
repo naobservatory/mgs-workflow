@@ -20,6 +20,7 @@
     - Fixed FILTER_VIRAL_SAM grouping bug for concordant pairs with identical positions but different alignment scores.
     - Updated DOWNSTREAM workflow to handle samples with no viral hits that are still included in the grouping specification.
     - Converted modules and subworkflows with >5 positional arguments to use parameter maps.
+    - Fixed bug with validateGrouping that leads to output file name collisions
 
 # v3.0.0.1
 - Added bugfix for `RAISE_TAXONOMY_RANKS` to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
