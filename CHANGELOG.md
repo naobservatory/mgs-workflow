@@ -18,6 +18,7 @@
 - Added bugfix for `RAISE_TAXONOMY_RANKS` to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
 - Fixed FILTER_VIRAL_SAM grouping bug for concordant pairs with identical positions but different alignment scores
 - Updated DOWNSTREAM workflow to work on viral hits tables where a sample has no viral hits, but is in the grouping specification.
+- Fixed bug with validateGrouping that leads to output file name collisions
 
 # v3.0.0.0
 
