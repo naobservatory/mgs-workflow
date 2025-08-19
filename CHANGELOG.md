@@ -23,7 +23,6 @@
     - Fixed bug with validateGrouping that leads to output file name collisions
     - Fixed bug in FILTER_VIRAL_SAM nf-test test that caused the input to a test to be invalid
 
-
 # v3.0.0.1
 - Added bugfix for `RAISE_TAXONOMY_RANKS` to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
 
