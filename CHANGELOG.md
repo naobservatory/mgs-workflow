@@ -1,24 +1,29 @@
-# v3.0.1.0-dev
-- Fixed bug in ANNOTATE_VIRUS_INFECTION that incorrectly assigned viruses as potentially infecting specific hosts when they did not, and added a pytest to verify that functionality.
-- Updated Github Actions to retry downloading nf-test since it often fails to download on the first try due to a 403 error
-- Increased resources for PROCESS_VIRAL_MINIMAP2_SAM to avoid frequent out-of-memory errors
-- Fixed line iteration bug in tests for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATA
-- Changed many modules and subworkflows to use parameter maps.
+# v3.0.1.0
+- Annotation improvements and bugfixes:
+    - Fixed bug in ANNOTATE_VIRUS_INFECTION that incorrectly assigned viruses as potentially infecting specific hosts when they should not have been, and added a pytest to verify that functionality.
+    - Added more unit tests in the pytest file for ANNOTATE_VIRUS_INFECTION.
+    - Fixed bug in RAISE_TAXONOMY_RANKS to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
 - Added caching of large reference files to reduce AWS Batch loading times:
     - Implemented for Kraken2 and BLAST databases and Minimap2 and Bowtie2 indexes. 
     - When using the AWS Batch executor, we now mount a directory (`/scratch`) in every container.
         - This allows processes on the same compute node to share reference files.
-    - At the beginning of the KRAKEN2, BLAST, MINIMAP2, and BOWTIE2 processes, we now:
-         - Check if relevant reference files are already cached; if not, download then to `/scratch`:
+    - At the beginning of the KRAKEN2, BLASTN, MINIMAP2, and BOWTIE2 processes, we now:
+         - Check if relevant reference files are already cached; if not, download them to `/scratch`.
          - Use file locking (via the Unix utility `flock`) to prevent simultaneous downloads of the same database.
          - This logic is implemented in the shared bash script `bin/download-db.sh`.
-- Added new Dockerfiles (custom containers required for the above caching), along with the utility script `bin/build-push-docker.sh` to build and push to Dockerhub.
-- Updated documentation to explain caching of new reference files and to document how to update docker images.
-- Added more unit tests in the pytest file for ANNOTATE_VIRUS_INFECTION.
+    - Added new Dockerfiles (custom containers required for the above caching), along with the utility script `bin/build-push-docker.sh` to build and push to Dockerhub.
+    - Updated documentation to explain caching of new reference files and to document how to update docker images.
+- Other bugfixes and improvements:
+    - Updated Github Actions to retry downloading `nf-test` since it often fails on the first attempt due to a 403 error.
+    - Increased resources for PROCESS_VIRAL_MINIMAP2_SAM to avoid frequent out-of-memory errors
+    - Fixed line iteration bug in tests for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATA
+    - Fixed FILTER_VIRAL_SAM grouping bug for concordant pairs with identical positions but different alignment scores.
+    - Updated DOWNSTREAM workflow to handle samples with no viral hits that are still included in the grouping specification.
+    - Converted modules and subworkflows with >5 positional arguments to use parameter maps.
+    - Fixed bug with validateGrouping that leads to output file name collisions
+
+# v3.0.0.1
 - Added bugfix for `RAISE_TAXONOMY_RANKS` to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
-- Fixed FILTER_VIRAL_SAM grouping bug for concordant pairs with identical positions but different alignment scores
-- Updated DOWNSTREAM workflow to work on viral hits tables where a sample has no viral hits, but is in the grouping specification.
-- Fixed bug with validateGrouping that leads to output file name collisions
 
 # v3.0.0.0
 
