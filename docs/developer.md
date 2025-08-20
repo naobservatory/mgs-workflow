@@ -59,7 +59,9 @@ These guidelines represent best practices to implement in new code, though some 
 - Python style: 
     - Loosely follow PEP 8 conventions.
     - Type hints are encouraged but not currently required.
-    - Linting is encouraged (our go-to tool is `ruff`), but not currently required. 
+    - Linting and type checking are encouraged (our go-to tools are `ruff` for linting and `mypy` for type checking), but not currently required.
+    - Formatting applied (including in nested directories) will follow the configuration in `pyproject.toml`.
+    - After making any formatting changes, carefully review the diff to ensure no unintended modifications were introduced that could affect functionality. 
     
 ## Containers
 We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
