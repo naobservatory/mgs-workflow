@@ -239,7 +239,21 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
 
 We use squash merges for all PRs to maintain a clean, linear history on `main`. 
 
-**How to squash merge:** Instead of clicking "Merge pull request" on GitHub, click the dropdown arrow next to it and select "Squash and merge". Make sure the squash commit title includes the PR number followed by the description (e.g., "#424 Add viral read filtering"). 
+**How to squash merge:** Instead of clicking "Merge pull request" on GitHub, click the dropdown arrow next to it and select "Squash and merge". Make sure the squash commit title includes the PR number followed by the description (e.g., "#424 Add viral read filtering").
+
+**Dealing with dependent branches after squash merging:**
+
+This situation commonly arises when:
+1. You create branch A with multiple commits
+2. Submit branch A for review  
+3. Fork branch B from branch A and work on a new feature
+4. Branch A gets edited for reviewer feedback, then squash-merged to `dev`
+5. You merge `dev` into branch B
+
+Branch B will then contain both the original unsquashed commits from branch A AND the new squash commit, creating an intimidating PR with duplicate commit chains.
+
+**Recommended approach:**
+Try rebasing branch B onto `dev` first (`git rebase dev`). If rebasing doesn't work cleanly, just merge `dev` and don't worry about the commits in the PR (`git merge dev`). The diff should be fine and the commits will get squashed anyway when merged. 
 
 ## New releases
 
