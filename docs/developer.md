@@ -223,7 +223,7 @@ To contribute to the pipeline, start by creating a new branch off of `dev`. Bran
 - `bugfix`: Resolving non-critical defects
 - `hotfix`: Critical production fixes (merged to both main and dev)
 - `release`: Preparing releases, version bumps, stabilization
-- `chore`: Non-feature changes (refactoring, dependencies, CI/CD, docs)
+- `maintenance`: Non-feature changes (refactoring, dependencies, CI/CD, docs)
 - `evergreen`: Exploratory or experimental work
 
 **Example:** `bugfix/harmon/461-fix-lca-sorting`
