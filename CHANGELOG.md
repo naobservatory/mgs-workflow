@@ -20,6 +20,7 @@
 - Updated DOWNSTREAM workflow to work on viral hits tables where a sample has no viral hits, but is in the grouping specification.
 - Updated developer docs to discuss the new norm of squash merging.
 - Updated developer docs to reflect the change in name of the primary branch from `master` to `main`.
+- Updated developer docs to discuss the new release process.
 
 # v3.0.0.0
 
