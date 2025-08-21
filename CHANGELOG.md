@@ -1,27 +1,30 @@
 # v3.0.1.0
-- Annotation improvements and bugfixes:
-    - Fixed bug in ANNOTATE_VIRUS_INFECTION that incorrectly assigned viruses as potentially infecting specific hosts when they should not have been, and added a pytest to verify that functionality.
+
+### Key changes (impacting most users)
+- Improved database handling: added caching of large reference files to reduce AWS Batch loading times.
+    - Processes on the same compute node can now share Kraken2 and BLAST databases, as well as Minimap2 and Bowtie2 indexes.
+    - This reduces pipeline runtime and cost, particularly for workloads with many small `.fastq` files.
+    - Core logic implemented in `bin/download-db.sh`.
+- Testing changes: Running `nf-test` tests now requires exporting AWS credentials (see `docs/developer.md`).
+- Stability improvements:
+    - Fixed frequent out-of-memory errors in PROCESS_VIRAL_MINIMAP2_SAM by adjusting resource requirements.
+    - Fixed issue where the DOWNSTREAM workflow failed on samples with no viral hits.
+    - Fixed bug in ANNOTATE_VIRUS_INFECTION that incorrectly assigned certain viruses to specific hosts (e.g. porcine respiratory coronavirus mislabeled as human-infecting; resolves issue #311).
+        
+### Other changes (relevant mainly to developers)
+- Bug fixes:
+    - RAISE_TAXONOMY_RANKS: Adjusted for updated classification of "Viruses" taxon in NCBI taxonomy database.
+    - FILTER_VIRAL_SAM: Now correctly handles concordant pairs with identical positions but differing alignment scores.
+    - VALIDATE_GROUPING: Fixed output file name collisions.
+    - nf-test file FILTER_VIRAL_SAM: Fixed invalid test inputs.
+    - nf-test files for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATE: Fixed line iteration bug.
+- Container updates:
+    - Introduced new custom containers to support reference file caching (new Dockerfiles in `docker` directory)
+    - Added `bin/build-push-docker.sh` to build and push Docker images to Dockerhub. 
+- Code quality: 
+    - Converted modules and subworkflows with >5 positional arguments to use parameter maps (reduces risk of argument errors).
     - Added more unit tests in the pytest file for ANNOTATE_VIRUS_INFECTION.
-    - Fixed bug in RAISE_TAXONOMY_RANKS to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
-- Added caching of large reference files to reduce AWS Batch loading times:
-    - Implemented for Kraken2 and BLAST databases and Minimap2 and Bowtie2 indexes. 
-    - When using the AWS Batch executor, we now mount a directory (`/scratch`) in every container.
-        - This allows processes on the same compute node to share reference files.
-    - At the beginning of the KRAKEN2, BLASTN, MINIMAP2, and BOWTIE2 processes, we now:
-         - Check if relevant reference files are already cached; if not, download them to `/scratch`.
-         - Use file locking (via the Unix utility `flock`) to prevent simultaneous downloads of the same database.
-         - This logic is implemented in the shared bash script `bin/download-db.sh`.
-    - Added new Dockerfiles (custom containers required for the above caching), along with the utility script `bin/build-push-docker.sh` to build and push to Dockerhub.
-    - Updated documentation to explain caching of new reference files and to document how to update docker images.
-- Other bugfixes and improvements:
-    - Updated Github Actions to retry downloading `nf-test` since it often fails on the first attempt due to a 403 error.
-    - Increased resources for PROCESS_VIRAL_MINIMAP2_SAM to avoid frequent out-of-memory errors
-    - Fixed line iteration bug in tests for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATA
-    - Fixed FILTER_VIRAL_SAM grouping bug for concordant pairs with identical positions but different alignment scores.
-    - Updated DOWNSTREAM workflow to handle samples with no viral hits that are still included in the grouping specification.
-    - Converted modules and subworkflows with >5 positional arguments to use parameter maps.
-    - Fixed bug with validateGrouping that leads to output file name collisions
-    - Fixed bug in FILTER_VIRAL_SAM nf-test test that caused the input to a test to be invalid
+    - Updated Github Actions to retry downloading `nf-test` (it often fails on the first attempt due transient 403 errors).
 
 # v3.0.0.1
 - Added bugfix for `RAISE_TAXONOMY_RANKS` to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
