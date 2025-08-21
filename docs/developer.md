@@ -239,7 +239,7 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
 
 We use squash merges for all PRs to maintain a clean, linear history on `main`. 
 
-**How to squash merge:** Instead of clicking "Merge pull request" on GitHub, click the dropdown arrow next to it and select "Squash and merge". Make sure the squash commit title includes the PR number (e.g., "Add viral read filtering (#424)"). 
+**How to squash merge:** Instead of clicking "Merge pull request" on GitHub, click the dropdown arrow next to it and select "Squash and merge". Make sure the squash commit title includes the PR number followed by the description (e.g., "#424 Add viral read filtering"). 
 
 ## New releases
 
