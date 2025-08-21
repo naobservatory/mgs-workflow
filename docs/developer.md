@@ -194,7 +194,6 @@ Test [7677da69] 'RUN workflow output should match snapshot'
         - Update `nf-test` snapshots by running `nf-test test <path to test that failed> --update-snapshot`; this will update the appropriate `*.snapshot` file in `tests/workflows`. Commit the changed snapshot file.
         - Flag in PR comments that the snapshot has changed, and explain why. (Without such a comment, it's easy for reviewers to miss the updated snapshot.)
 
-
 ## GitHub issues
 We use [GitHub issues](https://github.com/naobservatory/mgs-workflow/issues) to track any issues with the pipeline: bugs, cleanup tasks, and desired new features. 
 Opening issues:
@@ -202,8 +201,8 @@ Opening issues:
 - We use labels to prioritize and track:
     - `enhancement`, `time&cost`, `bug`, and `documentation` to describe the type of issue.
     - `priority_1` (highest), `priority_2`, and `priority_3` to mark importance.
-    - `in-progress` when actively being worked on, and `done` when resolved but changes are not yet merged to `master`.
-         - only close issues when the fix/enhancement is merged to `master`.
+    - `in-progress` when actively being worked on, and `done` when resolved but changes are not yet merged to `main`.
+         - only close issues when the fix/enhancement is merged to `main`.
 
 ## Pull requests (PRs)
 
@@ -226,7 +225,7 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
     - **Note which tests were run in your PR description.**
     - If you make any changes that affect the output of the pipeline, list/describe the changes that occurred in the pull request. 
 3. **Update the `CHANGELOG.md` file** with the changes that you are making, and update the `pipeline-version.txt` file with the new version number.
-    - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `master`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions both in `CHANGELOG.md` and in `pipeline-version.txt`, and should only be removed when preparing to merge to `master`.
+    - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `main`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions both in `CHANGELOG.md` and in `pipeline-version.txt`, and should only be removed when preparing to merge to `main`.
 4. **Update the expected-output-{run,downstream}.txt files** with any changes to the output of the RUN or DOWNSTREAM workflows.
 5. **Pass automated tests on GitHub Actions**. These run automatically when you open a pull request.
 6. **Write a meaningful description** of your changes in the PR description and give it a meaningful title. 
@@ -234,20 +233,17 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
 7. **Request review** from a maintainer on your changes. Current maintainers are jeffkaufman, willbradshaw, katherine-stansifer, and harmonbhasin. 
     - Make sure to assign the PR to the desired reviewer so that they see your PR (put them in the "Assignees" section on GitHub as well as in the "Reviewers" section).
         - If the reviewer is not satisfied and requests changes, they should then change the "Assignee" to be the person who originally submitted the code. This may result in a few loops of "Assignee" being switched between the reviewer and the author.
-8. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch! 
+8. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch!
 
+### Squash merging
+
+We use squash merges for all PRs to maintain a clean, linear history on `main`. 
+
+**How to squash merge:** Instead of clicking "Merge pull request" on GitHub, click the dropdown arrow next to it and select "Squash and merge". Make sure the squash commit title includes the PR number (e.g., "Add viral read filtering (#424)"). 
 
 ## New releases
 
-By default, all changes are made on individual branches, and merged into `dev`. Periodically, a collection of `dev` changes are merged to `master` as a new release. New releases are fairly frequent (historically, we have made a new release every 2-4 weeks).
+By default, all changes are made on individual branches, and merged into `dev`. Periodically, a collection of `dev` changes are merged to `main` as a new release. New releases are fairly frequent (historically, we have made a new release every 2-4 weeks).
 
 Only a pipeline maintainer/member of the Nucleic Acid Observatory should author a new release. The process for going through a new release can be found in NAO private documentation. 
-
-
-
-
-
-
-
-
 
