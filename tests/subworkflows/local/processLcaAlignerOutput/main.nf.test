@@ -94,13 +94,17 @@ nextflow_workflow {
                     script "modules/local/bowtie2/main.nf"
                     process {
                         '''
+                        def params_map = [
+                            par_string: "--local --very-sensitive-local --score-min G,0.1,19 -k 10",
+                            suffix: "virus",
+                            remove_sq: true,
+                            debug: false,
+                            interleaved: true,
+                            db_download_timeout: params.db_download_timeout
+                        ]
                         input[0] = INTERLEAVE_FASTQ.out.output 
                         input[1] = "${params.ref_dir}/results/bt2-virus-index"
-                        input[2] = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
-                        input[3] = "virus"
-                        input[4] = true
-                        input[5] = false
-                        input[6] = true
+                        input[2] = params_map
                         '''
                     }
             }
@@ -147,14 +151,17 @@ nextflow_workflow {
                 script "modules/local/lcaTsv/main.nf"
                 process {
                     '''
+                    def params_map = [
+                        group_field: "seq_id",
+                        taxid_field: "taxid",
+                        score_field: "length_normalized_score",
+                        taxid_artificial: "12908",
+                        prefix: "aligner"
+                    ]
                     input[0] = PROCESS_VIRAL_BOWTIE2_SAM.out.output
                     input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
                     input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
-                    input[3] = "seq_id"
-                    input[4] = "taxid"
-                    input[5] = "length_normalized_score"
-                    input[6] = "12908"
-                    input[7] = "aligner"
+                    input[3] = params_map
                     '''
                 }
             }
@@ -228,11 +235,15 @@ nextflow_workflow {
                     script "modules/local/minimap2/main.nf"
                     process {
                         '''
+                        def params_map = [
+                            suffix: "virus",
+                            remove_seq: false,
+                            alignment_params: "-N 10", 
+                            db_download_timeout: params.db_download_timeout
+                        ]
                         input[0] = INTERLEAVE_FASTQ.out.output 
                         input[1] = "${params.ref_dir}/results/mm2-virus-index"
-                        input[2] = "virus"
-                        input[3] = false
-                        input[4] = "-N 10"
+                        input[2] = params_map
                         '''
                     }
                 }
@@ -260,14 +271,17 @@ nextflow_workflow {
                 script "modules/local/lcaTsv/main.nf"
                 process {
                     '''
+                    def params_map = [
+                        group_field: "seq_id",
+                        taxid_field: "taxid",
+                        score_field: "length_normalized_score", 
+                        taxid_artificial: "12908",
+                        prefix: "aligner"
+                    ]
                     input[0] = SORT_TSV.out.sorted
                     input[1] = "${params.ref_dir}/results/taxonomy-nodes.dmp"
                     input[2] = "${params.ref_dir}/results/taxonomy-names.dmp"
-                    input[3] = "seq_id"
-                    input[4] = "taxid"
-                    input[5] = "length_normalized_score"
-                    input[6] = "12908"
-                    input[7] = "aligner"
+                    input[3] = params_map
                     '''
                 }
             }

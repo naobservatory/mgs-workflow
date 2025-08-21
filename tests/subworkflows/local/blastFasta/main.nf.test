@@ -58,15 +58,19 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def blast_fasta_params = [
+                    blast_db_prefix: params.blast_db_prefix,
+                    blast_perc_id: params.perc_id,
+                    blast_qcov_hsp_perc: params.qcov_hsp_perc,
+                    blast_max_rank: params.max_rank,
+                    blast_min_frac: params.min_frac,
+                    taxid_artificial: params.taxid_artificial,
+                    lca_prefix: params.lca_prefix,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = CONVERT_FASTQ_FASTA.out.output
                 input[1] = params.ref_dir
-                input[2] = params.blast_db_prefix
-                input[3] = params.perc_id
-                input[4] = params.qcov_hsp_perc
-                input[5] = params.max_rank
-                input[6] = params.min_frac
-                input[7] = params.taxid_artificial
-                input[8] = params.lca_prefix
+                input[2] = blast_fasta_params
                 '''
             }
         }
@@ -152,18 +156,23 @@ nextflow_workflow {
                 qcov_hsp_perc = 30
                 taxid_artificial = 81077
                 lca_prefix = "testprefix"
+
             }
             workflow {
                 '''
+                def blast_fasta_params = [
+                    blast_db_prefix: params.blast_db_prefix,
+                    blast_perc_id: params.perc_id,
+                    blast_qcov_hsp_perc: params.qcov_hsp_perc,
+                    blast_max_rank: params.max_rank,
+                    blast_min_frac: params.min_frac,
+                    taxid_artificial: params.taxid_artificial,
+                    lca_prefix: params.lca_prefix,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = CONVERT_FASTQ_FASTA.out.output
                 input[1] = params.ref_dir
-                input[2] = params.blast_db_prefix
-                input[3] = params.perc_id
-                input[4] = params.qcov_hsp_perc
-                input[5] = params.max_rank
-                input[6] = params.min_frac
-                input[7] = params.taxid_artificial
-                input[8] = params.lca_prefix
+                input[2] = blast_fasta_params
                 '''
             }
         }
@@ -249,18 +258,23 @@ nextflow_workflow {
                 qcov_hsp_perc = 0
                 taxid_artificial = 81077
                 lca_prefix = "testprefix"
+
             }
             workflow {
                 '''
+                def blast_fasta_params = [
+                    blast_db_prefix: params.blast_db_prefix,
+                    blast_perc_id: params.perc_id,
+                    blast_qcov_hsp_perc: params.qcov_hsp_perc,
+                    blast_max_rank: params.max_rank,
+                    blast_min_frac: params.min_frac,
+                    taxid_artificial: params.taxid_artificial,
+                    lca_prefix: params.lca_prefix,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = CONVERT_FASTQ_FASTA.out.output
                 input[1] = params.ref_dir
-                input[2] = params.blast_db_prefix
-                input[3] = params.perc_id
-                input[4] = params.qcov_hsp_perc
-                input[5] = params.max_rank
-                input[6] = params.min_frac
-                input[7] = params.taxid_artificial
-                input[8] = params.lca_prefix
+                input[2] = blast_fasta_params
                 '''
             }
         }
@@ -327,18 +341,23 @@ nextflow_workflow {
                 qcov_hsp_perc = 30
                 taxid_artificial = 81077
                 lca_prefix = "testprefix"
+
             }
             workflow {
                 '''
+                def blast_fasta_params = [
+                    blast_db_prefix: params.blast_db_prefix,
+                    blast_perc_id: params.perc_id,
+                    blast_qcov_hsp_perc: params.qcov_hsp_perc,
+                    blast_max_rank: params.max_rank,
+                    blast_min_frac: params.min_frac,
+                    taxid_artificial: params.taxid_artificial,
+                    lca_prefix: params.lca_prefix,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = GZIP_FILE.out
                 input[1] = params.ref_dir
-                input[2] = params.blast_db_prefix
-                input[3] = params.perc_id
-                input[4] = params.qcov_hsp_perc
-                input[5] = params.max_rank
-                input[6] = params.min_frac
-                input[7] = params.taxid_artificial
-                input[8] = params.lca_prefix
+                input[2] = blast_fasta_params
                 '''
             }
         }

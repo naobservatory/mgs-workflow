@@ -3,7 +3,7 @@ name: End-to-end MGS workflow test
 on:
   pull_request:
     branches:
-      - master
+      - main
       - dev
       - stable
 
@@ -11,6 +11,9 @@ jobs:
   test-index:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
 
     steps:
       - name: Configure AWS CLI
@@ -35,7 +38,11 @@ jobs:
 
       - name: Install nf-test
         run: |
-          wget -qO- https://get.nf-test.com | bash
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download nf-test..."
+            wget -qO- https://get.nf-test.com | bash && break
+            sleep 10
+          done
           sudo mv nf-test /usr/local/bin/
 
       - name: Run index workflow
@@ -44,7 +51,10 @@ jobs:
   test-run-output:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
+    
     steps:
       - name: Configure AWS CLI
         run: |
@@ -68,7 +78,11 @@ jobs:
 
       - name: Install nf-test
         run: |
-          wget -qO- https://get.nf-test.com | bash
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download nf-test..."
+            wget -qO- https://get.nf-test.com | bash && break
+            sleep 10
+          done
           sudo mv nf-test /usr/local/bin/
 
       - name: Run run workflow (short read)
@@ -77,7 +91,10 @@ jobs:
   test-run-output-ont:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
+    
     steps:
       - name: Configure AWS CLI
         run: |
@@ -101,7 +118,11 @@ jobs:
 
       - name: Install nf-test
         run: |
-          wget -qO- https://get.nf-test.com | bash
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download nf-test..."
+            wget -qO- https://get.nf-test.com | bash && break
+            sleep 10
+          done
           sudo mv nf-test /usr/local/bin/
 
       - name: Run run workflow (ONT)
@@ -111,7 +132,10 @@ jobs:
   test-validation:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
+    
     steps:
       - name: Configure AWS CLI
         run: |
@@ -135,7 +159,11 @@ jobs:
 
       - name: Install nf-test
         run: |
-          wget -qO- https://get.nf-test.com | bash
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download nf-test..."
+            wget -qO- https://get.nf-test.com | bash && break
+            sleep 10
+          done
           sudo mv nf-test /usr/local/bin/
 
       - name: Run run_validation workflow
@@ -144,7 +172,10 @@ jobs:
   test-downstream-output:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.NAO_TESTING_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.NAO_TESTING_SECRET_ACCESS_KEY }}
+    
     steps:
       - name: Configure AWS CLI
         run: |
@@ -168,7 +199,11 @@ jobs:
 
       - name: Install nf-test
         run: |
-          wget -qO- https://get.nf-test.com | bash
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download nf-test..."
+            wget -qO- https://get.nf-test.com | bash && break
+            sleep 10
+          done
           sudo mv nf-test /usr/local/bin/
 
       - name: Run DOWNSTREAM workflow and check output

@@ -1,7 +1,7 @@
 nextflow_process {
     name "Test process MINIMAP2_INDEX"
     script "modules/local/minimap2/main.nf"
-    process "MINIMAP2"
+    process "MINIMAP2" // we run MINIMAP2_INDEX in setup, then MINIMAP2 to verify it worked
     config "tests/configs/index.config"
     tag "module"
     tag "minimap2_index"
@@ -32,11 +32,15 @@ nextflow_process {
             }
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = GZIP_FILE.out
                 input[1] = MINIMAP2_INDEX.out.output
-                input[2] = "test"
-                input[3] = false
-                input[4] = ""
+                input[2] = minimap2_params
                 '''
             }
         }

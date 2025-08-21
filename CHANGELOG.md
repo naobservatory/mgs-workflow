@@ -1,5 +1,32 @@
-# v3.0.0.1
+# v3.0.1.0
 
+### Key changes (impacting most users)
+- Improved database handling: added caching of large reference files to reduce AWS Batch loading times.
+    - Processes on the same compute node can now share Kraken2 and BLAST databases, as well as Minimap2 and Bowtie2 indexes.
+    - This reduces pipeline runtime and cost, particularly for workloads with many small `.fastq` files.
+    - Core logic implemented in `bin/download-db.sh`.
+- Testing changes: Running `nf-test` tests now requires exporting AWS credentials (see `docs/developer.md`).
+- Stability improvements:
+    - Fixed frequent out-of-memory errors in PROCESS_VIRAL_MINIMAP2_SAM by adjusting resource requirements.
+    - Fixed issue where the DOWNSTREAM workflow failed on samples with no viral hits.
+    - Fixed bug in ANNOTATE_VIRUS_INFECTION that incorrectly assigned certain viruses to specific hosts (e.g. porcine respiratory coronavirus mislabeled as human-infecting; resolves issue #311).
+        
+### Other changes (relevant mainly to developers)
+- Bug fixes:
+    - RAISE_TAXONOMY_RANKS: Adjusted for updated classification of "Viruses" taxon in NCBI taxonomy database.
+    - FILTER_VIRAL_SAM: Now correctly handles concordant pairs with identical positions but differing alignment scores.
+    - VALIDATE_GROUPING: Fixed output file name collisions.
+    - nf-test file FILTER_VIRAL_SAM: Fixed invalid test inputs.
+    - nf-test files for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATE: Fixed line iteration bug.
+- Container updates:
+    - Introduced new custom containers to support reference file caching (new Dockerfiles in `docker` directory)
+    - Added `bin/build-push-docker.sh` to build and push Docker images to Dockerhub. 
+- Code quality: 
+    - Converted modules and subworkflows with >5 positional arguments to use parameter maps (reduces risk of argument errors).
+    - Added more unit tests in the pytest file for ANNOTATE_VIRUS_INFECTION.
+    - Updated Github Actions to retry downloading `nf-test` (it often fails on the first attempt due transient 403 errors).
+
+# v3.0.0.1
 - Added bugfix for `RAISE_TAXONOMY_RANKS` to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
 
 # v3.0.0.0

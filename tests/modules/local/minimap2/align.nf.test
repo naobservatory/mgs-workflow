@@ -24,14 +24,19 @@ nextflow_process {
         tag "expect_success"
 
         when {
-            params {}
+            params {
+            }
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "-N 10",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
-                input[2] = "test"
-                input[3] = false
-                input[4] = "-N 10"
+                input[2] = minimap2_params
                 '''
             }
         }
@@ -89,14 +94,19 @@ nextflow_process {
         tag "expect_success"
 
         when {
-            params {}
+            params {
+}
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
-                input[2] = "test"
-                input[3] = false
-                input[4] = ""
+                input[2] = minimap2_params
                 '''
             }
         }
@@ -154,14 +164,19 @@ nextflow_process {
         tag "expect_success"
 
         when {
-            params {}
+            params {
+	    }
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-human-index"
-                input[2] = "test"
-                input[3] = false
-                input[4] = ""
+                input[2] = minimap2_params
                 '''
             }
         }
@@ -204,14 +219,19 @@ nextflow_process {
         tag "expect_success"
 
         when {
-            params {}
+            params {
+            }
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-ribo-index"
-                input[2] = "test"
-                input[3] = false
-                input[4] = ""
+                input[2] = minimap2_params
                 '''
             }
         }
@@ -268,14 +288,19 @@ nextflow_process {
         }
 
         when {
-            params {}
+            params {
+            }
             process {
                 '''
+                def minimap2_params = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: "",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = GZIP_FILE.out
                 input[1] = "${params.ref_dir}/results/mm2-virus-index"
-                input[2] = "test"
-                input[3] = false
-                input[4] = ""
+                input[2] = minimap2_params
                 '''
             }
         }

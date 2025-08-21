@@ -29,15 +29,19 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def short_params = [
+                    aln_score_threshold: params.bt2_score_threshold,
+                    adapters: params.adapters,
+                    cutadapt_error_rate: params.cutadapt_error_rate,
+                    min_kmer_hits: "1",
+                    k: "24",
+                    bbduk_suffix: "viral",
+                    taxid_artificial: "81077",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = params.ref_dir
-                input[2] = params.bt2_score_threshold
-                input[3] = params.adapters
-                input[4] = params.cutadapt_error_rate
-                input[5] = "1"
-                input[6] = "24"
-                input[7] = "viral"
-                input[8] = "81077"
+                input[2] = short_params
                 '''
             }
         }
@@ -113,15 +117,19 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def short_params = [
+                    aln_score_threshold: params.bt2_score_threshold,
+                    adapters: params.adapters,
+                    cutadapt_error_rate: params.cutadapt_error_rate,
+                    min_kmer_hits: "1",
+                    k: "24",
+                    bbduk_suffix: "viral",
+                    taxid_artificial: "81077",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = GZIP_EMPTY_FORWARD.out.mix(COPY_FILE.out).groupTuple()
                 input[1] = params.ref_dir
-                input[2] = params.bt2_score_threshold
-                input[3] = params.adapters
-                input[4] = params.cutadapt_error_rate
-                input[5] = "1"
-                input[6] = "24"
-                input[7] = "viral"
-                input[8] = "81077"
+                input[2] = short_params
                 '''
             }
         }

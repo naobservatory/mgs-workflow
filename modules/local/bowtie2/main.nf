@@ -5,31 +5,30 @@ process BOWTIE2 {
     label "small"
     input:
         tuple val(sample), path(reads_interleaved)
-        path(index_dir)
-        val(par_string)
-        val(suffix)
-        val(remove_sq)
-        val(debug)
-        val(interleaved)
+        val(index_dir)
+        val(params_map) // par_string, suffix, remove_sq, debug, interleaved, db_download_timeout
     output:
-        tuple val(sample), path("${sample}_${suffix}_bowtie2_mapped.sam.gz"), emit: sam
-        tuple val(sample), path("${sample}_${suffix}_bowtie2_mapped.fastq.gz"), emit: reads_mapped
-        tuple val(sample), path("${sample}_${suffix}_bowtie2_unmapped.fastq.gz"), emit: reads_unmapped
-        tuple val(sample), path("${sample}_${suffix}_bowtie2_in.fastq.gz"), emit: input
+        tuple val(sample), path("${sample}_${params_map.suffix}_bowtie2_mapped.sam.gz"), emit: sam
+        tuple val(sample), path("${sample}_${params_map.suffix}_bowtie2_mapped.fastq.gz"), emit: reads_mapped
+        tuple val(sample), path("${sample}_${params_map.suffix}_bowtie2_unmapped.fastq.gz"), emit: reads_unmapped
+        tuple val(sample), path("${sample}_${params_map.suffix}_bowtie2_in.fastq.gz"), emit: input
     shell:
         '''
         set -euo pipefail
+        suffix="!{params_map.suffix}"
+        # Download Bowtie2 index if not already present
+        download-db.sh !{index_dir} !{params_map.db_download_timeout}
         # Prepare inputs
-        idx="!{index_dir}/bt2_index"
-        sam="!{sample}_!{suffix}_bowtie2_mapped.sam.gz"
-        al="!{sample}_!{suffix}_bowtie2_mapped.fastq.gz"
-        un="!{sample}_!{suffix}_bowtie2_unmapped.fastq.gz"
-        io="-x ${idx} !{interleaved ? "--interleaved" : ""} -"
-        par="--threads !{task.cpus} !{par_string}"
+        idx_dir_name=\$(basename "!{index_dir}")
+        sam="!{sample}_${suffix}_bowtie2_mapped.sam.gz"
+        al="!{sample}_${suffix}_bowtie2_mapped.fastq.gz"
+        un="!{sample}_${suffix}_bowtie2_unmapped.fastq.gz"
+        io="-x /scratch/${idx_dir_name}/bt2_index !{params_map.interleaved ? "--interleaved" : ""} -"
+        par="--threads !{task.cpus} --mm !{params_map.par_string}"
         # Set SAM flags based on whether data is paired-end or single-end
         # For paired-end: flag 12 = read unmapped (4) + mate unmapped (8)
         # For single-end: flag 4 = read unmapped
-        unmapped_flag="!{interleaved ? "12" : "4"}"
+        unmapped_flag="!{params_map.interleaved ? "12" : "4"}"
         # Run pipeline
         # Outputs a SAM file for all reads, which is then partitioned based on alignment status
         #   - First branch (samtools view -u -f ${unmapped_flag} -) filters SAM to unmapped reads:
@@ -44,30 +43,30 @@ process BOWTIE2 {
         zcat !{reads_interleaved} \\
             | bowtie2 ${par} ${io} \\
             | tee \\
-                !{ debug ? ">(gzip -c > test_all.sam.gz)" : "" } \\
+                !{ params_map.debug ? ">(gzip -c > test_all.sam.gz)" : "" } \\
                 >(samtools view -u -f ${unmapped_flag} - \\
-                    !{ debug ? "| tee >(samtools view -h - | gzip -c > test_unmapped.sam.gz)" : "" } \\
+                    !{ params_map.debug ? "| tee >(samtools view -h - | gzip -c > test_unmapped.sam.gz)" : "" } \\
                     | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
                         -0 /dev/stdout -s /dev/stdout -N - \\
                     | sed '1~4 s/\\/\\([12]\\)\$/ \\1/' \\
                     | gzip -c > ${un}) \\
                 >(samtools view -u -G ${unmapped_flag} - \\
-                    !{ debug ? "| tee >(samtools view -h - | gzip -c > test_mapped.sam.gz)" : "" } \\
+                    !{ params_map.debug ? "| tee >(samtools view -h - | gzip -c > test_mapped.sam.gz)" : "" } \\
                     | samtools fastq -1 /dev/stdout -2 /dev/stdout \\
                         -0 /dev/stdout -s /dev/stdout -N - \\
                     | sed '1~4 s/\\/\\([12]\\)\$/ \\1/' \\
                     | gzip -c > ${al}) \\
             | samtools view -h -G ${unmapped_flag} - \\
-            !{ remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
+            !{ params_map.remove_sq ? "| grep -v '^@SQ'" : "" } | gzip -c > ${sam}
         # Move input files for testing
-        in2="!{sample}_!{suffix}_bowtie2_in.fastq.gz"
+        in2="!{sample}_${suffix}_bowtie2_in.fastq.gz"
         ln -s !{reads_interleaved} ${in2}
         '''
 }
 
 // Generate a Bowtie2 index from an input file
 process BOWTIE2_INDEX {
-    label "Bowtie2"
+    label "bowtie2_samtools"
     label "max"
     input:
         path(reference_fasta)

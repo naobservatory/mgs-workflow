@@ -24,6 +24,13 @@ nextflow_process {
                 score_field = "test_score"
                 artificial_taxid = 8000
                 prefix = "test"
+                params_map = [
+                    group_field: params.group_field,
+                    taxid_field: params.taxid_field,
+                    score_field: params.score_field,
+                    taxid_artificial: params.artificial_taxid,
+                    prefix: params.prefix
+                ]
             }
             process {
                 '''
@@ -31,11 +38,7 @@ nextflow_process {
                     | combine(Channel.of(params.input_path))
                 input[1] = params.nodes_db_path
                 input[2] = params.names_db_path
-                input[3] = params.group_field
-                input[4] = params.taxid_field
-                input[5] = params.score_field
-                input[6] = params.artificial_taxid
-                input[7] = params.prefix
+                input[3] = params.params_map
                 '''
             }
         }
@@ -106,6 +109,13 @@ nextflow_process {
                 score_field = "test_score"
                 artificial_taxid = 8000
                 prefix = "test"
+                params_map = [
+                    group_field: params.group_field,
+                    taxid_field: params.taxid_field,
+                    score_field: params.score_field,
+                    taxid_artificial: params.artificial_taxid,
+                    prefix: params.prefix
+                ]
             }
             process {
                 '''
@@ -113,11 +123,7 @@ nextflow_process {
                     | combine(Channel.of(params.input_path))
                 input[1] = params.nodes_db_path
                 input[2] = params.names_db_path
-                input[3] = params.group_field
-                input[4] = params.taxid_field
-                input[5] = params.score_field
-                input[6] = params.artificial_taxid
-                input[7] = params.prefix
+                input[3] = params.params_map
                 '''
             }
         }
@@ -173,15 +179,18 @@ nextflow_process {
             }
             process {
                 '''
+                params_map = [
+                    group_field: params.group_field,
+                    taxid_field: params.taxid_field,
+                    score_field: params.score_field,
+                    taxid_artificial: params.artificial_taxid,
+                    prefix: params.prefix
+                ]
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
                 input[1] = params.nodes_db_path
                 input[2] = params.names_db_path
-                input[3] = params.group_field
-                input[4] = params.taxid_field
-                input[5] = params.score_field
-                input[6] = params.artificial_taxid
-                input[7] = params.prefix
+                input[3] = params_map
                 '''
             }
         }
@@ -244,15 +253,18 @@ nextflow_process {
             }
             process {
                 '''
+                params_map = [
+                    group_field: params.group_field,
+                    taxid_field: params.taxid_field,
+                    score_field: params.score_field,
+                    taxid_artificial: params.artificial_taxid,
+                    prefix: params.prefix
+                ]
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
                 input[1] = params.nodes_db_path
                 input[2] = params.names_db_path
-                input[3] = params.group_field
-                input[4] = params.taxid_field
-                input[5] = params.score_field
-                input[6] = params.artificial_taxid
-                input[7] = params.prefix
+                input[3] = params_map
                 '''
             }
         }
@@ -279,15 +291,18 @@ nextflow_process {
             }
             process {
                 '''
+                params_map = [
+                    group_field: params.group_field,
+                    taxid_field: params.taxid_field,
+                    score_field: params.score_field,
+                    taxid_artificial: params.artificial_taxid,
+                    prefix: params.prefix
+                ]
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
                 input[1] = params.nodes_db_path
                 input[2] = params.names_db_path
-                input[3] = params.group_field
-                input[4] = params.taxid_field
-                input[5] = params.score_field
-                input[6] = params.artificial_taxid
-                input[7] = params.prefix
+                input[3] = params_map
                 '''
             }
         }
@@ -314,15 +329,18 @@ nextflow_process {
             }
             process {
                 '''
+                params_map = [
+                    group_field: params.group_field,
+                    taxid_field: params.taxid_field,
+                    score_field: params.score_field,
+                    taxid_artificial: params.artificial_taxid,
+                    prefix: params.prefix
+                ]
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
                 input[1] = params.nodes_db_path
                 input[2] = params.names_db_path
-                input[3] = params.group_field
-                input[4] = params.taxid_field
-                input[5] = params.score_field
-                input[6] = params.artificial_taxid
-                input[7] = params.prefix
+                input[3] = params_map
                 '''
             }
         }
@@ -349,15 +367,18 @@ nextflow_process {
             }
             process {
                 '''
+                params_map = [
+                    group_field: params.group_field,
+                    taxid_field: params.taxid_field,
+                    score_field: params.score_field,
+                    taxid_artificial: params.artificial_taxid,
+                    prefix: params.prefix
+                ]
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
                 input[1] = params.nodes_db_path
                 input[2] = params.names_db_path
-                input[3] = params.group_field
-                input[4] = params.taxid_field
-                input[5] = params.score_field
-                input[6] = params.artificial_taxid
-                input[7] = params.prefix
+                input[3] = params_map
                 '''
             }
         }
@@ -384,15 +405,18 @@ nextflow_process {
             }
             process {
                 '''
+                params_map = [
+                    group_field: params.group_field,
+                    taxid_field: params.taxid_field,
+                    score_field: params.score_field,
+                    taxid_artificial: params.artificial_taxid,
+                    prefix: params.prefix
+                ]
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
                 input[1] = params.nodes_db_path
                 input[2] = params.names_db_path
-                input[3] = params.group_field
-                input[4] = params.taxid_field
-                input[5] = params.score_field
-                input[6] = params.artificial_taxid
-                input[7] = params.prefix
+                input[3] = params_map
                 '''
             }
         }
@@ -420,15 +444,18 @@ nextflow_process {
             }
             process {
                 '''
+                params_map = [
+                    group_field: params.group_field,
+                    taxid_field: params.taxid_field,
+                    score_field: params.score_field,
+                    taxid_artificial: params.artificial_taxid,
+                    prefix: params.prefix
+                ]
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
                 input[1] = params.nodes_db_path
                 input[2] = params.names_db_path
-                input[3] = params.group_field
-                input[4] = params.taxid_field
-                input[5] = params.score_field
-                input[6] = params.artificial_taxid
-                input[7] = params.prefix
+                input[3] = params_map
                 '''
             }
         }
@@ -458,15 +485,18 @@ nextflow_process {
             }
             process {
                 '''
+                params_map = [
+                    group_field: params.group_field,
+                    taxid_field: params.taxid_field,
+                    score_field: params.score_field,
+                    taxid_artificial: params.artificial_taxid,
+                    prefix: params.prefix
+                ]
                 input[0] = Channel.of("test")
                     | combine(Channel.of(params.input_path))
                 input[1] = params.nodes_db_path
                 input[2] = params.names_db_path
-                input[3] = params.group_field
-                input[4] = params.taxid_field
-                input[5] = params.score_field
-                input[6] = params.artificial_taxid
-                input[7] = params.prefix
+                input[3] = params_map
                 '''
             }
         }

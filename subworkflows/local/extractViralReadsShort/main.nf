@@ -27,13 +27,7 @@ workflow EXTRACT_VIRAL_READS_SHORT {
     take:
         reads_ch
         ref_dir
-        aln_score_threshold
-        adapter_path
-        cutadapt_error_rate
-        min_kmer_hits
-        k
-        bbduk_suffix
-        taxid_artificial
+        params_map // aln_score_threshold, adapters, cutadapt_error_rate, min_kmer_hits, k, bbduk_suffix, taxid_artificial
     main:
         // Get reference paths
         viral_genome_path = "${ref_dir}/results/virus-genomes-masked.fasta.gz"
@@ -56,32 +50,46 @@ workflow EXTRACT_VIRAL_READS_SHORT {
                                "edit_distance", "edit_distance_rev", "ref_start", 
                                "ref_start_rev", "query_rc", "query_rc_rev", "pair_status"]
          // 1. Run initial screen against viral genomes with BBDuk
-        bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, min_kmer_hits, k, bbduk_suffix)
+        bbduk_params = params_map
+        bbduk_ch = BBDUK_HITS(reads_ch, viral_genome_path, bbduk_params)
         // 2. Carry out stringent adapter removal with FASTP and Cutadapt
-        fastp_ch = FASTP(bbduk_ch.fail, adapter_path, true)
-        adapt_ch = CUTADAPT(fastp_ch.reads, adapter_path, cutadapt_error_rate)
+        fastp_ch = FASTP(bbduk_ch.fail, params_map.adapters, true)
+        adapt_ch = CUTADAPT(fastp_ch.reads, params_map.adapters, params_map.cutadapt_error_rate)
         // 3. Run Bowtie2 against a viral database and process output
+        def bowtie_base_params = [
+            remove_sq: true,
+            debug: false,
+            interleaved: true,
+            db_download_timeout: params_map.db_download_timeout
+        ]
         par_virus = "--local --very-sensitive-local --score-min G,0.1,19 -k 10"
-        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, 
-            par_virus, "virus", true, false, true)
+        bowtie2_virus_params = bowtie_base_params + [par_string: par_virus, suffix: "virus"]
+        bowtie2_ch = BOWTIE2_VIRUS(adapt_ch.reads, bt2_virus_index_path, bowtie2_virus_params)
+
         // 4. Filter contaminants
         par_contaminants = "--local --very-sensitive-local"
-        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path,
-            par_contaminants, "human", false, false, true)
-        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path,
-            par_contaminants, "other", false, false, true)
+        bowtie2_human_params = bowtie_base_params + [par_string: par_contaminants, suffix: "human"]
+        human_bt2_ch = BOWTIE2_HUMAN(bowtie2_ch.reads_mapped, bt2_human_index_path, bowtie2_human_params)
+        bowtie2_other_params = bowtie_base_params + [par_string: par_contaminants, suffix: "other"]
+        other_bt2_ch = BOWTIE2_OTHER(human_bt2_ch.reads_unmapped, bt2_other_index_path, bowtie2_other_params)
+
         // 5. Sort SAM and FASTQ files before filtering
         bowtie2_sam_sorted_ch = SORT_FILE(bowtie2_ch.sam, "-t\$\'\\t\' -k1,1", "sam")
         other_fastq_sorted_ch = SORT_FASTQ(other_bt2_ch.reads_unmapped)
         // 6. Consolidated viral SAM filtering: keep contaminant-free reads, applies score threshold, adds missing mates
         bowtie2_ch_combined = bowtie2_sam_sorted_ch.output.combine(other_fastq_sorted_ch.output, by: 0)
-        bowtie2_filtered_ch = FILTER_VIRAL_SAM(bowtie2_ch_combined, aln_score_threshold)
+        bowtie2_filtered_ch = FILTER_VIRAL_SAM(bowtie2_ch_combined, params_map.aln_score_threshold)
         // 7. Convert SAM to TSV
         bowtie2_tsv_ch = PROCESS_VIRAL_BOWTIE2_SAM(bowtie2_filtered_ch.sam, genome_meta_path, virus_db_path, true)
         // 8. Run LCA
-        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db,
-            "seq_id", "taxid", "length_normalized_score", taxid_artificial,
-            "aligner")
+        lca_params = [
+            group_field: "seq_id",
+            taxid_field: "taxid",
+            score_field: "length_normalized_score",
+            taxid_artificial: params_map.taxid_artificial,
+            prefix: "aligner"
+        ]
+        lca_ch = LCA_TSV(bowtie2_tsv_ch.output, nodes_db, names_db, lca_params)
         // 9. Process LCA and Bowtie2 columns
         processed_ch = PROCESS_LCA_ALIGNER_OUTPUT(
             lca_ch.output,

@@ -37,13 +37,17 @@ nextflow_process {
             }
             process {
                 '''
+                def bowtie2_params = [
+                    par_string: "--local --very-sensitive-local --score-min G,0.1,19",
+                    suffix: "virus",
+                    remove_sq: true,
+                    debug: true,
+                    interleaved: true,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/bt2-virus-index"
-                input[2] = "--local --very-sensitive-local --score-min G,0.1,19"
-                input[3] = "virus"
-                input[4] = true
-                input[5] = true
-                input[6] = true
+                input[2] = bowtie2_params
                 '''
             }
         }
@@ -102,13 +106,17 @@ nextflow_process {
             }
             process {
                 '''
+                def bowtie2_params = [
+                    par_string: "--local --very-sensitive-local",
+                    suffix: "human",
+                    remove_sq: false,
+                    debug: true,
+                    interleaved: true,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/bt2-human-index"
-                input[2] = "--local --very-sensitive-local"
-                input[3] = "human"
-                input[4] = false
-                input[5] = true
-                input[6] = true
+                input[2] = bowtie2_params
                 '''
             }
         }
@@ -167,13 +175,17 @@ nextflow_process {
             }
             process {
                 '''
+                def bowtie2_params = [
+                    par_string: "--local --very-sensitive-local",
+                    suffix: "other",
+                    remove_sq: false,
+                    debug: true,
+                    interleaved: true,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/bt2-other-index"
-                input[2] = "--local --very-sensitive-local"
-                input[3] = "other"
-                input[4] = false
-                input[5] = true
-                input[6] = true
+                input[2] = bowtie2_params
                 '''
             }
         }
@@ -245,13 +257,17 @@ nextflow_process {
                 }
                 process {
                     '''
+                    def bowtie2_params = [
+                        par_string: "--local --very-sensitive-local --score-min G,0.1,19",
+                        suffix: "virus",
+                        remove_sq: true,
+                        debug: true,
+                        interleaved: false,
+                        db_download_timeout: params.db_download_timeout
+                    ]
                     input[0] = LOAD_SAMPLESHEET_SINGLE.out.samplesheet
                     input[1] = "${params.ref_dir}/results/bt2-virus-index"
-                    input[2] = "--local --very-sensitive-local --score-min G,0.1,19"
-                    input[3] = "virus"
-                    input[4] = true
-                    input[5] = true
-                    input[6] = false
+                    input[2] = bowtie2_params
                     '''
                 }
             }

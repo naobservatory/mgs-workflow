@@ -32,7 +32,9 @@ workflow INDEX {
             params.host_taxon_db, params.virus_taxid,
             params.viral_taxids_exclude_hard)
         // Get reference DB of viral genomes of interest
-        MAKE_VIRUS_GENOME_DB(params.ncbi_viral_params, MAKE_VIRUS_TAXONOMY_DB.out.db, params.genome_patterns_exclude, params.host_taxa_screen, params.adapters, "20", "3", "0.5", "10")
+        virus_genome_params = params.collectEntries { k, v -> [k, v] }
+        virus_genome_params.putAll([k: "20", hdist: "3", entropy: "0.5", polyx_len: "10"])
+        MAKE_VIRUS_GENOME_DB(params.ncbi_viral_params, MAKE_VIRUS_TAXONOMY_DB.out.db, virus_genome_params)
         // Build alignment indices
         JOIN_RIBO_REF(params.ssu_url, params.lsu_url)
         MAKE_VIRUS_INDEX(MAKE_VIRUS_GENOME_DB.out.fasta)
