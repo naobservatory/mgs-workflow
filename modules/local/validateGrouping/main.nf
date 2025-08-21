@@ -7,12 +7,12 @@ process VALIDATE_GROUPING {
         tuple val(label), path(input_file), path(groups_file)
     output:
         tuple val(label), path(input_file), path("validated_${groups_file}"), emit: output
-        tuple val(label), path("zero_vv_${input_file}"), emit: zero_vv_log
+        tuple val(label), path("zero_vv_${label}_${input_file}"), emit: zero_vv_log
         tuple val(label), path("input_${input_file}"), path("input_${groups_file}"), emit: input
     shell:
         '''
         out_validated=validated_!{groups_file}
-        out_zero_vv=zero_vv_!{input_file}
+        out_zero_vv=zero_vv_!{label}_!{input_file}
         validate_grouping.py !{input_file} !{groups_file} ${out_validated} ${out_zero_vv}
         # Link input files for testing
         ln -s !{input_file} input_!{input_file}
