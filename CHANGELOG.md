@@ -1,3 +1,6 @@
+# v3.0.1.1-dev
+- Updating `docs/developer.md` to reflect the new branch naming convention.
+
 # v3.0.1.0
 
 ### Key changes (impacting most users)
