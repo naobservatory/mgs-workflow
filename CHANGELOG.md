@@ -1,5 +1,6 @@
 # v3.0.1.1-dev
-- Updating `docs/developer.md` to reflect the new branch naming convention.
+- Updated `docs/developer.md` to reflect the new branch naming convention.
+- Added pyproject.toml at the top level directory to set ruff, and mypy settings.
 
 # v3.0.1.0
 
