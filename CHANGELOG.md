@@ -1,6 +1,7 @@
 # v3.0.1.1-dev
 - Updated `docs/developer.md` to reflect the new branch naming convention.
 - Added pyproject.toml at the top level directory to set ruff, and mypy settings.
+- Fixed bug in DOWNSTREAM that prevented the workflow from running when the viral hits table had samples that weren't in the grouping file.
 
 # v3.0.1.0
 

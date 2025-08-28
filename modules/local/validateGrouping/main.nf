@@ -1,4 +1,3 @@
-// Validate that the samples in the grouping file are a superset of the samples in the input file
 // Filter out the samples from the grouping file that have 0 viral hits
 process VALIDATE_GROUPING {
     label "python"
