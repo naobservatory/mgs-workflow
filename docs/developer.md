@@ -72,7 +72,7 @@ Build and push the custom containers using the script `bin/build-push-docker.sh`
     
 ## Testing
 
-We use [nf-test](https://www.nf-test.com/) for integration and end-to-end tests. For Python process unit tests, we use pytest. As we continue developing, we will transition away from nf-test unit tests for Python scripts.
+We use [nf-test](https://www.nf-test.com/) for unit, integration, and end-to-end tests. We intend to transition to using [pytest](https://docs.pytest.org/en/stable/index.html#) for unit tests of Python processes, and developers should therefore write unit tests in pytest for any processes that use Python.
 
 ### Organization of tests 
 
