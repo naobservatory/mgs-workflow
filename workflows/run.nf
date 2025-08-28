@@ -2,9 +2,6 @@
 | WORKFLOW: PREPROCESSING, TAXONMIC PROFILING AND HUMAN VIRUS ANALYSIS ON SHORT-READ MGS DATA (EITHER SINGLE-END OR PAIRED-END) |
 ***********************************************************************************************/
 
-import groovy.json.JsonOutput
-import java.time.LocalDateTime
-
 /***************************
 | MODULES AND SUBWORKFLOWS |
 ***************************/
@@ -18,7 +15,13 @@ include { RUN_QC } from "../subworkflows/local/runQc"
 include { PROFILE} from "../subworkflows/local/profile"
 include { BLAST_VIRAL } from "../subworkflows/local/blastViral"
 include { CHECK_VERSION_COMPATIBILITY } from "../subworkflows/local/checkVersionCompatibility"
-nextflow.preview.output = true
+include { COPY_FILE_BARE as COPY_INDEX_PARAMS } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_INDEX_PIPELINE_VERSION } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_INDEX_COMPAT } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_VERSION } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_PIPELINE_COMPAT } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_SAMPLESHEET } from "../modules/local/copyFile"
+include { COPY_FILE_BARE as COPY_ADAPTERS } from "../modules/local/copyFile"
 
 /*****************
 | MAIN WORKFLOWS |
@@ -26,17 +29,17 @@ nextflow.preview.output = true
 
 // Complete primary workflow
 workflow RUN {
+    main:
     // Check index/pipeline version compatibility
-    pipeline_version_path = "${projectDir}/pipeline-version.txt"
-    index_version_path = "${params.ref_dir}/logging/pipeline-version.txt"
-    pipeline_min_index_version_path = "${projectDir}/pipeline-min-index-version.txt"
-    index_min_pipeline_version_path = "${params.ref_dir}/logging/index-min-pipeline-version.txt"
+    pipeline_version_path = file("${projectDir}/pipeline-version.txt")
+    index_version_path = file("${params.ref_dir}/logging/pipeline-version.txt")
+    pipeline_min_index_version_path = file("${projectDir}/pipeline-min-index-version.txt")
+    index_min_pipeline_version_path = file("${params.ref_dir}/logging/index-min-pipeline-version.txt")
     CHECK_VERSION_COMPATIBILITY(pipeline_version_path, index_version_path,
         pipeline_min_index_version_path, index_min_pipeline_version_path)
 
     // Setting reference paths
     kraken_db_path = "${params.ref_dir}/results/kraken_db"
-    blast_db_path = "${params.ref_dir}/results/${params.blast_db_prefix}"
 
     // Load samplesheet and check platform
     LOAD_SAMPLESHEET(params.sample_sheet, params.platform, false)
@@ -49,26 +52,36 @@ workflow RUN {
 
     // Extract and count human-viral reads
     if ( params.platform == "ont" ) {
-        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir)
+        EXTRACT_VIRAL_READS_ONT(samplesheet_ch, params.ref_dir, params.taxid_artificial, params.db_download_timeout)
         hits_fastq = EXTRACT_VIRAL_READS_ONT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_ONT.out.hits_final
-        hits_unfiltered = Channel.empty()
+        inter_lca = EXTRACT_VIRAL_READS_ONT.out.inter_lca
+        inter_aligner = EXTRACT_VIRAL_READS_ONT.out.inter_minimap2
+        inter_lca = EXTRACT_VIRAL_READS_ONT.out.inter_lca
+        inter_aligner = EXTRACT_VIRAL_READS_ONT.out.inter_minimap2
         bbduk_match = Channel.empty()
         bbduk_trimmed = Channel.empty()
      } else {
-        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, kraken_db_path, params.bt2_score_threshold,
-            params.adapters, params.host_taxon, "0.33", "1", "24", "viral", params.bracken_threshold)
+        def short_params = params.collectEntries { k, v -> [k, v] }
+        short_params["aln_score_threshold"] = params.bt2_score_threshold // rename to match
+        short_params["min_kmer_hits"] = "1"
+        short_params["bbduk_suffix"] = "viral"
+        short_params["k"] = "24" 
+        EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, short_params)
         hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
-        hits_unfiltered = EXTRACT_VIRAL_READS_SHORT.out.hits_unfiltered
+        inter_lca = EXTRACT_VIRAL_READS_SHORT.out.inter_lca
+        inter_aligner = EXTRACT_VIRAL_READS_SHORT.out.inter_bowtie
+        inter_lca = EXTRACT_VIRAL_READS_SHORT.out.inter_lca
+        inter_aligner = EXTRACT_VIRAL_READS_SHORT.out.inter_bowtie
         bbduk_match = EXTRACT_VIRAL_READS_SHORT.out.bbduk_match
         bbduk_trimmed = EXTRACT_VIRAL_READS_SHORT.out.bbduk_trimmed
     }
     // BLAST validation on host-viral reads (optional)
     if ( params.blast_viral_fraction > 0 ) {
-        BLAST_VIRAL(hits_fastq, blast_db_path, params.blast_db_prefix,
-            params.blast_viral_fraction, params.blast_max_rank, params.blast_min_frac, params.random_seed,
-            params.blast_perc_id, params.blast_qcov_hsp_perc)
+        def blast_viral_params = params.collectEntries { k, v -> [k, v] }
+        blast_viral_params["read_fraction"] = params.blast_viral_fraction // rename to match subworkflow input
+        BLAST_VIRAL(hits_fastq, params.ref_dir, blast_viral_params)
         blast_subset_ch = BLAST_VIRAL.out.blast_subset
         blast_reads_ch = BLAST_VIRAL.out.subset_reads
     } else {
@@ -77,65 +90,44 @@ workflow RUN {
     }
 
     // Subset reads to target number, and trim adapters
-    SUBSET_TRIM(samplesheet_ch, params.n_reads_profile,
-        params.adapters, single_end_ch,
-        params.platform, params.random_seed)
+    def subset_trim_params = params.collectEntries { k, v -> [k, v] }
+    SUBSET_TRIM(samplesheet_ch, single_end_ch, subset_trim_params)
 
     // Run QC on subset reads before and after adapter trimming
     RUN_QC(SUBSET_TRIM.out.subset_reads, SUBSET_TRIM.out.trimmed_subset_reads, single_end_ch)
 
     // Profile ribosomal and non-ribosomal reads of the subset adapter-trimmed reads
-    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, "0.4", "27", "ribo",
-        params.bracken_threshold, single_end_ch, params.platform)
+    def profile_params = params.collectEntries { k, v -> [k, v] } + [min_kmer_fraction: "0.4", k: "27", ribo_suffix: "ribo"]
+    PROFILE(SUBSET_TRIM.out.trimmed_subset_reads, kraken_db_path, params.ref_dir, single_end_ch, profile_params)
 
     // Get index files for publishing
-    index_params_path = "${params.ref_dir}/input/index-params.json"
-    index_params_path_new = "${params.base_dir}/work/params-index.json"
-    index_version_path_new = "${params.base_dir}/work/pipeline-version-index.txt"
-    index_min_pipeline_version_path_new = "${params.base_dir}/work/index-min-pipeline-version.txt"
-    index_params_ch = Channel.fromPath(index_params_path)
-        | map { file -> file.copyTo(index_params_path_new) }
-    index_pipeline_version_ch = Channel.fromPath(index_version_path)
-        | map { file -> file.copyTo(index_version_path_new) }
-    index_compatibility_ch = Channel.fromPath(index_min_pipeline_version_path)
-        | map { file -> file.copyTo(index_min_pipeline_version_path_new) }
+    index_params_path = file("${params.ref_dir}/input/index-params.json")
+    index_params_ch = COPY_INDEX_PARAMS(Channel.fromPath(index_params_path), "params-index.json")
+    index_pipeline_version_ch = COPY_INDEX_PIPELINE_VERSION(Channel.fromPath(index_version_path), "pipeline-version-index.txt")
+    index_min_pipeline_version_newpath = index_min_pipeline_version_path.getFileName().toString()
+    index_compatibility_ch = COPY_INDEX_COMPAT(Channel.fromPath(index_min_pipeline_version_path), index_min_pipeline_version_newpath)
 
     // Prepare other publishing variables
-    params_str = JsonOutput.prettyPrint(JsonOutput.toJson(params))
+    params_str = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(params))
     params_ch = Channel.of(params_str).collectFile(name: "params-run.json")
     time_ch = start_time_str.map { it + "\n" }.collectFile(name: "time.txt")
-    version_ch = Channel.fromPath(pipeline_version_path)
-    pipeline_compatibility_ch = Channel.fromPath(pipeline_min_index_version_path)
+    pipeline_version_newpath = pipeline_version_path.getFileName().toString()
+    // Note: we send these input/logging files through a COPY_FILE_BASE process
+    // because nextflow 25.04 now only publishes files that have passed through the working directory.
+    // We first tried collectFile() as an alternative; however it intermittantly gives serialization errors.
+    version_ch = COPY_VERSION(Channel.fromPath(pipeline_version_path), pipeline_version_newpath)
+    pipeline_min_index_version_newpath = pipeline_min_index_version_path.getFileName().toString()
+    pipeline_compatibility_ch = COPY_PIPELINE_COMPAT(Channel.fromPath(pipeline_min_index_version_path), pipeline_min_index_version_newpath)
+    samplesheet_ch = COPY_SAMPLESHEET(Channel.fromPath(params.sample_sheet), "samplesheet.csv")
+    adapters_ch = COPY_ADAPTERS(Channel.fromPath(params.adapters), "adapters.fasta")
 
-    // Publish outputs
-    publish:
-        // Saved inputs
-        index_params_ch >> "input"
-        index_pipeline_version_ch >> "logging"
-        index_compatibility_ch >> "logging"
-        Channel.fromPath(params.sample_sheet) >> "input"
-        Channel.fromPath(params.adapters) >> "input"
-        params_ch >> "input"
-        time_ch >> "logging"
-        version_ch >> "logging"
-        pipeline_compatibility_ch >> "logging"
-        // Intermediate files
-        bbduk_match >> "reads_raw_viral"
-        hits_unfiltered >> "intermediates"
-        hits_fastq  >> "intermediates"
-        bbduk_trimmed >> "reads_trimmed_viral"
-        // QC
-        COUNT_TOTAL_READS.out.read_counts >> "results"
-        RUN_QC.out.qc_basic >> "results"
-        RUN_QC.out.qc_adapt >> "results"
-        RUN_QC.out.qc_qbase >> "results"
-        RUN_QC.out.qc_qseqs >> "results"
-        RUN_QC.out.qc_lengths >> "results"
-        // Final results
-        hits_final >> "results"
-        PROFILE.out.bracken >> "results"
-        PROFILE.out.kraken >> "results"
-        // Validation output (if any)
-        blast_subset_ch >> "results"
-        blast_reads_ch >> "results"
+    emit:
+        input_run = index_params_ch.mix(samplesheet_ch, adapters_ch, params_ch)
+        logging_run = index_pipeline_version_ch.mix(index_compatibility_ch, time_ch, version_ch, pipeline_compatibility_ch)
+        intermediates_run = hits_fastq.mix(inter_lca, inter_aligner)
+        reads_raw_viral = bbduk_match
+        reads_trimmed_viral = bbduk_trimmed
+        // Lots of results; split across 2 channels (QC, and other)
+        qc_results_run = COUNT_TOTAL_READS.out.read_counts.mix(RUN_QC.out.qc_basic, RUN_QC.out.qc_adapt, RUN_QC.out.qc_qbase, RUN_QC.out.qc_qseqs, RUN_QC.out.qc_lengths)
+        other_results_run = hits_final.mix(PROFILE.out.bracken, PROFILE.out.kraken, blast_subset_ch, blast_reads_ch)
 }

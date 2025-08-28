@@ -26,13 +26,13 @@ nextflow_workflow {
             // Should produce correctly structured output
             def tab_in = path(workflow.out.test_input[0]).csv
             assert workflow.out.samplesheet.size() == tab_in.rowCount
-            for (int i=1; i < tab_in.rowCount; i++){
+            for (int i=0; i < tab_in.rowCount; i++){
                 def entry = workflow.out.samplesheet[i]
                 assert entry.size() == 2
                 assert entry[1].size() == 2
                 assert entry[0] == tab_in.columns["sample"][i]
-                assert entry[1][0] == tab_in.columns["fastq_1"][i]
-                assert entry[1][1] == tab_in.columns["fastq_2"][i]
+                assert entry[1][0] == tab_in.columns["fastq_1"][i].replaceFirst(/^s3:\//, "")
+                assert entry[1][1] == tab_in.columns["fastq_2"][i].replaceFirst(/^s3:\//, "")
             }
             // Should correctly infer pairing status
             assert workflow.out.single_end.size() == 1
@@ -60,13 +60,13 @@ nextflow_workflow {
             // Should produce correctly structured output
             def tab_in = path(workflow.out.test_input[0]).csv
             assert workflow.out.samplesheet.size() == tab_in.rowCount
-            for (int i=1; i < tab_in.rowCount; i++){
+            for (int i=0; i < tab_in.rowCount; i++){
                 def entry = workflow.out.samplesheet[i]
                 assert entry.size() == 2
                 assert entry[1].size() == 2
                 assert entry[0] == tab_in.columns["sample"][i]
-                assert entry[1][0] == tab_in.columns["fastq_1"][i]
-                assert entry[1][1] == tab_in.columns["fastq_2"][i]
+                assert entry[1][0] == tab_in.columns["fastq_1"][i].replaceFirst(/^s3:\//, "")
+                assert entry[1][1] == tab_in.columns["fastq_2"][i].replaceFirst(/^s3:\//, "")
             }
             // Should correctly infer pairing status
             assert workflow.out.single_end.size() == 1
@@ -94,11 +94,11 @@ nextflow_workflow {
             // Should produce correctly structured output
             def tab_in = path(workflow.out.test_input[0]).csv
             assert workflow.out.samplesheet.size() == tab_in.rowCount
-            for (int i=1; i < tab_in.rowCount; i++){
+            for (int i=0; i < tab_in.rowCount; i++){
                 def entry = workflow.out.samplesheet[i]
                 assert entry.size() == 2
                 assert entry[0] == tab_in.columns["sample"][i]
-                assert entry[1] == tab_in.columns["fastq"][i]
+                assert entry[1][0] == tab_in.columns["fastq"][i].replaceFirst(/^s3:\//, "")
             }
             // Should correctly infer pairing status
             assert workflow.out.single_end.size() == 1
@@ -232,11 +232,11 @@ nextflow_workflow {
             // Should produce correctly structured output
             def tab_in = path(workflow.out.test_input[0]).csv
             assert workflow.out.samplesheet.size() == tab_in.rowCount
-            for (int i=1; i < tab_in.rowCount; i++){
+            for (int i=0; i < tab_in.rowCount; i++){
                 def entry = workflow.out.samplesheet[i]
                 assert entry.size() == 2
                 assert entry[0] == tab_in.columns["sample"][i]
-                assert entry[1] == tab_in.columns["fastq"][i]
+                assert entry[1][0] == tab_in.columns["fastq"][i].replaceFirst(/^s3:\//, "")
             }
             // Should correctly infer pairing status
             assert workflow.out.single_end.size() == 1

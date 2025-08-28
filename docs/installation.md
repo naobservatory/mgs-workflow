@@ -10,7 +10,7 @@ This page describes how to install the pipeline and configure your computing env
 To run this workflow with full functionality, you need access to the following dependencies:
 
 1. **SDKMAN!:** To install the SDKMAN! Java SDK manager, follow the installation instructions available [here](https://sdkman.io/install).
-2. **Nextflow:** To install the workflow management framework, follow the installation instructions available [here](https://www.nextflow.io/docs/latest/getstarted.html), beginning by installing a recommended Java distribution through SDKMAN!. Pipeline version 2.5.0+ requires Nextflow version 24.10.0+.
+2. **Nextflow:** To install the workflow management framework, follow the installation instructions available [here](https://www.nextflow.io/docs/latest/getstarted.html), beginning by installing a recommended Java distribution through SDKMAN!. Pipeline version 2.10.0+ requires Nextflow version 25.04.0+.
 2. **Docker:** To install Docker Engine for command-line use, follow the installation instructions available [here](https://docs.docker.com/engine/install/) (or [here](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-docker.html) for installation on an AWS EC2 instance).
 3. **AWS CLI:** If not already installed, install the AWS CLI by following the instructions available [here](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
 4. **Git:** To install the Git version control tool, follow the installation instructions available [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
@@ -37,13 +37,10 @@ aws_access_key_id = <ACCESS_KEY_ID>
 aws_secret_access_key = <SECRET_ACCESS_KEY>
 ```
 
-> [!TIP]
-> If you encounter `AccessDenied` errors after doing this, you may also need to export these keys as environment variables before running Nextflow:
->
-> ```
-> eval "$(aws configure export-credentials --format env)"
-> ```
-
+Then, export the keys as environment variables before running nextflow:
+```
+eval "$(aws configure export-credentials --format env)"
+```
 
 Next, you need to make sure your user is configured to use Docker. To do this, create the `docker` user group and add your current user to it:
 
@@ -77,7 +74,7 @@ nf-test test
 ## 5. Run index/reference workflow
 
 > [!TIP]
-> If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` such that `params.ref_dir` points to `INDEX_DIR/output`.
+> If someone else in your organization already uses this pipeline, it's likely they've already run the index workflow and generated an output directory. If this is the case, you can reduce costs and increase reproducibility by using theirs instead of generating your own. If you want to do this, skip this step, and edit `configs/run.config` (or `configs/run_ont.config`) such that `params.ref_dir` points to `INDEX_DIR/output`.
 
 Create a new directory outside the repo directory and copy over the index workflow config file as `nextflow.config` in that directory:
 
@@ -107,12 +104,13 @@ To confirm that the pipeline works in your hands, we recommend running it on a s
 1. Prepare the launch directory:
     - Create a clean launch directory outside the repository directory.
     - Copy over the run workflow config file to a new file in the launch directory labeled `nextflow.config`.
+        - Example below shows `run.config`; for the ONT platform, remember to use `run_ont.config` instead
     - Copy the test-data sample sheet from the repository directory to the launch directory.
 
 ```
 mkdir launch
 cd launch
-cp REPO_DIR/configs/run.config nextflow.config
+cp REPO_DIR/configs/run.config nextflow.config 
 cp REPO_DIR/test-data/samplesheet.csv samplesheet.csv
 ```
 

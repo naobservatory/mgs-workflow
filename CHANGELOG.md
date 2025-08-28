@@ -1,18 +1,155 @@
-# v2.9.0.0-dev
-- Combined run_dev_se.nf workflow with run.nf: ONT is now an implemented platform!
-- Added end-to-end tests for ONT to github actions
-- Added a development_mode parameter to LOAD_SAMPLESHEET to allow testing on non-implemented platform/endedness
-- Rename `hits_filtered` output of short read pipeline to `hits_final` (so pipeline produces `virus_hits_final.fastq.gz`/`virus_hits_final.tsv.gz`)
-    - Also rename `hits_all` output of short read pipeline to `hits_unfiltered`
-- Rename `hits_hv` output of ONT pipeline to `hits_final` for consistency with short read pipeline
-- Get rid of lingering references to human viruses/HV in comments, variable names, etc.
+# v3.0.1.1-dev
+- Updated `docs/developer.md` to reflect the new branch naming convention.
+- Added pyproject.toml at the top level directory to set ruff, and mypy settings.
+
+# v3.0.1.0
+
+### Key changes (impacting most users)
+- Improved database handling: added caching of large reference files to reduce AWS Batch loading times.
+    - Processes on the same compute node can now share Kraken2 and BLAST databases, as well as Minimap2 and Bowtie2 indexes.
+    - This reduces pipeline runtime and cost, particularly for workloads with many small `.fastq` files.
+    - Core logic implemented in `bin/download-db.sh`.
+- Testing changes: Running `nf-test` tests now requires exporting AWS credentials (see `docs/developer.md`).
+- Stability improvements:
+    - Fixed frequent out-of-memory errors in PROCESS_VIRAL_MINIMAP2_SAM by adjusting resource requirements.
+    - Fixed issue where the DOWNSTREAM workflow failed on samples with no viral hits.
+    - Fixed bug in ANNOTATE_VIRUS_INFECTION that incorrectly assigned certain viruses to specific hosts (e.g. porcine respiratory coronavirus mislabeled as human-infecting; resolves issue #311).
+        
+### Other changes (relevant mainly to developers)
+- Bug fixes:
+    - RAISE_TAXONOMY_RANKS: Adjusted for updated classification of "Viruses" taxon in NCBI taxonomy database.
+    - FILTER_VIRAL_SAM: Now correctly handles concordant pairs with identical positions but differing alignment scores.
+    - VALIDATE_GROUPING: Fixed output file name collisions.
+    - nf-test file FILTER_VIRAL_SAM: Fixed invalid test inputs.
+    - nf-test files for LOAD_SAMPLESHEET and LOAD_DOWNSTREAM_DATE: Fixed line iteration bug.
+- Container updates:
+    - Introduced new custom containers to support reference file caching (new Dockerfiles in `docker` directory)
+    - Added `bin/build-push-docker.sh` to build and push Docker images to Dockerhub. 
+- Code quality: 
+    - Converted modules and subworkflows with >5 positional arguments to use parameter maps (reduces risk of argument errors).
+    - Added more unit tests in the pytest file for ANNOTATE_VIRUS_INFECTION.
+    - Updated Github Actions to retry downloading `nf-test` (it often fails on the first attempt due transient 403 errors).
+
+# v3.0.0.1
+- Added bugfix for `RAISE_TAXONOMY_RANKS` to account for change in classification of "Viruses" taxon in NCBI taxonomy database.
+
+# v3.0.0.0
+
+### Breaking changes
+
+- Changed `RUN` workflow viral taxonomic assignment from Kraken2 + aligner ensemble to aligner-only with multiple alignments + LCA algorithm:
+    - Replaces `virus_hits_all.tsv.gz` with two new intermediate files: `aligner_hits_all.tsv.gz` (all viral alignments) and `lca_hits_all.tsv.gz` (LCA-processed reads)
+    - Updates `virus_hits_final.tsv.gz` columns: removes Kraken2 columns, adds `aligner_` prefix columns for LCA assignments and `prim_align_` prefix columns for primary alignment details
+    - Integrates EXTRACT_VIRAL_READS_SHORT_LCA functionality directly into EXTRACT_VIRAL_READS_SHORT (similarly for ONT)
+    - No changes to input files or parameters required
+- Removed `trace.txt` from expected pipeline outputs (as we have changed the trace filename to include a timestamp)
+
+### Other changes
+
+- Added clade counting to DOWNSTREAM. Added a module COUNT_READS_PER_CLADE, which counts the number of LCA-assigned reads in each viral clade. This module:
+    - creates a new clade count output file `results_downstream/{sample}_clade_counts.tsv.gz`
+    - does not modify any existing output.
+    - is called directly in the DOWNSTREAM workflow. If we need more modules for clade counting in the future, will create a subworkflow.
+- Updated EXTRACT_VIRAL_READS_SHORT and EXTRACT_VIRAL_READS_ONT for DOWNSTREAM compatibility:
+    - Adds primary/secondary/supplementary alignment status tracking to enable duplicate marking in DOWNSTREAM
+    - Creates PROCESS_LCA_ALIGNER_OUTPUT subworkflow to merge alignment information with LCA output
+    - Ensures `virus_hits_final.tsv.gz` contains necessary columns for downstream duplicate analysis
+- Updated DOWNSTREAM to handle LCA assignments above species level for BLAST validation:
+    - Previously grouped reads by species taxid for BLAST validation, but LCA can assign reads to genus/family/higher ranks
+    - Now groups reads by species taxid assignment if below species level, or by LCA taxid assignment if above species level
+    - Renamed processes from "_SPECIES" to "_SELECTED_TAXID" to reflect this broader taxonomic grouping
+    - Also updated RUN_VALIDATION to accept the new LCA output format
+- Updated SORT_FASTQ to sort alphanumerically
+- Updated documentation for LCA integration:
+    - Added `docs/lca.md` explaining the LCA algorithm and how it assigns taxonomic IDs to reads with multiple viral alignments
+    - Added `docs/lca_intermediates.md` documenting the columns in new intermediate files (`aligner_hits_all.tsv.gz` and `lca_hits_all.tsv.gz`)
+    - Updated `docs/run.md` and `docs/virus_hits_final.md` with new column descriptions and workflow changes
+
+# v2.10.0.1
+- Removed extremely long reads (>500000bp) before FASTQC on ONT data, and upped memory resources for FASTQC, to avoid out-of-memory errors.
+- Made separate run_illumina.config and run_ont.config files to record correct BLAST defaults for each.
+
+# v2.10.0.0
+- Moved all outputs to main workflow for compatibility with Nextflow 25.04, and made pipeline compliant with new strict syntax. 
+    - Pipeline is now *incompatible* with Nextflow 24.
+- Changed column names in `virus_hits_final.tsv` for consistency between Illumina and ONT output:
+    - Added `docs/virus_hits_final.md` with full documentation of column names.
+    - Column prefixes `bowtie2_` and `minimap2_` changed to `aligner_`.
+    - Removed columns `bowtie2_fragment_length_fwd/rev`, `minimap2_query_sequence`, `minimap2_read_length`, `minimap2_ref_start/end`, `minimap2_alignment_start/end`.
+    - Added boolean columns `query_rc_by_aligner` and `query_rc_by_aligner_rev` to keep track of when the aligner reverse-complements a read; updated `query_seq` to undo the reverse complement operation.  
+    - Changed column prefixes from `kraken_` to `kraken2_`.
+- Made more processes compatible with ONT/other unpaired data:
+    - `run_validation` workflow now runs on ONT/other unpaired data.
+    - Updated EXTRACT_VIRAL_HITS_TO_FASTQ_NOREF_LABELED to infer endedness based on the input file and to work correctly on both unpaired and paired-end data. 
+    - Updated BOWTIE2 and PROCESS_VIRAL_BOWTIE2_SAM to handle unpaired input data.
+- Overhauled MARK_ALIGNMENT_DUPLICATES:
+    - Increased computational efficiency:
+        - Added multithreaded processing of easily parallelizable steps.
+        - Reworked assignment of reads to duplicate groups to avoid slow all-vs-all comparisons.
+    - Made MARK_ALIGNMENT_DUPLICATES explicitly handle NAs:
+        - Now if the forward reads match and the reverse read alignments are NA, reads will be marked as duplicates. This is more conservative than the previous approach, which excluded reads from duplicate groups if either alignment was NA.     
+- Completed work on post-hoc validation and integrated into DOWNSTREAM workflow:
+    - Updated VALIDATE_VIRAL_ASSIGNMENTS to concatenate across species before rather than after BLAST_VIRAL, dramatically reducing per-process fixed costs of running BLAST. (Involved updates to PROPAGATE_VALIDATION_INFORMATION as well as new CONCATENATE_FASTA_ACROSS_SPECIES subworkflow and CONCATENATE_FASTN_LABELED process.)
+    - Updated COMPUTE_TAXID_DISTANCE to compute distance from each taxid to their LCA rather than a single relative distance.
+    - Modified COMPUTE_TAXID_DISTANCE and VALIDATE_CLUSTER_REPRESENTATIVES to use parameter maps.
+    - Added VALIDATE_VIRAL_ASSIGNMENTS to the DOWNSTREAM workflow and wrote associated tests.
+- Preparatory work for implementing LCA (lowest common ancestor) analysis:
+    - Added FILTER_VIRAL_SAM process for consolidated preprocessing of viral alignments before converting to a TSV to run LCA on.
+    - Created new temporary workflow EXTRACT_VIRAL_READS_SHORT_LCA, that will eventually replace EXTRACT_VIRAL_READS_SHORT. In this workflow:
+        - Changed Bowtie2 to run with multiple alignments.
+        - Conducted contaminant and score filtering of Bowtie2 reads before running LCA.
+        - Removed the TAXONOMY subworkflow (effectively removing our usage of Kraken2 in identifying viral reads).
+        - Updated EXTRACT_VIRAL_READS_SHORT_LCA such that the output viral hits table is compatible with the DOWNSTREAM workflow
+- Other updates:
+    - Added developer documentation (docs/developer.md).
+    - Switched to a defined release from [VirusHostDB](https://www.genome.jp/virushostdb), as the previous link (https://www.genome.jp/virushostdb/virushostdb.tsv) is currently broken.
+    - Made trace files generated by Nextflow for RUN and DOWNSTREAM unique across runs by adding timestamps to the filenames (prevents overwriting when running multiple attempts in the same directory).
+
+# v2.9.0.4
+- Updated markAlignmentDuplicates module to reduce memory overhead and increase memory allocation (which collectively should avoid out-of-memory errors in DOWNSTREAM on large read groups).
+
+# v2.9.0.3
+- Make sure field per_tile_sequence_quality is always present in multiqc output summary file, to allow pipeline to run successfully on a mix of empty and non-empty files
+- Add set -eou pipefail to all ONT processes with pipes; make MASK_FASTQ_READS robust to empty files; add empty file tests for MASK_FASTQ_READS and MINIMAP2
+
+# v2.9.0.2
+- Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
+    - Implemented VALIDATE_CLUSTER_REPRESENTATIVES subworkflow for comparing Bowtie2 and BLAST-LCA assignments, including new SELECT_TSV_COLUMNS and COMPUTE_TAXID_DISTANCE processes
+    - Implemented PROPAGATE_VALIDATION_INFORMATION subworkflow to merge cluster-representative validation information back into raw hits TSV
+    - Implemented CHECK_TSV_DUPLICATES process and added to SPLIT_VIRAL_TSV_BY_SPECIES to prevent many-to-many joins during post-hoc validation
+    - Implemented CONCATENATE_TSVS_ACROSS_SPECIES subworkflow for reconstructing grouped viral hits TSV from species-specific TSVs
+- Modified SORT_TSV behavior to avoid out-of-memory errors.
+- Updated trace path for DOWNSTREAM workflow to avoid overwriting RUN workflow trace.
+
+# v2.9.0.1
+- Modified Github Actions to pull specific Nextflow version (rather than "latest")
+- Fixed missing-columns bug for empty files in SUMMARIZE_MULTIQC
+- Restructured SORT_TSV process to improve memory efficiency
+- Continued working on post-hoc validation of putative viral hits in the DOWNSTREAM workflow
+    - Split out core of BLAST_VIRAL subworkflow into a new BLAST_FASTA subworkflow that is called by both BLAST_VIRAL and VALIDATE_VIRAL_ASSIGNMENTS
+    - Added tests for BLAST_FASTA and updated tests for VALIDATE_VIRAL_ASSIGNMENTS
+    - Implemented basic algorithm for computing the lowest common ancestor of sets of taxids in tabular TSV data (LCA_TSV), including special handling of artificial and unclassified taxids
+    - Integrated LCA_TSV into BLAST_FASTA subworkflow and updated tests
+
+# v2.9.0.0
+- Implemented ONT analysis in the RUN workflow
+    - Combined run_dev_se.nf with run.nf
+    - Renamed `hits_filtered` outputs of short-read workflow and `hits_hv` outputs of ONT workflow to `hits_final` for consistency across platforms
+    - Also renamed `hits_all` output of short-read pipeline to `hits_unfiltered`
+    - Added end-to-end tests for ONT to github actions
+- Prepared DOWNSTREAM workflow for running with internal mgs-orchestrator repo
+    - Added `expected-outputs-downstream.txt` file containing list of expected output files for the DOWNSTREAM workflow
+    - Modified output paths for non-results DOWNSTREAM outputs to avoid overwriting RUN outputs
+    - Changed strict-join of hits and grouping TSVs across sample names to inner-join (to drop samples that are not present in both TSVs)
 - Began development of post-hoc validation of putative viral hits in the DOWNSTREAM workflow
     - Split viral hits TSV by assigned species and extract read sequences (SPLIT_VIRAL_TSV_BY_SPECIES)
     - Cluster within species with VSEARCH and obtain representative sequences (CLUSTER_VIRAL_ASSIGNMENTS)
+    - Split out merge/join part of TAXONOMY workflow into its own subworkflow (MERGE_JOIN_READS) that can be used by both TAXONOMY and post-hoc validation (with associated tests)
+- Added a development_mode parameter to LOAD_SAMPLESHEET to allow testing on non-implemented platform/endedness
+- Get rid of lingering references to human viruses/HV in comments, variable names, etc.
 - Updated SUBSET_FASTQ to handle plaintext and FASTA input (and renamed to SUBSET_FASTN)
-- Split out merge/join part of TAXONOMY workflow into its own subworkflow (MERGE_JOIN_READS) with associated tests
-- Added `test_component_dependencies.py` script to test all modules, subworkflows, and workflows that depend on a given component (e.g., BBDUK, or TAXONOMY)
 - Modified various RUN workflow components to correctly handle empty input files (which previously caused failures).
+- Added `test_component_dependencies.py` script to test all modules, subworkflows, and workflows that depend on a given component (e.g., BBDUK, or TAXONOMY)
 
 # v2.8.3.2
 - Modified FASTQ_LABELED to use fixed cpus and memory, and added `--memory` parameter to make full use of available memory.

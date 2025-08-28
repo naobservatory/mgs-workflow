@@ -43,3 +43,9 @@ To fix this, you can [obtain a user token](https://metagenomics-pipelines.readth
 4. Finally, you need to provide your user token to Nextflow. You can do this by either (a) setting the environment variable `TOWER_ACCESS_TOKEN` to your token value, or (b) setting the variable `tower.accessToken` to your token value in your Nextflow configuration file (in this case, we recommend adding this to `configs/profiles.config` to apply to all subsequent pipeline runs).
 
 If you still keep running into this same issue, you may consider contacting Seqera for more options.
+
+## Automatic reference file caching
+- With the `standard`/`batch` profiles, the pipeline implements automatic caching of large reference files in the `/scratch/` directory 
+- This generally causes no problems, but is something to be aware of:
+     - The default `/scratch/` directory on AWS EC2 instances works fine in our experience, but if you are seeing `/scratch` directory permissions or space issues, you may have to customize the `/scratch/` directory with a UserData script in your EC2 launch template.
+     - To turn off caching, you can always remove the `aws.batch.volumes = ['/scratch:/scratch']` line from the relevant profile.

@@ -16,3 +16,9 @@ pipeline_report.txt
 .nf-test*
 **/Cargo.lock
 **/target
+
+.vscode/*
+**/__pycache__
+node_modules/*
+package-lock.json
+package.json

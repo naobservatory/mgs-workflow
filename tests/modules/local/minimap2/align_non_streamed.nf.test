@@ -24,13 +24,18 @@ nextflow_process {
         tag "expect_success"
 
         when {
-            params {}
+            params {
+                params_map = [
+                    suffix: "test",
+                    remove_sq: false,
+                    alignment_params: ""
+                ]
+            }
             process {
                 '''
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/mm2-other-index"
-                input[2] = "test"
-                input[3] = false
+                input[2] = params.params_map
                 '''
             }
         }

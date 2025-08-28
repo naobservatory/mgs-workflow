@@ -37,12 +37,17 @@ nextflow_process {
             }
             process {
                 '''
+                def bowtie2_params = [
+                    par_string: "--local --very-sensitive-local --score-min G,0.1,19",
+                    suffix: "virus",
+                    remove_sq: true,
+                    debug: true,
+                    interleaved: true,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/bt2-virus-index"
-                input[2] = "--local --very-sensitive-local --score-min G,0.1,19"
-                input[3] = "virus"
-                input[4] = true
-                input[5] = true
+                input[2] = bowtie2_params
                 '''
             }
         }
@@ -101,12 +106,17 @@ nextflow_process {
             }
             process {
                 '''
+                def bowtie2_params = [
+                    par_string: "--local --very-sensitive-local",
+                    suffix: "human",
+                    remove_sq: false,
+                    debug: true,
+                    interleaved: true,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/bt2-human-index"
-                input[2] = "--local --very-sensitive-local"
-                input[3] = "human"
-                input[4] = false
-                input[5] = true
+                input[2] = bowtie2_params
                 '''
             }
         }
@@ -165,12 +175,17 @@ nextflow_process {
             }
             process {
                 '''
+                def bowtie2_params = [
+                    par_string: "--local --very-sensitive-local",
+                    suffix: "other",
+                    remove_sq: false,
+                    debug: true,
+                    interleaved: true,
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/bt2-other-index"
-                input[2] = "--local --very-sensitive-local"
-                input[3] = "other"
-                input[4] = false
-                input[5] = true
+                input[2] = bowtie2_params
                 '''
             }
         }
@@ -220,4 +235,66 @@ nextflow_process {
             assert output_lines_sam == ids_mapped.size()
         }
     }
-}
+
+    test("Viral index should also produce correct results on single-end data") {
+        tag "expect_success"
+        tag "single_end"
+        tag "align_viral"
+        setup {
+            run("LOAD_SAMPLESHEET", alias: "LOAD_SAMPLESHEET_SINGLE") {
+                script "subworkflows/local/loadSampleSheet/main.nf"
+                process {
+                    """
+                    input[0] = "${projectDir}/test-data/single-end-samplesheet.csv"
+                    input[1] = "illumina"
+                    input[2] = true
+                    """
+                }
+            }
+        }
+            when {
+                params {
+                }
+                process {
+                    '''
+                    def bowtie2_params = [
+                        par_string: "--local --very-sensitive-local --score-min G,0.1,19",
+                        suffix: "virus",
+                        remove_sq: true,
+                        debug: true,
+                        interleaved: false,
+                        db_download_timeout: params.db_download_timeout
+                    ]
+                    input[0] = LOAD_SAMPLESHEET_SINGLE.out.samplesheet
+                    input[1] = "${params.ref_dir}/results/bt2-virus-index"
+                    input[2] = bowtie2_params
+                    '''
+                }
+            }
+            then {
+                // Should run without failures
+                assert process.success
+                // Output reads should be valid FASTQ with expected header structure
+                def fastq_mapped = path(process.out.reads_mapped[0][1]).fastq
+                def fastq_unmapped = path(process.out.reads_unmapped[0][1]).fastq
+                // Total input and output read counts should match
+                def ids_mapped = fastq_mapped.readNames.collect{it.tokenize(" ")[0]}
+                def ids_unmapped = fastq_unmapped.readNames.collect{it.tokenize(" ")[0]}
+                def fastq_in = path(process.out.input[0][1]).fastq
+                def ids_in = fastq_in.readNames.collect{it.tokenize(" ")[0]}
+                assert ids_in.size() == ids_mapped.size() + ids_unmapped.size()
+                for (i in ids_in) {
+                    if (i in ids_mapped) {
+                        assert !(i in ids_unmapped)
+                    } else {
+                        assert (i in ids_unmapped)
+                    }
+                }
+                // SAM should equal mapped output reads plus a few header lines
+                def countGzipLinesSam = { file -> ["bash", "-c", "zcat " + file + " | grep -v \"^@\" | wc -l"].execute().text.trim() as Integer }
+                def output_lines_sam = countGzipLinesSam(process.out.sam[0][1])
+                assert output_lines_sam == ids_mapped.size()
+            }
+        }
+
+    }

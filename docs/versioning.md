@@ -13,3 +13,5 @@ Users relying on pipeline outputs should take the following actions in response 
 2. **Results change or higher:** Review changes for effects on output interpretation; show caution in comparing outputs across the version boundary.
 3. **Schema change or higher:** Update downstream code to reflect new output schema.
 4. **Major change:** Review new code and outputs thoroughly; be prepared for major changes to downstream code.
+
+Note that, when a version has not yet been merged to `master`, it should have the suffix `-dev`.

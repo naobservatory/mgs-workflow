@@ -25,12 +25,15 @@ nextflow_workflow {
                 script "subworkflows/local/subsetTrim/main.nf"
                 process {
                     '''
+                    def subset_trim_params = [
+                        n_reads_profile: 49,
+                        adapters: params.adapters,
+                        platform: "illumina",
+                        random_seed: ""
+                    ]
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                    input[1] = 49
-                    input[2] = params.adapters
-                    input[3] = LOAD_SAMPLESHEET.out.single_end
-                    input[4] = false
-                    input[5] = ""
+                    input[1] = LOAD_SAMPLESHEET.out.single_end
+                    input[2] = subset_trim_params
                     '''
                 }
             }
@@ -51,7 +54,7 @@ nextflow_workflow {
             // Basic stats TSV should have expected structure and content
             def tsv_basic = path(workflow.out.qc_basic[0]).csv(sep: "\t", decompress: true)
             assert tsv_basic.rowCount == 2
-            assert tsv_basic.columnCount == 17
+            assert tsv_basic.columnCount == 18
             // Other TSVs should have expected structure and content
             def tsv_adapt = path(workflow.out.qc_adapt[0]).csv(sep: "\t", decompress: true)
             assert tsv_adapt.columnCount == 6
@@ -83,12 +86,15 @@ nextflow_workflow {
                 script "subworkflows/local/subsetTrim/main.nf"
                 process {
                     '''
+                    def subset_trim_params = [
+                        n_reads_profile: 49,
+                        adapters: params.adapters,
+                        platform: "illumina",
+                        random_seed: ""
+                    ]
                     input[0] = LOAD_SAMPLESHEET.out.samplesheet
-                    input[1] = 49
-                    input[2] = params.adapters
-                    input[3] = LOAD_SAMPLESHEET.out.single_end
-                    input[4] = false
-                    input[5] = ""
+                    input[1] = LOAD_SAMPLESHEET.out.single_end
+                    input[2] = subset_trim_params
                     '''
                 }
             }
@@ -109,7 +115,7 @@ nextflow_workflow {
             // Basic stats TSV should have expected structure and content
             def tsv_basic = path(workflow.out.qc_basic[0]).csv(sep: "\t", decompress: true)
             assert tsv_basic.rowCount == 2
-            assert tsv_basic.columnCount == 17
+            assert tsv_basic.columnCount == 18
             // Other TSVs should have expected structure and content
             def tsv_adapt = path(workflow.out.qc_adapt[0]).csv(sep: "\t", decompress: true)
             assert tsv_adapt.columnCount == 6
@@ -152,7 +158,7 @@ nextflow_workflow {
             // Basic stats TSV should have expected structure and content
             def tsv_basic = path(workflow.out.qc_basic[0]).csv(sep: "\t", decompress: true)
             assert tsv_basic.rowCount == 2
-            assert tsv_basic.columnCount == 15
+            assert tsv_basic.columnCount == 18
             // Lengths TSV should have expected structure and content
             def tsv_lengths = path(workflow.out.qc_lengths[0]).csv(sep: "\t", decompress: true)
             assert tsv_lengths.rowCount == 2

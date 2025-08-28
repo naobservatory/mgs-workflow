@@ -53,12 +53,15 @@ nextflow_process {
             def tsv_basic  = path(process.out[0][0][0]).csv(sep: "\t", decompress: true)
             with (tsv_basic) {
                 assert rowCount == 1
-                assert columnCount == 15
+                assert columnCount == 18
                 def zero_cols = ["percent_gc", "mean_seq_len", "n_reads_single", "percent_duplicates", "n_bases_approx"]
                 for (col in zero_cols) {
                     assert columns[col][0] == 0
                 }
                 assert columns["n_read_pairs"][0] == ""
+                assert columns["per_base_sequence_quality"][0] == ""
+                assert columns["per_tile_sequence_quality"][0] == ""
+                assert columns["per_sequence_quality_scores"][0] == ""
                 assert columns["stage"][0] == "test"
                 assert columns["sample"][0] == "empty_sample"
             }
@@ -138,7 +141,7 @@ nextflow_process {
             def tsv_basic  = path(process.out[0][0][0]).csv(sep: "\t", decompress: true)
             with (tsv_basic) {
                 assert rowCount == 1
-                assert columnCount == 17
+                assert columnCount == 18
                 assert columns["n_reads_single"][0] == columns["n_read_pairs"][0] * 2
                 assert columns["stage"][0] == "test"
             }
@@ -229,7 +232,7 @@ nextflow_process {
             def tsv_basic  = path(process.out[0][0][0]).csv(sep: "\t", decompress: true)
             with (tsv_basic) {
                 assert rowCount == 1
-                assert columnCount == 17
+                assert columnCount == 18
                 assert columns["n_reads_single"][0] == columns["n_read_pairs"][0] * 2
                 def n_bases_exp = Math.floor(columns["n_reads_single"][0] * columns["mean_seq_len"][0] / 100) * 100
                 assert columns["n_bases_approx"][0] == n_bases_exp
@@ -314,7 +317,7 @@ nextflow_process {
             def tsv_basic  = path(process.out[0][0][0]).csv(sep: "\t", decompress: true)
             with (tsv_basic) {
                 assert rowCount == 1
-                assert columnCount == 17
+                assert columnCount == 18
                 def n_bases_exp = Math.floor(columns["n_reads_single"][0] * columns["mean_seq_len"][0] / 100) * 100
                 assert columns["n_bases_approx"][0] == n_bases_exp
                 assert columns["n_read_pairs"][0] == ""

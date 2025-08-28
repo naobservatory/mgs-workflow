@@ -41,7 +41,7 @@ If you're working with NAO data, [mgs-metadata](https://github.com/naobservatory
 
 ### 1.2. The config file
 
-The config file specifies parameters and other configuration options used by Nextflow in executing the pipeline. To create a config file for your pipeline run, copy `configs/run.config` into your launch directory as a file named `nextflow.config`, then modify the file as follows:
+The config file specifies parameters and other configuration options used by Nextflow in executing the pipeline. To create a config file for your pipeline run, copy appropriate config file for your platform (`configs/run.config` for Pacbio/Illumina/Aviti; or `configs/run_ont.config` for ONT) into your launch directory as a file named `nextflow.config`, then modify the file as follows:
 
 - Make sure `params.mode = "run"`; this instructs the pipeline to execute the [core run workflow](./run.md).
 - Edit `params.ref_dir` to point to the directory containing the outputs of the reference workflow.
@@ -51,7 +51,6 @@ The config file specifies parameters and other configuration options used by Nex
 - If running on AWS Batch (see below), edit `process.queue` to the name of your Batch job queue.
 
 Most other entries in the config file can be left at their default values for most runs. See [here](./config.md) for a full description of config file parameters and their meanings.
-    - note that for ONT data, the BLAST-related parameters may need to be modified from their default values, as noted in [config.md] and in the comments in `configs/run.config`
 
 ## 2. Choosing a profile
 
@@ -59,6 +58,8 @@ The pipeline can be run in multiple ways by modifying various configuration vari
 
 - `batch (default)`:  **Most reliable way to run the pipeline**
   - This profile is the default and attempts to run the pipeline with AWS Batch. This is the most reliable and convenient way to run the pipeline, but requires significant additional setup (described [here](./batch.md)). Before running the pipeline using this profile, make sure `process.queue` in your config file is pointing to the correct Batch job queue.
+  - Note that this profile uses automatic reference file caching (in the `/scratch` directory on the instance), which significantly reduces large database load times. 
+      - To turn off file caching, remove the `aws.batch.volumes = ['/scratch:/scratch']` line from the relevant profile.
 - `ec2_local`: **Requires the least setup, but is bottlenecked by your instance's compute, memory and storage.**
   - This profile attempts to run the whole pipeline locally on your EC2 instance, storing all files on instance-linked block storage.
   - This is simple and can be relatively fast, but requires large CPU, memory and storage allocations: at least 128GB RAM, 64 CPU cores, and 256GB local storage are recommended, though the latter in particular is highly dependent on the size of your dataset.

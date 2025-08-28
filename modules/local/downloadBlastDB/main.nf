@@ -1,5 +1,5 @@
 process DOWNLOAD_BLAST_DB {
-    label "BLAST2"
+    label "BLAST"
     label "max"
     errorStrategy "terminate"
     input:

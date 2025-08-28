@@ -1,5 +1,5 @@
 def kraken_headers_exp = ["pc_reads_total", "n_reads_clade", "n_reads_direct", "n_minimizers_total", "n_minimizers_distinct", "rank","taxid", "name", "sample","ribosomal"]
-def bracken_headers_exp = ["name", "taxid", "rank", "kraken_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample", "ribosomal"]
+def bracken_headers_exp = ["name", "taxid", "rank", "kraken2_assigned_reads", "added_reads", "new_est_reads", "fraction_total_reads", "sample", "ribosomal"]
 nextflow_workflow {
 
     name "Test subworkflow PROFILE"
@@ -26,17 +26,22 @@ nextflow_workflow {
             params {}
             workflow {
                 '''
+                def profile_params = [
+                    min_kmer_fraction: "0.4",
+                    k: "27",
+                    ribo_suffix: "ribo",
+                    bracken_threshold: "1",
+                    platform: "illumina",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = GZIP_FILE.out
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "${params.ref_dir}"
-                input[3] = "0.4"
-                input[4] = "27"
-                input[5] = "ribo"
-                input[6] = "1"
-                input[7] = Channel.of(true)
-                input[8] = "illumina"
+                input[3] = Channel.of(true)
+                input[4] = profile_params
                 '''
             }
+
         }
         then {
             // Should run without failures
@@ -84,15 +89,19 @@ nextflow_workflow {
             }
             workflow {
                 '''
+                def profile_params = [
+                    min_kmer_fraction: "0.4",
+                    k: "27",
+                    ribo_suffix: "ribo",
+                    bracken_threshold: "1",
+                    platform: "illumina",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = INTERLEAVE_FASTQ.out.output
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "${params.ref_dir}"
-                input[3] = "0.4"
-                input[4] = "27"
-                input[5] = "ribo"
-                input[6] = "1"
-                input[7] = LOAD_SAMPLESHEET.out.single_end
-                input[8] = "illumina"
+                input[3] = LOAD_SAMPLESHEET.out.single_end
+                input[4] = profile_params
                 '''
             }
         }
@@ -130,15 +139,19 @@ nextflow_workflow {
             params {}
             workflow {
                 '''
+                def profile_params = [
+                    min_kmer_fraction: "0.4",
+                    k: "27",
+                    ribo_suffix: "ribo",
+                    bracken_threshold: "1",
+                    platform: "illumina",
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/kraken_db"
-                input[2] = "${params.ref_dir}"
-                input[3] = "0.4"
-                input[4] = "27"
-                input[5] = "ribo"
-                input[6] = "1"
-                input[7] = LOAD_SAMPLESHEET.out.single_end
-                input[8] = "illumina"
+                input[2] ="${params.ref_dir}"
+                input[3] = LOAD_SAMPLESHEET.out.single_end
+                input[4] = profile_params
                 '''
             }
         }
@@ -176,15 +189,19 @@ nextflow_workflow {
             params {}
             workflow {
                 '''
+                def profile_params = [
+                    min_kmer_fraction: "0.4",
+                    k: "27",
+                    ribo_suffix: "ribo",
+                    bracken_threshold: "1",
+                    platform: "ont", 
+                    db_download_timeout: params.db_download_timeout
+                ]
                 input[0] = LOAD_SAMPLESHEET.out.samplesheet
                 input[1] = "${params.ref_dir}/results/kraken_db"
                 input[2] = "${params.ref_dir}"
-                input[3] = "0.4"
-                input[4] = "27"
-                input[5] = "ribo"
-                input[6] = "1"
-                input[7] = LOAD_SAMPLESHEET.out.single_end
-                input[8] = "ont"
+                input[3] = LOAD_SAMPLESHEET.out.single_end
+                input[4] = profile_params
                 '''
             }
         }

@@ -1,4 +1,4 @@
-seq_id	bowtie2_genome_id_all	bowtie2_ref_start_fwd	bowtie2_ref_start_rev	query_qual_fwd	query_qual_rev
+seq_id	prim_align_genome_id_all	prim_align_ref_start	prim_align_ref_start_rev	query_qual	query_qual_rev
 test_0	test_gid	1	100	JJJJJJ	JJJJJJ
 test_1	1	100	JJJJJJ	JJJJJJ
 test_2	test_gid	1	100	JJJJJJ	JJJJJJ

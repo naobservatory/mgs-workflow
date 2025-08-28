@@ -22,7 +22,7 @@ workflow CLUSTER_VIRAL_ASSIGNMENTS {
         reads_ch // Single-end or interleaved FASTQ sequences
         cluster_identity // Identity threshold for VSEARCH clustering
         cluster_min_len // Minimum sequence length for VSEARCH clustering
-        n_clusters // Number of cluster representatives to validate for each specie
+        n_clusters // Number of cluster representatives to validate for each species
         single_end // Is the input read data single-ended (true) or interleaved (false)?
     main:
         // 1. Merge and join interleaved sequences to produce a single sequence per input pair
@@ -30,7 +30,7 @@ workflow CLUSTER_VIRAL_ASSIGNMENTS {
         // 2. Cluster merged reads
         cluster_ch = VSEARCH_CLUSTER(merge_ch.single_reads, cluster_identity, 0, cluster_min_len)
         // 3. Extract clustering information and representative IDs
-        cluster_info_ch = PROCESS_VSEARCH_CLUSTER_OUTPUT(cluster_ch.summary, n_clusters)
+        cluster_info_ch = PROCESS_VSEARCH_CLUSTER_OUTPUT(cluster_ch.summary, n_clusters, "vsearch")
         // 4. Extract representative sequences for the N largest clusters for each species
         id_prep_ch = merge_ch.single_reads.combine(cluster_info_ch.ids, by: 0)
         rep_fastq_ch = DOWNSAMPLE_FASTN_BY_ID(id_prep_ch).output

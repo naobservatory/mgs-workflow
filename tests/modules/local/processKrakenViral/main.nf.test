@@ -33,11 +33,15 @@ nextflow_process {
                 script "subworkflows/local/taxonomy/main.nf"
                 workflow {
                     '''
+                    def taxonomy_params = [
+                        classification_level: "D", 
+                        bracken_threshold: 5, 
+                        db_download_timeout: params.db_download_timeout
+                    ]
                     input[0] = INTERLEAVE_FASTQ.out.output
                     input[1] = "${params.ref_dir}/results/kraken_db"
-                    input[2] = "D"
-                    input[3] = "5"
-                    input[4] = LOAD_SAMPLESHEET.out.single_end
+                    input[2] = LOAD_SAMPLESHEET.out.single_end
+                    input[3] = taxonomy_params
                     '''
                 }
             }
@@ -62,17 +66,17 @@ nextflow_process {
             assert tab_in.columnCount == 5
             assert tab_out.rowCount == tab_in.rowCount
             // Some output columns should match input exactly
-            assert tab_out.columns["kraken_encoded_hits"] == tab_in.columns["C4"]
+            assert tab_out.columns["kraken2_encoded_hits"] == tab_in.columns["C4"]
             assert tab_out.columns["seq_id"] == tab_in.columns["C1"]
-            assert tab_out.columns["kraken_length"] == tab_in.columns["C3"]
+            assert tab_out.columns["kraken2_length"] == tab_in.columns["C3"]
             // Others should map to inputs 1:1
             for (int i = 0; i < tab_out.rowCount; i++){
                 if (tab_in.rows[i]["C0"] == "C") {
-                    assert tab_out.rows[i]["kraken_classified"] == true
+                    assert tab_out.rows[i]["kraken2_classified"] == true
                 } else if (tab_in.rows[i]["C0"] == "U") {
-                    assert tab_out.rows[i]["kraken_classified"] == false
+                    assert tab_out.rows[i]["kraken2_classified"] == false
                 } else {
-                    assert tab_out.rows[i]["kraken_classified"] == "NA"
+                    assert tab_out.rows[i]["kraken2_classified"] == "NA"
                 }
             }
             // TODO: Add test for name & taxid fields (too complex for right now)
@@ -116,7 +120,7 @@ nextflow_process {
             assert lines.size() == 1
             
             // Check that header contains the expected column names
-            def expectedHeader = "kraken_classified\tseq_id\tkraken_assigned_name\tkraken_assigned_taxid\tkraken_assigned_host_virus\tkraken_length\tkraken_encoded_hits"
+            def expectedHeader = "kraken2_classified\tseq_id\tkraken2_assigned_name\tkraken2_assigned_taxid\tkraken2_assigned_host_virus\tkraken2_length\tkraken2_encoded_hits"
             assert lines[0] == expectedHeader
         }
     }
