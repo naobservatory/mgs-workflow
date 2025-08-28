@@ -3,6 +3,7 @@
 - Added pyproject.toml at the top level directory to set ruff, and mypy settings.
 - Updated developer docs to discuss the new norm of squash merging.
 - Updated developer docs to reflect the change in name of the primary branch from `master` to `main`.
+- Updated developer docs to discuss the new release process.
 
 # v3.0.1.0
 

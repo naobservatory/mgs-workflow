@@ -239,6 +239,9 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
 
 ### Sending PRs for review
 
+> [!NOTE]
+> During a release, new feature PRs are not merged into `dev`. Please check with a maintainer if a release is in progress.
+
 1. **Write new tests** for the changes that you make using `nf-test` if those tests don't already exist. At the very least, these tests should check that the new implementation runs to completion; tests that also verify the output on the test dataset are strongly encouraged.
 2. **Run all relevant tests locally** and make sure they pass. "Relevant" means: 1) Any tests of any process or workflow modified by the PR; 2) Any tests for any workflows that source any such process or workflow, and 3) Any tests that use any such process or workflow in setup.
     - You may run all existing tests as described in the "Testing" section above.
@@ -282,5 +285,14 @@ Try rebasing branch B onto `dev` first (`git rebase dev`). If rebasing doesn't w
 
 By default, all changes are made on individual branches, and merged into `dev`. Periodically, a collection of `dev` changes are merged to `main` as a new release. New releases are fairly frequent (historically, we have made a new release every 2-4 weeks).
 
-Only a pipeline maintainer/member of the Nucleic Acid Observatory should author a new release. The process for going through a new release can be found in NAO private documentation. 
+Only a pipeline maintainer/member of the Nucleic Acid Observatory should author a new release. The process for going through a new release can be found in NAO private documentation; however, the general outline can be found below.
+
+To start a new release:
+- Stop approving new feature PRs into `dev`.
+- Create a release branch (e.g., `release/<maintainer first name or handle>/X.X.X.X`) for release-related changes (e.g., changelog updates, version bumps).
+- If any issues are found, fix them with new PRs that are squash merged into `dev`, and then pull these changes into your release branch.
+- Once the release is approved, squash merge the release branch onto `dev`.
+- Merge `dev` into `main` using a normal (non-squash) merge.
+- Tag the release.
+- Delete the release branch. 
 
