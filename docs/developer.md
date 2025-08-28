@@ -269,7 +269,7 @@ To start a new release:
 - Create a release branch (e.g., `release/<maintainer first name or handle>/X.X.X.X`) for release-related changes (e.g., changelog updates, version bumps).
 - If any issues are found, fix them with new PRs that are squash merged into `dev`, and then pull these changes into your release branch.
 - Once the release is approved, squash merge the release branch onto `dev`.
-- Merge `dev` into `main`.
+- Merge `dev` into `main` using a normal (non-squash) merge.
 - Tag the release.
 - Delete the release branch. 
 
