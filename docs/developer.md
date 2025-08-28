@@ -255,6 +255,8 @@ Branch B will then contain both the original unsquashed commits from branch A AN
 **Recommended approach:**
 Try rebasing branch B onto `dev` first (`git rebase dev`). If rebasing doesn't work cleanly, just merge `dev` and don't worry about the commits in the PR (`git merge dev`). The diff should be fine and the commits will get squashed anyway when merged. 
 
+**Note:** Squash merging should only be used for feature branches merging into `dev`. When merging from `dev` to `main` for releases, use regular (non-squash) merges to preserve the development history. 
+
 ## New releases
 
 By default, all changes are made on individual branches, and merged into `dev`. Periodically, a collection of `dev` changes are merged to `main` as a new release. New releases are fairly frequent (historically, we have made a new release every 2-4 weeks).
