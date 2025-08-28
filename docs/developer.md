@@ -59,7 +59,9 @@ These guidelines represent best practices to implement in new code, though some 
 - Python style: 
     - Loosely follow PEP 8 conventions.
     - Type hints are encouraged but not currently required.
-    - Linting is encouraged (our go-to tool is `ruff`), but not currently required. 
+    - Linting and type checking are encouraged (our go-to tools are `ruff` for linting and `mypy` for type checking), but not currently required.
+    - Formatting applied (including in nested directories) will follow the configuration in `pyproject.toml`.
+    - After making any formatting changes, carefully review the diff to ensure no unintended modifications were introduced that could affect functionality. 
     
 ## Containers
 We preferentially use [Seqera containers](https://seqera.io/containers/), with [Docker Hub](https://hub.docker.com/) as a second choice.
@@ -207,7 +209,26 @@ Opening issues:
 ## Pull requests (PRs)
 
 ### Creating branches and making changes
-To contribute to the pipeline, start by creating a new branch off of `dev`. The branch should start with your name, followed by a short description of the feature you're working on, with hyphens (e.g. `will-post-hoc-integrate`).
+To contribute to the pipeline, start by creating a new branch off of `dev`. Branch names follow this convention:
+
+**Format:** `branch_type/owner_name/issue_id-description` (all lowercase)
+
+**Components:**
+- `branch_type`: The type of work (see below)
+- `owner_name`: Your first name or developer handle
+- `issue_id`: The GitHub issue number (required for all branches - if an issue doesn't exist, create one first)
+- `description`: Short description (2-4 words, [kebab-case](https://developer.mozilla.org/en-US/docs/Glossary/Kebab_case))
+
+**Branch types:**
+- `feature`: New functionality or enhancements
+- `bugfix`: Resolving non-critical defects
+- `hotfix`: Critical production fixes (merged to both main and dev)
+- `release`: Preparing releases, version bumps, stabilization
+- `maintenance`: Non-feature changes (refactoring, dependencies, CI/CD, docs)
+- `evergreen`: Exploratory or experimental work
+
+**Example:** `bugfix/harmon/461-fix-lca-sorting`
+
 
 >[!CAUTION]
 > Do not make pull requests from the `dev` or `main` branches.

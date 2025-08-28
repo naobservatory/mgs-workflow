@@ -57,6 +57,8 @@ workflow RUN {
         hits_final = EXTRACT_VIRAL_READS_ONT.out.hits_final
         inter_lca = EXTRACT_VIRAL_READS_ONT.out.inter_lca
         inter_aligner = EXTRACT_VIRAL_READS_ONT.out.inter_minimap2
+        inter_lca = EXTRACT_VIRAL_READS_ONT.out.inter_lca
+        inter_aligner = EXTRACT_VIRAL_READS_ONT.out.inter_minimap2
         bbduk_match = Channel.empty()
         bbduk_trimmed = Channel.empty()
      } else {
@@ -68,6 +70,8 @@ workflow RUN {
         EXTRACT_VIRAL_READS_SHORT(samplesheet_ch, params.ref_dir, short_params)
         hits_fastq = EXTRACT_VIRAL_READS_SHORT.out.hits_fastq
         hits_final = EXTRACT_VIRAL_READS_SHORT.out.hits_final
+        inter_lca = EXTRACT_VIRAL_READS_SHORT.out.inter_lca
+        inter_aligner = EXTRACT_VIRAL_READS_SHORT.out.inter_bowtie
         inter_lca = EXTRACT_VIRAL_READS_SHORT.out.inter_lca
         inter_aligner = EXTRACT_VIRAL_READS_SHORT.out.inter_bowtie
         bbduk_match = EXTRACT_VIRAL_READS_SHORT.out.bbduk_match
