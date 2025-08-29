@@ -20,7 +20,7 @@ def test_validate_grouping_basic():
         write_tsv(grouping_path, ['group', 'sample'], [['g1', 'S1']])
         write_tsv(virus_hits_path, ['sample'], [['S1'], ['S2']])
         validate_grouping(grouping_path, virus_hits_path, samples_without_vv_hits, validated_output)
-        # Output should be untouched because S1 is in both; S2 doesn't effect output since it's not in grouping
+        # Output should be untouched because S1 is in both; S2 doesn't affect output since it's not in grouping
         with open(validated_output) as f:
             lines = [l.strip() for l in f if l.strip()]
         assert lines == ['group\tsample', 'g1\tS1']
@@ -41,7 +41,7 @@ def test_validate_grouping_basic():
         assert unused_lines == ['S2']
 
 def test_validate_grouping_empty_files():
-    """Test that the code correctly handles an emtpy virus hits file with non-empty grouping file."""
+    """Test that the code correctly handles an empty virus hits file with non-empty grouping file."""
     with tempfile.TemporaryDirectory() as tmp:
         grouping_path = os.path.join(tmp, 'grouping.tsv')
         virus_hits_path = os.path.join(tmp, 'virus_hits.tsv')
