@@ -72,7 +72,7 @@ Build and push the custom containers using the script `bin/build-push-docker.sh`
     
 ## Testing
 
-All tests use the [nf-test](https://www.nf-test.com/) framework. (We do not currently have any unit tests of Python/Rust/R scripts.)
+We use [nf-test](https://www.nf-test.com/) for unit, integration, and end-to-end tests. We intend to transition to using [pytest](https://docs.pytest.org/en/stable/index.html#) for unit tests of Python processes, and developers should therefore write unit tests in pytest for any processes that use Python.
 
 ### Organization of tests 
 
@@ -244,8 +244,8 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
 
 1. **Write new tests** for the changes that you make using `nf-test` if those tests don't already exist. At the very least, these tests should check that the new implementation runs to completion; tests that also verify the output on the test dataset are strongly encouraged.
 2. **Run all relevant tests locally** and make sure they pass. "Relevant" means: 1) Any tests of any process or workflow modified by the PR; 2) Any tests for any workflows that source any such process or workflow, and 3) Any tests that use any such process or workflow in setup.
-    - You may run all existing tests as described in the "Testing" section above.
-    - Or, you may identify relevant tests by recursively grepping for the process name in the `workflows`, `subworkflows`, and `tests` directories.
+    - For **nf-test**: You may run all existing tests as described in the "Testing" section above, or identify relevant tests by recursively grepping for the process name in the `workflows`, `subworkflows`, and `tests` directories.
+    - For **pytest**: If you modify Python scripts, run `pytest` on the corresponding test files to ensure unit tests pass.
     - **Note which tests were run in your PR description.**
     - If you make any changes that affect the output of the pipeline, list/describe the changes that occurred in the pull request. 
 3. **Update the `CHANGELOG.md` file** with the changes that you are making, and update the `pipeline-version.txt` file with the new version number.
