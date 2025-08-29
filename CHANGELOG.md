@@ -4,6 +4,7 @@
 - Updated developer docs to discuss the new norm of squash merging.
 - Updated developer docs to reflect the change in name of the primary branch from `master` to `main`.
 - Updated developer docs to discuss the new release process.
+- Updated documentation to note that we are transitioning to using pytest for unit tests for Python processes.
 
 # v3.0.1.0
 
