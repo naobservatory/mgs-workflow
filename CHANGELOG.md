@@ -1,11 +1,11 @@
-# v3.0.1.1-dev
-- Updated `docs/developer.md` to reflect the new branch naming convention.
-- Added pyproject.toml at the top level directory to set ruff, and mypy settings.
-- Updated developer docs to discuss the new norm of squash merging.
-- Updated developer docs to reflect the change in name of the primary branch from `master` to `main`.
-- Updated developer docs to discuss the new release process.
-- Updated documentation to note that we are transitioning to using pytest for unit tests for Python processes.
-- Fixed bug in DOWNSTREAM that prevented the workflow from running when the viral hits table had samples that weren't in the grouping file.
+# v3.0.1.1
+- Added bugfix for `VALIDATE_GROUPING` which allows viral hits tables to have samples that are not found in the groupings file. This previously raised an error, causing `DOWNSTREAM` to not run.
+- Updated developer docs (`docs/developer.md`) to reflect new norms and best practices:
+    - Updated our branch naming convention.
+    - Updated our PR process.
+    - Updated our release process.
+    - Added preference for using pytest over nf-test for Python unit tests.
+- Added `pyproject.toml` to the top level directory to standardize our Python file formatting and type checking rules.
 
 # v3.0.1.0
 
