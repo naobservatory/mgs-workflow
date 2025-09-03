@@ -1,3 +1,12 @@
+# v3.0.1.1
+- Added bugfix for `VALIDATE_GROUPING` which allows viral hits tables to have samples that are not found in the groupings file. This previously raised an error, causing `DOWNSTREAM` to not run.
+- Updated developer docs (`docs/developer.md`) to reflect new norms and best practices:
+    - Updated our branch naming convention.
+    - Updated our PR process.
+    - Updated our release process.
+    - Added preference for using pytest over nf-test for Python unit tests.
+- Added `pyproject.toml` to the top level directory to standardize our Python file formatting and type checking rules.
+
 # v3.0.1.0
 
 ### Key changes (impacting most users)

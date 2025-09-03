@@ -1,0 +1,48 @@
+[project]
+name = "mgs-workflow"
+requires-python = ">=3.12"
+
+# Tool configurations below:
+# - [tool.mypy]: Type checking configuration  
+# - [tool.ruff]: Linting and formatting configuration
+# - pytest configuration would go in [tool.pytest.ini_options] (none currently)
+
+[tool.mypy]
+python_version = 3.12
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+
+[tool.ruff]
+# Comprehensive rule selection
+lint.select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes (unused imports, etc.)
+    "I",   # isort
+    "B",   # bugbear (likely bugs and design problems)
+    "C4",  # comprehensions (better list/dict comprehensions)
+    "UP",  # pyupgrade (modernize Python code)
+    "N",   # naming (PEP8 naming conventions)
+    "COM", # commas (trailing commas)
+    "PIE", # misc. lints (unnecessary code)
+    "RET", # return statements (consistent returns)
+    "SIM", # simplify (code simplification)
+]
+
+# Ignored rules
+lint.ignore = [
+  "E501" # Ignore line too long
+]
+
+# Basic exclusions
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+# Target Python version
+target-version = "py312"
