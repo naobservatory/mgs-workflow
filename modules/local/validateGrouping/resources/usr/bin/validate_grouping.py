@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 """
-Check that the samples in the grouping file are a superset of the samples in the virus hits file.
-If it's not throw an error; otherwise, write a new grouping file with only samples observed in the hits file,
-and write a list of samples without viral hits.
+Write a new grouping file with only samples observed in the hits file, and write a list of samples without viral hits.
 
 Usage:
     validate_grouping.py virus_hits.tsv grouping.tsv validated_grouping.tsv.gz samples_without_vv_hits.tsv
@@ -140,9 +138,6 @@ def _stream_hits(virus_hits_path: str, sample_to_group: dict[str, str]) -> set[s
     
     Returns:
         set[str]: Set of sample IDs that appeared in virus_hits
-    
-    Raises:
-        ValueError: If virus hits header does not contain a 'sample' column or if samples are missing from grouping
     """
     seen: set[str] = set()
     header_idx = None
@@ -165,7 +160,7 @@ def _stream_hits(virus_hits_path: str, sample_to_group: dict[str, str]) -> set[s
     missing = seen - set(sample_to_group.keys())
     if missing:
         sorted_missing = sorted(missing)
-        raise ValueError(
+        logger.debug(
             f"Found {len(missing)} samples present in virus_hits but MISSING from grouping: "
             f"{', '.join(sorted_missing[:10])}{'...' if len(missing) > 10 else ''}"
         )
@@ -205,7 +200,7 @@ def validate_grouping(
     out_no_vv_samples_path: str,
     out_new_grouping_path: str,
 ) -> None:
-    """Validate that samples in grouping file are a superset of samples in virus hits file. Update grouping file to only include samples observed in virus hits.
+    """Update grouping file to only include samples observed in the viral hits file.
     
     Args:
         grouping_path (str): Path to the grouping TSV file

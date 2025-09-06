@@ -72,7 +72,7 @@ Build and push the custom containers using the script `bin/build-push-docker.sh`
     
 ## Testing
 
-All tests use the [nf-test](https://www.nf-test.com/) framework. (We do not currently have any unit tests of Python/Rust/R scripts.)
+We use [nf-test](https://www.nf-test.com/) for unit, integration, and end-to-end tests. We intend to transition to using [pytest](https://docs.pytest.org/en/stable/index.html#) for unit tests of Python processes, and developers should therefore write unit tests in pytest for any processes that use Python.
 
 ### Organization of tests 
 
@@ -196,7 +196,6 @@ Test [7677da69] 'RUN workflow output should match snapshot'
         - Update `nf-test` snapshots by running `nf-test test <path to test that failed> --update-snapshot`; this will update the appropriate `*.snapshot` file in `tests/workflows`. Commit the changed snapshot file.
         - Flag in PR comments that the snapshot has changed, and explain why. (Without such a comment, it's easy for reviewers to miss the updated snapshot.)
 
-
 ## GitHub issues
 We use [GitHub issues](https://github.com/naobservatory/mgs-workflow/issues) to track any issues with the pipeline: bugs, cleanup tasks, and desired new features. 
 Opening issues:
@@ -204,8 +203,8 @@ Opening issues:
 - We use labels to prioritize and track:
     - `enhancement`, `time&cost`, `bug`, and `documentation` to describe the type of issue.
     - `priority_1` (highest), `priority_2`, and `priority_3` to mark importance.
-    - `in-progress` when actively being worked on, and `done` when resolved but changes are not yet merged to `master`.
-         - only close issues when the fix/enhancement is merged to `master`.
+    - `in-progress` when actively being worked on, and `done` when resolved but changes are not yet merged to `main`.
+         - only close issues when the fix/enhancement is merged to `main`.
 
 ## Pull requests (PRs)
 
@@ -240,14 +239,17 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
 
 ### Sending PRs for review
 
+> [!NOTE]
+> During a release, new feature PRs are not merged into `dev`. Please check with a maintainer if a release is in progress.
+
 1. **Write new tests** for the changes that you make using `nf-test` if those tests don't already exist. At the very least, these tests should check that the new implementation runs to completion; tests that also verify the output on the test dataset are strongly encouraged.
 2. **Run all relevant tests locally** and make sure they pass. "Relevant" means: 1) Any tests of any process or workflow modified by the PR; 2) Any tests for any workflows that source any such process or workflow, and 3) Any tests that use any such process or workflow in setup.
-    - You may run all existing tests as described in the "Testing" section above.
-    - Or, you may identify relevant tests by recursively grepping for the process name in the `workflows`, `subworkflows`, and `tests` directories.
+    - For **nf-test**: You may run all existing tests as described in the "Testing" section above, or identify relevant tests by recursively grepping for the process name in the `workflows`, `subworkflows`, and `tests` directories.
+    - For **pytest**: If you modify Python scripts, run `pytest` on the corresponding test files to ensure unit tests pass.
     - **Note which tests were run in your PR description.**
     - If you make any changes that affect the output of the pipeline, list/describe the changes that occurred in the pull request. 
 3. **Update the `CHANGELOG.md` file** with the changes that you are making, and update the `pipeline-version.txt` file with the new version number.
-    - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `master`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions both in `CHANGELOG.md` and in `pipeline-version.txt`, and should only be removed when preparing to merge to `master`.
+    - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `main`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions both in `CHANGELOG.md` and in `pipeline-version.txt`, and should only be removed when preparing to merge to `main`.
 4. **Update the expected-output-{run,downstream}.txt files** with any changes to the output of the RUN or DOWNSTREAM workflows.
 5. **Pass automated tests on GitHub Actions**. These run automatically when you open a pull request.
 6. **Write a meaningful description** of your changes in the PR description and give it a meaningful title. 
@@ -255,20 +257,42 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
 7. **Request review** from a maintainer on your changes. Current maintainers are jeffkaufman, willbradshaw, katherine-stansifer, and harmonbhasin. 
     - Make sure to assign the PR to the desired reviewer so that they see your PR (put them in the "Assignees" section on GitHub as well as in the "Reviewers" section).
         - If the reviewer is not satisfied and requests changes, they should then change the "Assignee" to be the person who originally submitted the code. This may result in a few loops of "Assignee" being switched between the reviewer and the author.
-8. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch! 
+8. To merge, you must **have an approving review** on your final changes, and all conversations must be resolved. After merging, please delete your branch!
 
+### Squash merging
+
+We use squash merges for all PRs to maintain a clean, linear history on `main`. 
+
+**How to squash merge:** Instead of clicking "Merge pull request" on GitHub, click the dropdown arrow next to it and select "Squash and merge". Make sure the squash commit title includes the PR number followed by the description (e.g., "#424 Add viral read filtering").
+
+**Dealing with dependent branches after squash merging:**
+
+This situation commonly arises when:
+1. You create branch A with multiple commits
+2. Submit branch A for review  
+3. Fork branch B from branch A and work on a new feature
+4. Branch A gets edited for reviewer feedback, then squash-merged to `dev`
+5. You merge `dev` into branch B
+
+Branch B will then contain both the original unsquashed commits from branch A AND the new squash commit, creating an intimidating PR with duplicate commit chains.
+
+**Recommended approach:**
+Try rebasing branch B onto `dev` first (`git rebase dev`). If rebasing doesn't work cleanly, just merge `dev` and don't worry about the commits in the PR (`git merge dev`). The diff should be fine and the commits will get squashed anyway when merged. 
+
+**Note:** Squash merging should only be used for feature branches merging into `dev`. When merging from `dev` to `main` for releases, use regular (non-squash) merges to preserve the development history. 
 
 ## New releases
 
-By default, all changes are made on individual branches, and merged into `dev`. Periodically, a collection of `dev` changes are merged to `master` as a new release. New releases are fairly frequent (historically, we have made a new release every 2-4 weeks).
+By default, all changes are made on individual branches, and merged into `dev`. Periodically, a collection of `dev` changes are merged to `main` as a new release. New releases are fairly frequent (historically, we have made a new release every 2-4 weeks).
 
-Only a pipeline maintainer/member of the Nucleic Acid Observatory should author a new release. The process for going through a new release can be found in NAO private documentation. 
+Only a pipeline maintainer/member of the Nucleic Acid Observatory should author a new release. The process for going through a new release can be found in NAO private documentation; however, the general outline can be found below.
 
-
-
-
-
-
-
-
+To start a new release:
+- Stop approving new feature PRs into `dev`.
+- Create a release branch (e.g., `release/<maintainer first name or handle>/X.X.X.X`) for release-related changes (e.g., changelog updates, version bumps).
+- If any issues are found, fix them with new PRs that are squash merged into `dev`, and then pull these changes into your release branch.
+- Once the release is approved, squash merge the release branch onto `dev`.
+- Merge `dev` into `main` using a normal (non-squash) merge.
+- Tag the release.
+- Delete the release branch. 
 
