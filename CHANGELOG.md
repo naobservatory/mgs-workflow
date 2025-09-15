@@ -1,6 +1,7 @@
 # v3.0.1.2-dev
 - Updated Virus-Host DB, and NCBI taxonomy database to the daily release in the INDEX workflow
 - Updated the list of viruses to exclude in the INDEX workflow
+- Added header to output zero_vv_log in VALIDATE_GROUPING so that CONCATENATE_EMPTY_SAMPLES_LIST in PREPARE_GROUP_TSVS doesn't fail
 
 # v3.0.1.1
 - Added bugfix for `VALIDATE_GROUPING` which allows viral hits tables to have samples that are not found in the groupings file. This previously raised an error, causing `DOWNSTREAM` to not run.
