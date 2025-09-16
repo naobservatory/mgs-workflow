@@ -70,6 +70,34 @@ If your process needs a custom container, create a new Dockerfile in the `docker
 
 Build and push the custom containers using the script `bin/build-push-docker.sh`. (This should be done by a repo maintainer as it requires being logged in to DockerHub with the securebio username.) 
     
+## Python Development Setup
+
+### Recommended: Using uv
+
+For Python development, we recommend using [uv](https://docs.astral.sh/uv/), a fast Python package and project manager. It automatically manages Python versions and dependencies without requiring manual virtual environment setup.
+
+**Installation:**
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Running Python tools:**
+You can run Python tools directly without installing them first:
+```bash
+uv run pytest           # Run tests
+uv run ruff check .     # Lint code
+uv run mypy .           # Type checking
+```
+
+Alternatively, you can sync the environment once and then use the tools directly:
+```bash
+uv sync                 # Install all dependencies from pyproject.toml
+source .venv/bin/activate
+pytest                  
+ruff check .
+mypy .
+```
+
 ## Testing
 
 We use [nf-test](https://www.nf-test.com/) for unit, integration, and end-to-end tests. We intend to transition to using [pytest](https://docs.pytest.org/en/stable/index.html#) for unit tests of Python processes, and developers should therefore write unit tests in pytest for any processes that use Python.
