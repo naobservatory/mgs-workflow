@@ -1,6 +1,8 @@
 # v3.0.1.2-dev
 - Updated Virus-Host DB, and NCBI taxonomy database to the daily release in the INDEX workflow
 - Updated the list of viruses to exclude in the INDEX workflow
+- Fix bug in `FILTER_VIRAL_SAM` where multiple secondary alignments for CP/DP pairs with identical grouping keys (positions, references, template length, scores) but different CIGAR strings would trigger an assertion. Now selects the first read1 and read2 from such groups.
+- Added header to output zero_vv_log in VALIDATE_GROUPING so that CONCATENATE_EMPTY_SAMPLES_LIST in PREPARE_GROUP_TSVS doesn't fail
 - Added version field to pyproject.toml to fix uv command errors
 - Added minimum required Python packages to pyproject.toml for running tests (pytest, mypy, ruff)
 - Added Python development setup instructions using uv to developer docs
