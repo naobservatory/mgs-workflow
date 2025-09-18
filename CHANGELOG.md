@@ -1,7 +1,7 @@
 # v3.0.1.2
 - `INDEX` workflow now uses daily releases of Virus-Host DB and NCBI taxonomy database.
 - Updated virus exclusion list, `ref/hv_patterns_exclude.txt`, used by `INDEX` workflow.
-- Fixed `FILTER_VIRAL_SAM` handling of multiple secondary alignments for CP/DP pairs with identical grouping keys - now selects first forward/reverse alignment.
+- Fixed `FILTER_VIRAL_SAM` handling of multiple secondary alignments for CP/DP pairs with identical grouping keys (reference genome, mate reference genome, position range, template length, alignment scores) - now selects first forward/reverse alignment pair.
 - Fixed `VALIDATE_GROUPING` to include header in the output file that indicates samples with no viral hits.
 - Added Python development dependencies to `pyproject.toml` for easier testing and linting setup.
 - Updated developer docs with Python environment setup instructions using uv.
