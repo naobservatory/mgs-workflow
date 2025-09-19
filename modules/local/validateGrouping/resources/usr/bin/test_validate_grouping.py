@@ -24,10 +24,10 @@ def test_validate_grouping_basic():
         with open(validated_output) as f:
             lines = [l.strip() for l in f if l.strip()]
         assert lines == ['group\tsample', 'g1\tS1']
-        # Output should be empty
+        # Output should have header only
         with open(samples_without_vv_hits) as f:
             unused_lines = [l.strip() for l in f if l.strip()]
-        assert unused_lines == []
+        assert unused_lines == ['sample']
 
         # Case 2: Pass when grouping is superset, check outputs
         write_tsv(grouping_path, ['group', 'sample'], [['g1', 'S1'], ['g2', 'S2']])
@@ -38,7 +38,7 @@ def test_validate_grouping_basic():
         assert lines == ['group\tsample', 'g1\tS1']
         with open(samples_without_vv_hits) as f:
             unused_lines = [l.strip() for l in f if l.strip()]
-        assert unused_lines == ['S2']
+        assert unused_lines == ['sample', 'S2']
 
 def test_validate_grouping_empty_files():
     """Test that the code correctly handles an empty virus hits file with non-empty grouping file."""
@@ -57,7 +57,7 @@ def test_validate_grouping_empty_files():
         assert validated_lines == ['group\tsample']
         with open(samples_without_vv_hits) as f:
             unused_lines = [l.strip() for l in f if l.strip()]
-        assert set(unused_lines) == {'S1', 'S2'}
+        assert set(unused_lines) == {'sample', 'S1', 'S2'}
 
 def test_validate_grouping_perfect_match():
     """Test that when all samples in grouping are present in virus hits, 
@@ -78,5 +78,5 @@ def test_validate_grouping_perfect_match():
         assert validated_lines == expected_lines
         with open(samples_without_vv_hits) as f:
             unused_lines = [l.strip() for l in f if l.strip()]
-        assert unused_lines == []
+        assert unused_lines == ['sample']
 

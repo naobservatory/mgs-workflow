@@ -183,6 +183,7 @@ def _write_outputs(
     grouping_samples = set(sample_to_group.keys())
     samples_no_viral_hits = sorted(grouping_samples - seen_in_hits)
     with open_by_suffix(out_no_vv_samples_path, 'w') as out_unused:
+        out_unused.write("sample\n")
         for s in samples_no_viral_hits:
             out_unused.write(f"{s}\n")
     logger.info(f"Wrote {len(samples_no_viral_hits)} samples with no viral hits to {out_no_vv_samples_path}")
