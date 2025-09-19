@@ -336,12 +336,22 @@ def group_other_alignments(
         group_id = pair_key_to_group[pair_key]
         by_group[group_id].append(alignment)
 
-    # Verify that each group has exactly 2 alignments (one forward, one reverse)
+    # Ensure each group has exactly one forward and one reverse alignment;
+    # If there is more than one alignment pair, we select the first forward and reverse alignment pair
+    # since there is little value in adding multiple alignment pairs that have the same
+    # rname, rnext, pos_min, pos_max, tlen, and alignment_score/mate_alignment_score
+    filtered_groups: Dict[int, list[SamAlignment]] = {}
     for group_id, group_alignments in by_group.items():
-        assert len(group_alignments) == 2, \
-            f"Group {group_id} for CP/DP alignments should have exactly 2 reads (forward/reverse pair), got {len(group_alignments)}"
-    
-    return dict(by_group)
+        if len(group_alignments) != 2:
+            read1 = [a for a in group_alignments if a.flag & 64]
+            read2 = [a for a in group_alignments if a.flag & 128]
+            assert len(read1) == len(read2), \
+                f"Group {group_id}: unequal read1 ({len(read1)}) and read2 ({len(read2)}) alignments"
+            filtered_groups[group_id] = [read1[0], read2[0]]
+            logger.debug(f"Group {group_id}: selected first read1 and read2 from {len(group_alignments)} alignments")
+        else:
+            filtered_groups[group_id] = group_alignments
+    return filtered_groups
 
 
 def group_secondary_alignments(

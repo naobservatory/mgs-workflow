@@ -1,6 +1,14 @@
 [project]
 name = "mgs-workflow"
+version = "3.0.1.2"
 requires-python = ">=3.12"
+dependencies = [
+    "biopython>=1.85",
+    "mypy>=1.18.1",
+    "pandas>=2.3.2",
+    "pytest>=8.4.2",
+    "ruff>=0.13.0",
+]
 
 # Tool configurations below:
 # - [tool.mypy]: Type checking configuration  

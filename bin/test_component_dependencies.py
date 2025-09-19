@@ -4,6 +4,7 @@ import subprocess
 import os
 import re
 import sys
+
 def find_dependency(directory, component):
 
     directory = directory.rstrip("/")
@@ -34,6 +35,52 @@ def find_dependency(directory, component):
 
     return file_paths
 
+def identify_component_file(component):
+    # Search in subworkflows and workflow directories
+    search_dirs = ["subworkflows/local/", "workflows/"]
+
+    pattern = f"\\b{component}\\b"
+    for d in search_dirs:
+        out = subprocess.run(
+            ["grep", "-r", pattern, d], capture_output=True, text=True
+        ).stdout.splitlines()
+
+        for hit in out:
+            path, line_content = hit.split(":", 1)
+            if line_content.lstrip().startswith("workflow "):
+                # TODO: This could pose a problem when there are multiple matches, and the first match is erroneous.
+                return path
+    return None
+
+def get_subcomponents(component_path):
+    with open(component_path, "r") as f:
+        component_content = f.read()
+
+    modules, workflows = set(), set()
+    for line in component_content.splitlines():
+        if "include" in line:
+            # Extract the first all caps variable in the include line
+            match = re.search(r'include\s*{\s*([A-Z][A-Z0-9_]*)', line)
+            if match:
+                if "subworkflows" in line:
+                    workflows.add(match.group(1))
+                else:
+                    modules.add(match.group(1))
+                continue
+    return modules, workflows
+
+def collect_component_dependencies(component):
+    file_path = identify_component_file(component)
+    if file_path is None:
+        return None, None
+    modules, workflows = get_subcomponents(file_path)
+
+    for wf in list(workflows):
+        sub_mods, sub_wfs = collect_component_dependencies(wf)
+        modules.update(sub_mods)
+        workflows.update(sub_wfs)
+
+    return modules, workflows
 
 def workflow_uses_subworkflow(workflow, subworkflow_path):
     workflow_path = f"workflows/{workflow}"
@@ -92,14 +139,23 @@ def parse_args():
         default=False,
     )
 
+    parser.add_argument(
+        "-s",
+        "--skip-subcomponents",
+        action="store_true",
+        help="Skip testing subcomponents of the component. Only applicable if the component is a workflow/subworkflow.",
+        default=True,
+    )
+
     args = parser.parse_args()
     component = args.component
     verbose = args.verbose
-    return component, verbose
+    skip_subcomponents = args.skip_subcomponents
+    return component, verbose, skip_subcomponents
 
 
 def main():
-    component, verbose = parse_args()
+    component, verbose, skip_subcomponents = parse_args()
 
     # Validate component name - only allow alphanumerics and underscores
     if not re.match(r'^[a-zA-Z0-9_]+$', component):
@@ -107,7 +163,11 @@ def main():
 
     tests_to_execute = set()
 
+
+    #-----------------------------------------------------------------#
     # Identifying tests that directly use the component
+    #-----------------------------------------------------------------#
+
     direct_tests = find_dependency("tests/", component)
     tests_to_execute.update(direct_tests)
 
@@ -123,7 +183,11 @@ def main():
         print(f"   • {test}")
     print()
 
-    # Find subworkflows that directly use the component
+    #-----------------------------------------------------------------#
+    # Identifying dependents
+    #-----------------------------------------------------------------#
+
+    # Find dependent subworkflows
     dependent_subworkflows = set(find_dependency("subworkflows/", component))
 
     # Find transitive dependencies - subworkflows that use other dependent subworkflows
@@ -136,7 +200,7 @@ def main():
     # Combine all dependent subworkflows
     dependent_subworkflows.update(transitive_dependencies)
 
-    # Identifying tests that use the affected subworkflows
+    # Identifying tests for dependent subworkflows
     subworkflow_tests = set()
     for dependent_subworkflow in dependent_subworkflows:
         tests = find_dependency("tests/subworkflows/", dependent_subworkflow)
@@ -149,20 +213,21 @@ def main():
         print(f"   • {test}")
     print()
 
-    # Identifying workflows that use the component
+    # Identifying dependent workflows
     dependent_workflows = set()
     dependent_workflows.update(find_dependency("workflows/", component))
 
-    # Identifying workflows that use affected subworkflows
+    # Identifying dependent workflows of dependent subworkflows
     for workflow in os.listdir("workflows/"):
         for dependent_subworkflow in dependent_subworkflows:
             if workflow_uses_subworkflow(workflow, dependent_subworkflow):
                 dependent_workflows.add(workflow)
 
-    # Identifying tests that use the affected workflows
+    # Identifying tests for dependent workflows
     workflow_tests = set()
     for workflow in dependent_workflows:
         workflow_tests.add(get_workflow_test(workflow))
+
 
     print("=" * 72)
     print(f"Found {len(workflow_tests)} tests for affected workflows:")
@@ -171,8 +236,41 @@ def main():
         print(f"   • {test}")
     print()
 
+    #-----------------------------------------------------------------#
+    # Identifying dependencies
+    #-----------------------------------------------------------------#
+
+    # Identifying module and subworkflow dependencies and their tests
+    if not skip_subcomponents:
+        subcomp_tests = set()
+        modules, workflows = collect_component_dependencies(component)
+        if modules is None and workflows is None:
+            print("=" * 72)
+            print(f"No subcomponents found for {component}.")
+
+        else:
+            for module in modules:
+                subcomp_tests.update(find_dependency("tests/modules/local/", module))
+            for workflow in workflows:
+                subcomp_tests.update(find_dependency("tests/subworkflows/local/", workflow))
+
+
+            print("=" * 72)
+            print(f"Found {len(subcomp_tests)} tests for subcomponents of {component}:")
+            print("=" * 72)
+
+            for test in sorted(subcomp_tests):
+                print(f"   • {test}")
+            print()
+            tests_to_execute.update(subcomp_tests)
+
+
     tests_to_execute.update(subworkflow_tests)
     tests_to_execute.update(workflow_tests)
+
+    #-----------------------------------------------------------------#
+    # Running tests
+    #-----------------------------------------------------------------#
 
     print("=" * 72)
     print(f"Identified {len(tests_to_execute)} test files to execute. Running...")

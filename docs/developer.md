@@ -70,6 +70,34 @@ If your process needs a custom container, create a new Dockerfile in the `docker
 
 Build and push the custom containers using the script `bin/build-push-docker.sh`. (This should be done by a repo maintainer as it requires being logged in to DockerHub with the securebio username.) 
     
+## Python Development Setup
+
+### Recommended: Using uv
+
+For Python development, we recommend using [uv](https://docs.astral.sh/uv/), a fast Python package and project manager. It automatically manages Python versions and dependencies without requiring manual virtual environment setup.
+
+**Installation:**
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Running Python tools:**
+You can run Python tools directly without installing them first:
+```bash
+uv run pytest           # Run tests
+uv run ruff check .     # Lint code
+uv run mypy .           # Type checking
+```
+
+Alternatively, you can sync the environment once and then use the tools directly:
+```bash
+uv sync                 # Install all dependencies from pyproject.toml
+source .venv/bin/activate
+pytest                  
+ruff check .
+mypy .
+```
+
 ## Testing
 
 We use [nf-test](https://www.nf-test.com/) for unit, integration, and end-to-end tests. We intend to transition to using [pytest](https://docs.pytest.org/en/stable/index.html#) for unit tests of Python processes, and developers should therefore write unit tests in pytest for any processes that use Python.
@@ -248,8 +276,8 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
     - For **pytest**: If you modify Python scripts, run `pytest` on the corresponding test files to ensure unit tests pass.
     - **Note which tests were run in your PR description.**
     - If you make any changes that affect the output of the pipeline, list/describe the changes that occurred in the pull request. 
-3. **Update the `CHANGELOG.md` file** with the changes that you are making, and update the `pipeline-version.txt` file with the new version number.
-    - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `main`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions both in `CHANGELOG.md` and in `pipeline-version.txt`, and should only be removed when preparing to merge to `main`.
+3. **Update the `CHANGELOG.md` file** with the changes that you are making, and update the `pipeline-version.txt` and `pyproject.toml` file with the new version number.
+    - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `main`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions in `CHANGELOG.md`, `pipeline-version.txt`, and `pyproject.toml`, and should only be removed when preparing to merge to `main`.
 4. **Update the expected-output-{run,downstream}.txt files** with any changes to the output of the RUN or DOWNSTREAM workflows.
 5. **Pass automated tests on GitHub Actions**. These run automatically when you open a pull request.
 6. **Write a meaningful description** of your changes in the PR description and give it a meaningful title. 
