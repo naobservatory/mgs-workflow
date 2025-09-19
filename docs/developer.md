@@ -276,8 +276,8 @@ Feel free to use AI tools (Cursor, GitHub Copilot, Claude Code, etc.) to generat
     - For **pytest**: If you modify Python scripts, run `pytest` on the corresponding test files to ensure unit tests pass.
     - **Note which tests were run in your PR description.**
     - If you make any changes that affect the output of the pipeline, list/describe the changes that occurred in the pull request. 
-3. **Update the `CHANGELOG.md` file** with the changes that you are making, and update the `pipeline-version.txt` file with the new version number.
-    - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `main`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions both in `CHANGELOG.md` and in `pipeline-version.txt`, and should only be removed when preparing to merge to `main`.
+3. **Update the `CHANGELOG.md` file** with the changes that you are making, and update the `pipeline-version.txt` and `pyproject.toml` file with the new version number.
+    - More information on how to update the `CHANGELOG.md` file can be found [here](./versioning.md). Note that, before merging to `main`, version numbers should have the `-dev` suffix. This suffix should be used to denote development versions in `CHANGELOG.md`, `pipeline-version.txt`, and `pyproject.toml`, and should only be removed when preparing to merge to `main`.
 4. **Update the expected-output-{run,downstream}.txt files** with any changes to the output of the RUN or DOWNSTREAM workflows.
 5. **Pass automated tests on GitHub Actions**. These run automatically when you open a pull request.
 6. **Write a meaningful description** of your changes in the PR description and give it a meaningful title. 
