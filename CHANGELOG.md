@@ -1,4 +1,4 @@
-# v3.0.1.3
+# v3.0.1.3-dev
 - Updated `docs/batch.md` with a deprecation warning linking to private internal infrastructure for SecureBio users.
 
 # v3.0.1.2

@@ -1,7 +1,7 @@
 # Running the pipeline on AWS Batch
 
 > [!IMPORTANT]
-> The instructions on this page do not reflect current best practices for internal SecureBio users. These users should instead refer to instructions in [this Private repository](https://github.com/securebio/nao-aws-terraform/tree/main/batch-template) for setting up appropriate infrastructure using Terraform. External users are welcome to continue following these instructions if useful.
+> The instructions on this page do not reflect current best practices for internal SecureBio users. These users should instead refer to instructions in [this private repository](https://github.com/securebio/nao-aws-terraform/tree/main/batch-template) for setting up appropriate infrastructure using Terraform. External users are welcome to continue following these instructions if useful.
 
 This page contains recommendations for running the pipeline on [AWS Batch](https://aws.amazon.com/batch/), a tool which allows you to run Nextflow workflows in a highly parallelized and automated manner[^notebook].
 
