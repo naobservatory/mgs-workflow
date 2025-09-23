@@ -1,3 +1,6 @@
+# v3.0.1.3-dev
+- Updated `docs/batch.md` with a deprecation warning linking to private internal infrastructure for SecureBio users.
+
 # v3.0.1.2
 - `INDEX` workflow now uses daily releases of Virus-Host DB and NCBI taxonomy database, and the Kraken DB was updated to the latest version. (#445)
 - Updated virus exclusion list (`ref/hv_patterns_exclude.txt`) used by `INDEX` workflow to exclude additional viruses that were causing false positives. (#445)
