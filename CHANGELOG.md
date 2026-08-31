@@ -5,6 +5,7 @@
 - Promote similarity-based duplicate marking out of experimental, publishing columns into `results_downstream/{GROUP}_validation_hits.tsv.gz`. (#972)
     - Stop publishing `experimental_downstream/{GROUP}_duplicate_reads_similarity.tsv.gz`.
     - `{GROUP}_clade_counts.tsv.gz` now deduplicates on `sim_dup_exemplar` rather than `prim_align_dup_exemplar`.
+- Add a `SUMMARIZE_GENOME_FASTA` module that reduces a genome FASTA to one row per record (`genome_id`, `seq_length`, `seq_hash`), where `seq_hash` digests the canonicalised sequence. Lets later steps group records by sequence identity without carrying sequence bytes through a sort or a join. Nothing calls it yet, so the pipeline's behaviour and outputs are unchanged. (#955)
 
 # v3.3.0.1-dev
 
