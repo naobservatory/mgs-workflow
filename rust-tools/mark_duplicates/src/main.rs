@@ -950,12 +950,25 @@ mod tests {
         let (headers, indices, count) = process_header_line(&header).unwrap();
         assert_eq!(count, HEADERS.len());
         assert_eq!(headers, HEADERS.to_vec());
-        // The last three fixture columns are not required by this version.
-        let unread = ["prim_align_fragment_length", "prim_align_query_rc",
-                      "prim_align_query_rc_rev"];
+        // The strand columns are in the fixture but not required by this version.
+        let unread = ["prim_align_query_rc", "prim_align_query_rc_rev"];
         for required in HEADERS.iter().filter(|h| !unread.contains(h)) {
             assert!(indices.contains_key(required));
         }
+    }
+
+    #[test]
+    fn process_header_line_rejects_a_missing_fragment_length() {
+        // Newly required by this PR, so a table produced without it is not usable.
+        let header = HEADERS
+            .iter()
+            .filter(|&&h| h != "prim_align_fragment_length")
+            .copied()
+            .collect::<Vec<_>>()
+            .join("\t");
+        let err = process_header_line(&header).unwrap_err().to_string();
+        assert!(err.contains("Missing required header"), "unexpected error: {err}");
+        assert!(err.contains("prim_align_fragment_length"), "unexpected error: {err}");
     }
 
     #[test]
