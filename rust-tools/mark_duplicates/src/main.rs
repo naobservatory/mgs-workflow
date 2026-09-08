@@ -394,7 +394,9 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>)
         genome_id_sorted = genome_id.to_string();
         key = match (ref_start_fwd, ref_start_rev) {
             // Aligned as a pair: the fragment runs from the leftmost mate coordinate to
-            // that coordinate plus the fragment length, which is abs(SAM TLEN).
+            // that coordinate plus the fragment length, which is abs(SAM TLEN). `end` is
+            // therefore the pair's rightmost mapped base, since the length is measured
+            // from its leftmost one.
             (Some(fwd), Some(rev)) => {
                 let start = fwd.min(rev);
                 match fragment_length {
@@ -844,8 +846,6 @@ mod tests {
 
     #[test]
     fn make_read_entry_keys_a_pair_on_its_fragment_span() {
-        // A pair now runs to the fragment's right edge. #967 pinned the old key, which
-        // ended at the reverse mate's start of 800.
         for (fwd, rev) in [("500", "800"), ("800", "500")] {
             let e = parsed(&["r1", "genome_a", fwd, rev, "IIII", "IIII", "400", "False", "True"]);
             assert_eq!(e.key, DupKey::FragmentSpan { start: 500, end: 900 });
@@ -869,9 +869,8 @@ mod tests {
 
     #[test]
     fn make_read_entry_separates_short_fragments_that_share_a_start() {
-        // The fix: both mates cover a fragment shorter than the read and so report the same
-        // start, and only the fragment length tells the two molecules apart. #967 pinned
-        // these as one group.
+        // Both mates cover a fragment shorter than the read and so have the same start.
+        // They are differentiable by their fragment lengths, however.
         let short = parsed(&["r1", "genome_a", "400", "400", "IIII", "IIII", "40", "False", "True"]);
         let long = parsed(&["r2", "genome_a", "400", "400", "IIII", "IIII", "80", "False", "True"]);
         assert_eq!(short.key, DupKey::FragmentSpan { start: 400, end: 440 });
@@ -881,8 +880,6 @@ mod tests {
 
     #[test]
     fn make_read_entry_rejects_a_pair_with_no_fragment_length() {
-        // #967 pinned this as accepted. A pair aligned as a pair always has a positive
-        // length, so NA here means the input is not what this tool requires.
         let (fields, indices) = row(&["r1", "genome_a", "500", "800", "IIII", "IIII", "NA", "False", "True"]);
         let err = make_read_entry(&fields, &indices).expect_err("NA should be rejected");
         assert!(err.contains("r1"), "unexpected error: {err}");
@@ -894,8 +891,7 @@ mod tests {
 
     #[test]
     fn make_read_entry_keys_a_zero_length_pair_on_its_mate_starts() {
-        // Bowtie2 asserts no template length when it aligned the mates independently, so
-        // there is no span to key on and these keep the old key.
+        // Bowtie2 asserts no template length when it aligned the mates independently.
         let e = parsed(&["r1", "genome_a", "500", "800", "IIII", "IIII", "0", "False", "True"]);
         assert_eq!(
             e.key,
@@ -905,9 +901,7 @@ mod tests {
 
     #[test]
     fn match_reads_never_compares_a_span_against_mate_starts() {
-        // The fix makes the two key kinds numerically confusable: this pair spans 500..800,
-        // and a read Bowtie2 could not pair has mate starts 500 and 800. The old key could
-        // not mix them up because a pair's second element was also a mate start.
+        // An aligned pair and a read not paired with its mate cannot match.
         let span = parsed(&["r1", "genome_a", "500", "700", "IIII", "IIII", "300", "False", "True"]);
         let starts = parsed(&["r2", "genome_a", "500", "800", "IIII", "IIII", "0", "False", "True"]);
         assert_eq!(span.key, DupKey::FragmentSpan { start: 500, end: 800 });
@@ -959,7 +953,6 @@ mod tests {
 
     #[test]
     fn process_header_line_rejects_a_missing_fragment_length() {
-        // Newly required by this PR, so a table produced without it is not usable.
         let header = HEADERS
             .iter()
             .filter(|&&h| h != "prim_align_fragment_length")
