@@ -32,12 +32,11 @@ struct ReadEntry {
 enum DupKey {
     // Both mates aligned to one genome as a pair: the fragment's span on the reference.
     FragmentSpan { start: i32, end: i32 },
-    // Only one mate aligned: its start and the strand it aligned to. Two reads sharing
-    // the coordinate but not the strand came from different molecules.
+    // Only one mate aligned: its start and the strand it aligned to.
     OneMateAligned { start: i32, reverse: bool },
     // Everything else, keyed on alignment start coordinates as before: mates on two
-    // genomes, neither mate aligned, or a pair Bowtie2 aligned independently and so
-    // asserted no template length for.
+    // genomes, neither mate aligned, or a pair Bowtie2 aligned independently and
+    // did not assign a fragment length for.
     AlignmentStarts { first: Option<i32>, second: Option<i32> },
 }
 
@@ -448,8 +447,7 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>)
                     }
                 }
             }
-            // One mate aligned: an aligned mate always has a strand, so an absent one
-            // means the input is not what this tool requires.
+            // One mate aligned with a defined strand: key on start and strand.
             (Some(fwd), None) => DupKey::OneMateAligned {
                 start: fwd,
                 reverse: strand_of(
@@ -986,23 +984,11 @@ mod tests {
 
     #[test]
     fn process_header_line_rejects_a_missing_newly_required_column() {
-        for column in ["prim_align_fragment_length"] {
-            let header = HEADERS
-                .iter()
-                .filter(|&&h| h != column)
-                .copied()
-                .collect::<Vec<_>>()
-                .join("\t");
-            let err = process_header_line(&header).unwrap_err().to_string();
-            assert!(err.contains("Missing required header"), "unexpected error: {err}");
-            assert!(err.contains(column), "unexpected error: {err}");
-        }
-    }
-
-    #[test]
-    fn process_header_line_rejects_a_missing_strand_column() {
-        // Newly required, so a table produced without either is not usable.
-        for column in ["prim_align_query_rc", "prim_align_query_rc_rev"] {
+        for column in [
+            "prim_align_fragment_length",
+            "prim_align_query_rc",
+            "prim_align_query_rc_rev",
+        ] {
             let header = HEADERS
                 .iter()
                 .filter(|&&h| h != column)
@@ -1052,8 +1038,7 @@ mod tests {
 
     #[test]
     fn make_read_entry_separates_a_lone_aligned_mate_by_strand() {
-        // One read's forward mate aligned at 500, the other's reverse mate did: different
-        // molecules, now told apart despite sharing the coordinate.
+        // Two reads with starts at 500 on different strands do not match.
         let fwd = parsed(&["r1", "genome_a", "500", "NA", "IIII", "IIII", "NA", "False", "NA"]);
         let rev = parsed(&["r2", "genome_a", "NA", "500", "IIII", "IIII", "NA", "NA", "True"]);
         assert_eq!(fwd.key, DupKey::OneMateAligned { start: 500, reverse: false });
@@ -1063,8 +1048,6 @@ mod tests {
 
     #[test]
     fn make_read_entry_rejects_a_lone_aligned_mate_with_no_strand() {
-        // A missing strand cannot be defaulted: it decides whether this read groups with
-        // another at the same coordinate. The error names whichever column is at fault.
         for (fwd, rev, column) in [
             ("500", "NA", "prim_align_query_rc"),
             ("NA", "500", "prim_align_query_rc_rev"),
