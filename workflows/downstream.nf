@@ -54,8 +54,8 @@ workflow DOWNSTREAM {
             clade_counts_ch = channel.empty()
         }
         else {
-            // Short-read: mark duplicates by alignment coordinates, then by sequence
-            // similarity among the reads that survive
+            // Short-read: mark duplicates by alignment coordinates and strand, then
+            // by sequence similarity among the reads that survive
             mark_dup_ch = MARK_VIRAL_DUPLICATES(concat_ch.hits, params.aln_dup_deviation)
             viral_hits_ch = mark_dup_ch.hits
             dup_output_ch = mark_dup_ch.stats

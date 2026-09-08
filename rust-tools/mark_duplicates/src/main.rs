@@ -191,11 +191,10 @@ fn match_reads(a: &ReadEntry, b: &ReadEntry, deviation: u8) -> bool {
     a.genome_id == b.genome_id && a.key.matches(&b.key, deviation)
 }
 
-// Compare the positions with a deviation
 // An aligned mate always has a strand, so an absent one means the input is not what
 // this tool requires.
-fn missing_strand(query_name: &str) -> String {
-    format!("Read {query_name} is missing prim_align_query_rc for an aligned mate")
+fn missing_strand(query_name: &str, column: &str) -> String {
+    format!("Read {query_name} is missing {column} for an aligned mate")
 }
 
 // Parse the producer's Python-serialised boolean.
@@ -207,6 +206,7 @@ fn parse_bool_or_na(value: &str) -> Option<bool> {
     }
 }
 
+// Compare the positions with a deviation
 fn compare_positions(a: Option<i32>, b: Option<i32>, deviation: u8) -> bool {
     match (a, b) {
         (Some(x), Some(y)) => (x - y).abs() <= deviation as i32,
@@ -397,10 +397,11 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>)
     let rc_rev = parse_bool_or_na(&fields[indices["prim_align_query_rc_rev"]]);
     let ref_start_fwd = parse_int_or_na(&fields[indices["prim_align_ref_start"]]);
     let ref_start_rev = parse_int_or_na(&fields[indices["prim_align_ref_start_rev"]]);
-    if (ref_start_fwd.is_some() && rc_fwd.is_none())
-        || (ref_start_rev.is_some() && rc_rev.is_none())
-    {
-        return Err(missing_strand(&query_name));
+    if ref_start_fwd.is_some() && rc_fwd.is_none() {
+        return Err(missing_strand(&query_name, "prim_align_query_rc"));
+    }
+    if ref_start_rev.is_some() && rc_rev.is_none() {
+        return Err(missing_strand(&query_name, "prim_align_query_rc_rev"));
     }
     let quality_fwd = &fields[indices["query_qual"]];
     let quality_rev = &fields[indices["query_qual_rev"]];
@@ -439,7 +440,7 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>)
                 // the same start, so ordering by slot would make duplicates of one molecule
                 // disagree.
                 let (Some(rev_fwd), Some(rev_rev)) = (rc_fwd, rc_rev) else {
-                    return Err(missing_strand(&query_name));
+                    return Err(missing_strand(&query_name, "prim_align_query_rc"));
                 };
                 let mut mates = [(fwd, rev_fwd), (rev, rev_rev)];
                 mates.sort();
@@ -1034,12 +1035,18 @@ mod tests {
     #[test]
     fn make_read_entry_rejects_an_aligned_mate_with_no_strand() {
         // A missing strand would otherwise make the coordinate look unknown, and unknowns
-        // match each other.
-        let (fields, indices) =
-            row(&["r1", "genome_a/genome_b", "500", "800", "IIII", "IIII", "NA", "NA", "True"]);
-        let err = make_read_entry(&fields, &indices).expect_err("should be rejected");
-        assert!(err.contains("r1"), "unexpected error: {err}");
-        assert!(err.contains("prim_align_query_rc"), "unexpected error: {err}");
+        // match each other. The error names whichever column is at fault.
+        for (rc_fwd, rc_rev, column) in [
+            ("NA", "True", "prim_align_query_rc"),
+            ("False", "NA", "prim_align_query_rc_rev"),
+        ] {
+            let (fields, indices) = row(&[
+                "r1", "genome_a/genome_b", "500", "800", "IIII", "IIII", "NA", rc_fwd, rc_rev,
+            ]);
+            let err = make_read_entry(&fields, &indices).expect_err("should be rejected");
+            assert!(err.contains("r1"), "unexpected error: {err}");
+            assert!(err.contains(column), "unexpected error: {err}");
+        }
     }
 
     #[test]
