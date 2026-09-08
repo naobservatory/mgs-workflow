@@ -27,9 +27,7 @@ struct ReadEntry {
 
 // The coordinate key a read is matched on.
 //
-// The two kinds hold different quantities and so are never compared with each other: a
-// fragment's right edge and a second mate's start coordinate can be the same number while
-// meaning different things.
+// Reads assigned to different keys are not comparable and do not match.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum DupKey {
     // Both mates aligned to one genome as a pair: the fragment's span on the reference.
@@ -393,10 +391,8 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>)
         // If only one genome ID, use it directly
         genome_id_sorted = genome_id.to_string();
         key = match (ref_start_fwd, ref_start_rev) {
-            // Aligned as a pair: the fragment runs from the leftmost mate coordinate to
-            // that coordinate plus the fragment length, which is abs(SAM TLEN). `end` is
-            // therefore the pair's rightmost mapped base, since the length is measured
-            // from its leftmost one.
+            // Aligned as a pair: key off the fragment, from the leftmost mate coordinate
+            // to that coordinate plus the fragment length.
             (Some(fwd), Some(rev)) => {
                 let start = fwd.min(rev);
                 match fragment_length {
@@ -409,15 +405,13 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>)
                         })?;
                         DupKey::FragmentSpan { start, end }
                     }
-                    // Bowtie2 aligned the mates independently and so asserted no template
-                    // length. Key on the two mate starts, as before.
+                    // Bowtie2 aligned the mates independently, with no fragment length, so
+                    // key on the two mate starts.
                     Some(0) => DupKey::AlignmentStarts {
                         first: Some(start),
                         second: Some(fwd.max(rev)),
                     },
-                    // A pair aligned as a pair always has a positive length; the producer
-                    // writes NA only when one mate is unaligned or the mates hit two
-                    // genomes, both of which take other arms.
+                    // Two mates aligned as a pair by Bowtie2 should always have a positive length.
                     _ => {
                         return Err(format!(
                             "Read {query_name} has both mates aligned to {genome_id} but no \
@@ -952,16 +946,18 @@ mod tests {
     }
 
     #[test]
-    fn process_header_line_rejects_a_missing_fragment_length() {
-        let header = HEADERS
-            .iter()
-            .filter(|&&h| h != "prim_align_fragment_length")
-            .copied()
-            .collect::<Vec<_>>()
-            .join("\t");
-        let err = process_header_line(&header).unwrap_err().to_string();
-        assert!(err.contains("Missing required header"), "unexpected error: {err}");
-        assert!(err.contains("prim_align_fragment_length"), "unexpected error: {err}");
+    fn process_header_line_rejects_a_missing_newly_required_column() {
+        for column in ["prim_align_fragment_length"] {
+            let header = HEADERS
+                .iter()
+                .filter(|&&h| h != column)
+                .copied()
+                .collect::<Vec<_>>()
+                .join("\t");
+            let err = process_header_line(&header).unwrap_err().to_string();
+            assert!(err.contains("Missing required header"), "unexpected error: {err}");
+            assert!(err.contains(column), "unexpected error: {err}");
+        }
     }
 
     #[test]
