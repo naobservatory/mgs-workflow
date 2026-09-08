@@ -211,10 +211,9 @@ fn compare_reads(a: &ReadEntry, b: &ReadEntry) -> Ordering {
 }
 
 // The strand an aligned mate was placed on.
-fn strand_of(value: &str, query_name: &str) -> Result<bool, String> {
-    parse_bool_or_na(value).ok_or_else(|| {
-        format!("Read {query_name} has an aligned mate with no prim_align_query_rc")
-    })
+fn strand_of(value: &str, column: &str, query_name: &str) -> Result<bool, String> {
+    parse_bool_or_na(value)
+        .ok_or_else(|| format!("Read {query_name} has an aligned mate with no {column}"))
 }
 
 // Parse the producer's Python-serialised boolean.
@@ -453,11 +452,19 @@ fn make_read_entry(fields: &[String], indices: &HashMap<&str, usize>)
             // means the input is not what this tool requires.
             (Some(fwd), None) => DupKey::OneMateAligned {
                 start: fwd,
-                reverse: strand_of(&fields[indices["prim_align_query_rc"]], &query_name)?,
+                reverse: strand_of(
+                    &fields[indices["prim_align_query_rc"]],
+                    "prim_align_query_rc",
+                    &query_name,
+                )?,
             },
             (None, Some(rev)) => DupKey::OneMateAligned {
                 start: rev,
-                reverse: strand_of(&fields[indices["prim_align_query_rc_rev"]], &query_name)?,
+                reverse: strand_of(
+                    &fields[indices["prim_align_query_rc_rev"]],
+                    "prim_align_query_rc_rev",
+                    &query_name,
+                )?,
             },
             (None, None) => DupKey::AlignmentStarts { first: None, second: None },
         };
@@ -973,9 +980,7 @@ mod tests {
         let (headers, indices, count) = process_header_line(&header).unwrap();
         assert_eq!(count, HEADERS.len());
         assert_eq!(headers, HEADERS.to_vec());
-        // The strand columns are in the fixture but not required by this version.
-        let unread = ["prim_align_query_rc", "prim_align_query_rc_rev"];
-        for required in HEADERS.iter().filter(|h| !unread.contains(h)) {
+        for required in HEADERS {
             assert!(indices.contains_key(required));
         }
     }
@@ -983,6 +988,22 @@ mod tests {
     #[test]
     fn process_header_line_rejects_a_missing_newly_required_column() {
         for column in ["prim_align_fragment_length"] {
+            let header = HEADERS
+                .iter()
+                .filter(|&&h| h != column)
+                .copied()
+                .collect::<Vec<_>>()
+                .join("\t");
+            let err = process_header_line(&header).unwrap_err().to_string();
+            assert!(err.contains("Missing required header"), "unexpected error: {err}");
+            assert!(err.contains(column), "unexpected error: {err}");
+        }
+    }
+
+    #[test]
+    fn process_header_line_rejects_a_missing_strand_column() {
+        // Newly required, so a table produced without either is not usable.
+        for column in ["prim_align_query_rc", "prim_align_query_rc_rev"] {
             let header = HEADERS
                 .iter()
                 .filter(|&&h| h != column)
@@ -1044,12 +1065,17 @@ mod tests {
     #[test]
     fn make_read_entry_rejects_a_lone_aligned_mate_with_no_strand() {
         // A missing strand cannot be defaulted: it decides whether this read groups with
-        // another at the same coordinate.
-        let (fields, indices) =
-            row(&["r1", "genome_a", "500", "NA", "IIII", "IIII", "NA", "NA", "NA"]);
-        let err = make_read_entry(&fields, &indices).expect_err("should be rejected");
-        assert!(err.contains("r1"), "unexpected error: {err}");
-        assert!(err.contains("prim_align_query_rc"), "unexpected error: {err}");
+        // another at the same coordinate. The error names whichever column is at fault.
+        for (fwd, rev, column) in [
+            ("500", "NA", "prim_align_query_rc"),
+            ("NA", "500", "prim_align_query_rc_rev"),
+        ] {
+            let (fields, indices) =
+                row(&["r1", "genome_a", fwd, rev, "IIII", "IIII", "NA", "NA", "NA"]);
+            let err = make_read_entry(&fields, &indices).expect_err("should be rejected");
+            assert!(err.contains("r1"), "unexpected error: {err}");
+            assert!(err.contains(column), "unexpected error: {err}");
+        }
     }
 
     // --- Matching ---
