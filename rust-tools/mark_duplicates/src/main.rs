@@ -744,7 +744,6 @@ mod tests {
     use super::*;
 
     // Header used by the make_read_entry tests, matching the columns the tool requires
-    // The last three are in the pipeline's hits table but not read by this version.
     const HEADERS: [&str; 9] = [
         "seq_id",
         "prim_align_genome_id_all",
