@@ -11,6 +11,7 @@
 - Pass the `mark_duplicates` deviation tolerance explicitly instead of through a mutable global, with no change in behaviour. (#989)
 - Add unit tests for the `mark_duplicates` Rust tool. (#967)
 - Fix duplicate marking bug that merged distinct molecules that shared a start coordinate and had fragments shorter than the read.
+- Include the aligned mate's strand in the duplicate key for reads with only one mate aligned, so two such reads sharing a coordinate but not a strand are no longer merged.
 
 # v3.3.0.0
 
