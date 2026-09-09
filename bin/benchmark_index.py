@@ -152,12 +152,7 @@ def _stale(
 
 
 def check_kraken_staleness(new_params: dict) -> list[dict[str, str]]:
-    """Compare the index's Kraken2 DB against the latest release of that database.
-
-    The comparison stays within the configured database (e.g. `pluspf`) so that
-    switching databases doesn't report the DB as permanently stale against
-    whichever database happens to be hard-coded here.
-    """
+    """Compare the index's Kraken2 DB against the latest release of that database."""
     url = new_params.get("kraken_db", "")
     if not url:
         return []
@@ -165,7 +160,7 @@ def check_kraken_staleness(new_params: dict) -> list[dict[str, str]]:
     if m is None:
         # Not a recognizable public genome-idx bundle (e.g. a custom or test DB),
         # so there is no upstream release to compare against.
-        return [_stale("kraken_db", url)]
+        return [_stale("kraken_db", url, current_date="")]
     database, current_date = m.group(1), m.group(2)
     latest = latest_kraken_release(database)
     if latest is None:
