@@ -1,5 +1,8 @@
 # v3.4.0.0-dev
 
+- Switch the Kraken2 DB for taxonomic profiling from Standard to PlusPF (`k2_pluspf_20260226`, same upstream build date), which adds protozoan and fungal genomes. Changes Kraken2 and Bracken profiling results on next index rebuild; no resource-configuration change is needed, as PlusPF's hash table is only ~7% larger and still fits `kraken_resources`' 128 GB. (#PRNUM)
+    - The shift is concentrated in the ribosomal fraction, where reads previously called bacterial or left unclassified are now called eukaryotic.
+    - `bin/benchmark_index.py`'s staleness check now compares the configured DB against the newest upstream build *of the same flavour*, instead of always against `k2_standard`.
 - Add exemplar-attributed total columns to clade counts: `reads_direct_total_by_exemplar` and `reads_clade_total_by_exemplar` count every read under the taxon of the exemplar representing it, rather than under its own. (#980)
 - Restrict Illumina BLAST validation downsampling to reads that are unique under both duplicate-marking passes. (#973)
 - Promote similarity-based duplicate marking out of experimental, publishing columns into `results_downstream/{GROUP}_validation_hits.tsv.gz`. (#972)

@@ -1023,20 +1023,26 @@ class TestRefStaleness:
         [
             # current_date matches latest_date → current
             (
-                "https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20260226.tar.gz",
-                ("20260226", "k2_standard_20260226.tar.gz"),
+                "https://genome-idx.s3.amazonaws.com/kraken/k2_pluspf_20260226.tar.gz",
+                ("20260226", "k2_pluspf_20260226.tar.gz"),
                 "current",
             ),
             # current_date older than latest_date → stale
             (
-                "https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20250714.tar.gz",
-                ("20260226", "k2_standard_20260226.tar.gz"),
+                "https://genome-idx.s3.amazonaws.com/kraken/k2_pluspf_20250714.tar.gz",
+                ("20260226", "k2_pluspf_20260226.tar.gz"),
                 "stale",
             ),
             # fetcher returned None (network blip / parse failure) → error
             (
-                "https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20260226.tar.gz",
+                "https://genome-idx.s3.amazonaws.com/kraken/k2_pluspf_20260226.tar.gz",
                 None,
+                "error",
+            ),
+            # unrecognizable bundle (custom/test DB) → error, no lookup
+            (
+                "https://nao-testing.s3.amazonaws.com/tiny-kraken2-db.tar.gz",
+                ("20260226", "k2_pluspf_20260226.tar.gz"),
                 "error",
             ),
         ],
@@ -1049,11 +1055,28 @@ class TestRefStaleness:
         expected_status: str,
     ) -> None:
         monkeypatch.setattr(
-            "benchmark_index.latest_kraken_release", lambda: latest_return
+            "benchmark_index.latest_kraken_release", lambda _flavour: latest_return
         )
         rows = check_kraken_staleness({"kraken_db": current_url})
         kraken_row = next(r for r in rows if r["ref"] == "kraken_db")
         assert kraken_row["status"] == expected_status
+
+    def test_check_kraken_staleness_compares_within_flavour(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The configured flavour, not a hard-coded one, drives the lookup."""
+        seen: list[str] = []
+
+        def fake_latest(flavour: str) -> tuple[str, str]:
+            seen.append(flavour)
+            return "20260226", f"k2_{flavour}_20260226.tar.gz"
+
+        monkeypatch.setattr("benchmark_index.latest_kraken_release", fake_latest)
+        url = "https://genome-idx.s3.amazonaws.com/kraken/k2_pluspf_20260226.tar.gz"
+        rows = check_kraken_staleness({"kraken_db": url})
+        assert seen == ["pluspf"]
+        assert rows[0]["latest"] == "k2_pluspf_20260226.tar.gz"
+        assert rows[0]["status"] == "current"
 
     @pytest.mark.parametrize(
         "current_url,latest_return,expected_status",
@@ -1117,10 +1140,10 @@ class TestRefStaleness:
     ) -> None:
         monkeypatch.setattr(
             "benchmark_index.latest_kraken_release",
-            lambda: ("20260226", "k2_standard_20260226.tar.gz"),
+            lambda _flavour: ("20260226", "k2_pluspf_20260226.tar.gz"),
         )
         out = tmp_path / "staleness.tsv"
-        write_staleness_table({"kraken_db": ".../k2_standard_20250714.tar.gz"}, out)
+        write_staleness_table({"kraken_db": ".../k2_pluspf_20250714.tar.gz"}, out)
         df = pd.read_csv(out, sep="\t")
         assert list(df["ref"]) == ["kraken_db"]
         assert df.loc[0, "status"] == "stale"
