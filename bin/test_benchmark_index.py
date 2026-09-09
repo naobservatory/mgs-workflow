@@ -14,6 +14,7 @@ import contextlib
 import gzip
 import json
 import logging
+import subprocess
 from pathlib import Path
 
 import pandas as pd
@@ -36,6 +37,7 @@ from benchmark_index import (
     infection_status_changes,
     infection_status_columns,
     infection_status_transitions,
+    latest_kraken_release,
     load_overrides,
     metadata_deltas,
     restrict_to_fasta,
@@ -1017,6 +1019,48 @@ class TestRefStaleness:
         }
         assert check_kraken_staleness(params) == []
         assert check_silva_staleness(params) == []
+
+    S3_LISTING = """\
+2026-03-11 15:04:22 85671280533 k2_pluspf_20260226.tar.gz
+2026-07-13 17:05:45 91014091453 k2_pluspf_20260626.tar.gz
+2026-03-11 15:31:07 42003278967 k2_pluspf_16gb_20260226.tar.gz
+2026-03-11 16:11:51 80230502610 k2_standard_20260226.tar.gz
+2026-07-13 17:45:57 85465587439 k2_standard_20260626.tar.gz
+2026-03-11 14:22:03 96671280533 k2_pluspfp_20260226.tar.gz
+"""
+
+    @pytest.mark.parametrize(
+        "database,expected",
+        [
+            # Newest build of the requested database, not of some other one.
+            ("pluspf", ("20260626", "k2_pluspf_20260626.tar.gz")),
+            ("standard", ("20260626", "k2_standard_20260626.tar.gz")),
+            # pluspf must not swallow the pluspfp bundles, or vice versa.
+            ("pluspfp", ("20260226", "k2_pluspfp_20260226.tar.gz")),
+            # No build of this database in the listing.
+            ("nosuchdb", None),
+        ],
+    )
+    def test_latest_kraken_release_selects_within_database(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        database: str,
+        expected: tuple[str, str] | None,
+    ) -> None:
+        def fake_run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess:
+            return subprocess.CompletedProcess([], 0, stdout=self.S3_LISTING)
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        assert latest_kraken_release(database) == expected
+
+    def test_latest_kraken_release_returns_none_on_listing_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def fake_run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess:
+            raise subprocess.CalledProcessError(1, "aws s3 ls")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        assert latest_kraken_release("pluspf") is None
 
     @pytest.mark.parametrize(
         "current_url,latest_return,expected_status",
