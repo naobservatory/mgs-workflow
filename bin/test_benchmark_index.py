@@ -1055,21 +1055,21 @@ class TestRefStaleness:
         expected_status: str,
     ) -> None:
         monkeypatch.setattr(
-            "benchmark_index.latest_kraken_release", lambda _flavour: latest_return
+            "benchmark_index.latest_kraken_release", lambda _database: latest_return
         )
         rows = check_kraken_staleness({"kraken_db": current_url})
         kraken_row = next(r for r in rows if r["ref"] == "kraken_db")
         assert kraken_row["status"] == expected_status
 
-    def test_check_kraken_staleness_compares_within_flavour(
+    def test_check_kraken_staleness_compares_within_database(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The configured flavour, not a hard-coded one, drives the lookup."""
+        """The configured database, not a hard-coded one, drives the lookup."""
         seen: list[str] = []
 
-        def fake_latest(flavour: str) -> tuple[str, str]:
-            seen.append(flavour)
-            return "20260226", f"k2_{flavour}_20260226.tar.gz"
+        def fake_latest(database: str) -> tuple[str, str]:
+            seen.append(database)
+            return "20260226", f"k2_{database}_20260226.tar.gz"
 
         monkeypatch.setattr("benchmark_index.latest_kraken_release", fake_latest)
         url = "https://genome-idx.s3.amazonaws.com/kraken/k2_pluspf_20260226.tar.gz"
@@ -1140,7 +1140,7 @@ class TestRefStaleness:
     ) -> None:
         monkeypatch.setattr(
             "benchmark_index.latest_kraken_release",
-            lambda _flavour: ("20260226", "k2_pluspf_20260226.tar.gz"),
+            lambda _database: ("20260226", "k2_pluspf_20260226.tar.gz"),
         )
         out = tmp_path / "staleness.tsv"
         write_staleness_table({"kraken_db": ".../k2_pluspf_20250714.tar.gz"}, out)
