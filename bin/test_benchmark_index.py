@@ -15,6 +15,7 @@ import gzip
 import json
 import logging
 import subprocess
+import urllib.error
 from pathlib import Path
 
 import pandas as pd
@@ -24,6 +25,7 @@ from benchmark_index import (
     _ancestor_in,
     _content_stats,
     _coverage_match,
+    _fetch_listing,
     _included_for_other_hosts,
     annotate_changes_with_coverage,
     build_parent_map,
@@ -31,6 +33,7 @@ from benchmark_index import (
     categorize_loss,
     check_kraken_staleness,
     check_silva_staleness,
+    check_vhdb_staleness,
     compare_metrics,
     diff_params,
     get_fasta_ids,
@@ -38,6 +41,7 @@ from benchmark_index import (
     infection_status_columns,
     infection_status_transitions,
     latest_kraken_release,
+    latest_vhdb_release,
     load_overrides,
     metadata_deltas,
     restrict_to_fasta,
@@ -48,6 +52,27 @@ from benchmark_index import (
     write_metrics_table,
     write_staleness_table,
 )
+
+###########
+# HELPERS #
+###########
+
+
+class _FakeResponse:
+    """Minimal stand-in for urlopen's context manager, returning a fixed body."""
+
+    def __init__(self, body: str) -> None:
+        self._body = body.encode()
+
+    def __enter__(self) -> "_FakeResponse":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self._body
+
 
 ###########
 # FIXTURE #
@@ -1179,18 +1204,146 @@ class TestRefStaleness:
         )
         assert calls["n"] == 1
 
+    def test_fetch_listing_returns_decoded_body(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "benchmark_index.urllib.request.urlopen",
+            lambda *_a, **_k: _FakeResponse('<a href="release1/">release1/</a>'),
+        )
+        assert _fetch_listing("https://example.invalid/") == (
+            '<a href="release1/">release1/</a>'
+        )
+
+    @pytest.mark.parametrize(
+        "exc",
+        [urllib.error.URLError("down"), OSError("socket"), TimeoutError("slow")],
+    )
+    def test_fetch_listing_returns_none_on_failure(
+        self, monkeypatch: pytest.MonkeyPatch, exc: Exception
+    ) -> None:
+        def boom(*_a: object, **_k: object) -> None:
+            raise exc
+
+        monkeypatch.setattr("benchmark_index.urllib.request.urlopen", boom)
+        assert _fetch_listing("https://example.invalid/") is None
+
+    VHDB_LISTING = """\
+<a href="release231/">release231/</a>
+<a href="release232/">release232/</a>
+<a href="release233/">release233/</a>
+<a href="release235/">release235/</a>
+"""
+
+    @pytest.mark.parametrize(
+        "listing,expected",
+        [
+            # Highest release wins, and is not confused by lexical ordering.
+            (VHDB_LISTING, "235"),
+            # Two-digit vs three-digit releases compare numerically.
+            ('<a href="release99/">x</a><a href="release100/">x</a>', "100"),
+            # No release directories in the listing.
+            ('<a href="README">README</a>', None),
+        ],
+    )
+    def test_latest_vhdb_release_picks_highest(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        listing: str,
+        expected: str | None,
+    ) -> None:
+        monkeypatch.setattr(
+            "benchmark_index.urllib.request.urlopen",
+            lambda *_a, **_k: _FakeResponse(listing),
+        )
+        assert latest_vhdb_release() == expected
+
+    def test_latest_vhdb_release_returns_none_on_fetch_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def boom(*_a: object, **_k: object) -> None:
+            raise urllib.error.URLError("down")
+
+        monkeypatch.setattr("benchmark_index.urllib.request.urlopen", boom)
+        assert latest_vhdb_release() is None
+
+    @pytest.mark.parametrize(
+        "url,latest_return,expected_status,expected_current",
+        [
+            # Pinned to the newest archived release → current
+            (
+                "https://www.genome.jp/ftp/db/virushostdb/old/release235/virushostdb.tsv",
+                "235",
+                "current",
+                "235",
+            ),
+            # Pinned behind the newest archived release → stale
+            (
+                "https://www.genome.jp/ftp/db/virushostdb/old/release233/virushostdb.tsv",
+                "235",
+                "stale",
+                "233",
+            ),
+            # Rolling daily file is not a pinned release → error, no release parsed
+            (
+                "https://www.genome.jp/ftp/db/virushostdb/virushostdb.daily.tsv",
+                "235",
+                "error",
+                "",
+            ),
+            # Listing fetch failed → error, but the pinned release is still reported
+            (
+                "https://www.genome.jp/ftp/db/virushostdb/old/release235/virushostdb.tsv",
+                None,
+                "error",
+                "235",
+            ),
+        ],
+    )
+    def test_check_vhdb_staleness_branches(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        url: str,
+        latest_return: str | None,
+        expected_status: str,
+        expected_current: str,
+    ) -> None:
+        monkeypatch.setattr(
+            "benchmark_index.latest_vhdb_release", lambda: latest_return
+        )
+        rows = check_vhdb_staleness({"virus_host_db_url": url})
+        row = next(r for r in rows if r["ref"] == "virus_host_db_url")
+        assert row["status"] == expected_status
+        assert row["current_date"] == expected_current
+
+    def test_check_vhdb_staleness_skips_absent_param(self) -> None:
+        assert check_vhdb_staleness({}) == []
+
     def test_write_staleness_table_writes_rows(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """Every check is wired in, so removing one would fail here."""
         monkeypatch.setattr(
             "benchmark_index.latest_kraken_release",
             lambda _database: ("20260226", "k2_pluspf_20260226.tar.gz"),
         )
+        monkeypatch.setattr("benchmark_index.latest_silva_release", lambda: "138.2")
+        monkeypatch.setattr("benchmark_index.latest_vhdb_release", lambda: "235")
         out = tmp_path / "staleness.tsv"
-        write_staleness_table({"kraken_db": ".../k2_pluspf_20250714.tar.gz"}, out)
-        df = pd.read_csv(out, sep="\t")
-        assert list(df["ref"]) == ["kraken_db"]
-        assert df.loc[0, "status"] == "stale"
+        write_staleness_table(
+            {
+                "kraken_db": ".../k2_pluspf_20250714.tar.gz",
+                "ssu_url": ".../release_138.2/Exports/ssu.gz",
+                "virus_host_db_url": ".../virushostdb/old/release233/virushostdb.tsv",
+            },
+            out,
+        )
+        df = pd.read_csv(out, sep="\t").set_index("ref")
+        assert set(df.index) == {"kraken_db", "ssu_url", "virus_host_db_url"}
+        assert df.loc["kraken_db", "status"] == "stale"
+        assert df.loc["ssu_url", "status"] == "current"
+        assert df.loc["virus_host_db_url", "status"] == "stale"
+        assert df.loc["virus_host_db_url", "latest"] == "release235"
 
     def test_write_staleness_table_empty_has_header(self, tmp_path: Path) -> None:
         out = tmp_path / "staleness.tsv"

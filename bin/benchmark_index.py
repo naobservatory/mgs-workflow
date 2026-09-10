@@ -118,12 +118,27 @@ def latest_kraken_release(database: str) -> tuple[str, str] | None:
     return date, filename
 
 
+def _fetch_listing(url: str) -> str | None:
+    """Fetch a directory listing as text, or None if the request failed.
+
+    Args:
+        url: Directory-listing URL to fetch.
+
+    Returns:
+        The decoded body, or None on any network or protocol failure.
+    """
+    try:
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            body: str = resp.read().decode("utf-8", errors="replace")
+    except (urllib.error.URLError, OSError, TimeoutError):
+        return None
+    return body
+
+
 def latest_silva_release() -> str | None:
     """Highest release_NN[.M] directory in the SILVA FTP root, or None on failure."""
-    try:
-        with urllib.request.urlopen("https://ftp.arb-silva.de/", timeout=15) as resp:
-            body = resp.read().decode("utf-8", errors="replace")
-    except (urllib.error.URLError, OSError, TimeoutError):
+    body = _fetch_listing("https://ftp.arb-silva.de/")
+    if body is None:
         return None
     releases = {
         (int(m.group(1)), int(m.group(2) or 0))
@@ -133,6 +148,22 @@ def latest_silva_release() -> str | None:
         return None
     major, minor = max(releases)
     return f"{major}.{minor}" if minor else str(major)
+
+
+def latest_vhdb_release() -> str | None:
+    """Highest release<N> directory in the Virus-Host-DB archive, or None on failure.
+
+    Returns:
+        The newest archived release number as a string (e.g. "235"), or None if
+        the listing could not be fetched or held no release directories.
+    """
+    body = _fetch_listing("https://www.genome.jp/ftp/db/virushostdb/old/")
+    if body is None:
+        return None
+    releases = {int(m.group(1)) for m in re.finditer(r"release(\d+)/", body)}
+    if not releases:
+        return None
+    return str(max(releases))
 
 
 STALENESS_COLS = "ref", "current", "current_date", "latest", "latest_date", "status"
@@ -189,10 +220,39 @@ def check_silva_staleness(new_params: dict) -> list[dict[str, str]]:
     return rows
 
 
+def check_vhdb_staleness(new_params: dict) -> list[dict[str, str]]:
+    """Compare the index's pinned Virus-Host-DB release against the newest archived one.
+
+    The URL is expected to name a numbered release under `old/release<N>/`. A
+    rolling URL such as `virushostdb.daily.tsv` carries no release to compare,
+    and is reported as an error.
+    """
+    url = new_params.get("virus_host_db_url", "")
+    if not url:
+        return []
+    m = re.search(r"/old/release(\d+)/", url)
+    if m is None:
+        # Not a pinned numbered release (e.g. the rolling daily file), so there
+        # is no release to compare against.
+        return [_stale("virus_host_db_url", url, current_date="")]
+    current = m.group(1)
+    latest = latest_vhdb_release()
+    if latest is None:
+        return [_stale("virus_host_db_url", url, current)]
+    status = "current" if current == latest else "stale"
+    return [
+        _stale("virus_host_db_url", url, current, f"release{latest}", latest, status)
+    ]
+
+
 def write_staleness_table(new_params: dict, out_path: Path) -> None:
-    """Check Kraken2/SILVA freshness for the new index and write staleness.tsv."""
-    logger.info("Checking reference-DB staleness (Kraken2, SILVA).")
-    rows = [*check_kraken_staleness(new_params), *check_silva_staleness(new_params)]
+    """Check Kraken2/SILVA/VHDB freshness for the new index and write staleness.tsv."""
+    logger.info("Checking reference-DB staleness (Kraken2, SILVA, Virus-Host-DB).")
+    rows = [
+        *check_kraken_staleness(new_params),
+        *check_silva_staleness(new_params),
+        *check_vhdb_staleness(new_params),
+    ]
     pd.DataFrame(rows, columns=STALENESS_COLS).to_csv(out_path, sep="\t", index=False)
 
 
