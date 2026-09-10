@@ -30,7 +30,7 @@ This configuration file controls the pipeline's main RUN workflow. Its options a
 - `params.mode = "index"` [str]: This instructs the pipeline to execute the [index workflow](./workflows/index.nf).
 - `params.base_dir` [str]: Path to the parent directory for the pipeline working and output directories.
 - `params.taxonomy_url` [str]: URL for the NCBI taxonomy dump to be used in index generation.
-- `params.virus_host_db_url` [str]: URL for Virus-Host DB.
+- `params.virus_host_db_url` [str]: URL for Virus-Host DB. Pinned to a numbered release under `.../virushostdb/old/release<N>/` rather than the rolling `virushostdb.daily.tsv`, so that an index rebuild is reproducible and an upstream annotation change lands only when this pin is bumped deliberately.
 - `params.human_url` [str]: URL for downloading the human genome in FASTA format, which is used in index construction for contaminant screening.
 - `params.genome_urls` [list(str)]: URLs for downloading other common contaminant genomes.
 - `params.ssu_url` [str]: URL for the SILVA SSU reference database, used in ribosomal classification.
