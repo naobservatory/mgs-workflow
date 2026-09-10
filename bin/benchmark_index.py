@@ -118,12 +118,28 @@ def latest_kraken_release(database: str) -> tuple[str, str] | None:
     return date, filename
 
 
+def _fetch_listing(url: str) -> str | None:
+    """Fetch a directory listing as text, or None if the request failed.
+
+    Args:
+        url: Directory-listing URL to fetch.
+
+    Returns:
+        The decoded body, or None on any network or protocol failure.
+    """
+    try:
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            # Annotated because urlopen is loosely typed and decode() yields Any.
+            body: str = resp.read().decode("utf-8", errors="replace")
+    except (urllib.error.URLError, OSError, TimeoutError):
+        return None
+    return body
+
+
 def latest_silva_release() -> str | None:
     """Highest release_NN[.M] directory in the SILVA FTP root, or None on failure."""
-    try:
-        with urllib.request.urlopen("https://ftp.arb-silva.de/", timeout=15) as resp:
-            body = resp.read().decode("utf-8", errors="replace")
-    except (urllib.error.URLError, OSError, TimeoutError):
+    body = _fetch_listing("https://ftp.arb-silva.de/")
+    if body is None:
         return None
     releases = {
         (int(m.group(1)), int(m.group(2) or 0))
@@ -142,12 +158,8 @@ def latest_vhdb_release() -> str | None:
         The newest archived release number as a string (e.g. "235"), or None if
         the listing could not be fetched or held no release directories.
     """
-    try:
-        with urllib.request.urlopen(
-            "https://www.genome.jp/ftp/db/virushostdb/old/", timeout=15
-        ) as resp:
-            body = resp.read().decode("utf-8", errors="replace")
-    except (urllib.error.URLError, OSError, TimeoutError):
+    body = _fetch_listing("https://www.genome.jp/ftp/db/virushostdb/old/")
+    if body is None:
         return None
     releases = {int(m.group(1)) for m in re.finditer(r"release(\d+)/", body)}
     if not releases:

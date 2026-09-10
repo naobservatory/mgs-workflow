@@ -25,6 +25,7 @@ from benchmark_index import (
     _ancestor_in,
     _content_stats,
     _coverage_match,
+    _fetch_listing,
     _included_for_other_hosts,
     annotate_changes_with_coverage,
     build_parent_map,
@@ -1202,6 +1203,30 @@ class TestRefStaleness:
             }
         )
         assert calls["n"] == 1
+
+    def test_fetch_listing_returns_decoded_body(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "benchmark_index.urllib.request.urlopen",
+            lambda *_a, **_k: _FakeResponse('<a href="release1/">release1/</a>'),
+        )
+        assert _fetch_listing("https://example.invalid/") == (
+            '<a href="release1/">release1/</a>'
+        )
+
+    @pytest.mark.parametrize(
+        "exc",
+        [urllib.error.URLError("down"), OSError("socket"), TimeoutError("slow")],
+    )
+    def test_fetch_listing_returns_none_on_failure(
+        self, monkeypatch: pytest.MonkeyPatch, exc: Exception
+    ) -> None:
+        def boom(*_a: object, **_k: object) -> None:
+            raise exc
+
+        monkeypatch.setattr("benchmark_index.urllib.request.urlopen", boom)
+        assert _fetch_listing("https://example.invalid/") is None
 
     VHDB_LISTING = """\
 <a href="release231/">release231/</a>
