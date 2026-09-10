@@ -56,6 +56,9 @@ For paired-end data, a column without a suffix describes mate 1 of the pair and 
 - `edit_distance_rev`: Edit distance between mate 2 and aligned genome. For single-read data, this column doesn't exist.
 - `ref_start`: Location of start of alignment on reference, excluding soft-clipped bases (for paired-end data, mate 1's alignment)
 - `ref_start_rev`: Location of start of alignment of mate 2 on reference, excluding soft-clipped bases. For single-read data, this column doesn't exist.
+- `ref_start_unclipped`: Location of the first reference base the read covers with clipped bases counted as if they had aligned, i.e. `ref_start` minus the alignment's leading clip (for paired-end data, mate 1's). NA where the aligner reported no CIGAR.
+- `ref_end_unclipped`: Location of the last reference base the read covers, on the same convention (for paired-end data, mate 1's).
+- `ref_start_unclipped_rev`, `ref_end_unclipped_rev`: The same two coordinates for mate 2. For single-read data, these columns don't exist.
 - `map_qual`: Mapping quality (MAPQ) as returned by bowtie2/minimap2 (for paired-end data, mate 1's mapping quality)
 - `map_qual_rev`: Mapping quality (MAPQ) of mate 2. For single-read data, this column doesn't exist.
 - `cigar`: CIGAR string representing alignment of read to aligned genome (for paired-end data, mate 1's CIGAR string). Note that this is the CIGAR string as returned by the aligner. If `query_rc` is true, you should reverse-complement the query sequence before comparing it against the CIGAR string.
