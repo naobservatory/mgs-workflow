@@ -39,12 +39,12 @@ There are eight core statistical columns, which are repeated for each of the thr
 For paired-end data, a column without a suffix describes mate 1 of the pair and its `_rev` counterpart describes mate 2 (columns named `_fwd` and `_rev`, where they exist, are mate 1 and mate 2 respectively). The suffixes name the mate, not the strand or the position: either mate may align to either strand, and either may be leftmost on the reference.
 
 - `seq_id`: Name of read
-- `genome_id`: GenBank ID for best viral genome match to read, as identified by our aligner (bowtie2 or minimap2). "Best" means having the highest length normalized alignment score. For paired-end data, this is the highest-scoring match across the two mates. 
+- `genome_id`: GenBank ID for best viral genome match to read, as identified by our aligner (bowtie2 or minimap2). "Best" means having the highest length normalized alignment score. For paired-end data, this is the highest-scoring match across the two mates.
 - `genome_id_all`: GenBank IDs for viral genomes matching mate 1 and mate 2, joined by "/". For single-read data, this is the same as `genome_id`
-- `taxid`: NCBI taxon ID for taxon best matching read, as identified by our aligner (bowtie2 or minimap2). For paired-end data, this is the highest-scoring match across the two mates. 
+- `taxid`: NCBI taxon ID for taxon best matching read, as identified by our aligner (bowtie2 or minimap2). For paired-end data, this is the highest-scoring match across the two mates.
 - `taxid_all`: NCBI taxon ID for taxons matching mate 1 and mate 2, joined by "/". For single-read data, this is the same as `taxid`.
 - `fragment_length`: Inferred fragment length: Bowtie2's TLEN, the distance between the pair's outer ends counting soft-clipped bases (NA if the two mates align to different genome IDs/align discordantly). For single-read data, this column doesn't exist.
-- `best_alignment_score`: Alignment score (directly from aligner) of best-scoring alignment (for paired-end data, score for mate 1's best alignment). 
+- `best_alignment_score`: Alignment score (directly from aligner) of best-scoring alignment (for paired-end data, score for mate 1's best alignment).
 - `best_alignment_score_rev`: Alignment score of best-scoring alignment of mate 2. For single-read data, this column doesn't exist.
 - `next_alignment_score`: Alignment score of second-best alignment (for paired-end data, score for mate 1's second-best alignment; NA for minimap2)
 - `next_alignment_score_rev`: Score of second-best alignment of mate 2. For single-read data, this column doesn't exist.
@@ -58,7 +58,7 @@ For paired-end data, a column without a suffix describes mate 1 of the pair and 
 - `ref_start_rev`: Location of start of alignment of mate 2 on reference, excluding soft-clipped bases. For single-read data, this column doesn't exist.
 - `map_qual`: Mapping quality (MAPQ) as returned by bowtie2/minimap2 (for paired-end data, mate 1's mapping quality)
 - `map_qual_rev`: Mapping quality (MAPQ) of mate 2. For single-read data, this column doesn't exist.
-- `cigar`: CIGAR string representing alignment of read to aligned genome (for paired-end data, mate 1's CIGAR string). Note that this is the CIGAR string as returned by the aligner. If `query_rc` is true, you should reverse-complement the query sequence before comparing it against the CIGAR string. 
+- `cigar`: CIGAR string representing alignment of read to aligned genome (for paired-end data, mate 1's CIGAR string). Note that this is the CIGAR string as returned by the aligner. If `query_rc` is true, you should reverse-complement the query sequence before comparing it against the CIGAR string.
 - `cigar_rev`: CIGAR string representing alignment of mate 2 to aligned genome. For single-read data, this column doesn't exist.
 - `query_len`: Length of read, after trimming (for paired-end data, mate 1's length)
 - `query_len_rev`: Length of mate 2. For single-read data, this column doesn't exist.
@@ -66,7 +66,7 @@ For paired-end data, a column without a suffix describes mate 1 of the pair and 
 - `query_seq_rev`: Sequence of mate 2. Like query_seq, not reverse-complemented. For single-read data, this column doesn't exist.
 - `query_rc`: A boolean (`True`/`False`) value indicating if the query aligned to the reverse strand, and so was reverse-complemented by aligner.
 - `query_rc_by_rev`: A boolean (`True`/`False`) value indicating if mate 2 aligned to the reverse strand. For single-read data, this column doesn't exist.
-- `query_qual`: PHRED quality scores for read (for paired-end data, mate 1's quality scores). Like `query_seq`, not reverse-complemented. 
+- `query_qual`: PHRED quality scores for read (for paired-end data, mate 1's quality scores). Like `query_seq`, not reverse-complemented.
 - `query_qual_rev`: PHRED quality scores for mate 2. For single-read data, this column doesn't exist.
 - `length_normalized_score_fwd`: Length-normalized alignment score for mate 1. For single-read data, this column doesn't exist.
 - `length_normalized_score_rev`: Length-normalized alignment score for mate 2. For single-read data, this column doesn't exist.

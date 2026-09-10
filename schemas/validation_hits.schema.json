@@ -203,7 +203,7 @@
     {
       "name": "prim_align_taxid_all",
       "title": "Primary Alignment Taxon ID",
-      "description": "NCBI taxon ID(s) corresponding to the genome(s) the read aligned to in its primary alignment. For discordant paired-end alignments where forward and reverse reads map to different genomes, IDs are joined with '/' in forward/reverse order.",
+      "description": "NCBI taxon ID(s) corresponding to the genome(s) the read aligned to in its primary alignment. For discordant paired-end alignments where the two mates map to different genomes, IDs are joined with '/' in mate 1, mate 2 order.",
       "type": "string",
       "constraints": {
         "required": true,

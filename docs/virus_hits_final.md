@@ -14,19 +14,19 @@ Below, we've separated out the columns we expect are most relevant to most users
 - `seq_id`: Name of read that was identified as a viral hit
 - `sample`: Name of the sample that this read came from
 - `aligner_taxid_lca`: The NCBI taxon ID for the lowest common ancestor (LCA) of natural alignments only.
-- `aligner_length_normalized_score_mean`: The average alignment score for natural alignments only. 
-- `aligner_n_assignments`: The total number of natural alignments for that read. 
-- `aligner_n_assignments_artificial`: The total number of artificial alignments for that read. 
-- `prim_align_genome_id_all`: GenBank IDs for viral genomes matching mate 1 and mate 2, joined by "/". For single-read data, this is the same as `genome_id` 
-- `prim_align_fragment_length`: Inferred fragment length: Bowtie2's TLEN, the distance between the pair's outer ends counting soft-clipped bases (NA if the two mates align to different genome IDs/align discordantly). For single-read data, this column doesn't exist. 
-- `prim_align_ref_start`: Location of start of alignment on reference, excluding soft-clipped bases (for paired-end data, mate 1's alignment) 
-- `prim_align_ref_start_rev`: Location of start of alignment of mate 2 on reference, excluding soft-clipped bases. For single-read data, this column doesn't exist. 
-- `query_len`: Length of read, after trimming (for paired-end data, mate 1's length) 
-- `query_len_rev`: Length of mate 2. For single-read data, this column doesn't exist. 
-- `query_seq`: Sequence of read (for paired-end data, mate 1's sequence). Not reverse-complemented (we undo any reverse-complement performed by aligner). Note that which mate is which says nothing about strand or position: either mate may align to either strand, and either may be leftmost on the reference (for those looking for duplicates, this means that you might try looking for duplicates by reversing the reads). 
-- `query_seq_rev`: Sequence of mate 2. Like query_seq, not reverse-complemented. For single-read data, this column doesn't exist. 
-- `query_qual`: PHRED quality scores for read (for paired-end data, mate 1's quality scores). Like `query_seq`, not reverse-complemented. 
-- `query_qual_rev`: PHRED quality scores for mate 2. For single-read data, this column doesn't exist. 
+- `aligner_length_normalized_score_mean`: The average alignment score for natural alignments only.
+- `aligner_n_assignments`: The total number of natural alignments for that read.
+- `aligner_n_assignments_artificial`: The total number of artificial alignments for that read.
+- `prim_align_genome_id_all`: GenBank IDs for viral genomes matching mate 1 and mate 2, joined by "/". For single-read data, this is the same as `genome_id`
+- `prim_align_fragment_length`: Inferred fragment length: Bowtie2's TLEN, the distance between the pair's outer ends counting soft-clipped bases (NA if the two mates align to different genome IDs/align discordantly). For single-read data, this column doesn't exist.
+- `prim_align_ref_start`: Location of start of alignment on reference, excluding soft-clipped bases (for paired-end data, mate 1's alignment)
+- `prim_align_ref_start_rev`: Location of start of alignment of mate 2 on reference, excluding soft-clipped bases. For single-read data, this column doesn't exist.
+- `query_len`: Length of read, after trimming (for paired-end data, mate 1's length)
+- `query_len_rev`: Length of mate 2. For single-read data, this column doesn't exist.
+- `query_seq`: Sequence of read (for paired-end data, mate 1's sequence). Not reverse-complemented (we undo any reverse-complement performed by aligner). Note that which mate is which says nothing about strand or position: either mate may align to either strand, and either may be leftmost on the reference (for those looking for duplicates, this means that you might try looking for duplicates by reversing the reads).
+- `query_seq_rev`: Sequence of mate 2. Like query_seq, not reverse-complemented. For single-read data, this column doesn't exist.
+- `query_qual`: PHRED quality scores for read (for paired-end data, mate 1's quality scores). Like `query_seq`, not reverse-complemented.
+- `query_qual_rev`: PHRED quality scores for mate 2. For single-read data, this column doesn't exist.
 
 ## Other columns
 - `aligner_taxid_top`: The taxon ID of the top-scoring alignment out of natural alignments only
