@@ -129,7 +129,6 @@ def _fetch_listing(url: str) -> str | None:
     """
     try:
         with urllib.request.urlopen(url, timeout=15) as resp:
-            # Annotated because urlopen is loosely typed and decode() yields Any.
             body: str = resp.read().decode("utf-8", errors="replace")
     except (urllib.error.URLError, OSError, TimeoutError):
         return None
@@ -226,8 +225,7 @@ def check_vhdb_staleness(new_params: dict) -> list[dict[str, str]]:
 
     The URL is expected to name a numbered release under `old/release<N>/`. A
     rolling URL such as `virushostdb.daily.tsv` carries no release to compare,
-    and is reported as an error so an unpinned reference stays visible rather
-    than silently passing.
+    and is reported as an error.
     """
     url = new_params.get("virus_host_db_url", "")
     if not url:
