@@ -21,6 +21,9 @@ Below, we've separated out the columns we expect are most relevant to most users
 - `prim_align_fragment_length`: Inferred fragment length: Bowtie2's TLEN, the distance between the pair's outer ends counting soft-clipped bases (NA if the two mates align to different genome IDs/align discordantly). For single-read data, this column doesn't exist.
 - `prim_align_ref_start`: Location of start of alignment on reference, excluding soft-clipped bases (for paired-end data, mate 1's alignment)
 - `prim_align_ref_start_rev`: Location of start of alignment of mate 2 on reference, excluding soft-clipped bases. For single-read data, this column doesn't exist.
+- `prim_align_ref_start_unclipped`: Location of the first reference base the read covers with clipped bases counted as if they had aligned, i.e. `prim_align_ref_start` minus the alignment's leading clip (for paired-end data, mate 1's). Unlike `prim_align_ref_start`, this does not move when the aligner clips a read end, which is why `samtools markdup` keys duplicates on it.
+- `prim_align_ref_end_unclipped`: Location of the last reference base the read covers, on the same convention (for paired-end data, mate 1's).
+- `prim_align_ref_start_unclipped_rev`, `prim_align_ref_end_unclipped_rev`: The same two coordinates for mate 2. For single-read data, these columns don't exist.
 - `query_len`: Length of read, after trimming (for paired-end data, mate 1's length)
 - `query_len_rev`: Length of mate 2. For single-read data, this column doesn't exist.
 - `query_seq`: Sequence of read (for paired-end data, mate 1's sequence). Not reverse-complemented (we undo any reverse-complement performed by aligner). Note that which mate is which says nothing about strand or position: either mate may align to either strand, and either may be leftmost on the reference (for those looking for duplicates, this means that you might try looking for duplicates by reversing the reads).
