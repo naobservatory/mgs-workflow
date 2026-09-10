@@ -1,6 +1,6 @@
 # v3.4.0.0-dev
 
-- Pin `virus_host_db_url` to Virus-Host-DB `release235` instead of the rolling `virushostdb.daily.tsv`, so an index rebuild is reproducible and upstream host-annotation changes land only when the pin is bumped. Changes the annotated virus DB on next index rebuild. (#1002)
+- Pin `virus_host_db_url` to Virus-Host-DB `release235` instead of the rolling `virushostdb.daily.tsv`, so an index rebuild is reproducible and upstream host-annotation changes land only when the pin is bumped. Changes the annotated virus DB on next index rebuild. `bin/benchmark_index.py` now reports the pinned release's staleness against the newest archived release, alongside its existing Kraken2 and SILVA checks. (#1002)
 - Switch the Kraken2 DB for taxonomic profiling from Standard to PlusPF (`k2_pluspf_20260626`, the current upstream build), which adds protozoan and fungal genomes. (#1000)
 - Add exemplar-attributed total columns to clade counts: `reads_direct_total_by_exemplar` and `reads_clade_total_by_exemplar` count every read under the taxon of the exemplar representing it, rather than under its own. (#980)
 - Restrict Illumina BLAST validation downsampling to reads that are unique under both duplicate-marking passes. (#973)
