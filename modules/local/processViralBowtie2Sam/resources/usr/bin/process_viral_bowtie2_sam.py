@@ -458,7 +458,7 @@ def get_line_from_single(read_dict: FieldDict, paired: bool) -> str:
         out_dict["taxid_all"] = read_dict["taxid"]
         out_dict["pair_status"] = read_dict["pair_status"]
         out_dict["fragment_length"] = "NA"
-        # Additional fields based on forward/reverse status
+        # Additional fields, in the slot of whichever mate aligned
         if read_dict["is_mate_1"]:
             out_dict["genome_id_fwd"], out_dict["genome_id_rev"] = (
                 read_dict["genome_id"],
@@ -564,90 +564,91 @@ def get_line_from_pair(dict_1: FieldDict, dict_2: FieldDict) -> str:
     Returns:
         str: Output line.
     """
-    # Identify forward and reverse reads
+    # Assign the two alignments to the mate 1 and mate 2 output slots. The slots are
+    # the mates, not the strands: either mate can align to either strand.
     if dict_1["is_mate_1"] and dict_2["is_mate_1"]:
-        msg = f"Both reads are forward reads: {dict_1['seq_id']}"
+        msg = f"Both alignments are mate 1: {dict_1['seq_id']}"
         logger.error(msg)
         raise ValueError(msg)
     if not dict_1["is_mate_1"] and not dict_2["is_mate_1"]:
-        msg = f"Both reads are reverse reads: {dict_1['seq_id']}"
+        msg = f"Both alignments are mate 2: {dict_1['seq_id']}"
         logger.error(msg)
         raise ValueError(msg)
-    fwd_dict = dict_1 if dict_1["is_mate_1"] else dict_2
-    rev_dict = dict_1 if not dict_1["is_mate_1"] else dict_2
+    mate_1 = dict_1 if dict_1["is_mate_1"] else dict_2
+    mate_2 = dict_1 if not dict_1["is_mate_1"] else dict_2
     # Calculate length-adjusted alignment scores
     try:
-        adj_score_fwd = float(str(fwd_dict["alignment_score"])) / math.log(
-            float(str(fwd_dict["query_len"]))
+        adj_score_fwd = float(str(mate_1["alignment_score"])) / math.log(
+            float(str(mate_1["query_len"]))
         )
-        adj_score_rev = float(str(rev_dict["alignment_score"])) / math.log(
-            float(str(rev_dict["query_len"]))
+        adj_score_rev = float(str(mate_2["alignment_score"])) / math.log(
+            float(str(mate_2["query_len"]))
         )
         adj_score_max = max(adj_score_fwd, adj_score_rev)
         score_fwd_max = adj_score_fwd >= adj_score_rev
     except Exception as e:
         logger.error("Error calculating length-adjusted alignment scores")
-        logger.error(f"Forward read: {fwd_dict}")
-        logger.error(f"Reverse read: {rev_dict}")
+        logger.error(f"Mate 1: {mate_1}")
+        logger.error(f"Mate 2: {mate_2}")
         raise e
     # Calculate scalar values for conflicting alignments
-    if fwd_dict["genome_id"] == rev_dict["genome_id"]:
-        genome_id_best = fwd_dict["genome_id"]
-        genome_id_all = fwd_dict["genome_id"]
-        taxid_best = fwd_dict["taxid"]
-        taxid_all = fwd_dict["taxid"]
-        fragment_length = fwd_dict["fragment_length"]
+    if mate_1["genome_id"] == mate_2["genome_id"]:
+        genome_id_best = mate_1["genome_id"]
+        genome_id_all = mate_1["genome_id"]
+        taxid_best = mate_1["taxid"]
+        taxid_all = mate_1["taxid"]
+        fragment_length = mate_1["fragment_length"]
     else:
         genome_id_best = (
-            fwd_dict["genome_id"] if score_fwd_max else rev_dict["genome_id"]
+            mate_1["genome_id"] if score_fwd_max else mate_2["genome_id"]
         )
-        genome_id_list = [str(fwd_dict["genome_id"]), str(rev_dict["genome_id"])]
+        genome_id_list = [str(mate_1["genome_id"]), str(mate_2["genome_id"])]
         genome_id_all = "/".join(genome_id_list)
         fragment_length = "NA"
-        if fwd_dict["taxid"] == rev_dict["taxid"]:
-            taxid_best = fwd_dict["taxid"]
-            taxid_all = fwd_dict["taxid"]
+        if mate_1["taxid"] == mate_2["taxid"]:
+            taxid_best = mate_1["taxid"]
+            taxid_all = mate_1["taxid"]
         else:
-            taxid_best = fwd_dict["taxid"] if score_fwd_max else rev_dict["taxid"]
-            taxid_list = [str(fwd_dict["taxid"]), str(rev_dict["taxid"])]
+            taxid_best = mate_1["taxid"] if score_fwd_max else mate_2["taxid"]
+            taxid_list = [str(mate_1["taxid"]), str(mate_2["taxid"])]
             taxid_all = "/".join(taxid_list)
     # Prepare dictionary for output
     out_dict: FieldDict = {
-        "seq_id": fwd_dict["seq_id"],
+        "seq_id": mate_1["seq_id"],
         "genome_id": genome_id_best,
         "genome_id_all": genome_id_all,
         "taxid": taxid_best,
         "taxid_all": taxid_all,
         "fragment_length": fragment_length,
-        "genome_id_fwd": fwd_dict["genome_id"],
-        "genome_id_rev": rev_dict["genome_id"],
-        "taxid_fwd": fwd_dict["taxid"],
-        "taxid_rev": rev_dict["taxid"],
-        "best_alignment_score": fwd_dict["alignment_score"],
-        "best_alignment_score_rev": rev_dict["alignment_score"],
-        "next_alignment_score": fwd_dict["next_best_alignment"],
-        "next_alignment_score_rev": rev_dict["next_best_alignment"],
-        "edit_distance": fwd_dict["edit_distance"],
-        "edit_distance_rev": rev_dict["edit_distance"],
-        "ref_start": fwd_dict["ref_start"],
-        "ref_start_rev": rev_dict["ref_start"],
-        "map_qual": fwd_dict["map_qual"],
-        "map_qual_rev": rev_dict["map_qual"],
-        "cigar": fwd_dict["cigar"],
-        "cigar_rev": rev_dict["cigar"],
-        "query_len": fwd_dict["query_len"],
-        "query_len_rev": rev_dict["query_len"],
-        "query_seq": fwd_dict["query_seq"],
-        "query_seq_rev": rev_dict["query_seq"],
-        "query_rc": fwd_dict["query_rc"],
-        "query_rc_rev": rev_dict["query_rc"],
-        "query_qual": fwd_dict["query_qual"],
-        "query_qual_rev": rev_dict["query_qual"],
+        "genome_id_fwd": mate_1["genome_id"],
+        "genome_id_rev": mate_2["genome_id"],
+        "taxid_fwd": mate_1["taxid"],
+        "taxid_rev": mate_2["taxid"],
+        "best_alignment_score": mate_1["alignment_score"],
+        "best_alignment_score_rev": mate_2["alignment_score"],
+        "next_alignment_score": mate_1["next_best_alignment"],
+        "next_alignment_score_rev": mate_2["next_best_alignment"],
+        "edit_distance": mate_1["edit_distance"],
+        "edit_distance_rev": mate_2["edit_distance"],
+        "ref_start": mate_1["ref_start"],
+        "ref_start_rev": mate_2["ref_start"],
+        "map_qual": mate_1["map_qual"],
+        "map_qual_rev": mate_2["map_qual"],
+        "cigar": mate_1["cigar"],
+        "cigar_rev": mate_2["cigar"],
+        "query_len": mate_1["query_len"],
+        "query_len_rev": mate_2["query_len"],
+        "query_seq": mate_1["query_seq"],
+        "query_seq_rev": mate_2["query_seq"],
+        "query_rc": mate_1["query_rc"],
+        "query_rc_rev": mate_2["query_rc"],
+        "query_qual": mate_1["query_qual"],
+        "query_qual_rev": mate_2["query_qual"],
         "length_normalized_score_fwd": adj_score_fwd,
         "length_normalized_score_rev": adj_score_rev,
         "length_normalized_score": adj_score_max,
-        "pair_status": fwd_dict["pair_status"],
-        "classification": "secondary" if fwd_dict["is_secondary"] else "primary",
+        "pair_status": mate_1["pair_status"],
+        "classification": "secondary" if mate_1["is_secondary"] else "primary",
     }
     return get_line(out_dict, True)
 
@@ -690,8 +691,8 @@ def process_paired_sam(
     # Write headers
     write_sam_headers(outf, True)
     # Check if the SAM file is empty (check first line)
-    fwd_line = get_next_alignment(inf)
-    if fwd_line is None:
+    first_line = get_next_alignment(inf)
+    if first_line is None:
         msg = (
             "Input SAM file contains no alignments. "
             "Creating empty output with header only."
@@ -699,68 +700,68 @@ def process_paired_sam(
         logger.warning(msg)
         return
     # Get the next alignment for paired processing
-    rev_line = get_next_alignment(inf)
+    second_line = get_next_alignment(inf)
     while True:
-        if fwd_line is None:
+        if first_line is None:
             if (
-                rev_line is not None
-            ):  # Break if reverse line exists without forward line
-                rev_dict = process_sam_alignment(
-                    rev_line, genbank_metadata, viral_taxids, True
+                second_line is not None
+            ):  # Break if a second alignment appears without a first
+                second_read = process_sam_alignment(
+                    second_line, genbank_metadata, viral_taxids, True
                 )
-                msg = f"Invalid data: reverse line exists without forward line: {rev_dict['seq_id']}"
+                msg = f"Invalid data: second alignment without a first: {second_read['seq_id']}"
                 logger.error(msg)
                 raise ValueError(msg)
             break
-        # Extract forward read information and check pair status
-        fwd_dict = process_sam_alignment(fwd_line, genbank_metadata, viral_taxids, True)
-        check_pair_status(fwd_dict, True)
+        # Extract the first alignment's information and check pair status
+        first_read = process_sam_alignment(first_line, genbank_metadata, viral_taxids, True)
+        check_pair_status(first_read, True)
         if (
-            rev_line is None
-        ):  # If no reverse line, check pair status, then process forward line as unpaired
-            if fwd_dict["pair_status"] != "UP":
-                msg = f"Forward read is paired but reverse read is missing: {fwd_dict['seq_id']}"
+            second_line is None
+        ):  # If no second alignment, check pair status, then process the first as unpaired
+            if first_read["pair_status"] != "UP":
+                msg = f"Alignment is paired but its mate is missing: {first_read['seq_id']}"
                 logger.error(msg)
                 raise ValueError(msg)
-            line = get_line_from_single(fwd_dict, True)
+            line = get_line_from_single(first_read, True)
             outf.write(line)
-            fwd_line = rev_line
-            rev_line = get_next_alignment(inf)
+            first_line = second_line
+            second_line = get_next_alignment(inf)
             continue
-        # Extract reverse read information and check pair status
-        rev_dict = process_sam_alignment(rev_line, genbank_metadata, viral_taxids, True)
-        check_pair_status(rev_dict, True)
+        # Extract the second alignment's information and check pair status
+        second_read = process_sam_alignment(second_line, genbank_metadata, viral_taxids, True)
+        check_pair_status(second_read, True)
         # Check for sorting
-        if str(fwd_dict["seq_id"]) > str(rev_dict["seq_id"]):
-            msg = f"Reads are not sorted: encountered {fwd_dict['seq_id']} before {rev_dict['seq_id']}"
+        if str(first_read["seq_id"]) > str(second_read["seq_id"]):
+            msg = f"Reads are not sorted: encountered {first_read['seq_id']} before {second_read['seq_id']}"
             logger.error(msg)
             raise ValueError(msg)
         # Check if read IDs match
-        if rev_dict["seq_id"] != fwd_dict["seq_id"]:
-            # If IDs mismatch, forward read should be unpaired
-            if fwd_dict["pair_status"] != "UP":
-                msg = f"Forward read is paired but reverse read is missing: {fwd_dict['seq_id']}"
+        if second_read["seq_id"] != first_read["seq_id"]:
+            # If IDs mismatch, the first alignment should be unpaired
+            if first_read["pair_status"] != "UP":
+                msg = f"Alignment is paired but its mate is missing: {first_read['seq_id']}"
                 logger.error(msg)
                 raise ValueError(msg)
-            line = get_line_from_single(fwd_dict, True)
+            line = get_line_from_single(first_read, True)
             outf.write(line)
-            fwd_line = rev_line
-            rev_line = get_next_alignment(inf)
+            first_line = second_line
+            second_line = get_next_alignment(inf)
             continue
         # Check that pair statuses match
-        if rev_dict["pair_status"] != fwd_dict["pair_status"]:
-            msg = f"Pair status mismatch: {fwd_dict['seq_id']}, {fwd_dict['pair_status']}, {rev_dict['pair_status']}"
+        if second_read["pair_status"] != first_read["pair_status"]:
+            msg = f"Pair status mismatch: {first_read['seq_id']}, {first_read['pair_status']}, {second_read['pair_status']}"
             raise ValueError(msg)
         # If either line is missing a valid alignment, process the other as solo, else process pair together
-        if fwd_dict["alignment_score"] is None:
-            line = get_line_from_single(rev_dict, True)
-        elif rev_dict["alignment_score"] is None:
-            line = get_line_from_single(fwd_dict, True)
+        if first_read["alignment_score"] is None:
+            line = get_line_from_single(second_read, True)
+        elif second_read["alignment_score"] is None:
+            line = get_line_from_single(first_read, True)
         else:
-            line = get_line_from_pair(fwd_dict, rev_dict)
+            line = get_line_from_pair(first_read, second_read)
         outf.write(line)
-        fwd_line = get_next_alignment(inf)
-        rev_line = get_next_alignment(inf)
+        first_line = get_next_alignment(inf)
+        second_line = get_next_alignment(inf)
         continue
 
 

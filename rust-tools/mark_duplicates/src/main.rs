@@ -168,7 +168,7 @@ fn ascii_to_quality_score(ascii_score: &str) -> f64 {
     sum as f64 / bytes.len() as f64
 }
 
-// Calculate the average quality score of the forward and reverse reads
+// Calculate the average quality score across both mates
 fn average_quality_score(quality_fwd: &str, quality_rev: &str) -> f64 {
     let fwd_score = ascii_to_quality_score(quality_fwd);
     let rev_score = ascii_to_quality_score(quality_rev);
