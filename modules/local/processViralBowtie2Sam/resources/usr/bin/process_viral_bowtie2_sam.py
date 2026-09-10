@@ -599,9 +599,7 @@ def get_line_from_pair(dict_1: FieldDict, dict_2: FieldDict) -> str:
         taxid_all = mate_1["taxid"]
         fragment_length = mate_1["fragment_length"]
     else:
-        genome_id_best = (
-            mate_1["genome_id"] if score_fwd_max else mate_2["genome_id"]
-        )
+        genome_id_best = mate_1["genome_id"] if score_fwd_max else mate_2["genome_id"]
         genome_id_list = [str(mate_1["genome_id"]), str(mate_2["genome_id"])]
         genome_id_all = "/".join(genome_id_list)
         fragment_length = "NA"
@@ -714,7 +712,9 @@ def process_paired_sam(
                 raise ValueError(msg)
             break
         # Extract the first alignment's information and check pair status
-        first_read = process_sam_alignment(first_line, genbank_metadata, viral_taxids, True)
+        first_read = process_sam_alignment(
+            first_line, genbank_metadata, viral_taxids, True
+        )
         check_pair_status(first_read, True)
         if (
             second_line is None
@@ -729,7 +729,9 @@ def process_paired_sam(
             second_line = get_next_alignment(inf)
             continue
         # Extract the second alignment's information and check pair status
-        second_read = process_sam_alignment(second_line, genbank_metadata, viral_taxids, True)
+        second_read = process_sam_alignment(
+            second_line, genbank_metadata, viral_taxids, True
+        )
         check_pair_status(second_read, True)
         # Check for sorting
         if str(first_read["seq_id"]) > str(second_read["seq_id"]):
