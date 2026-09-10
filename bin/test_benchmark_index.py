@@ -1297,15 +1297,28 @@ class TestRefStaleness:
     def test_write_staleness_table_writes_rows(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """Every check is wired in, so removing one would fail here."""
         monkeypatch.setattr(
             "benchmark_index.latest_kraken_release",
             lambda _database: ("20260226", "k2_pluspf_20260226.tar.gz"),
         )
+        monkeypatch.setattr("benchmark_index.latest_silva_release", lambda: "138.2")
+        monkeypatch.setattr("benchmark_index.latest_vhdb_release", lambda: "235")
         out = tmp_path / "staleness.tsv"
-        write_staleness_table({"kraken_db": ".../k2_pluspf_20250714.tar.gz"}, out)
-        df = pd.read_csv(out, sep="\t")
-        assert list(df["ref"]) == ["kraken_db"]
-        assert df.loc[0, "status"] == "stale"
+        write_staleness_table(
+            {
+                "kraken_db": ".../k2_pluspf_20250714.tar.gz",
+                "ssu_url": ".../release_138.2/Exports/ssu.gz",
+                "virus_host_db_url": ".../virushostdb/old/release233/virushostdb.tsv",
+            },
+            out,
+        )
+        df = pd.read_csv(out, sep="\t").set_index("ref")
+        assert set(df.index) == {"kraken_db", "ssu_url", "virus_host_db_url"}
+        assert df.loc["kraken_db", "status"] == "stale"
+        assert df.loc["ssu_url", "status"] == "current"
+        assert df.loc["virus_host_db_url", "status"] == "stale"
+        assert df.loc["virus_host_db_url", "latest"] == "release235"
 
     def test_write_staleness_table_empty_has_header(self, tmp_path: Path) -> None:
         out = tmp_path / "staleness.tsv"
