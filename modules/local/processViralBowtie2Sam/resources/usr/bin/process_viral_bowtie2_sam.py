@@ -275,8 +275,9 @@ def unclipped_bounds(ref_start: int, cigar: str) -> tuple[FieldValue, FieldValue
     """
     Reference bounds of an alignment with clipped bases counted as if aligned.
     The CIGAR is in reference orientation, so its leading operations are the
-    reference-leftmost ones whichever strand the read aligned to. This is the
-    coordinate pair `samtools markdup` keys on, and unlike POS it does not move
+    reference-leftmost ones whichever strand the read aligned to. `samtools markdup`
+    keys on whichever of the two bounds is the read's 5' end -- the start on the
+    forward strand, the end on the reverse -- and unlike POS neither bound moves
     when the aligner clips a read end.
     Args:
         ref_start (int): 0-based leftmost aligned reference position (SAM POS - 1).
