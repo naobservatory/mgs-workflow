@@ -254,6 +254,18 @@ fn parse_int_or_na(s: &str) -> Option<i32> {
     }
 }
 
+// Parse a coordinate: an integer, or None for "NA". Anything else is bad input, and
+// silently reading it as an absent coordinate would change how the read is keyed.
+fn parse_coordinate(s: &str, query_name: &str, field: &str) -> Result<Option<i32>, String> {
+    match parse_int_or_na(s) {
+        Some(value) => Ok(Some(value)),
+        None if s == "NA" => Ok(None),
+        None => Err(format!(
+            "Read {query_name} has an unreadable {field}: {s}"
+        )),
+    }
+}
+
 // Convert the ASCII quality score to a quality score (optimized for speed)
 fn ascii_to_quality_score(ascii_score: &str) -> f64 {
     if ascii_score == "NA" {
@@ -414,7 +426,9 @@ fn make_mate_end(
     query_name: &str,
     mate: &str,
 ) -> Result<Option<MateEnd>, String> {
-    match (parse_int_or_na(start), parse_int_or_na(end)) {
+    let start = parse_coordinate(start, query_name, &format!("{mate} unclipped start"))?;
+    let end = parse_coordinate(end, query_name, &format!("{mate} unclipped end"))?;
+    match (start, end) {
         // An unaligned mate has no CIGAR, and so no unclipped bounds
         (None, None) => Ok(None),
         (Some(start), Some(end)) => {
@@ -1341,6 +1355,16 @@ mod tests {
         .unwrap_err();
         assert!(err.contains("strand"), "unexpected error: {err}");
         assert!(err.contains("mate 1"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn make_read_entry_rejects_an_unreadable_coordinate() {
+        // Not an integer and not NA, so keying the read as unaligned would be wrong
+        for mate in [("x", "649", "False"), ("500", "x", "False")] {
+            let err = parse(Row { mate_1: mate, ..Row::default() }).unwrap_err();
+            assert!(err.contains("unreadable"), "unexpected error: {err}");
+            assert!(err.contains("mate 1"), "unexpected error: {err}");
+        }
     }
 
     #[test]
